@@ -11,7 +11,10 @@
     @include('partials.floating-social-icons')
 
     <div class="relative z-10 w-full max-w-md">
-        <div class="rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-5 [@media(max-height:820px)]:p-4">
+        <div
+            x-data="{ socialAuthLoading: null }"
+            class="rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-5 [@media(max-height:820px)]:p-4"
+        >
             <a href="{{ route('home') }}" class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2 [@media(max-height:820px)]:mb-3 [@media(max-height:820px)]:gap-1.5">
                 @if ($logoUrl)
                     <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-16 w-16 object-contain [@media(max-height:820px)]:h-14 [@media(max-height:820px)]:w-14">
@@ -202,22 +205,39 @@
                     href="{{ route('google.redirect') }}"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 [@media(max-height:820px)]:h-10 [@media(max-height:820px)]:w-10"
                     aria-label="Continue with Google"
+                    x-on:click="if (socialAuthLoading) { $event.preventDefault(); return; } socialAuthLoading = 'google'"
+                    x-bind:aria-busy="socialAuthLoading === 'google'"
+                    x-bind:aria-disabled="socialAuthLoading ? 'true' : 'false'"
+                    x-bind:tabindex="socialAuthLoading ? -1 : 0"
+                    x-bind:class="{ 'pointer-events-none cursor-wait opacity-70': socialAuthLoading === 'google', 'pointer-events-none opacity-70': socialAuthLoading && socialAuthLoading !== 'google' }"
                 >
-                    <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                    <svg x-show="socialAuthLoading !== 'google'" class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
                         <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5A9.5 9.5 0 1 0 12 21.5c5.5 0 9.1-3.9 9.1-9.3 0-.6-.1-1.1-.2-1.6H12Z"/>
                         <path fill="#34A853" d="M3.6 7.3 6.8 9.6a6 6 0 0 1 5.2-3.8c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.4 14.6 2.5 12 2.5 8.3 2.5 5 4.7 3.6 7.3Z"/>
                         <path fill="#FBBC05" d="M12 21.5c2.5 0 4.7-.8 6.3-2.3l-2.9-2.3c-.8.6-1.9 1-3.4 1-2.6 0-4.8-1.7-5.6-4.1l-3.2 2.5A9.5 9.5 0 0 0 12 21.5Z"/>
                         <path fill="#4285F4" d="M21.1 12.2c0-.6-.1-1.1-.2-1.6H12v3.9h5.5c-.3 1.2-1.1 2.1-2.1 2.8l2.9 2.3c1.7-1.5 2.8-3.9 2.8-7.4Z"/>
                     </svg>
+                    <svg x-show="socialAuthLoading === 'google'" style="display:none;" class="h-4 w-4 animate-spin text-cyan-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 0 0-9-9v3a6 6 0 0 1 6 6h3Z"></path>
+                    </svg>
+                    <span x-show="socialAuthLoading === 'google'" style="display:none;" class="sr-only">Signing in with Google</span>
                 </a>
 
                 <a
                     href="{{ route('facebook.redirect') }}"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 [@media(max-height:820px)]:h-10 [@media(max-height:820px)]:w-10"
                     aria-label="Continue with Facebook"
+                    x-on:click="if (socialAuthLoading) { $event.preventDefault(); return; } socialAuthLoading = 'facebook'"
+                    x-bind:aria-busy="socialAuthLoading === 'facebook'"
+                    x-bind:class="{ 'pointer-events-none opacity-70': socialAuthLoading }"
                 >
-                    <svg class="h-4 w-4 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <svg x-show="socialAuthLoading !== 'facebook'" class="h-4 w-4 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                         <path d="M24 12.1C24 5.4 18.6 0 12 0S0 5.4 0 12.1c0 6 4.4 11 10.1 12v-8.5H7.1v-3.5h3V9.4c0-3 1.8-4.8 4.6-4.8 1.3 0 2.7.2 2.7.2v3h-1.5c-1.5 0-2 .9-2 1.9v2.4h3.4l-.5 3.5h-2.9v8.5c5.7-1 10.1-6 10.1-12Z"/>
+                    </svg>
+                    <svg x-show="socialAuthLoading === 'facebook'" style="display:none;" class="h-4 w-4 animate-spin text-[#1877F2]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 0 0-9-9v3a6 6 0 0 1 6 6h3Z"></path>
                     </svg>
                 </a>
             </div>
