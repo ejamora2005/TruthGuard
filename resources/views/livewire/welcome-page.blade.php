@@ -35,31 +35,38 @@
         ],
     ];
 
-    $detectShowcase = [
+    $presentationChapters = [
         [
-            'image' => 'welcome/c88713d.png',
-            'alt' => 'AI-generated image comparison',
-            'label' => 'AI-Generated Image',
+            'time' => '00:00',
+            'title' => 'Start with a claim',
+            'description' => 'Upload media, paste a post, or add a source link for review.',
+            'status' => 'Input captured',
+            'verdict' => 'Ready',
+            'accent' => 'blue',
         ],
         [
-            'image' => 'welcome/5.png',
-            'alt' => 'Fake news social media post detection',
-            'label' => 'Fake Social Post',
+            'time' => '00:18',
+            'title' => 'Analyze the evidence',
+            'description' => 'TruthGuard checks media signals, claim text, source context, and risk patterns.',
+            'status' => 'Signals scanned',
+            'verdict' => 'Analyzing',
+            'accent' => 'teal',
         ],
         [
-            'image' => 'welcome/0a60b3ab-4470-43b9-a4e2-7aecac181213-large16x9_fakeweathernews.png',
-            'alt' => 'False weather bulletin detection',
-            'label' => 'Fake Weather News',
+            'time' => '00:42',
+            'title' => 'Compare trusted sources',
+            'description' => 'Related reports and source records are matched before a verdict is shown.',
+            'status' => 'Sources matched',
+            'verdict' => 'Cross-check',
+            'accent' => 'amber',
         ],
         [
-            'image' => 'welcome/Misleading.jpg',
-            'alt' => 'Misleading weather context detection',
-            'label' => 'Misleading Context',
-        ],
-        [
-            'image' => 'welcome/istockphoto-2150955168-612x612.jpg',
-            'alt' => 'Fact check result for misleading claim',
-            'label' => 'Misleading Claim',
+            'time' => '01:05',
+            'title' => 'Get a clear result',
+            'description' => 'The report labels the claim as real, false, misleading, or needing review.',
+            'status' => 'Report generated',
+            'verdict' => 'Verified',
+            'accent' => 'emerald',
         ],
     ];
 
@@ -262,53 +269,416 @@
             animation: floatSlow 4s ease-in-out infinite;
         }
 
-        .detect-slider {
+        .truthguard-presentation-shell {
             position: relative;
-            height: 15rem;
             overflow: hidden;
-            border-radius: 0.5rem;
-            border: 1px solid rgb(226 232 240 / 1);
-            background: rgb(241 245 249 / 1);
+            max-width: 100%;
+            min-width: 0;
+            border: 1px solid rgba(191, 219, 254, 0.82);
+            border-radius: 1.65rem;
+            background:
+                linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px),
+                linear-gradient(rgba(37, 99, 235, 0.045) 1px, transparent 1px),
+                linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.84));
+            background-size: 30px 30px, 30px 30px, auto;
+            box-shadow: 0 28px 80px rgba(37, 99, 235, 0.16);
         }
 
-        .detect-slide {
+        .truthguard-presentation-shell::before {
+            content: '';
+            position: absolute;
+            inset: -24% -10% auto 28%;
+            height: 14rem;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(20, 184, 166, 0.18), rgba(37, 99, 235, 0.16));
+            filter: blur(38px);
+            pointer-events: none;
+        }
+
+        .truthguard-presentation-topbar,
+        .truthguard-presentation-frame,
+        .truthguard-presentation-controls {
+            position: relative;
+            z-index: 1;
+        }
+
+        .truthguard-presentation-topbar {
+            display: flex;
+            min-width: 0;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            border-bottom: 1px solid rgba(191, 219, 254, 0.7);
+            padding: 0.8rem 0.95rem;
+        }
+
+        .truthguard-window-dots {
+            display: inline-flex;
+            gap: 0.35rem;
+        }
+
+        .truthguard-window-dots span {
+            height: 0.58rem;
+            width: 0.58rem;
+            border-radius: 999px;
+            background: #bfdbfe;
+        }
+
+        .truthguard-window-dots span:nth-child(1) {
+            background: #ef4444;
+        }
+
+        .truthguard-window-dots span:nth-child(2) {
+            background: #f59e0b;
+        }
+
+        .truthguard-window-dots span:nth-child(3) {
+            background: #10b981;
+        }
+
+        .truthguard-video-pill {
+            display: inline-flex;
+            flex-shrink: 0;
+            align-items: center;
+            gap: 0.45rem;
+            border: 1px solid rgba(191, 219, 254, 0.82);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.84);
+            padding: 0.42rem 0.66rem;
+            color: #2563eb;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .truthguard-video-pill::before {
+            content: '';
+            height: 0.45rem;
+            width: 0.45rem;
+            border-radius: 999px;
+            background: #10b981;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.36);
+            animation: truthguardPulseDot 1.8s ease-out infinite;
+        }
+
+        .truthguard-presentation-frame {
+            aspect-ratio: 16 / 10;
+            overflow: hidden;
+            border-bottom: 1px solid rgba(191, 219, 254, 0.72);
+            background:
+                radial-gradient(circle at 16% 18%, rgba(20, 184, 166, 0.16), transparent 28%),
+                radial-gradient(circle at 84% 10%, rgba(37, 99, 235, 0.18), transparent 28%),
+                #f8fbff;
+        }
+
+        .truthguard-presentation-scene {
             position: absolute;
             inset: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(13rem, 0.86fr);
+            gap: 1rem;
+            align-items: center;
+            padding: 1.4rem;
             opacity: 0;
-            animation-name: detectSlideFade;
-            animation-duration: 15s;
-            animation-timing-function: linear;
-            animation-iteration-count: infinite;
-            animation-fill-mode: both;
+            transform: translateY(0.5rem) scale(0.985);
+            animation: truthguardPresentationScene 24s ease-in-out infinite;
+            animation-delay: var(--scene-delay);
         }
 
-        .detect-slide:first-child {
+        .truthguard-presentation-scene:first-child {
             opacity: 1;
         }
 
-        .detect-slider .detect-slide:nth-child(1) { animation-delay: 0s; }
-        .detect-slider .detect-slide:nth-child(2) { animation-delay: 3s; }
-        .detect-slider .detect-slide:nth-child(3) { animation-delay: 6s; }
-        .detect-slider .detect-slide:nth-child(4) { animation-delay: 9s; }
-        .detect-slider .detect-slide:nth-child(5) { animation-delay: 12s; }
-        .detect-slider .detect-slide:nth-child(6) { animation-delay: 15s; }
-        .detect-slider .detect-slide:nth-child(7) { animation-delay: 18s; }
-        .detect-slider .detect-slide:nth-child(8) { animation-delay: 21s; }
+        .truthguard-presentation-time {
+            display: inline-flex;
+            width: fit-content;
+            border: 1px solid rgba(191, 219, 254, 0.76);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.84);
+            padding: 0.3rem 0.58rem;
+            color: #2563eb;
+            font-size: 0.68rem;
+            font-weight: 900;
+        }
 
-        @media (min-width: 640px) {
-            .detect-slider {
-                height: 18rem;
+        .truthguard-presentation-title {
+            margin-top: 0.7rem;
+            font-size: clamp(1.55rem, 3vw, 2.35rem);
+            font-weight: 800;
+            line-height: 1.05;
+            color: #0f172a;
+        }
+
+        .truthguard-presentation-copy {
+            margin-top: 0.7rem;
+            max-width: 24rem;
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        .truthguard-presentation-status {
+            margin-top: 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .truthguard-presentation-status span {
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 0.44rem 0.72rem;
+            color: #334155;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .truthguard-presentation-visual {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(191, 219, 254, 0.82);
+            border-radius: 1.25rem;
+            background: rgba(255, 255, 255, 0.78);
+            padding: 1rem;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+        }
+
+        .truthguard-presentation-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 6.2rem;
+        }
+
+        .truthguard-presentation-logo img {
+            height: 5.4rem;
+            width: 5.4rem;
+            object-fit: contain;
+            filter: drop-shadow(0 18px 26px rgba(37, 99, 235, 0.2));
+            animation: floatSlow 4s ease-in-out infinite;
+        }
+
+        .truthguard-signal-list {
+            margin-top: 0.85rem;
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .truthguard-signal-list span {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            border-radius: 0.75rem;
+            background: rgba(248, 250, 252, 0.9);
+            padding: 0.58rem 0.68rem;
+            color: #475569;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .truthguard-signal-list span::after {
+            content: '';
+            height: 0.42rem;
+            width: 34%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #2563eb, #14b8a6);
+        }
+
+        .truthguard-verdict-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.45rem;
+            margin-top: 0.85rem;
+        }
+
+        .truthguard-verdict-strip span {
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 0.72rem;
+            background: rgba(255, 255, 255, 0.88);
+            padding: 0.54rem 0.4rem;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.66rem;
+            font-weight: 900;
+        }
+
+        .truthguard-verdict-strip span:nth-child(2) {
+            border-color: rgba(248, 113, 113, 0.36);
+            background: rgba(254, 242, 242, 0.92);
+            color: #dc2626;
+        }
+
+        .truthguard-presentation-progress {
+            position: relative;
+            z-index: 2;
+            height: 0.32rem;
+            overflow: hidden;
+            background: rgba(219, 234, 254, 0.86);
+        }
+
+        .truthguard-presentation-progress span {
+            display: block;
+            height: 100%;
+            width: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, #2563eb, #14b8a6, #10b981);
+            transform: translateX(-100%);
+            animation: truthguardPresentationProgress 24s linear infinite;
+        }
+
+        .truthguard-presentation-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.85rem;
+            padding: 0.85rem 0.95rem 1rem;
+        }
+
+        .truthguard-play-control {
+            display: inline-flex;
+            height: 2.4rem;
+            width: 2.4rem;
+            align-items: center;
+            justify-content: center;
+            border: 0;
+            border-radius: 999px;
+            background: #2563eb;
+            color: #fff;
+            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.28);
+        }
+
+        .truthguard-play-control::before {
+            content: '';
+            margin-left: 0.16rem;
+            border-bottom: 0.43rem solid transparent;
+            border-left: 0.65rem solid currentColor;
+            border-top: 0.43rem solid transparent;
+        }
+
+        .truthguard-presentation-caption {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .truthguard-presentation-caption p {
+            margin: 0;
+            color: #0f172a;
+            font-size: 0.82rem;
+            font-weight: 900;
+        }
+
+        .truthguard-presentation-caption span {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .truthguard-presentation-duration {
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.72);
+            padding: 0.42rem 0.62rem;
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 900;
+        }
+
+        @media (max-width: 640px) {
+            .truthguard-presentation-shell {
+                border-radius: 1.35rem;
+            }
+
+            .truthguard-presentation-topbar {
+                padding: 0.68rem 0.75rem;
+            }
+
+            .truthguard-presentation-frame {
+                aspect-ratio: auto;
+                min-height: 27rem;
+            }
+
+            .truthguard-presentation-scene {
+                grid-template-columns: 1fr;
+                align-content: center;
+                gap: 0.75rem;
+                padding: 1rem;
+            }
+
+            .truthguard-presentation-title {
+                font-size: 1.28rem;
+            }
+
+            .truthguard-presentation-copy {
+                font-size: 0.78rem;
+                line-height: 1.45;
+            }
+
+            .truthguard-presentation-status {
+                display: none;
+            }
+
+            .truthguard-presentation-visual {
+                padding: 0.78rem;
+            }
+
+            .truthguard-presentation-logo {
+                height: 3.6rem;
+            }
+
+            .truthguard-presentation-logo img {
+                height: 3.35rem;
+                width: 3.35rem;
+            }
+
+            .truthguard-signal-list {
+                gap: 0.42rem;
+                margin-top: 0.65rem;
+            }
+
+            .truthguard-signal-list span {
+                padding: 0.46rem 0.55rem;
+                font-size: 0.66rem;
+            }
+
+            .truthguard-verdict-strip {
+                margin-top: 0.65rem;
+            }
+
+            .truthguard-verdict-strip span {
+                padding: 0.46rem 0.22rem;
+                font-size: 0.6rem;
+            }
+
+            .truthguard-presentation-controls {
+                padding: 0.7rem 0.75rem 0.8rem;
+            }
+
+            .truthguard-presentation-duration {
+                display: none;
             }
         }
 
         @media (prefers-reduced-motion: reduce) {
-            .detect-slide {
+            .truthguard-presentation-scene,
+            .truthguard-presentation-progress span,
+            .truthguard-video-pill::before {
                 animation: none !important;
+            }
+
+            .truthguard-presentation-scene {
                 opacity: 0;
             }
 
-            .detect-slide:first-child {
+            .truthguard-presentation-scene:first-child {
                 opacity: 1;
+                transform: none;
+            }
+
+            .truthguard-presentation-progress span {
+                transform: translateX(0);
             }
         }
 
@@ -322,14 +692,28 @@
             }
         }
 
-        @keyframes detectSlideFade {
+        @keyframes truthguardPresentationScene {
             0%,
-            18% {
+            20% {
                 opacity: 1;
+                transform: translateY(0) scale(1);
             }
-            20%,
+            24%,
             100% {
                 opacity: 0;
+                transform: translateY(-0.4rem) scale(0.985);
+            }
+        }
+
+        @keyframes truthguardPresentationProgress {
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes truthguardPulseDot {
+            70% {
+                box-shadow: 0 0 0 0.45rem rgba(16, 185, 129, 0);
             }
         }
     </style>
@@ -396,20 +780,21 @@
     </header>
 
     <main>
-        <section id="home" class="overflow-hidden pb-16 pt-8 md:pb-24 md:pt-12">
-            <div class="mx-auto grid w-full max-w-7xl gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
-                <div>
-                    <div class="mb-6 inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                        TruthGuard 1.0 - Agentic Verification Workflow
+        <section id="home" class="overflow-hidden pb-12 pt-6 md:pb-24 md:pt-12">
+            <div class="mx-auto grid min-w-0 w-full max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-8">
+                <div class="min-w-0">
+                    <div class="mb-4 inline-flex max-w-full items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 sm:mb-6 sm:text-sm">
+                        <span class="sm:hidden">TruthGuard workflow</span>
+                        <span class="hidden sm:inline">TruthGuard 1.0 - Agentic Verification Workflow</span>
                     </div>
-                    <h1 class="bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-4xl font-bold leading-tight text-transparent md:text-5xl lg:text-6xl">
+                    <h1 class="bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
                         Full-Stack AI Verification for Social Misinformation
                     </h1>
-                    <p class="mt-6 max-w-xl text-lg text-slate-600">
+                    <p class="mt-4 max-w-xl text-base text-slate-600 sm:mt-6 sm:text-lg">
                         Detect fake media, automate claim verification, and produce explainable verdicts with AI-assisted workflows built for real response teams.
                     </p>
 
-                    <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row">
                         @auth
                             <a href="{{ route('detections.create') }}" class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-blue-200 transition hover:from-blue-700 hover:to-violet-700">
                                 Start Verification
@@ -428,31 +813,76 @@
                     <p class="mt-4 text-sm text-slate-500">Use TruthGuard as an installed app, not just a browser tab.</p>
                 </div>
 
-                <div class="relative reveal">
-                    <div class="float-slow rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-                        <div class="mb-4 flex items-center gap-2">
-                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-600">TG</span>
-                            <p class="text-sm font-medium text-slate-700">What TruthGuard Detects</p>
+                <div class="relative min-w-0 reveal">
+                    <div class="truthguard-presentation-shell">
+                        <div class="truthguard-presentation-topbar">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <span class="truthguard-window-dots" aria-hidden="true">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </span>
+                                <p class="truncate text-xs font-bold text-slate-600 sm:text-sm">
+                                    <span class="sm:hidden">Overview</span>
+                                    <span class="hidden sm:inline">TruthGuard overview</span>
+                                </p>
+                            </div>
+
+                            <span class="truthguard-video-pill">Presentation</span>
                         </div>
 
-                        <div class="mx-auto w-full max-w-xl">
-                            <div class="detect-slider">
-                                @foreach ($detectShowcase as $slide)
-                                    @php
-                                        $slidePath = ltrim((string) $slide['image'], '/');
-                                        $slideVersion = @filemtime(public_path($slidePath));
-                                    @endphp
-                                    <figure class="detect-slide">
-                                        <img src="/{{ $slidePath }}{{ $slideVersion ? '?v='.$slideVersion : '' }}" alt="{{ $slide['alt'] }}" class="h-full w-full object-cover">
-                                        <figcaption class="absolute inset-x-0 bottom-0 bg-slate-900/80 px-4 py-2.5 text-center text-sm font-semibold tracking-wide text-white sm:text-base">
-                                            {{ $slide['label'] }}
-                                        </figcaption>
-                                    </figure>
-                                @endforeach
+                        <div class="truthguard-presentation-frame" aria-label="TruthGuard video presentation">
+                            @foreach ($presentationChapters as $chapter)
+                                <section class="truthguard-presentation-scene" style="--scene-delay: {{ $loop->index * 6 }}s;">
+                                    <div class="min-w-0">
+                                        <span class="truthguard-presentation-time">{{ $chapter['time'] }}</span>
+                                        <h2 class="truthguard-presentation-title">{{ $chapter['title'] }}</h2>
+                                        <p class="truthguard-presentation-copy">{{ $chapter['description'] }}</p>
+
+                                        <div class="truthguard-presentation-status">
+                                            <span>{{ $chapter['status'] }}</span>
+                                            <span>{{ $chapter['verdict'] }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="truthguard-presentation-visual">
+                                        <div class="truthguard-presentation-logo">
+                                            @if ($logoUrl !== '')
+                                                <img src="{{ $logoUrl }}" alt="TruthGuard logo">
+                                            @else
+                                                <span class="text-2xl font-black text-blue-600">TG</span>
+                                            @endif
+                                        </div>
+
+                                        <div class="truthguard-signal-list" aria-hidden="true">
+                                            <span>Media integrity</span>
+                                            <span>Source context</span>
+                                            <span>Claim consistency</span>
+                                        </div>
+
+                                        <div class="truthguard-verdict-strip" aria-hidden="true">
+                                            <span>Real</span>
+                                            <span>False</span>
+                                            <span>Review</span>
+                                        </div>
+                                    </div>
+                                </section>
+                            @endforeach
+                        </div>
+
+                        <div class="truthguard-presentation-progress" aria-hidden="true">
+                            <span></span>
+                        </div>
+
+                        <div class="truthguard-presentation-controls">
+                            <span class="truthguard-play-control" aria-hidden="true"></span>
+                            <div class="truthguard-presentation-caption">
+                                <p>How TruthGuard checks content</p>
+                                <span>Evidence, sources, risk signals, and verdicts in one workflow.</span>
                             </div>
+                            <span class="truthguard-presentation-duration">01:18</span>
                         </div>
                     </div>
-                    <div class="absolute -left-2 top-8 -z-10 h-full w-full rounded-2xl bg-gradient-to-r from-blue-600/20 to-violet-600/20 blur-3xl"></div>
                 </div>
             </div>
         </section>
@@ -910,83 +1340,5 @@
             };
         }
 
-        (() => {
-            if (window.__truthGuardInstallInit) {
-                return;
-            }
-            window.__truthGuardInstallInit = true;
-
-            const installButtons = Array.from(document.querySelectorAll('.js-install-app'));
-            const installHelp = document.getElementById('install-help');
-            let deferredPrompt = null;
-
-            if (installButtons.length === 0) {
-                return;
-            }
-
-            const setButtons = (label, disabled = false) => {
-                installButtons.forEach((btn) => {
-                    btn.textContent = label;
-                    btn.disabled = disabled;
-                    btn.classList.toggle('opacity-60', disabled);
-                    btn.classList.toggle('cursor-not-allowed', disabled);
-                });
-            };
-
-            const hasIosStandalone = ('standalone' in window.navigator) && window.navigator['standalone'] === true;
-            const isStandalone = (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches) || hasIosStandalone;
-            if (isStandalone) {
-                setButtons('App Installed', true);
-                if (installHelp) {
-                    installHelp.textContent = 'TruthGuard is already running as an installed app.';
-                }
-            }
-
-            window.addEventListener('beforeinstallprompt', (event) => {
-                event.preventDefault();
-                deferredPrompt = event;
-                setButtons('Install App', false);
-                if (installHelp) {
-                    installHelp.textContent = 'Click Install App to add TruthGuard to your device.';
-                }
-            });
-
-            installButtons.forEach((button) => {
-                button.addEventListener('click', async () => {
-                    if (!deferredPrompt) {
-                        if (installHelp) {
-                            installHelp.textContent = 'If install is unavailable, open your browser menu and choose "Install App" or "Add to Home Screen".';
-                        }
-                        return;
-                    }
-
-                    deferredPrompt.prompt();
-                    const choice = await deferredPrompt.userChoice;
-
-                    if (choice.outcome === 'accepted') {
-                        setButtons('Installing...', true);
-                    }
-
-                    deferredPrompt = null;
-                });
-            });
-
-            window.addEventListener('appinstalled', () => {
-                setButtons('App Installed', true);
-                if (installHelp) {
-                    installHelp.textContent = 'Installation complete. You can launch TruthGuard from your apps list.';
-                }
-            });
-
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js').catch(() => {
-                        if (installHelp && installHelp.textContent === '') {
-                            installHelp.textContent = 'Install is still available, but offline mode could not be enabled.';
-                        }
-                    });
-                });
-            }
-        })();
     </script>
 </div>

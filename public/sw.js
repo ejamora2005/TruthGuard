@@ -1,79 +1,168 @@
-const CACHE_NAME = 'truthguard-agent-ai-v2';
-const APP_SHELL = [
-  '/',
+const CACHE_PREFIX = 'truthguard-static';
+const CACHE_VERSION = '2026-08-05.2';
+const STATIC_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}`;
+const OFFLINE_URL = '/offline.html';
+
+const PRECACHE_URLS = [
+  OFFLINE_URL,
   '/manifest.webmanifest',
-  '/images/truthguard-logo.png'
+  '/favicon.ico',
+  '/images/truthguard-logo-transparent.png',
+  '/pwa/icon-32.png',
+  '/pwa/icon-192.png',
+  '/pwa/icon-512.png',
+  '/pwa/maskable-192.png',
+  '/pwa/maskable-512.png',
+  '/pwa/apple-touch-icon.png'
+];
+
+const STATIC_EXTENSION = /\.(?:css|js|mjs|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$/i;
+const SAFE_STATIC_PREFIXES = ['/build/', '/images/', '/pwa/', '/vendor/tailadmin/'];
+const SAFE_STATIC_PATHS = ['/manifest.webmanifest', OFFLINE_URL];
+const PRIVATE_PREFIXES = [
+  '/admin',
+  '/api',
+  '/auth',
+  '/broadcasting',
+  '/dashboard',
+  '/detections',
+  '/forgot-password',
+  '/history',
+  '/livewire',
+  '/login',
+  '/logout',
+  '/notifications',
+  '/onboarding',
+  '/password',
+  '/privacy-policy/consent',
+  '/profile',
+  '/register',
+  '/reset-password',
+  '/sanctum',
+  '/storage'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .catch(() => undefined)
   );
+
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
+    caches
+      .keys()
+      .then((cacheNames) =>
+        Promise.all(
+          cacheNames
+            .filter((cacheName) => cacheName.startsWith(CACHE_PREFIX) && cacheName !== STATIC_CACHE)
+            .map((cacheName) => caches.delete(cacheName))
+        )
       )
-    )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') {
+  const { request } = event;
+
+  if (request.method !== 'GET') {
     return;
   }
 
-  const requestUrl = new URL(event.request.url);
-
-  // Never cache Livewire and other dynamic endpoints.
-  if (requestUrl.pathname.startsWith('/livewire')) {
-    event.respondWith(fetch(event.request));
+  if (request.cache === 'only-if-cached' && request.mode !== 'same-origin') {
     return;
   }
 
-  // Keep navigations fresh so page edits appear immediately.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.ok) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(event.request);
-          return cached || caches.match('/');
-        })
+  const requestUrl = new URL(request.url);
+
+  if (requestUrl.origin !== self.location.origin) {
+    return;
+  }
+
+  if (isNavigationRequest(request)) {
+    event.respondWith(networkOnlyNavigation(request));
+    return;
+  }
+
+  if (isSafeStaticRequest(request, requestUrl)) {
+    event.respondWith(staleWhileRevalidate(request));
+  }
+});
+
+function isNavigationRequest(request) {
+  return request.mode === 'navigate';
+}
+
+function isPrivatePath(pathname) {
+  const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+
+  return PRIVATE_PREFIXES.some((prefix) => normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`));
+}
+
+function isSafeStaticRequest(request, requestUrl) {
+  if (isPrivatePath(requestUrl.pathname)) {
+    return false;
+  }
+
+  if (request.headers.get('accept')?.includes('text/html')) {
+    return false;
+  }
+
+  return (
+    SAFE_STATIC_PATHS.includes(requestUrl.pathname) ||
+    SAFE_STATIC_PREFIXES.some((prefix) => requestUrl.pathname.startsWith(prefix)) ||
+    STATIC_EXTENSION.test(requestUrl.pathname)
+  );
+}
+
+async function networkOnlyNavigation(request) {
+  try {
+    return await fetch(request);
+  } catch (error) {
+    return (
+      (await caches.match(OFFLINE_URL)) ||
+      new Response('TruthGuard is offline. Reconnect and try again.', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      })
     );
-    return;
   }
+}
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(STATIC_CACHE);
+  const cachedResponse = await cache.match(request);
+
+  const networkResponsePromise = fetch(request)
+    .then((response) => {
+      if (response && response.ok && response.type === 'basic') {
+        cache.put(request, response.clone());
       }
 
-      return fetch(event.request)
-        .then((response) => {
-          if (!response || !response.ok || requestUrl.origin !== self.location.origin) {
-            return response;
-          }
-
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-          return response;
-        })
-        .catch(() => caches.match('/'));
+      return response;
     })
+    .catch(() => undefined);
+
+  return (
+    cachedResponse ||
+    networkResponsePromise.then((response) =>
+      response ||
+      new Response('', {
+        status: 504,
+        statusText: 'Offline'
+      })
+    )
   );
-});
+}

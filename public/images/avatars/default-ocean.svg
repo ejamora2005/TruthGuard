@@ -1,0 +1,19 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ocean-bg" x1="20" y1="12" x2="136" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="ocean-card" x1="40" y1="38" x2="122" y2="122" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="44" fill="url(#ocean-bg)"/>
+  <circle cx="124" cy="34" r="22" fill="white" fill-opacity="0.14"/>
+  <circle cx="36" cy="134" r="28" fill="white" fill-opacity="0.10"/>
+  <rect x="27" y="24" width="106" height="112" rx="32" fill="url(#ocean-card)" stroke="white" stroke-opacity="0.18"/>
+  <circle cx="80" cy="62" r="24" fill="#E0F2FE"/>
+  <path d="M44 123C44 103.67 59.67 88 79 88H81C100.33 88 116 103.67 116 123V126H44V123Z" fill="#F8FAFC"/>
+  <path d="M59 65C59 52.2975 69.2975 42 82 42C91.3669 42 99.4258 47.5993 103.02 55.6308C99.3515 52.5322 94.6073 50.6667 89.4286 50.6667C77.7947 50.6667 68.4286 60.0328 68.4286 71.6667C68.4286 75.5426 69.4698 79.1742 71.2896 82.2994C63.9797 78.5486 59 72.2708 59 65Z" fill="#0F172A" fill-opacity="0.16"/>
+</svg>

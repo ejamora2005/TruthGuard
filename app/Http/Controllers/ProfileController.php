@@ -2,59 +2,118 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
-    /**
-     * Display the user's profile form.
-     */
-    public function edit(Request $request): View
+    public function update(Request $request): RedirectResponse
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
+        /** @var User $user */
+        $user = $request->user();
+        $avatarMaxMb = (int) config('truthguard.uploads.avatar_max_mb', 5);
+        $avatarMaxKb = (int) config('truthguard.uploads.avatar_max_kb', $avatarMaxMb * 1024);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
+            'username' => ['nullable', 'string', 'alpha_dash:ascii', 'max:64', Rule::unique(User::class)->ignore($user->id)],
+            'theme_preference' => ['required', 'string', Rule::in(['ocean', 'forest', 'sunset'])],
+            'avatar' => ['nullable', 'image', "max:{$avatarMaxKb}", 'mimes:jpg,jpeg,png,webp,gif'],
+        ], [
+            'avatar.max' => "Profile photos must be {$avatarMaxMb}MB or less.",
         ]);
-    }
 
-    /**
-     * Update the user's profile information.
-     */
-    public function update(ProfileUpdateRequest $request): RedirectResponse
-    {
-        $request->user()->fill($request->validated());
+        $user->fill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ]);
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($request->has('username')) {
+            $user->username = filled($validated['username'] ?? null)
+                ? Str::lower((string) $validated['username'])
+                : null;
         }
 
-        $request->user()->save();
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
+        }
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        $storedAvatarPath = $user->profile_photo_path;
+
+        if ($request->hasFile('avatar')) {
+            $uploadedAvatar = $request->file('avatar');
+            $newAvatarPath = $uploadedAvatar instanceof UploadedFile
+                ? $this->persistProfilePhoto($uploadedAvatar)
+                : null;
+
+            if ($newAvatarPath === null) {
+                return back()
+                    ->withErrors(['avatar' => 'The avatar failed to upload.'])
+                    ->withInput($request->except('avatar'));
+            }
+
+            if ($storedAvatarPath) {
+                Storage::disk('public')->delete($storedAvatarPath);
+            }
+
+            $storedAvatarPath = $newAvatarPath;
+        }
+
+        $user->save();
+        $user->syncProfilePreferences($storedAvatarPath, $validated['theme_preference']);
+
+        $returnSection = $request->string('return_section')->toString();
+        $routeParameters = in_array($returnSection, ['personal', 'photo', 'appearance'], true)
+            ? ['section' => $returnSection]
+            : [];
+
+        return redirect()
+            ->route('profile', $routeParameters)
+            ->with('status', 'profile-updated');
     }
 
-    /**
-     * Delete the user's account.
-     */
-    public function destroy(Request $request): RedirectResponse
+    private function persistProfilePhoto(UploadedFile $uploadedFile): ?string
     {
-        $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
-        ]);
+        if (! $uploadedFile->isValid()) {
+            return null;
+        }
 
-        $user = $request->user();
+        $sourcePath = $this->resolveUploadedFilePath($uploadedFile);
 
-        Auth::logout();
+        if ($sourcePath === null) {
+            return null;
+        }
 
-        $user->delete();
+        $targetPath = 'profile-photos/'.$uploadedFile->hashName();
+        $stream = fopen($sourcePath, 'rb');
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        if (! is_resource($stream)) {
+            return null;
+        }
 
-        return Redirect::to('/');
+        try {
+            $stored = Storage::disk('public')->writeStream($targetPath, $stream);
+        } finally {
+            fclose($stream);
+        }
+
+        return $stored ? $targetPath : null;
+    }
+
+    private function resolveUploadedFilePath(UploadedFile $uploadedFile): ?string
+    {
+        foreach ([$uploadedFile->getRealPath(), $uploadedFile->getPathname()] as $candidate) {
+            if (is_string($candidate) && $candidate !== '' && is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }

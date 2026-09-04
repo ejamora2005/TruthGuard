@@ -4,12 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="TruthGuard Agent AI 1.0 - detect fake media and misinformation with AI automation.">
-    <meta name="theme-color" content="#4f46e5">
 
     <title>TruthGuard Agent AI 1.0</title>
 
-    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/truthguard-logo.png') }}">
+    @include('layouts.partials.pwa')
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -40,10 +38,12 @@
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900 antialiased">
+    @include('layouts.partials.app-splash')
+
     <nav class="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/85 backdrop-blur">
         <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <a href="#home" class="flex items-center gap-3">
-                <img src="{{ asset('images/truthguard-logo.png') }}" alt="TruthGuard logo" class="h-9 w-9 rounded-lg object-cover ring-1 ring-indigo-200">
+                <img src="{{ asset('images/truthguard-logo-transparent.png') }}" alt="TruthGuard logo" class="h-9 w-9 object-contain">
                 <span class="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">TruthGuard Agent AI 1.0</span>
             </a>
 
@@ -219,75 +219,5 @@
         </div>
     </footer>
 
-    <script>
-        (() => {
-            const installButtons = Array.from(document.querySelectorAll('.js-install-app'));
-            const installHelp = document.getElementById('install-help');
-            let deferredPrompt = null;
-
-            const setButtons = (label, disabled = false) => {
-                installButtons.forEach((btn) => {
-                    btn.textContent = label;
-                    btn.disabled = disabled;
-                    btn.classList.toggle('opacity-60', disabled);
-                    btn.classList.toggle('cursor-not-allowed', disabled);
-                });
-            };
-
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-            if (isStandalone) {
-                setButtons('App Installed', true);
-                if (installHelp) {
-                    installHelp.textContent = 'TruthGuard is already running as an installed app.';
-                }
-            }
-
-            window.addEventListener('beforeinstallprompt', (event) => {
-                event.preventDefault();
-                deferredPrompt = event;
-                setButtons('Install App', false);
-                if (installHelp) {
-                    installHelp.textContent = 'Click Install App to add TruthGuard to your device.';
-                }
-            });
-
-            installButtons.forEach((button) => {
-                button.addEventListener('click', async () => {
-                    if (!deferredPrompt) {
-                        if (installHelp) {
-                            installHelp.textContent = 'If install is unavailable, open your browser menu and choose "Install App" or "Add to Home Screen".';
-                        }
-                        return;
-                    }
-
-                    deferredPrompt.prompt();
-                    const choice = await deferredPrompt.userChoice;
-
-                    if (choice.outcome === 'accepted') {
-                        setButtons('Installing...', true);
-                    }
-
-                    deferredPrompt = null;
-                });
-            });
-
-            window.addEventListener('appinstalled', () => {
-                setButtons('App Installed', true);
-                if (installHelp) {
-                    installHelp.textContent = 'Installation complete. You can launch TruthGuard from your apps list.';
-                }
-            });
-
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js').catch(() => {
-                        if (installHelp && installHelp.textContent === '') {
-                            installHelp.textContent = 'Install is still available, but offline mode could not be enabled.';
-                        }
-                    });
-                });
-            }
-        })();
-    </script>
 </body>
 </html>

@@ -1,0 +1,1727 @@
+.truthguard-admin-app {
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 16% 0%, rgba(37, 99, 235, 0.12), transparent 32%),
+        radial-gradient(circle at 86% 4%, rgba(20, 184, 166, 0.11), transparent 30%),
+        linear-gradient(180deg, #f8fafc 0%, #eef6ff 48%, #f8fafc 100%);
+    color: #0f172a;
+    font-family: Poppins, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.truthguard-admin-shell {
+    min-height: 100vh;
+    background:
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.03) 0 1px, transparent 1px 20px),
+        repeating-linear-gradient(0deg, rgba(37, 99, 235, 0.025) 0 1px, transparent 1px 20px);
+}
+
+.truthguard-admin-sidebar {
+    overflow: hidden;
+    border-color: rgba(191, 219, 254, 0.82);
+    background:
+        radial-gradient(circle at 14% 6%, rgba(37, 99, 235, 0.16), transparent 28%),
+        radial-gradient(circle at 84% 18%, rgba(20, 184, 166, 0.12), transparent 30%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.88));
+    box-shadow: 22px 0 70px rgba(15, 23, 42, 0.11);
+    backdrop-filter: blur(22px) saturate(1.15);
+}
+
+.truthguard-admin-sidebar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        linear-gradient(90deg, rgba(37, 99, 235, 0.065), transparent 24%),
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.032) 0 1px, transparent 1px 12px);
+}
+
+.truthguard-admin-sidebar > * {
+    position: relative;
+    z-index: 1;
+}
+
+.truthguard-admin-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(191, 219, 254, 0.9);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow:
+        0 14px 28px rgba(37, 99, 235, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.truthguard-admin-ops-card {
+    border: 1px solid rgba(191, 219, 254, 0.86);
+    background:
+        radial-gradient(circle at 92% 0%, rgba(56, 189, 248, 0.2), transparent 30%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(239, 246, 255, 0.62));
+    box-shadow:
+        0 16px 34px rgba(15, 23, 42, 0.07),
+        inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-nav-item {
+    position: relative;
+    display: flex;
+    min-height: 2.95rem;
+    align-items: center;
+    gap: 0.8rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    padding: 0 0.9rem;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: transform 180ms ease, background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.truthguard-admin-nav-item:hover {
+    transform: translateY(-1px);
+    background: rgba(239, 246, 255, 0.78);
+    color: #2563eb;
+}
+
+.truthguard-admin-nav-item.is-active {
+    background:
+        radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.94), transparent 30%),
+        linear-gradient(135deg, rgba(219, 234, 254, 0.95), rgba(236, 253, 245, 0.72));
+    color: #1d4ed8;
+    box-shadow:
+        0 14px 30px rgba(37, 99, 235, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-nav-item.is-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: 54%;
+    width: 0.22rem;
+    transform: translateY(-50%);
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #22d3ee, #2563eb);
+}
+
+.truthguard-admin-nav-icon {
+    display: inline-flex;
+    height: 1.85rem;
+    width: 1.85rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.64);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.truthguard-admin-nav-item.is-active .truthguard-admin-nav-icon {
+    color: #2563eb;
+    box-shadow:
+        0 10px 18px rgba(37, 99, 235, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-topbar {
+    border-color: rgba(191, 219, 254, 0.75);
+    background:
+        radial-gradient(circle at 76% 0%, rgba(219, 234, 254, 0.72), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.93), rgba(248, 250, 252, 0.88));
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.045);
+    backdrop-filter: blur(22px) saturate(1.15);
+}
+
+.truthguard-admin-topbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.035) 0 1px, transparent 1px 12px),
+        repeating-linear-gradient(0deg, rgba(37, 99, 235, 0.028) 0 1px, transparent 1px 12px);
+    opacity: 0.58;
+}
+
+.truthguard-admin-topbar > * {
+    position: relative;
+    z-index: 1;
+}
+
+.truthguard-admin-shell-toggle,
+.truthguard-admin-top-icon {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(226, 232, 240, 0.72);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(239, 246, 255, 0.42));
+    color: #334155;
+    box-shadow:
+        0 10px 22px rgba(15, 23, 42, 0.045),
+        inset 0 1px 0 rgba(255, 255, 255, 0.82),
+        inset 0 -1px 0 rgba(148, 163, 184, 0.08);
+    backdrop-filter: blur(14px) saturate(1.1);
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+}
+
+.truthguard-admin-shell-toggle {
+    height: 3.25rem;
+    width: 3.25rem;
+    border-radius: 1.15rem;
+}
+
+.truthguard-admin-top-icon {
+    height: 2.35rem;
+    width: 2.35rem;
+    border-radius: 9999px;
+}
+
+.truthguard-admin-shell-toggle::after,
+.truthguard-admin-top-icon::after {
+    content: "";
+    position: absolute;
+    inset: 0.35rem;
+    z-index: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)) left top / 0.45rem 1px no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)) left top / 1px 0.45rem no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.18), rgba(37, 99, 235, 0.18)) right bottom / 0.45rem 1px no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.18), rgba(37, 99, 235, 0.18)) right bottom / 1px 0.45rem no-repeat;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease;
+}
+
+.truthguard-admin-shell-toggle > svg,
+.truthguard-admin-top-icon > svg {
+    position: relative;
+    z-index: 1;
+}
+
+.truthguard-admin-shell-toggle:hover,
+.truthguard-admin-toggle-active,
+.truthguard-admin-top-icon:hover {
+    transform: translateY(-1px);
+    border-color: rgba(147, 197, 253, 0.88);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(219, 234, 254, 0.58));
+    color: #2563eb;
+    box-shadow:
+        0 14px 28px rgba(37, 99, 235, 0.12),
+        0 0 0 3px rgba(219, 234, 254, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.truthguard-admin-shell-toggle:hover::after,
+.truthguard-admin-toggle-active::after,
+.truthguard-admin-top-icon:hover::after {
+    opacity: 1;
+}
+
+.truthguard-admin-top-icon.is-primary {
+    border-color: rgba(37, 99, 235, 0.22);
+    background: linear-gradient(135deg, #2563eb, #0891b2);
+    color: #ffffff;
+}
+
+.truthguard-admin-utility-strip {
+    border: 1px solid rgba(191, 219, 254, 0.88);
+    background:
+        radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.95), transparent 34%),
+        radial-gradient(circle at 88% 18%, rgba(125, 211, 252, 0.18), transparent 32%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(239, 246, 255, 0.52)),
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.025) 0 1px, transparent 1px 12px);
+    box-shadow:
+        0 18px 42px rgba(37, 99, 235, 0.09),
+        0 1px 0 rgba(255, 255, 255, 0.9) inset,
+        0 -1px 0 rgba(148, 163, 184, 0.08) inset;
+    backdrop-filter: blur(22px) saturate(1.16);
+}
+
+.truthguard-admin-clock-pill {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(191, 219, 254, 0.86);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(239, 246, 255, 0.58));
+    box-shadow:
+        0 8px 18px rgba(37, 99, 235, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-clock-pill::after {
+    content: "";
+    position: absolute;
+    inset: 0.42rem;
+    border-radius: 9999px;
+    background:
+        linear-gradient(rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.2)) left top / 0.5rem 1px no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.2), rgba(37, 99, 235, 0.2)) left top / 1px 0.5rem no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.12)) right bottom / 0.5rem 1px no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.12)) right bottom / 1px 0.5rem no-repeat;
+    pointer-events: none;
+}
+
+.truthguard-admin-clock-icon {
+    background: rgba(239, 246, 255, 0.88);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-country-flag svg {
+    filter: drop-shadow(0 6px 12px rgba(15, 23, 42, 0.16));
+}
+
+.truthguard-admin-profile-button {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+    height: 3.12rem;
+    width: 3.12rem;
+    border: 1px solid rgba(147, 197, 253, 0.92);
+    background:
+        radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.98), transparent 42%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(219, 234, 254, 0.5));
+    box-shadow:
+        0 16px 34px rgba(37, 99, 235, 0.12),
+        0 0 0 4px rgba(219, 234, 254, 0.54),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 -1px 0 rgba(37, 99, 235, 0.08);
+    backdrop-filter: blur(18px) saturate(1.16);
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+.truthguard-admin-profile-button::before {
+    content: "";
+    position: absolute;
+    inset: -0.28rem;
+    z-index: -1;
+    border-radius: 9999px;
+    background: conic-gradient(from 160deg, rgba(56, 189, 248, 0.36), rgba(37, 99, 235, 0.1), rgba(99, 102, 241, 0.28), rgba(56, 189, 248, 0.36));
+    filter: blur(11px);
+    opacity: 0.35;
+    transition: opacity 180ms ease;
+}
+
+.truthguard-admin-profile-button::after {
+    content: "";
+    position: absolute;
+    right: -0.02rem;
+    bottom: 0.08rem;
+    z-index: 4;
+    height: 0.72rem;
+    width: 0.72rem;
+    border-radius: 9999px;
+    border: 2px solid #fff;
+    background: #10b981;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+.truthguard-admin-profile-button img,
+.truthguard-admin-profile-button > span {
+    position: relative;
+    z-index: 1;
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow:
+        0 10px 20px rgba(15, 23, 42, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-profile-button:hover,
+.truthguard-admin-profile-button-active {
+    transform: translateY(-1px);
+    border-color: rgba(96, 165, 250, 0.98);
+    box-shadow:
+        0 18px 38px rgba(37, 99, 235, 0.18),
+        0 0 0 5px rgba(191, 219, 254, 0.58),
+        inset 0 1px 0 rgba(255, 255, 255, 0.96);
+}
+
+.truthguard-admin-profile-button:hover::before,
+.truthguard-admin-profile-button-active::before {
+    opacity: 0.72;
+}
+
+.truthguard-admin-profile-popover {
+    overflow: visible;
+    border-color: rgba(191, 219, 254, 0.9);
+    background:
+        radial-gradient(circle at 88% 0%, rgba(191, 219, 254, 0.64), transparent 32%),
+        radial-gradient(circle at 8% 18%, rgba(125, 211, 252, 0.2), transparent 34%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.82));
+    box-shadow:
+        0 30px 70px rgba(15, 23, 42, 0.16),
+        0 0 0 1px rgba(255, 255, 255, 0.52) inset,
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.truthguard-admin-profile-popover::before {
+    content: "";
+    position: absolute;
+    top: -0.72rem;
+    right: 1.33rem;
+    height: 0.9rem;
+    width: 1.38rem;
+    clip-path: polygon(50% 0, 0 100%, 100% 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.9));
+    filter:
+        drop-shadow(0 -1px 0 rgba(191, 219, 254, 0.78))
+        drop-shadow(0 -10px 18px rgba(37, 99, 235, 0.08));
+}
+
+.truthguard-admin-profile-popover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.72), transparent 38%),
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.024) 0 1px, transparent 1px 10px),
+        repeating-linear-gradient(0deg, rgba(37, 99, 235, 0.018) 0 1px, transparent 1px 10px);
+    pointer-events: none;
+}
+
+.truthguard-admin-profile-popover > * {
+    position: relative;
+    z-index: 1;
+}
+
+.truthguard-admin-profile-capsule {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 92% 0%, rgba(56, 189, 248, 0.3), transparent 34%),
+        radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.18), transparent 36%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(29, 78, 216, 0.92));
+    box-shadow:
+        0 18px 38px rgba(15, 23, 42, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 rgba(15, 23, 42, 0.14);
+}
+
+.truthguard-admin-profile-menu-avatar {
+    box-shadow:
+        0 14px 26px rgba(15, 23, 42, 0.18),
+        0 0 0 1px rgba(255, 255, 255, 0.38);
+}
+
+.truthguard-admin-profile-menu-status-dot {
+    position: absolute;
+    right: -0.06rem;
+    bottom: 0.1rem;
+    height: 0.8rem;
+    width: 0.8rem;
+    border-radius: 9999px;
+    border: 2px solid rgba(255, 255, 255, 0.96);
+    background: #10b981;
+    box-shadow:
+        0 0 0 4px rgba(16, 185, 129, 0.12),
+        0 0 18px rgba(16, 185, 129, 0.55);
+}
+
+.truthguard-admin-profile-action {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(219, 234, 254, 0.34), transparent 36%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.74));
+    box-shadow:
+        0 12px 24px rgba(15, 23, 42, 0.055),
+        inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-profile-action::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.07), transparent);
+    transform: translateX(-100%);
+    transition: transform 240ms ease;
+    pointer-events: none;
+}
+
+.truthguard-admin-profile-action:hover::after {
+    transform: translateX(100%);
+}
+
+.truthguard-admin-profile-action-icon {
+    display: inline-flex;
+    height: 1.95rem;
+    width: 1.95rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(191, 219, 254, 0.72);
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(219, 234, 254, 0.76));
+    box-shadow:
+        0 8px 16px rgba(37, 99, 235, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-profile-action-icon svg {
+    height: 1rem;
+    width: 1rem;
+}
+
+.truthguard-admin-profile-action-danger .truthguard-admin-profile-action-icon {
+    border-color: rgba(254, 205, 211, 0.76);
+    background: linear-gradient(135deg, rgba(255, 241, 242, 0.98), rgba(255, 228, 230, 0.78));
+    box-shadow:
+        0 8px 16px rgba(244, 63, 94, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-logout-modal {
+    z-index: 2147483647;
+}
+
+.truthguard-admin-logout-backdrop {
+    border: 0;
+    background: rgba(15, 23, 42, 0.58);
+    backdrop-filter: blur(10px);
+}
+
+.truthguard-admin-logout-card {
+    left: 50%;
+    top: 50%;
+    width: min(24rem, calc(100vw - 2rem));
+    transform: translate(-50%, -50%);
+    background:
+        radial-gradient(circle at 14% 0%, rgba(37, 99, 235, 0.16), transparent 32%),
+        radial-gradient(circle at 92% 10%, rgba(34, 211, 238, 0.14), transparent 34%),
+        linear-gradient(180deg, #ffffff, #f8fbff);
+    box-shadow:
+        0 30px 90px rgba(15, 23, 42, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.truthguard-admin-logout-card-accent {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 0.25rem;
+    background: linear-gradient(90deg, #2563eb, #22d3ee, #e11d48);
+}
+
+.truthguard-admin-logout-brand {
+    border: 1px solid rgba(191, 219, 254, 0.86);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow:
+        0 14px 30px rgba(37, 99, 235, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-logout-close {
+    display: inline-flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    border: 1px solid rgba(226, 232, 240, 0.92);
+    background: rgba(255, 255, 255, 0.88);
+    color: #64748b;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+
+.truthguard-admin-logout-close:hover {
+    transform: translateY(-1px);
+    border-color: rgba(203, 213, 225, 0.96);
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.truthguard-admin-logout-close:disabled,
+.truthguard-admin-logout-confirm:disabled {
+    cursor: wait;
+    opacity: 0.7;
+    transform: none;
+}
+
+.truthguard-admin-logout-account {
+    border: 1px solid rgba(226, 232, 240, 0.84);
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow:
+        0 12px 24px rgba(15, 23, 42, 0.05),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-logout-confirm {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(225, 29, 72, 0.22);
+    background: linear-gradient(135deg, #e11d48, #ef4444);
+    padding: 0 1.15rem;
+    color: #ffffff;
+    font-size: 0.875rem;
+    font-weight: 900;
+    box-shadow: 0 18px 34px rgba(225, 29, 72, 0.22);
+    transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+}
+
+.truthguard-admin-logout-confirm:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 42px rgba(225, 29, 72, 0.28);
+}
+
+.truthguard-admin-icon-button,
+.truthguard-admin-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(203, 213, 225, 0.86);
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(239, 246, 255, 0.58));
+    color: #334155;
+    box-shadow:
+        0 12px 24px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.88);
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, background 180ms ease;
+}
+
+.truthguard-admin-icon-button {
+    height: 3rem;
+    width: 3rem;
+    border-radius: 1rem;
+}
+
+.truthguard-admin-action {
+    min-height: 2.75rem;
+    gap: 0.5rem;
+    border-radius: 1rem;
+    padding: 0 1rem;
+    font-size: 0.875rem;
+    font-weight: 800;
+}
+
+.truthguard-admin-icon-button:hover,
+.truthguard-admin-action:hover {
+    transform: translateY(-1px);
+    border-color: rgba(147, 197, 253, 0.9);
+    color: #2563eb;
+    box-shadow:
+        0 16px 32px rgba(37, 99, 235, 0.12),
+        0 0 0 4px rgba(219, 234, 254, 0.48),
+        inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.truthguard-admin-action.is-primary {
+    border-color: rgba(37, 99, 235, 0.18);
+    background: linear-gradient(135deg, #2563eb, #0891b2);
+    color: #ffffff;
+    box-shadow: 0 16px 34px rgba(37, 99, 235, 0.22);
+}
+
+.truthguard-admin-action.is-primary:hover {
+    color: #ffffff;
+    box-shadow:
+        0 18px 38px rgba(37, 99, 235, 0.27),
+        0 0 0 4px rgba(191, 219, 254, 0.5);
+}
+
+.truthguard-admin-profile {
+    border: 1px solid rgba(191, 219, 254, 0.86);
+    background:
+        radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.94), transparent 35%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(239, 246, 255, 0.62));
+    box-shadow:
+        0 14px 28px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.truthguard-admin-panel,
+.truthguard-admin-stat {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid rgba(191, 219, 254, 0.74);
+    background:
+        radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.98), transparent 34%),
+        radial-gradient(circle at 92% 0%, rgba(125, 211, 252, 0.14), transparent 32%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.78));
+    box-shadow:
+        0 20px 54px rgba(15, 23, 42, 0.075),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.truthguard-admin-panel::before,
+.truthguard-admin-stat::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.02) 0 1px, transparent 1px 12px),
+        repeating-linear-gradient(0deg, rgba(37, 99, 235, 0.016) 0 1px, transparent 1px 12px);
+}
+
+.truthguard-admin-page-header::after {
+    content: "";
+    position: absolute;
+    right: 1.4rem;
+    bottom: 0;
+    height: 0.18rem;
+    width: min(16rem, 42%);
+    border-radius: 9999px;
+    background: linear-gradient(90deg, rgba(37, 99, 235, 0), rgba(37, 99, 235, 0.72), rgba(20, 184, 166, 0.72));
+}
+
+.truthguard-admin-stat {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.truthguard-admin-stat:hover {
+    transform: translateY(-2px);
+    border-color: rgba(147, 197, 253, 0.82);
+    box-shadow:
+        0 26px 62px rgba(37, 99, 235, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.truthguard-admin-stat-icon,
+.truthguard-admin-dashboard-kpi-icon {
+    display: inline-flex;
+    height: 2.45rem;
+    width: 2.45rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(191, 219, 254, 0.78);
+    background:
+        radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.92), transparent 34%),
+        linear-gradient(145deg, rgba(239, 246, 255, 0.96), rgba(219, 234, 254, 0.68));
+    color: #2563eb;
+    box-shadow:
+        0 14px 28px rgba(37, 99, 235, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-stat-meter span {
+    background: linear-gradient(90deg, #2563eb, #22d3ee);
+}
+
+.truthguard-admin-stat-emerald .truthguard-admin-stat-icon,
+.truthguard-admin-dashboard-kpi.is-emerald .truthguard-admin-dashboard-kpi-icon {
+    border-color: rgba(110, 231, 183, 0.52);
+    background: linear-gradient(145deg, rgba(236, 253, 245, 0.98), rgba(204, 251, 241, 0.72));
+    color: #059669;
+}
+
+.truthguard-admin-stat-emerald .truthguard-admin-stat-meter span {
+    background: linear-gradient(90deg, #059669, #14b8a6);
+}
+
+.truthguard-admin-stat-amber .truthguard-admin-stat-icon,
+.truthguard-admin-dashboard-kpi.is-amber .truthguard-admin-dashboard-kpi-icon {
+    border-color: rgba(253, 230, 138, 0.72);
+    background: linear-gradient(145deg, rgba(255, 251, 235, 0.98), rgba(254, 243, 199, 0.74));
+    color: #d97706;
+}
+
+.truthguard-admin-stat-amber .truthguard-admin-stat-meter span {
+    background: linear-gradient(90deg, #d97706, #22d3ee);
+}
+
+.truthguard-admin-stat-rose .truthguard-admin-stat-icon,
+.truthguard-admin-dashboard-kpi.is-violet .truthguard-admin-dashboard-kpi-icon {
+    border-color: rgba(254, 205, 211, 0.74);
+    background: linear-gradient(145deg, rgba(255, 241, 242, 0.98), rgba(237, 233, 254, 0.72));
+    color: #e11d48;
+}
+
+.truthguard-admin-stat-rose .truthguard-admin-stat-meter span {
+    background: linear-gradient(90deg, #e11d48, #8b5cf6);
+}
+
+.truthguard-admin-dashboard-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid rgba(191, 219, 254, 0.78);
+    background:
+        radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), transparent 34%),
+        radial-gradient(circle at 84% 6%, rgba(34, 211, 238, 0.2), transparent 29%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(239, 246, 255, 0.78) 58%, rgba(240, 253, 250, 0.7));
+    box-shadow:
+        0 24px 68px rgba(15, 23, 42, 0.09),
+        inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.truthguard-admin-dashboard-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        linear-gradient(rgba(37, 99, 235, 0.055), rgba(37, 99, 235, 0.055)) left 1.1rem top 1.1rem / 4.2rem 1px no-repeat,
+        linear-gradient(rgba(37, 99, 235, 0.055), rgba(37, 99, 235, 0.055)) left 1.1rem top 1.1rem / 1px 4.2rem no-repeat,
+        repeating-linear-gradient(90deg, rgba(37, 99, 235, 0.024) 0 1px, transparent 1px 18px),
+        repeating-linear-gradient(0deg, rgba(20, 184, 166, 0.02) 0 1px, transparent 1px 18px);
+}
+
+.truthguard-admin-live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid rgba(191, 219, 254, 0.78);
+    background: rgba(255, 255, 255, 0.72);
+    padding: 0.42rem 0.75rem;
+    color: #2563eb;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.08);
+}
+
+.truthguard-admin-dashboard-kpi,
+.truthguard-admin-dashboard-readiness,
+.truthguard-admin-chart-frame,
+.truthguard-admin-insight-card,
+.truthguard-admin-capacity-card,
+.truthguard-admin-subscription-summary,
+.truthguard-admin-source-pill,
+.truthguard-admin-queue-item,
+.truthguard-admin-person-row,
+.truthguard-admin-risk-row {
+    border: 1px solid rgba(226, 232, 240, 0.82);
+    background:
+        radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.96), transparent 30%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 250, 252, 0.76));
+    box-shadow:
+        0 16px 36px rgba(15, 23, 42, 0.055),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-dashboard-kpi {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.truthguard-admin-dashboard-kpi:hover,
+.truthguard-admin-queue-item:hover,
+.truthguard-admin-person-row:hover,
+.truthguard-admin-risk-row:hover {
+    transform: translateY(-1px);
+    border-color: rgba(147, 197, 253, 0.82);
+    box-shadow:
+        0 18px 42px rgba(37, 99, 235, 0.09),
+        inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.truthguard-admin-dashboard-readiness {
+    position: relative;
+    overflow: hidden;
+}
+
+.truthguard-admin-dashboard-readiness::before {
+    content: "";
+    position: absolute;
+    right: -2.2rem;
+    top: -2.4rem;
+    height: 7rem;
+    width: 7rem;
+    border-radius: 9999px;
+    border: 1.25rem solid rgba(37, 99, 235, 0.08);
+}
+
+.truthguard-admin-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid rgba(191, 219, 254, 0.74);
+    background:
+        radial-gradient(circle at 8% 12%, rgba(37, 99, 235, 0.18), transparent 31%),
+        radial-gradient(circle at 88% 8%, rgba(20, 184, 166, 0.18), transparent 32%),
+        linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 64, 175, 0.94) 56%, rgba(8, 145, 178, 0.9));
+    color: #ffffff;
+    box-shadow:
+        0 28px 76px rgba(15, 23, 42, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.truthguard-admin-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.11)) left 1.2rem top 1.2rem / 3.8rem 1px no-repeat,
+        linear-gradient(rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.11)) left 1.2rem top 1.2rem / 1px 3.8rem no-repeat,
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 18px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 18px);
+}
+
+.truthguard-admin-mini-card {
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background:
+        radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.16), transparent 34%),
+        rgba(255, 255, 255, 0.08);
+    box-shadow:
+        0 18px 38px rgba(15, 23, 42, 0.16),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(14px);
+}
+
+.truthguard-admin-tracker-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 1px solid rgba(191, 219, 254, 0.74);
+    background:
+        radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.24), transparent 30%),
+        radial-gradient(circle at 82% 16%, rgba(20, 184, 166, 0.22), transparent 28%),
+        linear-gradient(135deg, rgba(2, 6, 23, 0.98), rgba(30, 64, 175, 0.94) 55%, rgba(15, 118, 110, 0.9));
+    box-shadow:
+        0 30px 82px rgba(15, 23, 42, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.truthguard-admin-tracker-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        linear-gradient(rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.13)) left 1.2rem top 1.2rem / 4.4rem 1px no-repeat,
+        linear-gradient(rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.13)) left 1.2rem top 1.2rem / 1px 4.4rem no-repeat,
+        repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 18px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 18px);
+}
+
+.truthguard-admin-progress-ring {
+    position: relative;
+    display: grid;
+    width: 7.4rem;
+    height: 7.4rem;
+    flex: 0 0 auto;
+    place-items: center;
+    border-radius: 9999px;
+    background:
+        conic-gradient(from 215deg, #34d399 0 var(--progress), rgba(255, 255, 255, 0.16) var(--progress) 100%);
+    box-shadow:
+        0 20px 40px rgba(15, 23, 42, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.truthguard-admin-progress-ring::before {
+    content: "";
+    position: absolute;
+    width: 5.55rem;
+    height: 5.55rem;
+    border-radius: inherit;
+    background: rgba(15, 23, 42, 0.86);
+}
+
+.truthguard-admin-progress-ring span {
+    position: relative;
+    color: #ffffff;
+    font-size: 1.55rem;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.truthguard-admin-status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.75rem;
+    border-radius: 9999px;
+    padding: 0.25rem 0.72rem;
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    border: 1px solid rgba(203, 213, 225, 0.78);
+    background: rgba(248, 250, 252, 0.88);
+    color: #475569;
+}
+
+.truthguard-admin-status-pill.is-added {
+    border-color: rgba(16, 185, 129, 0.22);
+    background: rgba(209, 250, 229, 0.72);
+    color: #047857;
+}
+
+.truthguard-admin-status-pill.is-partial {
+    border-color: rgba(245, 158, 11, 0.24);
+    background: rgba(254, 243, 199, 0.72);
+    color: #b45309;
+}
+
+.truthguard-admin-status-pill.is-missing {
+    border-color: rgba(244, 63, 94, 0.2);
+    background: rgba(255, 228, 230, 0.78);
+    color: #be123c;
+}
+
+.truthguard-admin-status-pill.is-active {
+    border-color: rgba(37, 99, 235, 0.22);
+    background: rgba(219, 234, 254, 0.78);
+    color: #1d4ed8;
+}
+
+.truthguard-admin-status-pill.is-neutral {
+    border-color: rgba(203, 213, 225, 0.82);
+    background: rgba(241, 245, 249, 0.84);
+    color: #475569;
+}
+
+.truthguard-admin-tracker-card,
+.truthguard-admin-update-card,
+.truthguard-admin-focus-card,
+.truthguard-admin-action-row,
+.truthguard-admin-capability-card,
+.truthguard-admin-sprint-card,
+.truthguard-admin-task-row {
+    border: 1px solid rgba(226, 232, 240, 0.86);
+    background:
+        radial-gradient(circle at 10% 0%, rgba(255, 255, 255, 0.96), transparent 28%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.74));
+    box-shadow:
+        0 16px 34px rgba(15, 23, 42, 0.055),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-update-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.truthguard-admin-update-card::before,
+.truthguard-admin-focus-card::before,
+.truthguard-admin-capability-card::before,
+.truthguard-admin-sprint-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.22rem;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, #2563eb, #22d3ee);
+}
+
+.truthguard-admin-update-card.is-success::before {
+    background: linear-gradient(180deg, #10b981, #22d3ee);
+}
+
+.truthguard-admin-update-card.is-warning::before {
+    background: linear-gradient(180deg, #f59e0b, #22d3ee);
+}
+
+.truthguard-admin-focus-card,
+.truthguard-admin-capability-card,
+.truthguard-admin-sprint-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.truthguard-admin-action-row,
+.truthguard-admin-task-row {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+}
+
+.truthguard-admin-source-card {
+    border: 1px solid rgba(226, 232, 240, 0.86);
+    background:
+        radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.96), transparent 28%),
+        radial-gradient(circle at 90% 8%, rgba(125, 211, 252, 0.14), transparent 30%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(248, 250, 252, 0.76));
+    box-shadow:
+        0 16px 34px rgba(15, 23, 42, 0.055),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-field-label {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: #334155;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.truthguard-admin-input {
+    width: 100%;
+    border-radius: 1rem;
+    border: 1px solid rgba(203, 213, 225, 0.86);
+    background: rgba(255, 255, 255, 0.78);
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow:
+        0 10px 22px rgba(15, 23, 42, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-input:focus {
+    border-color: rgba(96, 165, 250, 0.92);
+    box-shadow:
+        0 0 0 4px rgba(219, 234, 254, 0.72),
+        0 14px 28px rgba(37, 99, 235, 0.08);
+}
+
+.truthguard-admin-action.is-danger {
+    border-color: rgba(254, 202, 202, 0.86);
+    background: linear-gradient(145deg, rgba(255, 241, 242, 0.92), rgba(255, 228, 230, 0.64));
+    color: #be123c;
+}
+
+.truthguard-admin-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
+    transform: none;
+}
+
+.truthguard-admin-task-marker {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.85rem;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0;
+}
+
+.truthguard-admin-task-marker.is-done {
+    background: linear-gradient(135deg, #10b981, #0891b2);
+    color: #ffffff;
+}
+
+.truthguard-admin-task-marker.is-active {
+    background: linear-gradient(135deg, #2563eb, #22d3ee);
+    color: #ffffff;
+}
+
+.truthguard-admin-task-marker.is-pending {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.truthguard-admin-soft-card {
+    border: 1px solid rgba(226, 232, 240, 0.78);
+    background: rgba(248, 250, 252, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.truthguard-admin-chart-frame {
+    background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.8)),
+        rgba(255, 255, 255, 0.86);
+}
+
+.truthguard-admin-capacity-card {
+    background:
+        radial-gradient(circle at 90% 8%, rgba(34, 211, 238, 0.18), transparent 28%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.72));
+}
+
+.truthguard-admin-subscription-summary {
+    background:
+        radial-gradient(circle at 88% 12%, rgba(16, 185, 129, 0.16), transparent 30%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(240, 253, 250, 0.72));
+}
+
+.truthguard-admin-coverage-ring {
+    position: relative;
+    display: grid;
+    height: 4.7rem;
+    width: 4.7rem;
+    place-items: center;
+    border-radius: 9999px;
+    background: conic-gradient(from 220deg, #10b981 0 var(--progress, 0%), #e2e8f0 var(--progress, 0%) 100%);
+    box-shadow: 0 14px 28px rgba(16, 185, 129, 0.14);
+}
+
+.truthguard-admin-coverage-ring::before {
+    content: "";
+    position: absolute;
+    height: 3.35rem;
+    width: 3.35rem;
+    border-radius: inherit;
+    background: #ffffff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.truthguard-admin-coverage-ring span {
+    position: relative;
+    color: #047857;
+    font-size: 0.88rem;
+    font-weight: 900;
+}
+
+.truthguard-admin-alert-row {
+    box-shadow:
+        0 12px 24px rgba(15, 23, 42, 0.045),
+        inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.truthguard-admin-score-meter span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #10b981, #f59e0b 48%, #e11d48);
+}
+
+.truthguard-admin-queue-item {
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.truthguard-admin-risk-row {
+    background:
+        radial-gradient(circle at 92% 8%, rgba(251, 113, 133, 0.13), transparent 28%),
+        linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 241, 242, 0.62));
+}
+
+.truthguard-admin-table thead tr {
+    background: rgba(248, 250, 252, 0.8);
+}
+
+.truthguard-admin-table tbody tr {
+    transition: background 160ms ease, transform 160ms ease;
+}
+
+.truthguard-admin-table tbody tr:hover {
+    background: rgba(239, 246, 255, 0.58);
+}
+
+.truthguard-admin-alert {
+    border: 1px solid rgba(254, 202, 202, 0.8);
+    background: linear-gradient(135deg, rgba(255, 241, 242, 0.95), rgba(255, 247, 237, 0.72));
+    color: #be123c;
+}
+
+.truthguard-admin-mobile-tabbar {
+    display: none;
+}
+
+@keyframes truthguard-admin-mobile-dock-rise {
+    from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes truthguard-admin-mobile-glow-drift {
+    0%,
+    100% {
+        opacity: 0.78;
+        transform: translateX(-50%) scale(0.96);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.08);
+    }
+}
+
+@keyframes truthguard-admin-mobile-center-pulse {
+    0%,
+    100% {
+        box-shadow:
+            0 24px 44px rgba(37, 99, 235, 0.34),
+            0 0 0 6px rgba(219, 234, 254, 0.72),
+            inset 0 1px 0 rgba(255, 255, 255, 0.34);
+    }
+
+    50% {
+        box-shadow:
+            0 28px 54px rgba(37, 99, 235, 0.42),
+            0 0 0 8px rgba(191, 219, 254, 0.78),
+            inset 0 1px 0 rgba(255, 255, 255, 0.42);
+    }
+}
+
+@keyframes truthguard-admin-mobile-active-float {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-0.12rem) scale(1.06);
+    }
+}
+
+@media (max-width: 640px) {
+    .truthguard-admin-app {
+        font-size: 0.84rem;
+    }
+
+    .truthguard-admin-shell {
+        background:
+            radial-gradient(circle at 50% -8%, rgba(37, 99, 235, 0.12), transparent 34%),
+            linear-gradient(180deg, #f8fbff 0%, #eef6ff 46%, #f8fafc 100%);
+    }
+
+    .truthguard-admin-shell main {
+        padding: 0.75rem 0.85rem calc(5.9rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .truthguard-admin-topbar {
+        border-bottom: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-admin-topbar::before {
+        opacity: 0 !important;
+    }
+
+    .truthguard-admin-topbar > div {
+        margin: 0.5rem 0.75rem 0;
+        border: 1px solid rgba(191, 219, 254, 0.78);
+        border-radius: 1.25rem;
+        background:
+            radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), transparent 34%),
+            radial-gradient(circle at 88% 0%, rgba(96, 165, 250, 0.24), transparent 34%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(239, 246, 255, 0.82));
+        box-shadow:
+            0 20px 44px rgba(15, 23, 42, 0.1),
+            0 0 0 1px rgba(255, 255, 255, 0.62) inset,
+            inset 0 1px 0 rgba(255, 255, 255, 0.92);
+        padding: 0.45rem 0.5rem !important;
+        backdrop-filter: blur(18px) saturate(1.14);
+    }
+
+    .truthguard-admin-mobile-logo {
+        position: relative;
+        isolation: isolate;
+        display: inline-flex;
+        height: 2.55rem;
+        width: 2.55rem;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        border-radius: 1rem;
+        border: 1px solid rgba(191, 219, 254, 0.9);
+        background:
+            radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.96), transparent 34%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(219, 234, 254, 0.66));
+        color: #1d4ed8;
+        box-shadow:
+            0 14px 28px rgba(37, 99, 235, 0.14),
+            0 0 0 4px rgba(219, 234, 254, 0.46),
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    }
+
+    .truthguard-admin-mobile-logo::after {
+        content: "";
+        position: absolute;
+        inset: 0.42rem;
+        border-radius: 0.68rem;
+        background:
+            linear-gradient(rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)) left top / 0.48rem 1px no-repeat,
+            linear-gradient(rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)) left top / 1px 0.48rem no-repeat,
+            linear-gradient(rgba(20, 184, 166, 0.22), rgba(20, 184, 166, 0.22)) right bottom / 0.48rem 1px no-repeat,
+            linear-gradient(rgba(20, 184, 166, 0.22), rgba(20, 184, 166, 0.22)) right bottom / 1px 0.48rem no-repeat;
+        pointer-events: none;
+    }
+
+    .truthguard-admin-mobile-logo img {
+        position: relative;
+        z-index: 1;
+        height: 1.9rem;
+        width: 1.9rem;
+        object-fit: contain;
+        filter: drop-shadow(0 7px 12px rgba(37, 99, 235, 0.18));
+    }
+
+    .truthguard-admin-mobile-logo span {
+        position: relative;
+        z-index: 1;
+        font-size: 0.76rem !important;
+        font-weight: 900;
+        line-height: 1 !important;
+    }
+
+    .truthguard-admin-shell-toggle {
+        height: 2.35rem !important;
+        width: 2.35rem !important;
+        border-radius: 0.85rem !important;
+    }
+
+    .truthguard-admin-profile-button {
+        height: 2.55rem !important;
+        width: 2.55rem !important;
+        box-shadow:
+            0 12px 26px rgba(37, 99, 235, 0.12),
+            0 0 0 3px rgba(219, 234, 254, 0.48),
+            inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+    }
+
+    .truthguard-admin-profile-button img,
+    .truthguard-admin-profile-button > span {
+        height: 2rem !important;
+        width: 2rem !important;
+    }
+
+    .truthguard-admin-mobile-tabbar {
+        position: fixed;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+        z-index: 99996;
+        isolation: isolate;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.3rem;
+        overflow: visible;
+        border: 1px solid rgba(147, 197, 253, 0.78);
+        border-radius: 1.55rem;
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.06)) 50% 0 / calc(100% - 2rem) 1px no-repeat,
+            radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), transparent 34%),
+            radial-gradient(circle at 50% -18%, rgba(37, 99, 235, 0.18), transparent 42%),
+            radial-gradient(circle at 88% 14%, rgba(45, 212, 191, 0.16), transparent 34%),
+            rgba(255, 255, 255, 0.88);
+        padding: 0.5rem 0.48rem 0.44rem;
+        box-shadow:
+            0 26px 64px rgba(15, 23, 42, 0.2),
+            0 8px 22px rgba(37, 99, 235, 0.12),
+            0 0 0 1px rgba(255, 255, 255, 0.68) inset,
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(26px) saturate(1.2);
+        animation: truthguard-admin-mobile-dock-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .truthguard-admin-mobile-tabbar::before {
+        content: "";
+        position: absolute;
+        left: 1.15rem;
+        right: 1.15rem;
+        top: 0.3rem;
+        z-index: -1;
+        height: 0.24rem;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, rgba(37, 99, 235, 0), rgba(37, 99, 235, 0.46), rgba(45, 212, 191, 0.42), rgba(37, 99, 235, 0));
+        filter: blur(0.4px);
+    }
+
+    .truthguard-admin-mobile-tabbar::after {
+        content: "";
+        position: absolute;
+        left: calc(10% + (var(--active-index, 2) * 20%));
+        top: -1.1rem;
+        z-index: -2;
+        width: 5.6rem;
+        height: 5.6rem;
+        border-radius: 9999px;
+        background: radial-gradient(circle, rgba(37, 99, 235, 0.24), rgba(45, 212, 191, 0.08) 48%, transparent 70%);
+        transform: translateX(-50%);
+        filter: blur(12px);
+        pointer-events: none;
+        transition: left 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        animation: truthguard-admin-mobile-glow-drift 3s ease-in-out infinite;
+    }
+
+    .truthguard-admin-mobile-tab {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        min-width: 0;
+        min-height: 3.1rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.18rem;
+        border-radius: 1rem;
+        color: #64748b;
+        font-size: 0.62rem !important;
+        font-weight: 900;
+        line-height: 1.1 !important;
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .truthguard-admin-mobile-tab::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background:
+            radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.94), transparent 38%),
+            linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(236, 253, 245, 0.64));
+        opacity: 0;
+        transition: opacity 180ms ease;
+    }
+
+    .truthguard-admin-mobile-tab::after {
+        display: none;
+        content: none;
+    }
+
+    .truthguard-admin-mobile-tab span {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+
+    .truthguard-admin-mobile-tab-primary {
+        min-height: 4.35rem;
+        margin-top: -1.35rem;
+        transform: translateY(-0.46rem);
+        border: 1px solid rgba(37, 99, 235, 0.18);
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.04)) 50% 0 / calc(100% - 1.2rem) 1px no-repeat,
+            radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.42), transparent 34%),
+            radial-gradient(circle at 76% 80%, rgba(45, 212, 191, 0.28), transparent 44%),
+            linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+        color: #ffffff;
+        box-shadow:
+            0 24px 44px rgba(37, 99, 235, 0.34),
+            0 0 0 6px rgba(219, 234, 254, 0.72),
+            inset 0 1px 0 rgba(255, 255, 255, 0.34);
+        animation: truthguard-admin-mobile-center-pulse 2.8s ease-in-out infinite;
+    }
+
+    .truthguard-admin-mobile-tab-primary::before {
+        inset: -0.35rem;
+        border-radius: 1.55rem;
+        background:
+            radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.28), transparent 34%),
+            linear-gradient(135deg, rgba(37, 99, 235, 0.36), rgba(45, 212, 191, 0.24));
+        filter: blur(12px);
+        opacity: 0.84;
+    }
+
+    .truthguard-admin-mobile-tab-primary::after {
+        display: none;
+        content: none;
+    }
+
+    .truthguard-admin-mobile-tab-icon {
+        display: inline-flex;
+        height: 1.65rem;
+        width: 1.65rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(226, 232, 240, 0.72);
+        background: rgba(255, 255, 255, 0.58);
+        box-shadow:
+            0 8px 16px rgba(15, 23, 42, 0.045),
+            inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .truthguard-admin-mobile-tab-primary .truthguard-admin-mobile-tab-icon {
+        height: 2.72rem;
+        width: 2.72rem;
+        border-radius: 9999px;
+        border-color: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.16);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.28),
+            0 12px 24px rgba(15, 23, 42, 0.18);
+    }
+
+    .truthguard-admin-mobile-tab-primary .truthguard-admin-mobile-tab-icon svg {
+        height: 1.28rem;
+        width: 1.28rem;
+        stroke-width: 2.15;
+    }
+
+    .truthguard-admin-mobile-tab-primary > span:last-child {
+        font-size: 0.68rem !important;
+        letter-spacing: 0.02em;
+    }
+
+    .truthguard-admin-mobile-tab:active {
+        transform: translateY(-0.08rem) scale(0.97);
+    }
+
+    .truthguard-admin-mobile-tab-primary:active {
+        transform: translateY(-0.46rem) scale(0.96);
+    }
+
+    .truthguard-admin-mobile-tab:hover,
+    .truthguard-admin-mobile-tab.is-active {
+        color: #1d4ed8;
+    }
+
+    .truthguard-admin-mobile-tab.is-active {
+        box-shadow:
+            0 12px 24px rgba(37, 99, 235, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-admin-mobile-tab:hover::before,
+    .truthguard-admin-mobile-tab.is-active::before {
+        opacity: 1;
+    }
+
+    .truthguard-admin-mobile-tab.is-active .truthguard-admin-mobile-tab-icon {
+        border-color: rgba(191, 219, 254, 0.84);
+        background:
+            radial-gradient(circle at 36% 18%, rgba(255, 255, 255, 0.92), transparent 32%),
+            linear-gradient(135deg, rgba(219, 234, 254, 0.96), rgba(236, 253, 245, 0.72));
+        color: #2563eb;
+        box-shadow:
+            0 10px 20px rgba(37, 99, 235, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-admin-mobile-tab.is-active .truthguard-admin-mobile-tab-icon svg {
+        animation: truthguard-admin-mobile-active-float 1.9s ease-in-out infinite;
+    }
+
+    .truthguard-admin-mobile-tab-primary.is-active,
+    .truthguard-admin-mobile-tab-primary:hover {
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.04)) 50% 0 / calc(100% - 1.2rem) 1px no-repeat,
+            radial-gradient(circle at 32% 12%, rgba(255, 255, 255, 0.44), transparent 32%),
+            radial-gradient(circle at 76% 80%, rgba(45, 212, 191, 0.32), transparent 44%),
+            linear-gradient(135deg, #1d4ed8 0%, #0e7490 100%);
+        color: #ffffff;
+        box-shadow:
+            0 24px 46px rgba(37, 99, 235, 0.36),
+            0 0 0 5px rgba(191, 219, 254, 0.74),
+            inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    }
+
+    .truthguard-admin-mobile-tab-primary.is-active .truthguard-admin-mobile-tab-icon {
+        color: #ffffff;
+    }
+
+    .truthguard-admin-mobile-tab-primary.is-active .truthguard-admin-mobile-tab-icon svg,
+    .truthguard-admin-mobile-tab-primary:hover .truthguard-admin-mobile-tab-icon svg {
+        animation: truthguard-admin-mobile-active-float 1.45s ease-in-out infinite;
+    }
+
+    .truthguard-admin-app h1 {
+        font-size: 0.86rem !important;
+        line-height: 1.22 !important;
+    }
+
+    .truthguard-admin-app h2 {
+        font-size: 1.12rem !important;
+        line-height: 1.28 !important;
+    }
+
+    .truthguard-admin-app h3 {
+        font-size: 1rem !important;
+        line-height: 1.34 !important;
+    }
+
+    .truthguard-admin-app h4,
+    .truthguard-admin-app h5,
+    .truthguard-admin-app h6 {
+        font-size: 0.92rem !important;
+        line-height: 1.4 !important;
+    }
+
+    .truthguard-admin-app p,
+    .truthguard-admin-app a,
+    .truthguard-admin-app button,
+    .truthguard-admin-app label,
+    .truthguard-admin-app input,
+    .truthguard-admin-app select,
+    .truthguard-admin-app textarea,
+    .truthguard-admin-app th,
+    .truthguard-admin-app td,
+    .truthguard-admin-app li {
+        font-size: 0.76rem !important;
+        line-height: 1.5 !important;
+    }
+
+    .truthguard-admin-app small,
+    .truthguard-admin-app span {
+        font-size: 0.68rem !important;
+        line-height: 1.35 !important;
+    }
+
+    .truthguard-admin-app :is(h1, h2, h3, h4, h5, h6) :is(a, span) {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+
+    .truthguard-admin-action,
+    .truthguard-admin-profile-action,
+    .truthguard-admin-nav-item,
+    .truthguard-admin-input {
+        font-size: 0.76rem !important;
+    }
+
+    .truthguard-admin-dashboard-hero h2 {
+        font-size: 1.15rem !important;
+        line-height: 1.25 !important;
+    }
+
+    .truthguard-admin-dashboard-kpi p,
+    .truthguard-admin-stat p,
+    .truthguard-admin-soft-card p,
+    .truthguard-admin-panel p {
+        font-size: 0.72rem !important;
+        line-height: 1.48 !important;
+    }
+
+    .truthguard-admin-dashboard-kpi .text-2xl,
+    .truthguard-admin-stat .text-2xl,
+    .truthguard-admin-stat .text-3xl,
+    .truthguard-admin-mini-card .text-2xl,
+    .truthguard-admin-mini-card .text-3xl {
+        font-size: 1.05rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .truthguard-admin-table th,
+    .truthguard-admin-table td {
+        font-size: 0.72rem !important;
+    }
+
+    .truthguard-admin-app .apexcharts-text,
+    .truthguard-admin-app .apexcharts-legend-text {
+        font-size: 0.64rem !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .truthguard-admin-action,
+    .truthguard-admin-icon-button,
+    .truthguard-admin-nav-item,
+    .truthguard-admin-dashboard-kpi,
+    .truthguard-admin-queue-item,
+    .truthguard-admin-person-row,
+    .truthguard-admin-risk-row,
+    .truthguard-admin-stat,
+    .truthguard-admin-mobile-tabbar::after,
+    .truthguard-admin-mobile-tab,
+    .truthguard-admin-mobile-tab::before,
+    .truthguard-admin-mobile-tab::after,
+    .truthguard-admin-mobile-tab-icon,
+    .truthguard-admin-table tbody tr {
+        transition: none;
+    }
+
+    .truthguard-admin-mobile-tabbar,
+    .truthguard-admin-mobile-tabbar::after,
+    .truthguard-admin-mobile-tab-primary,
+    .truthguard-admin-mobile-tab.is-active .truthguard-admin-mobile-tab-icon svg,
+    .truthguard-admin-mobile-tab-primary.is-active .truthguard-admin-mobile-tab-icon svg,
+    .truthguard-admin-mobile-tab-primary:hover .truthguard-admin-mobile-tab-icon svg {
+        animation: none !important;
+    }
+}

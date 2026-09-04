@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Notifications\TruthGuardNotificationManager;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +28,7 @@ class RegisteredUserController extends Controller
      *
      * @throws ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, TruthGuardNotificationManager $notifications): RedirectResponse
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -39,9 +40,20 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'is_admin' => false,
+            'subscription_tier' => 'free',
+            'subscription_status' => 'active',
+            'last_login_at' => null,
         ]);
 
+        if (User::profileTableExists()) {
+            $user->profile()->firstOrCreate([], [
+                'theme_preference' => 'ocean',
+            ]);
+        }
+
         event(new Registered($user));
+        $notifications->sendWelcomeOnce($user);
 
         return redirect()->route('login')->with('status', 'Registration successful. Please sign in to continue.');
     }

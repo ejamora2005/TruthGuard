@@ -1,0 +1,19 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="forest-bg" x1="24" y1="10" x2="136" y2="152" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10B981"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="forest-card" x1="36" y1="36" x2="124" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="44" fill="url(#forest-bg)"/>
+  <circle cx="126" cy="38" r="20" fill="white" fill-opacity="0.12"/>
+  <circle cx="34" cy="134" r="26" fill="white" fill-opacity="0.10"/>
+  <rect x="27" y="24" width="106" height="112" rx="32" fill="url(#forest-card)" stroke="white" stroke-opacity="0.18"/>
+  <circle cx="80" cy="62" r="24" fill="#D1FAE5"/>
+  <path d="M45 123C45 103.67 60.67 88 80 88C99.33 88 115 103.67 115 123V126H45V123Z" fill="#F8FAFC"/>
+  <path d="M102 66.5C102 54.6268 92.3731 45 80.5 45C69.1177 45 59.8022 53.8492 59.0608 65.0422C60.2641 64.5952 61.5661 64.35 62.9254 64.35C69.0749 64.35 74.0479 69.323 74.0479 75.4725C74.0479 79.0447 72.3714 82.2254 69.7643 84.2596C72.8742 85.8889 76.412 86.8125 80.1667 86.8125C92.1508 86.8125 102 77.0516 102 66.5Z" fill="#064E3B" fill-opacity="0.15"/>
+</svg>

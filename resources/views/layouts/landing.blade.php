@@ -4,7 +4,6 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
-        <meta name="theme-color" content="#4f46e5">
 
         @php
             $faviconPath = ltrim((string) config('app.truthguard_favicon', 'favicon.ico'), '/');
@@ -17,8 +16,7 @@
         <title>{{ $title ?? config('app.name', 'TruthGuard') }}</title>
         <link rel="icon" href="{{ $faviconHref }}">
         <link rel="shortcut icon" href="{{ $faviconHref }}">
-        <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
-        <link rel="apple-touch-icon" href="{{ asset('images/truthguard-logo.png') }}">
+        @include('layouts.partials.pwa')
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,6 +26,8 @@
         @livewireStyles
     </head>
     <body class="m-0 min-h-screen bg-slate-50 text-slate-900 antialiased selection:bg-blue-100 selection:text-slate-900" style="font-family: 'Poppins', sans-serif;">
+        @include('layouts.partials.app-splash')
+
         {{ $slot }}
 
         @livewireScripts

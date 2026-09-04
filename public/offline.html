@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="color-scheme" content="light">
+  <title>TruthGuard Offline</title>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="/pwa/icon-192.png">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 1.25rem;
+      background:
+        linear-gradient(90deg, rgba(59, 130, 246, 0.07) 1px, transparent 1px),
+        linear-gradient(rgba(59, 130, 246, 0.07) 1px, transparent 1px),
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 32rem),
+        #f8fbff;
+      background-size: 34px 34px, 34px 34px, auto, auto;
+      color: #0f172a;
+      font-family: Poppins, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(100%, 29rem);
+      border: 1px solid rgba(191, 219, 254, 0.94);
+      border-radius: 1.4rem;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 26px 80px rgba(15, 23, 42, 0.14);
+      padding: 1.35rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      margin-bottom: 1.3rem;
+    }
+
+    .brand img {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 1rem;
+      object-fit: contain;
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+      padding: 0.25rem;
+    }
+
+    .brand span {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #2563eb;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 5vw, 2.1rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0.9rem 0 1.2rem;
+      color: #475569;
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    button {
+      min-height: 2.9rem;
+      width: 100%;
+      border: 0;
+      border-radius: 0.95rem;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 800;
+      box-shadow: 0 18px 38px rgba(37, 99, 235, 0.22);
+    }
+
+    button:focus-visible {
+      outline: 3px solid rgba(147, 197, 253, 0.9);
+      outline-offset: 3px;
+    }
+
+    small {
+      display: block;
+      margin-top: 0.9rem;
+      color: #64748b;
+      font-size: 0.76rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="brand">
+      <img src="/images/truthguard-logo.png" alt="TruthGuard logo">
+      <div>
+        <span>TruthGuard</span>
+        <strong>Secure offline startup</strong>
+      </div>
+    </div>
+    <h1>You are offline</h1>
+    <p>TruthGuard needs a connection for live checks, uploads, notifications, and account data. Reconnect to continue securely.</p>
+    <button type="button" onclick="window.location.reload()">Try again</button>
+    <small>No private workspace data is stored on this offline page.</small>
+  </main>
+</body>
+</html>

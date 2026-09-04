@@ -1,0 +1,19 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sunset-bg" x1="24" y1="14" x2="136" y2="150" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#EA580C"/>
+    </linearGradient>
+    <linearGradient id="sunset-card" x1="38" y1="36" x2="122" y2="124" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="white" stop-opacity="0.08"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="44" fill="url(#sunset-bg)"/>
+  <circle cx="125" cy="35" r="22" fill="white" fill-opacity="0.14"/>
+  <circle cx="37" cy="132" r="28" fill="white" fill-opacity="0.10"/>
+  <rect x="27" y="24" width="106" height="112" rx="32" fill="url(#sunset-card)" stroke="white" stroke-opacity="0.18"/>
+  <circle cx="80" cy="61" r="24" fill="#FFEDD5"/>
+  <path d="M44 123C44 103.67 59.67 88 79 88H81C100.33 88 116 103.67 116 123V126H44V123Z" fill="#FFF7ED"/>
+  <path d="M61 63.5C61 51.0736 71.0736 41 83.5 41C92.4546 41 100.187 46.2404 103.771 53.8217C100.098 52.0898 95.9921 51.125 91.6609 51.125C76.0018 51.125 63.3125 63.8143 63.3125 79.4734C63.3125 80.4401 63.3609 81.3956 63.455 82.3377C61.8945 78.9338 61 75.1475 61 71.1522V63.5Z" fill="#7C2D12" fill-opacity="0.14"/>
+</svg>

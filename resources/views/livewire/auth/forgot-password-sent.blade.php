@@ -27,7 +27,7 @@
             x-bind:class="show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'"
             class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl transition-all duration-500 sm:p-6"
         >
-            <a href="{{ route('home') }}" wire:navigate class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
+            <a href="{{ route('home', absolute: false) }}" wire:navigate class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
                 @if ($logoUrl)
                     <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-16 w-16 object-contain">
                 @else
@@ -83,7 +83,7 @@
                 </button>
 
                 <a
-                    href="{{ route('login') }}"
+                    href="{{ route('login', absolute: false) }}"
                     wire:navigate
                     class="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
