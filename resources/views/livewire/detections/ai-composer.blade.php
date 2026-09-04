@@ -3054,7 +3054,10 @@ new class extends Component
     </style>
 @endonce
 
-<div class="truthguard-detection-theme w-full">
+<div @class([
+    'truthguard-detection-theme w-full',
+    'truthguard-pre-result-workspace' => ! $activeDetection,
+])>
     <section
         class="truthguard-detection-shell relative overflow-visible"
         x-data="{

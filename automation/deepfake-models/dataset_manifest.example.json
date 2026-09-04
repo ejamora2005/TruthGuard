@@ -1,0 +1,32 @@
+{
+  "sources": [
+    {
+      "name": "ffpp_real",
+      "path": "C:/datasets/FaceForensics++/original_sequences/youtube/c23/videos",
+      "label": "real",
+      "kind": "video",
+      "pattern": "**/*.mp4"
+    },
+    {
+      "name": "ffpp_deepfakes",
+      "path": "C:/datasets/FaceForensics++/manipulated_sequences/Deepfakes/c23/videos",
+      "label": "fake",
+      "kind": "video",
+      "pattern": "**/*.mp4"
+    },
+    {
+      "name": "celebdf_real",
+      "path": "C:/datasets/Celeb-DF-v2/Celeb-real",
+      "label": "real",
+      "kind": "video",
+      "pattern": "**/*.mp4"
+    },
+    {
+      "name": "celebdf_fake",
+      "path": "C:/datasets/Celeb-DF-v2/Celeb-synthesis",
+      "label": "fake",
+      "kind": "video",
+      "pattern": "**/*.mp4"
+    }
+  ]
+}

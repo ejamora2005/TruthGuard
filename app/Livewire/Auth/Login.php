@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Auth;
 
+use App\Services\Auth\SessionTimeoutManager;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -15,20 +16,17 @@ class Login extends Component
 
     public string $password = '';
 
-    public bool $remember = false;
-
     protected function rules(): array
     {
         return [
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
-            'remember' => ['boolean'],
         ];
     }
 
     public function updated(string $property): void
     {
-        if (! in_array($property, ['email', 'password', 'remember'], true)) {
+        if (! in_array($property, ['email', 'password'], true)) {
             return;
         }
 
@@ -39,15 +37,21 @@ class Login extends Component
     {
         $this->validate();
 
-        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
+        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password], false)) {
             $this->addError('email', 'The provided credentials do not match our records.');
 
             return;
         }
 
         request()->session()->regenerate();
+        app(SessionTimeoutManager::class)->touch(request());
+        request()->session()->forget('url.intended');
 
-        $this->redirectIntended(default: route('dashboard', absolute: false), navigate: true);
+        $target = Auth::user()?->isAdmin()
+            ? route('admin.dashboard', absolute: false)
+            : route('dashboard', absolute: false);
+
+        $this->redirect($target, navigate: true);
     }
 
     public function render()

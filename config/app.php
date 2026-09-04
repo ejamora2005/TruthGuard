@@ -54,8 +54,14 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'truthguard_logo' => env('TRUTHGUARD_LOGO', 'images/truthguard-logo.png'),
-    'truthguard_favicon' => env('TRUTHGUARD_FAVICON', 'images/truthguard-logo.png'),
+    'truthguard_logo' => env('TRUTHGUARD_LOGO', 'images/truthguard-logo-transparent.png'),
+    'truthguard_favicon' => env('TRUTHGUARD_FAVICON', 'favicon.ico'),
+    'truthguard_admin_emails' => array_values(array_filter(array_map(
+        static fn (string $email): string => strtolower(trim($email)),
+        explode(',', (string) env('TRUTHGUARD_ADMIN_EMAILS', ''))
+    ))),
+    'privacy_policy_version' => env('TRUTHGUARD_PRIVACY_POLICY_VERSION', '2026-07-28'),
+    'onboarding_version' => env('TRUTHGUARD_ONBOARDING_VERSION', '2026-07-28'),
 
     /*
     |--------------------------------------------------------------------------

@@ -36,6 +36,14 @@ return [
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
+    'auth_timeout_minutes' => (int) env('SESSION_AUTH_TIMEOUT_MINUTES', env('SESSION_LIFETIME', 120)),
+
+    'auth_timeout_user_minutes' => (int) env('SESSION_AUTH_TIMEOUT_USER_MINUTES', 30),
+
+    'auth_timeout_admin_minutes' => (int) env('SESSION_AUTH_TIMEOUT_ADMIN_MINUTES', 15),
+
+    'auth_timeout_warning_seconds' => (int) env('SESSION_AUTH_TIMEOUT_WARNING_SECONDS', 60),
+
     /*
     |--------------------------------------------------------------------------
     | Session Encryption

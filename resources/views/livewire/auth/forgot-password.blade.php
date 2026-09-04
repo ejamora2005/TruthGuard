@@ -11,7 +11,7 @@
 
     <div class="relative z-10 w-full max-w-md">
         <div class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-6">
-            <a href="{{ route('home') }}" wire:navigate class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
+            <a href="{{ route('home', absolute: false) }}" wire:navigate class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
                 @if ($logoUrl)
                     <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-16 w-16 object-contain">
                 @else
@@ -33,6 +33,12 @@
                 <h1 class="text-2xl font-bold text-slate-900">Forgot Password?</h1>
                 <p class="mt-1 text-sm text-slate-600">Enter your email and we&rsquo;ll send you a reset link.</p>
             </div>
+
+            @if (session('auth_error'))
+                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                    {{ session('auth_error') }}
+                </div>
+            @endif
 
             <form wire:submit="sendResetLink" class="space-y-3">
                 <div>
@@ -75,7 +81,7 @@
 
             <p class="mt-4 text-center text-sm text-slate-600">
                 Remember your password?
-                <a href="{{ route('login') }}" wire:navigate class="font-semibold text-cyan-700 transition hover:text-cyan-600">Back to Login</a>
+                <a href="{{ route('login', absolute: false) }}" wire:navigate class="font-semibold text-cyan-700 transition hover:text-cyan-600">Back to Login</a>
             </p>
         </div>
     </div>

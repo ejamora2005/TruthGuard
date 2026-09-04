@@ -2,91 +2,3676 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+    .truthguard-shell-toggle {
+        display: inline-flex;
+        height: 2.75rem;
+        width: 2.75rem;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.95rem;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        background: rgba(255, 255, 255, 0.96);
+        color: #64748b;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+            background-color 0.2s ease;
+    }
+
+    .truthguard-shell-toggle:hover {
+        transform: translateY(-1px);
+        border-color: rgba(191, 219, 254, 0.95);
+        color: #334155;
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+    }
+
+    .truthguard-shell-toggle:focus-visible {
+        outline: 2px solid rgba(147, 197, 253, 0.9);
+        outline-offset: 3px;
+    }
+
+    @media (min-width: 640px) {
+        .truthguard-shell-toggle {
+            height: 3rem;
+            width: 3rem;
+            border-radius: 1rem;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .truthguard-shell-toggle {
+            height: 3.25rem;
+            width: 3.25rem;
+        }
+    }
+
+    .truthguard-header-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border-radius: 1rem;
+        border: 1px solid rgba(203, 213, 225, 0.95);
+        background: rgba(255, 255, 255, 0.96);
+        padding: 0.75rem 1.15rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #334155;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease,
+            color 0.2s ease;
+    }
+
+    .truthguard-header-action:hover {
+        transform: translateY(-1px);
+        border-color: rgba(148, 163, 184, 0.9);
+        background: rgba(248, 250, 252, 0.98);
+        color: #0f172a;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+    }
+
+    .truthguard-header-action:focus-visible {
+        outline: 2px solid rgba(147, 197, 253, 0.9);
+        outline-offset: 3px;
+    }
+
+    .truthguard-header-action-primary {
+        border-color: transparent;
+        background: linear-gradient(135deg, #2563eb, #4f46e5);
+        color: #ffffff;
+        box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+    }
+
+    .truthguard-header-action-primary:hover {
+        border-color: transparent;
+        background: linear-gradient(135deg, #1d4ed8, #4338ca);
+        color: #ffffff;
+        box-shadow: 0 18px 34px rgba(37, 99, 235, 0.28);
+    }
+
+    .truthguard-user-frame,
+    .truthguard-user-content-column {
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+
+    body.truthguard-user-app {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+
+    body.truthguard-user-app .truthguard-user-frame {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.truthguard-user-app .truthguard-user-content-column {
+        height: 100%;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+    }
+
+    .truthguard-user-footer {
+        padding-bottom: calc(0.875rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .truthguard-user-footer-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.75rem;
+        align-items: center;
+        border-top: 1px solid var(--tg-shell-border, #e2e8f0);
+        padding-top: 1rem;
+        font-size: 0.75rem;
+        line-height: 1.45;
+        color: #64748b;
+        text-align: center;
+    }
+
+    .truthguard-user-footer-copy,
+    .truthguard-user-footer-note {
+        min-width: 0;
+        margin: 0;
+    }
+
+    .truthguard-user-footer-links,
+    .truthguard-user-footer-note,
+    .truthguard-user-footer-link {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .truthguard-user-footer-links {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.45rem 0.875rem;
+    }
+
+    .truthguard-user-footer-link {
+        min-height: 1.75rem;
+        gap: 0.375rem;
+        border-radius: 9999px;
+        padding: 0.25rem 0.45rem;
+        font-weight: 700;
+        color: #475569;
+        transition: color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .truthguard-user-footer-link:hover {
+        background: rgba(239, 246, 255, 0.82);
+        color: #2563eb;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+    }
+
+    .truthguard-user-footer-link:focus-visible {
+        outline: 2px solid rgba(147, 197, 253, 0.9);
+        outline-offset: 2px;
+    }
+
+    .truthguard-user-footer-note {
+        justify-content: center;
+        gap: 0.375rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+
+    @media (min-width: 640px) {
+        .truthguard-user-footer {
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .truthguard-user-footer-inner {
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 0.65rem 1rem;
+            text-align: left;
+        }
+
+        .truthguard-user-footer-links {
+            justify-content: flex-end;
+        }
+
+        .truthguard-user-footer-note {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
+        }
+    }
+
+    @media (min-width: 1024px) {
+        .truthguard-user-footer {
+            padding-bottom: calc(1.125rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .truthguard-user-footer-inner {
+            grid-template-columns: minmax(12rem, 1fr) auto minmax(12rem, 1fr);
+            gap: 1rem;
+        }
+
+        .truthguard-user-footer-links {
+            justify-content: center;
+        }
+
+        .truthguard-user-footer-note {
+            grid-column: auto;
+            justify-content: flex-end;
+            text-align: right;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .truthguard-user-footer {
+            padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+        }
+
+        .truthguard-user-footer-inner {
+            gap: 0.55rem;
+            padding-top: 0.875rem;
+            font-size: 0.7rem;
+        }
+
+        .truthguard-user-footer-links {
+            gap: 0.35rem 0.5rem;
+        }
+
+        .truthguard-user-footer-link {
+            min-height: 1.55rem;
+            padding-inline: 0.35rem;
+        }
+    }
+}
+
 @layer utilities {
     .text-balance {
         text-wrap: balance;
     }
 }
 
-@layer base {
-    :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-        --sidebar-background: 0 0% 98%;
-        --sidebar-foreground: 240 5.3% 26.1%;
-        --sidebar-primary: 240 5.9% 10%;
-        --sidebar-primary-foreground: 0 0% 98%;
-        --sidebar-accent: 240 4.8% 95.9%;
-        --sidebar-accent-foreground: 240 5.9% 10%;
-        --sidebar-border: 220 13% 91%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+.truthguard-mobile-tabbar {
+    display: none;
+}
+
+@keyframes truthguard-mobile-dock-rise {
+    from {
+        opacity: 0;
+        transform: translateY(1rem) scale(0.96);
     }
 
-    .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-        --sidebar-background: 240 5.9% 10%;
-        --sidebar-foreground: 240 4.8% 95.9%;
-        --sidebar-primary: 224.3 76.3% 48%;
-        --sidebar-primary-foreground: 0 0% 100%;
-        --sidebar-accent: 240 3.7% 15.9%;
-        --sidebar-accent-foreground: 240 4.8% 95.9%;
-        --sidebar-border: 240 3.7% 15.9%;
-        --sidebar-ring: 217.2 91.2% 59.8%;
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
     }
 }
 
-@layer base {
-    * {
-        @apply border-border;
+@keyframes truthguard-mobile-glow-drift {
+    0%,
+    100% {
+        opacity: 0.78;
+        transform: translateX(-50%) scale(0.96);
     }
 
-    body {
-        @apply bg-background text-foreground antialiased;
+    50% {
+        opacity: 1;
+        transform: translateX(-50%) scale(1.08);
     }
+}
+
+@keyframes truthguard-mobile-center-pulse {
+    0%,
+    100% {
+        box-shadow:
+            0 24px 44px rgba(37, 99, 235, 0.34),
+            0 0 0 6px rgba(219, 234, 254, 0.72),
+            inset 0 1px 0 rgba(255, 255, 255, 0.34);
+    }
+
+    50% {
+        box-shadow:
+            0 28px 54px rgba(37, 99, 235, 0.42),
+            0 0 0 8px rgba(191, 219, 254, 0.78),
+            inset 0 1px 0 rgba(255, 255, 255, 0.42);
+    }
+}
+
+@keyframes truthguard-mobile-active-float {
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-0.12rem) scale(1.06);
+    }
+}
+
+@media (max-width: 640px) {
+    body:not(.truthguard-admin-app) {
+        font-size: 0.8rem;
+    }
+
+    body:not(.truthguard-admin-app) h1 {
+        font-size: 1.16rem !important;
+        line-height: 1.22 !important;
+    }
+
+    body:not(.truthguard-admin-app) h2 {
+        font-size: 1.05rem !important;
+        line-height: 1.28 !important;
+    }
+
+    body:not(.truthguard-admin-app) h3 {
+        font-size: 0.96rem !important;
+        line-height: 1.34 !important;
+    }
+
+    body:not(.truthguard-admin-app) h4,
+    body:not(.truthguard-admin-app) h5,
+    body:not(.truthguard-admin-app) h6 {
+        font-size: 0.88rem !important;
+        line-height: 1.4 !important;
+    }
+
+    body:not(.truthguard-admin-app) p,
+    body:not(.truthguard-admin-app) a,
+    body:not(.truthguard-admin-app) button,
+    body:not(.truthguard-admin-app) label,
+    body:not(.truthguard-admin-app) input,
+    body:not(.truthguard-admin-app) select,
+    body:not(.truthguard-admin-app) textarea,
+    body:not(.truthguard-admin-app) th,
+    body:not(.truthguard-admin-app) td,
+    body:not(.truthguard-admin-app) li {
+        font-size: 0.74rem !important;
+        line-height: 1.5 !important;
+    }
+
+    body:not(.truthguard-admin-app) small,
+    body:not(.truthguard-admin-app) span {
+        font-size: 0.64rem !important;
+        line-height: 1.35 !important;
+    }
+
+    body:not(.truthguard-admin-app) :is(h1, h2, h3, h4, h5, h6) :is(a, span) {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+
+    .truthguard-user-content-column > header h1 {
+        font-size: 0.76rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .truthguard-user-content-column main .text-4xl,
+    .truthguard-user-content-column main .text-3xl {
+        font-size: 1.18rem !important;
+        line-height: 1.25 !important;
+    }
+
+    .truthguard-user-content-column main .text-2xl {
+        font-size: 1.05rem !important;
+        line-height: 1.32 !important;
+    }
+
+    .truthguard-user-content-column main .text-xl {
+        font-size: 0.94rem !important;
+        line-height: 1.42 !important;
+    }
+
+    .truthguard-user-content-column main .text-lg {
+        font-size: 0.88rem !important;
+        line-height: 1.45 !important;
+    }
+
+    .truthguard-user-content-column main .text-base {
+        font-size: 0.8rem !important;
+        line-height: 1.55 !important;
+    }
+
+    .truthguard-user-content-column main .text-sm {
+        font-size: 0.74rem !important;
+        line-height: 1.5 !important;
+    }
+
+    .truthguard-user-content-column main .text-xs {
+        font-size: 0.64rem !important;
+        line-height: 1.35 !important;
+    }
+
+    #news-watch {
+        border-radius: 1.25rem;
+    }
+
+    #news-watch > div:first-child {
+        padding: 1rem;
+    }
+
+    #news-watch > .divide-y {
+        padding-inline: 1rem;
+    }
+
+    #news-watch .tg-fact-feed-row {
+        gap: 1rem;
+        padding-block: 1.15rem;
+    }
+
+    #news-watch h3 {
+        font-size: 0.96rem !important;
+        line-height: 1.28 !important;
+    }
+
+    #news-watch h4 {
+        font-size: 0.9rem !important;
+        line-height: 1.42 !important;
+    }
+
+    #news-watch p {
+        font-size: 0.74rem !important;
+        line-height: 1.55 !important;
+    }
+
+    #news-watch a,
+    #news-watch button,
+    #news-watch span {
+        font-size: 0.64rem !important;
+    }
+
+    #news-watch :is(h3, h4) :is(a, span) {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+
+    #news-watch .tg-rating-banner {
+        letter-spacing: 0.1em;
+        min-height: 1.85rem;
+        padding: 0.32rem 0.55rem;
+    }
+
+    #news-watch .tg-rating-banner span {
+        font-size: 0.66rem !important;
+    }
+
+    #news-watch .tg-rating-reviewer {
+        bottom: calc(50% - 2.5rem);
+        font-size: 0.48rem !important;
+        letter-spacing: 0.08em;
+        padding: 0.12rem 0.45rem;
+    }
+
+    #news-watch .tg-rating-reviewer > span {
+        font-size: 0.48rem !important;
+        line-height: 1 !important;
+    }
+
+    #news-watch .tg-rating-reviewer .tg-reviewer-logo {
+        width: 0.65rem;
+        height: 0.65rem;
+        min-width: 0.65rem;
+        min-height: 0.65rem;
+        flex-basis: 0.65rem;
+    }
+
+    .truthguard-user-frame {
+        background:
+            radial-gradient(circle at 50% -8%, rgba(37, 99, 235, 0.12), transparent 34%),
+            linear-gradient(180deg, #f8fbff 0%, #eef6ff 46%, #f8fafc 100%);
+    }
+
+    .truthguard-user-content-column main {
+        padding: 0.75rem 0.85rem calc(5.9rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .truthguard-user-footer {
+        display: none;
+    }
+
+    .truthguard-topbar {
+        border-bottom: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-topbar::before {
+        opacity: 0 !important;
+    }
+
+    .truthguard-topbar > div {
+        width: auto !important;
+        max-width: calc(100% - 1.5rem);
+        margin: 0.5rem 0.75rem 0;
+        border: 1px solid rgba(191, 219, 254, 0.78);
+        border-radius: 1.25rem;
+        background:
+            radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), transparent 34%),
+            radial-gradient(circle at 88% 0%, rgba(96, 165, 250, 0.24), transparent 34%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(239, 246, 255, 0.82));
+        box-shadow:
+            0 20px 44px rgba(15, 23, 42, 0.1),
+            0 0 0 1px rgba(255, 255, 255, 0.62) inset,
+            inset 0 1px 0 rgba(255, 255, 255, 0.92);
+        padding: 0.45rem 0.5rem !important;
+        backdrop-filter: blur(18px) saturate(1.14);
+    }
+
+    .truthguard-mobile-top-logo {
+        position: relative;
+        isolation: isolate;
+        display: inline-flex;
+        height: 2.55rem;
+        width: 2.55rem;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        border-radius: 1rem;
+        border: 1px solid rgba(191, 219, 254, 0.9);
+        background:
+            radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.96), transparent 34%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(219, 234, 254, 0.66));
+        color: #1d4ed8;
+        box-shadow:
+            0 14px 28px rgba(37, 99, 235, 0.14),
+            0 0 0 4px rgba(219, 234, 254, 0.46),
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    }
+
+    .truthguard-mobile-top-logo::after {
+        content: "";
+        position: absolute;
+        inset: 0.42rem;
+        border-radius: 0.68rem;
+        background:
+            linear-gradient(rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)) left top / 0.48rem 1px no-repeat,
+            linear-gradient(rgba(37, 99, 235, 0.24), rgba(37, 99, 235, 0.24)) left top / 1px 0.48rem no-repeat,
+            linear-gradient(rgba(20, 184, 166, 0.22), rgba(20, 184, 166, 0.22)) right bottom / 0.48rem 1px no-repeat,
+            linear-gradient(rgba(20, 184, 166, 0.22), rgba(20, 184, 166, 0.22)) right bottom / 1px 0.48rem no-repeat;
+        pointer-events: none;
+    }
+
+    .truthguard-mobile-top-logo img {
+        position: relative;
+        z-index: 1;
+        height: 1.9rem;
+        width: 1.9rem;
+        object-fit: contain;
+        filter: drop-shadow(0 7px 12px rgba(37, 99, 235, 0.18));
+    }
+
+    .truthguard-mobile-top-logo span {
+        position: relative;
+        z-index: 1;
+        font-size: 0.7rem !important;
+        font-weight: 900;
+        line-height: 1 !important;
+    }
+
+    .truthguard-shell-toggle {
+        height: 2.35rem !important;
+        width: 2.35rem !important;
+        border-radius: 0.85rem !important;
+    }
+
+    .truthguard-profile-button {
+        height: 2.55rem !important;
+        width: 2.55rem !important;
+        box-shadow:
+            0 12px 26px rgba(37, 99, 235, 0.12),
+            0 0 0 3px rgba(219, 234, 254, 0.48),
+            inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+    }
+
+    .truthguard-profile-button img,
+    .truthguard-profile-button > span {
+        height: 2rem !important;
+        width: 2rem !important;
+    }
+
+    .truthguard-mobile-tabbar {
+        position: fixed;
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: calc(0.65rem + env(safe-area-inset-bottom, 0px));
+        z-index: 99996;
+        isolation: isolate;
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: end;
+        gap: 0.3rem;
+        overflow: visible;
+        border: 1px solid rgba(147, 197, 253, 0.78);
+        border-radius: 1.55rem;
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.06)) 50% 0 / calc(100% - 2rem) 1px no-repeat,
+            radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.98), transparent 34%),
+            radial-gradient(circle at 50% -18%, rgba(37, 99, 235, 0.18), transparent 42%),
+            radial-gradient(circle at 88% 14%, rgba(45, 212, 191, 0.16), transparent 34%),
+            rgba(255, 255, 255, 0.88);
+        padding: 0.5rem 0.48rem 0.44rem;
+        box-shadow:
+            0 26px 64px rgba(15, 23, 42, 0.2),
+            0 8px 22px rgba(37, 99, 235, 0.12),
+            0 0 0 1px rgba(255, 255, 255, 0.68) inset,
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(26px) saturate(1.2);
+        animation: truthguard-mobile-dock-rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .truthguard-mobile-tabbar::before {
+        content: "";
+        position: absolute;
+        left: 1.15rem;
+        right: 1.15rem;
+        top: 0.3rem;
+        z-index: -1;
+        height: 0.24rem;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, rgba(37, 99, 235, 0), rgba(37, 99, 235, 0.46), rgba(45, 212, 191, 0.42), rgba(37, 99, 235, 0));
+        filter: blur(0.4px);
+    }
+
+    .truthguard-mobile-tabbar::after {
+        content: "";
+        position: absolute;
+        left: calc(10% + (var(--active-index, 2) * 20%));
+        top: -1.1rem;
+        z-index: -2;
+        width: 5.6rem;
+        height: 5.6rem;
+        border-radius: 9999px;
+        background: radial-gradient(circle, rgba(37, 99, 235, 0.24), rgba(45, 212, 191, 0.08) 48%, transparent 70%);
+        transform: translateX(-50%);
+        filter: blur(12px);
+        pointer-events: none;
+        transition: left 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        animation: truthguard-mobile-glow-drift 3s ease-in-out infinite;
+    }
+
+    .truthguard-mobile-tab {
+        position: relative;
+        isolation: isolate;
+        display: flex;
+        min-width: 0;
+        min-height: 3.1rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.18rem;
+        border-radius: 1rem;
+        color: #64748b;
+        font-size: 0.62rem !important;
+        font-weight: 900;
+        line-height: 1.1 !important;
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .truthguard-mobile-tab::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background:
+            radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.94), transparent 38%),
+            linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(236, 253, 245, 0.64));
+        opacity: 0;
+        transition: opacity 180ms ease;
+    }
+
+    .truthguard-mobile-tab::after {
+        display: none;
+        content: none;
+    }
+
+    .truthguard-mobile-tab-primary {
+        min-height: 4.35rem;
+        margin-top: -1.35rem;
+        transform: translateY(-0.46rem);
+        border: 1px solid rgba(37, 99, 235, 0.18);
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.04)) 50% 0 / calc(100% - 1.2rem) 1px no-repeat,
+            radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.42), transparent 34%),
+            radial-gradient(circle at 76% 80%, rgba(45, 212, 191, 0.28), transparent 44%),
+            linear-gradient(135deg, #2563eb 0%, #0891b2 100%);
+        color: #ffffff;
+        box-shadow:
+            0 24px 44px rgba(37, 99, 235, 0.34),
+            0 0 0 6px rgba(219, 234, 254, 0.72),
+            inset 0 1px 0 rgba(255, 255, 255, 0.34);
+        animation: truthguard-mobile-center-pulse 2.8s ease-in-out infinite;
+    }
+
+    .truthguard-mobile-tab-primary::before {
+        inset: -0.35rem;
+        border-radius: 1.55rem;
+        background:
+            radial-gradient(circle at 50% 20%, rgba(255, 255, 255, 0.28), transparent 34%),
+            linear-gradient(135deg, rgba(37, 99, 235, 0.36), rgba(45, 212, 191, 0.24));
+        filter: blur(12px);
+        opacity: 0.84;
+    }
+
+    .truthguard-mobile-tab-primary::after {
+        display: none;
+        content: none;
+    }
+
+    .truthguard-mobile-tab span {
+        font-size: inherit !important;
+        line-height: inherit !important;
+    }
+
+    .truthguard-mobile-tab-icon {
+        display: inline-flex;
+        height: 1.65rem;
+        width: 1.65rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.75rem;
+        border: 1px solid rgba(226, 232, 240, 0.72);
+        background: rgba(255, 255, 255, 0.58);
+        box-shadow:
+            0 8px 16px rgba(15, 23, 42, 0.045),
+            inset 0 1px 0 rgba(255, 255, 255, 0.82);
+        transition: transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    }
+
+    .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon {
+        height: 2.72rem;
+        width: 2.72rem;
+        border-radius: 9999px;
+        border-color: rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.16);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.28),
+            0 12px 24px rgba(15, 23, 42, 0.18);
+    }
+
+    .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon svg {
+        height: 1.28rem;
+        width: 1.28rem;
+        stroke-width: 2.15;
+    }
+
+    .truthguard-mobile-tab-primary > span:last-child {
+        font-size: 0.62rem !important;
+        letter-spacing: 0.02em;
+    }
+
+    .truthguard-mobile-tab:active {
+        transform: translateY(-0.08rem) scale(0.97);
+    }
+
+    .truthguard-mobile-tab-primary:active {
+        transform: translateY(-0.46rem) scale(0.96);
+    }
+
+    .truthguard-mobile-tab:hover,
+    .truthguard-mobile-tab.is-active {
+        color: #1d4ed8;
+    }
+
+    .truthguard-mobile-tab.is-active {
+        box-shadow:
+            0 12px 24px rgba(37, 99, 235, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-mobile-tab:hover::before,
+    .truthguard-mobile-tab.is-active::before {
+        opacity: 1;
+    }
+
+    .truthguard-mobile-tab.is-active .truthguard-mobile-tab-icon {
+        border-color: rgba(191, 219, 254, 0.84);
+        background:
+            radial-gradient(circle at 36% 18%, rgba(255, 255, 255, 0.92), transparent 32%),
+            linear-gradient(135deg, rgba(219, 234, 254, 0.96), rgba(236, 253, 245, 0.72));
+        color: #2563eb;
+        box-shadow:
+            0 10px 20px rgba(37, 99, 235, 0.12),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-mobile-tab.is-active .truthguard-mobile-tab-icon svg {
+        animation: truthguard-mobile-active-float 1.9s ease-in-out infinite;
+    }
+
+    .truthguard-mobile-tab-primary.is-active,
+    .truthguard-mobile-tab-primary:hover {
+        background:
+            linear-gradient(rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.04)) 50% 0 / calc(100% - 1.2rem) 1px no-repeat,
+            radial-gradient(circle at 32% 12%, rgba(255, 255, 255, 0.44), transparent 32%),
+            radial-gradient(circle at 76% 80%, rgba(45, 212, 191, 0.32), transparent 44%),
+            linear-gradient(135deg, #1d4ed8 0%, #0e7490 100%);
+        color: #ffffff;
+        box-shadow:
+            0 24px 46px rgba(37, 99, 235, 0.36),
+            0 0 0 5px rgba(191, 219, 254, 0.74),
+            inset 0 1px 0 rgba(255, 255, 255, 0.38);
+    }
+
+    .truthguard-mobile-tab-primary.is-active .truthguard-mobile-tab-icon {
+        color: #ffffff;
+    }
+
+    .truthguard-mobile-tab-primary.is-active .truthguard-mobile-tab-icon svg,
+    .truthguard-mobile-tab-primary:hover .truthguard-mobile-tab-icon svg {
+        animation: truthguard-mobile-active-float 1.45s ease-in-out infinite;
+    }
+
+    .truthguard-mobile-tab-dot {
+        position: absolute;
+        right: -0.38rem;
+        top: -0.38rem;
+        display: inline-flex;
+        min-width: 1rem;
+        height: 1rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: #f43f5e;
+        padding: 0 0.22rem;
+        color: #ffffff;
+        font-size: 0.5rem !important;
+        font-weight: 900;
+        line-height: 1 !important;
+        box-shadow: 0 0 0 2px #ffffff;
+    }
+
+    #news-watch.tg-mobile-feed {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    #news-watch .tg-mobile-feed-head {
+        border: 1px solid rgba(191, 219, 254, 0.72);
+        border-radius: 1.25rem;
+        background:
+            radial-gradient(circle at 92% 0%, rgba(96, 165, 250, 0.2), transparent 34%),
+            linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(239, 246, 255, 0.78));
+        box-shadow:
+            0 14px 32px rgba(15, 23, 42, 0.07),
+            inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    #news-watch .tg-mobile-feed-list {
+        display: grid;
+        gap: 0.9rem;
+        margin-top: 0.9rem;
+        padding-inline: 0;
+    }
+
+    #news-watch .tg-mobile-feed-list > :not([hidden]) ~ :not([hidden]) {
+        border-top-width: 0 !important;
+    }
+
+    #news-watch .tg-mobile-fact-card {
+        border: 1px solid rgba(226, 232, 240, 0.86);
+        border-radius: 1.35rem;
+        background:
+            radial-gradient(circle at 90% 0%, rgba(219, 234, 254, 0.5), transparent 32%),
+            #ffffff;
+        padding: 0.75rem !important;
+        box-shadow:
+            0 16px 34px rgba(15, 23, 42, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    }
+
+    #news-watch .tg-mobile-fact-media {
+        min-height: 0 !important;
+        aspect-ratio: 16 / 11;
+        border-radius: 1.05rem;
+    }
+
+    #news-watch .tg-mobile-fact-media .tg-fact-main-image {
+        min-height: 0 !important;
+        height: 100% !important;
+        padding: 0.2rem !important;
+    }
+
+    #news-watch .tg-mobile-fact-copy {
+        padding-inline: 0.1rem;
+    }
+
+    #news-watch .tg-mobile-fact-labels {
+        gap: 0.32rem 0.45rem;
+        letter-spacing: 0.08em;
+    }
+
+    #news-watch .tg-mobile-fact-chips {
+        flex-wrap: nowrap;
+        margin-inline: -0.1rem;
+        overflow-x: auto;
+        padding: 0.1rem 0.1rem 0.28rem;
+        scrollbar-width: none;
+    }
+
+    #news-watch .tg-mobile-fact-chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    #news-watch .tg-mobile-fact-chips > * {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
+
+@keyframes truthguard-mobile-page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.55rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 640px) {
+    html {
+        scroll-padding-top: 5rem;
+    }
+
+    body:not(.truthguard-admin-app) {
+        min-width: 20rem;
+        background: #f4f8fc;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+    }
+
+    .truthguard-user-content-column {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .truthguard-user-main {
+        overflow: visible;
+    }
+
+    .truthguard-mobile-page {
+        width: 100%;
+        min-width: 0;
+        animation: truthguard-mobile-page-enter 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .truthguard-mobile-page :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+        max-width: 100%;
+        font-size: 1rem !important;
+    }
+
+    .truthguard-mobile-page :is(button, [role="button"], input, select, textarea) {
+        touch-action: manipulation;
+    }
+
+    .truthguard-mobile-page :is(button, a):focus-visible {
+        outline: 2px solid rgba(37, 99, 235, 0.58);
+        outline-offset: 2px;
+    }
+
+    .truthguard-topbar {
+        top: 0;
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    .truthguard-topbar > div {
+        min-height: 3.55rem;
+    }
+
+    .truthguard-topbar .truthguard-profile-popover {
+        position: fixed !important;
+        top: calc(4.35rem + env(safe-area-inset-top, 0px));
+        right: max(0.65rem, env(safe-area-inset-right, 0px)) !important;
+        left: auto !important;
+        width: min(15.25rem, calc(100vw - 1.3rem)) !important;
+        min-width: 0 !important;
+        max-width: calc(100vw - 1.3rem) !important;
+        max-height: calc(100dvh - 10.85rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        margin-top: 0 !important;
+        padding: 0.35rem !important;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        border-radius: 1rem !important;
+        box-shadow:
+            0 28px 70px rgba(15, 23, 42, 0.22),
+            inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-popover::before {
+        display: none;
+    }
+
+    .truthguard-topbar .truthguard-profile-popover > *,
+    .truthguard-topbar .truthguard-profile-capsule,
+    .truthguard-topbar .truthguard-profile-action {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .truthguard-topbar .truthguard-profile-action {
+        width: 100%;
+        min-height: 2.75rem;
+        gap: 0.5rem !important;
+        padding: 0.45rem 0.55rem !important;
+        border-radius: 0.75rem !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-popover :is(p, span, a, button) {
+        overflow-wrap: anywhere;
+    }
+
+    .truthguard-topbar .truthguard-profile-capsule {
+        padding: 0.65rem 0.7rem !important;
+        border-radius: 0.8rem !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-capsule > div:first-child {
+        gap: 0.6rem !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-menu-avatar {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        border-radius: 0.7rem !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-menu-avatar :is(img, span:not(.truthguard-profile-menu-status-dot)) {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        border-radius: 0.65rem !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-popover > .mt-1\.5 {
+        margin-top: 0.35rem !important;
+        gap: 0.35rem !important;
+    }
+
+    .truthguard-topbar .truthguard-profile-action-icon {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: 0.6rem;
+    }
+
+    /* Dashboard feed */
+    .truthguard-mobile-dashboard {
+        padding-top: 0.1rem;
+    }
+
+    #news-watch .tg-mobile-feed-head,
+    #news-watch .tg-mobile-fact-card {
+        border-radius: 1rem;
+    }
+
+    #news-watch .tg-mobile-fact-card {
+        padding: 0.68rem !important;
+    }
+
+    #news-watch .tg-mobile-fact-media {
+        border-radius: 0.75rem;
+    }
+
+    #news-watch .tg-mobile-fact-copy {
+        padding-top: 0.15rem;
+    }
+
+    #news-watch .tg-mobile-fact-copy h4 {
+        text-wrap: pretty;
+    }
+
+    /* History */
+    .truthguard-mobile-history {
+        display: grid;
+        gap: 0.75rem;
+    }
+
+    .truthguard-mobile-history > div:first-child {
+        gap: 0.65rem;
+    }
+
+    .truthguard-history-tabs {
+        display: flex;
+        flex-wrap: nowrap !important;
+        gap: 0.4rem !important;
+        overflow-x: auto;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        padding: 0.15rem 0.05rem 0.35rem !important;
+        box-shadow: none !important;
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+    }
+
+    .truthguard-history-tabs::-webkit-scrollbar,
+    .truthguard-notifications-tabs::-webkit-scrollbar,
+    .truthguard-settings-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .truthguard-history-tabs > a {
+        min-height: 2.6rem !important;
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+        border: 1px solid rgba(203, 213, 225, 0.82);
+        border-radius: 0.75rem !important;
+        background: rgba(255, 255, 255, 0.86);
+        padding: 0.48rem 0.7rem !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045);
+    }
+
+    .truthguard-history-tabs > span {
+        display: none !important;
+    }
+
+    .truthguard-history-date-filters {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem !important;
+    }
+
+    .truthguard-history-date-filters > label {
+        min-width: 0;
+        min-height: 2.75rem !important;
+        border-radius: 0.75rem !important;
+        padding-inline: 0.55rem !important;
+    }
+
+    .truthguard-history-date-filters input {
+        width: 100%;
+        min-width: 0;
+        min-height: 2.5rem !important;
+        padding-inline: 0.35rem !important;
+        font-size: 0.76rem !important;
+    }
+
+    .truthguard-history-panel {
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-history-panel::before {
+        display: none;
+    }
+
+    .truthguard-history-toolbar {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) 7.4rem;
+        gap: 0.55rem !important;
+        border: 1px solid rgba(191, 219, 254, 0.78) !important;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.9) !important;
+        padding: 0.68rem !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.065);
+    }
+
+    .truthguard-history-toolbar > label {
+        min-width: 0;
+        min-height: 2.75rem !important;
+        border-radius: 0.75rem !important;
+        padding-inline: 0.65rem !important;
+    }
+
+    .truthguard-history-toolbar input,
+    .truthguard-history-toolbar select {
+        min-width: 0 !important;
+        min-height: 2.45rem !important;
+        padding-inline: 0.45rem !important;
+        font-size: 0.78rem !important;
+    }
+
+    .truthguard-history-mobile-list {
+        display: grid;
+        gap: 0.68rem;
+        margin-top: 0.72rem;
+    }
+
+    .truthguard-history-mobile-list > :not([hidden]) ~ :not([hidden]) {
+        border-top-width: 0 !important;
+    }
+
+    .truthguard-history-mobile-card {
+        border: 1px solid rgba(203, 213, 225, 0.78);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.94) !important;
+        padding: 0.75rem !important;
+        box-shadow:
+            0 14px 30px rgba(15, 23, 42, 0.07),
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    }
+
+    .truthguard-history-thumb-frame {
+        width: 3.55rem !important;
+        height: 3.55rem !important;
+        flex-basis: 3.55rem !important;
+        border-radius: 0.75rem !important;
+        box-shadow:
+            0 10px 22px rgba(15, 23, 42, 0.09),
+            0 0 0 3px rgba(239, 246, 255, 0.8) !important;
+    }
+
+    .truthguard-history-thumb,
+    .truthguard-history-thumb-placeholder {
+        border-radius: 0.58rem !important;
+    }
+
+    .truthguard-history-pagination {
+        margin-top: 0.75rem;
+        border: 1px solid rgba(203, 213, 225, 0.78) !important;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 0.75rem !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.055);
+    }
+
+    .truthguard-history-pagination > div {
+        width: 100%;
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        padding-bottom: 0.15rem;
+        scrollbar-width: none;
+    }
+
+    .truthguard-history-pagination > div::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Notification center */
+    .truthguard-notifications-shell {
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-notifications-shell::before {
+        display: none;
+    }
+
+    .truthguard-notifications-hero {
+        overflow: hidden;
+        border: 1px solid rgba(191, 219, 254, 0.76) !important;
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.92) !important;
+        padding: 0.9rem !important;
+        box-shadow:
+            0 16px 34px rgba(15, 23, 42, 0.07),
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    }
+
+    .truthguard-notifications-hero::after {
+        display: none;
+    }
+
+    .truthguard-notifications-hero h1 {
+        margin-top: 0.3rem !important;
+        font-size: 0.96rem !important;
+    }
+
+    .truthguard-notifications-hero h1 + p {
+        margin-top: 0.3rem !important;
+        line-height: 1.5 !important;
+    }
+
+    .truthguard-notifications-actions {
+        width: 100%;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: stretch !important;
+        gap: 0.55rem !important;
+    }
+
+    .truthguard-notifications-stats {
+        min-width: 0;
+        gap: 0.4rem !important;
+    }
+
+    .truthguard-notifications-stat {
+        min-width: 0;
+        border-radius: 0.7rem !important;
+        padding: 0.48rem 0.5rem !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-notifications-actions > button {
+        min-height: 2.75rem;
+        border-radius: 0.75rem !important;
+        padding-inline: 0.7rem !important;
+        white-space: nowrap;
+    }
+
+    .truthguard-notifications-tabs {
+        margin: 0.75rem -0.1rem -0.05rem !important;
+        padding: 0.1rem 0.1rem 0.3rem;
+        scrollbar-width: none;
+        scroll-snap-type: x proximity;
+    }
+
+    .truthguard-notifications-tab {
+        min-height: 2.45rem;
+        scroll-snap-align: start;
+        border-radius: 0.75rem !important;
+        padding: 0.44rem 0.68rem !important;
+    }
+
+    .truthguard-notifications-list {
+        margin-top: 0.72rem;
+        padding: 0 !important;
+    }
+
+    .truthguard-notifications-list > .space-y-3 {
+        display: grid;
+        gap: 0.68rem;
+    }
+
+    .truthguard-notifications-list > .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+        margin-top: 0 !important;
+    }
+
+    .truthguard-notification-page-card {
+        border-radius: 1rem !important;
+        padding: 0.75rem !important;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.065) !important;
+    }
+
+    .truthguard-notification-page-card > div {
+        gap: 0.7rem !important;
+    }
+
+    .truthguard-notification-page-card > div > div:first-child {
+        gap: 0.7rem !important;
+    }
+
+    .truthguard-notification-page-card img {
+        width: 4.4rem !important;
+        height: 3.7rem !important;
+        border-radius: 0.72rem !important;
+    }
+
+    .truthguard-notification-card-actions {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+        gap: 0.45rem !important;
+    }
+
+    .truthguard-notification-card-actions > * {
+        min-width: 0;
+        min-height: 2.55rem;
+        justify-content: center;
+        border-radius: 0.72rem !important;
+        padding: 0.48rem 0.55rem !important;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    .truthguard-empty-notifications {
+        min-height: 14rem !important;
+        border-radius: 1rem !important;
+        padding: 2rem 1rem !important;
+    }
+
+    /* Settings */
+    .truthguard-mobile-settings {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: clip;
+        gap: 0.75rem !important;
+    }
+
+    .truthguard-settings-page :is(section, aside, main, form, fieldset, div) {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .truthguard-settings-page :is(h1, h2, h3, h4, p, label, a, button) {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+    }
+
+    .truthguard-settings-hero {
+        border-radius: 1rem !important;
+        padding: 0.85rem !important;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.075) !important;
+    }
+
+    .truthguard-settings-hero > div {
+        gap: 0.75rem !important;
+    }
+
+    .truthguard-settings-hero > div > div:first-child {
+        flex-direction: row !important;
+        align-items: flex-start !important;
+        gap: 0.75rem !important;
+    }
+
+    .truthguard-settings-hero img {
+        width: 3.65rem !important;
+        height: 3.65rem !important;
+        border-radius: 0.85rem !important;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.14) !important;
+        --tw-ring-offset-shadow: none !important;
+        --tw-ring-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9) !important;
+    }
+
+    .truthguard-settings-hero h1 {
+        margin-top: 0.45rem !important;
+        font-size: 1.02rem !important;
+    }
+
+    .truthguard-settings-hero h1 + p {
+        display: none;
+    }
+
+    .truthguard-settings-hero .mt-4.flex.flex-wrap {
+        margin-top: 0.55rem !important;
+        gap: 0.35rem !important;
+    }
+
+    .truthguard-settings-hero-summary,
+    .truthguard-settings-metrics {
+        display: none !important;
+    }
+
+    .truthguard-settings-layout {
+        gap: 0.65rem !important;
+    }
+
+    .truthguard-settings-rail-card {
+        overflow: visible !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-settings-rail-header,
+    .truthguard-settings-rail-progress {
+        display: none !important;
+    }
+
+    .truthguard-settings-nav {
+        display: flex !important;
+        gap: 0.45rem !important;
+        overflow-x: auto;
+        padding: 0.1rem 0.05rem 0.35rem !important;
+        scrollbar-width: none;
+        scroll-snap-type: x mandatory;
+    }
+
+    .truthguard-settings-nav-item {
+        width: 7.8rem !important;
+        min-height: 3.25rem;
+        flex: 0 0 7.8rem;
+        scroll-snap-align: start;
+        gap: 0.48rem !important;
+        border: 1px solid rgba(203, 213, 225, 0.8);
+        border-radius: 0.85rem !important;
+        background: rgba(255, 255, 255, 0.88);
+        padding: 0.48rem 0.55rem !important;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, 0.055);
+    }
+
+    .truthguard-settings-nav-item > span:first-child {
+        width: 2rem !important;
+        height: 2rem !important;
+        border-radius: 0.65rem !important;
+    }
+
+    .truthguard-settings-nav-item > span:nth-child(2) > span:first-child {
+        white-space: normal;
+        line-height: 1.2 !important;
+    }
+
+    .truthguard-settings-nav-item > span:nth-child(2) > span:last-child,
+    .truthguard-settings-nav-item > span:last-child {
+        display: none !important;
+    }
+
+    .truthguard-settings-panel {
+        border-radius: 1rem !important;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.075) !important;
+    }
+
+    .truthguard-settings-panel > [x-show] {
+        min-height: 0 !important;
+    }
+
+    .truthguard-settings-panel-header {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 0.65rem !important;
+        padding: 0.75rem 0.85rem !important;
+    }
+
+    .truthguard-settings-panel-header p:first-child {
+        display: none;
+    }
+
+    .truthguard-settings-panel-header h2 {
+        margin-top: 0 !important;
+        font-size: 0.94rem !important;
+    }
+
+    .truthguard-settings-panel-header h2 + p {
+        margin-top: 0.18rem !important;
+        font-size: 0.64rem !important;
+    }
+
+    .truthguard-settings-panel-header > span {
+        max-width: 100%;
+        padding: 0.42rem 0.55rem !important;
+        white-space: normal;
+    }
+
+    .truthguard-settings-panel section {
+        padding: 0.72rem !important;
+    }
+
+    .truthguard-settings-panel section > .grid {
+        display: flex !important;
+        flex-direction: column;
+        gap: 0.72rem !important;
+    }
+
+    .truthguard-settings-panel section > .grid > aside {
+        order: 2;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.6rem !important;
+    }
+
+    .truthguard-settings-panel section > .grid > aside > :first-child {
+        grid-column: 1 / -1;
+    }
+
+    .truthguard-settings-panel section > .grid > :not(aside) {
+        order: 1;
+    }
+
+    .truthguard-settings-panel section form,
+    .truthguard-settings-panel section > .grid > div > div,
+    .truthguard-settings-panel section > .grid > aside > div {
+        border-radius: 0.9rem !important;
+    }
+
+    .truthguard-settings-panel section form > div,
+    .truthguard-settings-panel section > .grid > div > div > div {
+        padding-left: 0.8rem;
+        padding-right: 0.8rem;
+    }
+
+    .truthguard-settings-panel section :is(input, textarea) {
+        min-height: 2.85rem;
+        border-radius: 0.75rem !important;
+    }
+
+    .truthguard-settings-panel section form > div:last-child button,
+    .truthguard-settings-panel section button[type="submit"] {
+        min-height: 2.75rem;
+    }
+
+    .truthguard-settings-panel :is(button, a) {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .truthguard-account-delete-dialog {
+        top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+        right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+        bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
+        left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        max-height: none !important;
+        transform: none !important;
+        border-radius: 1rem !important;
+        overscroll-behavior: contain;
+    }
+
+    .truthguard-account-delete-dialog form {
+        min-width: 0;
+        padding: 1rem !important;
+    }
+
+    .truthguard-account-delete-dialog form > div:last-child > div {
+        width: 100%;
+        min-width: 0;
+        flex-wrap: wrap;
+    }
+
+    .truthguard-account-delete-dialog form > div:last-child button {
+        min-width: 0;
+        flex: 1 1 7rem;
+    }
+
+    /* Fact-check composer */
+    .truthguard-mobile-check {
+        padding-top: 0.1rem;
+        overflow-x: clip;
+    }
+
+    .truthguard-mobile-check .truthguard-detection-stage {
+        gap: 1rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-workspace-hero {
+        position: relative;
+        border-radius: 1rem !important;
+        padding: 0.9rem !important;
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .truthguard-mobile-check .truthguard-workspace-title {
+        margin-top: 0.55rem !important;
+        font-size: 1.18rem !important;
+        line-height: 1.24 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-agent-pill {
+        gap: 0.4rem !important;
+        padding: 0.38rem 0.65rem !important;
+        font-size: 0.68rem !important;
+        line-height: 1.2 !important;
+        letter-spacing: 0 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-agent-pill-icon {
+        width: 0.45rem;
+        height: 0.45rem;
+    }
+
+    .truthguard-mobile-check .truthguard-workspace-intro > p {
+        margin-top: 0.35rem !important;
+        font-size: 0.76rem !important;
+        line-height: 1.45 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-desktop-capabilities {
+        display: none !important;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-capabilities {
+        display: grid !important;
+        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        gap: 0.55rem;
+        margin-top: 0.75rem;
+        min-width: 0;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-service-status,
+    .truthguard-mobile-check .truthguard-mobile-evidence-summary {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        border: 1px solid rgba(191, 219, 254, 0.78);
+        border-radius: 0.8rem;
+        background: rgba(255, 255, 255, 0.72);
+        padding: 0.5rem;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-service-status {
+        gap: 0.5rem;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-evidence-summary {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 0.22rem;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-agent-mark {
+        display: inline-flex;
+        width: 2.25rem;
+        height: 2.25rem;
+        flex: 0 0 2.25rem;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.7rem;
+        background: #eff6ff;
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-agent-mark img {
+        width: 1.65rem;
+        height: 1.65rem;
+        object-fit: contain;
+        animation: truthguard-mobile-agent-float 3.2s ease-in-out infinite;
+    }
+
+    @keyframes truthguard-mobile-agent-float {
+        0%, 100% {
+            transform: translateY(0) scale(1);
+        }
+        50% {
+            transform: translateY(-0.1rem) scale(1.04);
+        }
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-capability-label {
+        display: block;
+        color: #64748b;
+        font-size: 0.58rem;
+        font-weight: 700;
+        line-height: 1.2;
+        letter-spacing: 0;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-ready-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.28rem;
+        margin-top: 0.2rem;
+        color: #047857;
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-ready-status > span {
+        width: 0.42rem;
+        height: 0.42rem;
+        flex: 0 0 0.42rem;
+        border-radius: 9999px;
+        background: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-evidence-list {
+        display: flex;
+        max-width: 100%;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.2rem;
+        color: #334155;
+        font-size: 0.66rem;
+        font-weight: 750;
+        line-height: 1.25;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-heading {
+        margin-bottom: 0.55rem !important;
+        align-items: center !important;
+        gap: 0.75rem !important;
+        padding-inline: 0.15rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-heading h2 {
+        font-size: 1rem !important;
+        line-height: 1.25 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-subtitle {
+        display: none;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-heading > a {
+        min-height: 2.75rem;
+        padding-inline: 0.45rem !important;
+        font-size: 0.7rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-grid {
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 0.48rem;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card {
+        min-height: 5.8rem !important;
+        min-width: 0;
+        grid-template-columns: 5.65rem minmax(0, 1fr) 1.45rem !important;
+        align-items: stretch !important;
+        gap: 0.52rem !important;
+        border-radius: 0.9rem !important;
+        padding: 0.55rem !important;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card > span:first-child {
+        width: 100% !important;
+        height: 4.75rem !important;
+        min-height: 4.75rem !important;
+        border-radius: 0.78rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card > span:last-child {
+        width: 1.45rem !important;
+        height: 1.45rem !important;
+        margin-top: 0.05rem !important;
+        border-radius: 0.55rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card .truthguard-status-badge {
+        gap: 0.25rem !important;
+        max-width: 5.85rem !important;
+        overflow: hidden !important;
+        padding: 0.2rem 0.34rem !important;
+        font-size: 0.56rem !important;
+        line-height: 1.1 !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card .truthguard-status-badge svg {
+        width: 0.62rem !important;
+        height: 0.62rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card .truthguard-status-badge > span:last-child {
+        min-width: 0 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-claim {
+        margin-top: 0.3rem !important;
+        font-size: 0.68rem !important;
+        line-height: 1.24 !important;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card > span:nth-child(2) > span:first-child {
+        gap: 0.35rem !important;
+        flex-wrap: nowrap !important;
+        overflow: hidden !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card > span:nth-child(2) > span:first-child > span:first-child {
+        max-width: 5.4rem !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card > span:nth-child(2) > span:first-child > span:first-child,
+    .truthguard-mobile-check .truthguard-recent-card > span:nth-child(2) > span:last-child {
+        font-size: 0.56rem !important;
+        line-height: 1.3 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-summary {
+        display: none !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-card > span:nth-child(2) > span:last-child {
+        margin-top: 0.36rem !important;
+        gap: 0.22rem 0.45rem !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-skeleton {
+        min-height: 6.75rem;
+        border-radius: 0.9rem;
+        padding: 0.7rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-recent-state {
+        min-height: 0 !important;
+        border-radius: 0.9rem !important;
+        padding: 0.8rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-detection-composer {
+        border-radius: 1rem !important;
+        padding: 0.55rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-composer-field {
+        align-items: center !important;
+        gap: 0.5rem !important;
+        border-radius: 0.85rem !important;
+        padding: 0.48rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-attachment-trigger {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        border-radius: 0.75rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-detection-textarea {
+        min-height: 2.6rem !important;
+        max-height: 5.6rem !important;
+        padding-top: 0.58rem !important;
+        padding-bottom: 0.42rem !important;
+        font-size: 0.82rem !important;
+        line-height: 1.35 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-detection-textarea::placeholder {
+        font-size: 0.7rem !important;
+        line-height: 1.35 !important;
+    }
+
+    .truthguard-mobile-check .truthguard-preview-remove,
+    .truthguard-mobile-check .truthguard-link-preview > button:last-child,
+    .truthguard-mobile-check .truthguard-uploader-close {
+        width: 2.75rem !important;
+        height: 2.75rem !important;
+        flex-basis: 2.75rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-composer-footer {
+        align-items: center !important;
+        width: 100%;
+        min-height: 0 !important;
+        margin-top: 0.45rem !important;
+        margin-left: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        justify-content: flex-end !important;
+        flex-wrap: nowrap;
+    }
+
+    .truthguard-mobile-check .truthguard-input-types {
+        display: none !important;
+    }
+
+    .truthguard-mobile-check .truthguard-input-type {
+        width: 100%;
+        min-width: 0;
+        min-height: 2.75rem;
+        padding-inline: 0.45rem;
+        font-size: 0.68rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-composer-actions {
+        width: auto;
+        min-width: 0;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+    }
+
+    .truthguard-mobile-check .truthguard-composer-actions > span:first-child {
+        display: none !important;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-inline-submit {
+        display: inline-flex !important;
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        min-width: 2.5rem !important;
+        min-height: 2.5rem !important;
+        border-radius: 0.78rem !important;
+        box-shadow: 0 10px 22px rgba(37, 99, 235, 0.18);
+    }
+
+    .truthguard-mobile-check .truthguard-analyze-button {
+        width: 2.65rem !important;
+        height: 2.65rem !important;
+        min-width: 2.65rem !important;
+        min-height: 2.65rem !important;
+        gap: 0 !important;
+        padding: 0 !important;
+        border-radius: 0.85rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-inline-submit {
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        min-width: 2.5rem !important;
+        min-height: 2.5rem !important;
+        border-radius: 0.78rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-analyze-text {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        margin: -1px !important;
+        overflow: hidden !important;
+        clip: rect(0, 0, 0, 0) !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-analyze-symbol {
+        height: 1.15rem !important;
+        width: 1.15rem !important;
+    }
+
+    .truthguard-mobile-check .truthguard-mobile-ai-disclaimer {
+        margin-top: 0.24rem !important;
+        padding: 0 0.05rem 0.05rem !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-ai-note {
+        white-space: normal !important;
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+
+    .truthguard-mobile-check .truthguard-ai-disclaimer-copy {
+        margin-top: 0.24rem !important;
+        padding-inline: 0.05rem !important;
+        font-size: 0.5rem !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-ai-disclaimer {
+        gap: 0.15rem;
+        width: 100%;
+        font-size: 0.5rem !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-ai-disclaimer > span:last-child {
+        overflow: hidden;
+        font-size: 0.5rem !important;
+        line-height: 1 !important;
+        text-overflow: ellipsis;
+        white-space: nowrap !important;
+    }
+
+    .truthguard-mobile-check .truthguard-ai-disclaimer-icon {
+        width: 0.58rem;
+        height: 0.58rem;
+    }
+
+    body.truthguard-fact-check-route .truthguard-user-content-column main {
+        padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
+        padding-bottom: calc(0.9rem + env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
+    }
+
+    body.truthguard-fact-check-route .truthguard-topbar > div {
+        max-width: none;
+        margin-right: max(0.75rem, env(safe-area-inset-right, 0px));
+        margin-left: max(0.75rem, env(safe-area-inset-left, 0px));
+    }
+
+    .truthguard-mobile-check .truthguard-attachment-modal {
+        align-items: flex-end !important;
+        padding-top: max(0.75rem, env(safe-area-inset-top, 0px)) !important;
+        padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    }
+
+    .truthguard-mobile-check .truthguard-attachment-popover {
+        width: 100% !important;
+        max-height: calc(100svh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        border-radius: 1rem !important;
+        padding: 0.85rem !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+    }
+
+    @media (max-width: 350px) {
+        .truthguard-mobile-check .truthguard-mobile-capabilities {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .truthguard-mobile-check .truthguard-mobile-service-status,
+        .truthguard-mobile-check .truthguard-mobile-evidence-summary {
+            min-height: 3.25rem;
+        }
+
+        .truthguard-mobile-check .truthguard-recent-card {
+            grid-template-columns: 5rem minmax(0, 1fr) 1.25rem !important;
+            gap: 0.45rem !important;
+            padding: 0.5rem !important;
+        }
+
+        .truthguard-mobile-check .truthguard-recent-card > span:first-child {
+            width: 100% !important;
+            height: 4.45rem !important;
+            min-height: 4.45rem !important;
+        }
+
+        .truthguard-mobile-check .truthguard-recent-card > span:last-child {
+            width: 1.25rem !important;
+        }
+    }
+
+    /* Detection report */
+    #latest-detection-result {
+        gap: 0.7rem !important;
+    }
+
+    #latest-detection-result .tg-report-card,
+    #latest-detection-result .tg-report-hero {
+        border-radius: 1rem !important;
+    }
+
+    #latest-detection-result .tg-report-hero > .grid > div,
+    #latest-detection-result article.tg-report-card {
+        padding: 0.85rem !important;
+    }
+
+    #latest-detection-result .tg-report-hero > .grid > div:first-child > div > div:first-child {
+        align-items: center;
+    }
+
+    #latest-detection-result .tg-report-gauge {
+        width: 8.75rem !important;
+        margin-block: 0.25rem;
+    }
+
+    #latest-detection-result .tg-media-frame {
+        height: 13rem !important;
+    }
+
+    #latest-detection-result :is(a, button) {
+        min-height: 2.5rem;
+    }
+
+    /* Fact-check detail */
+    .truthguard-fact-detail-actions {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.55rem !important;
+        margin-bottom: 0.7rem !important;
+    }
+
+    .truthguard-fact-detail-actions > * {
+        min-width: 0;
+        min-height: 2.75rem;
+        justify-content: center;
+        border-radius: 0.75rem !important;
+        padding: 0.5rem 0.65rem !important;
+        text-align: center;
+    }
+
+    .truthguard-fact-detail-card {
+        border-radius: 1rem !important;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.075) !important;
+    }
+
+    .truthguard-fact-detail-card > div {
+        padding: 0.8rem !important;
+    }
+
+    .truthguard-fact-detail-card .relative.mx-auto.overflow-hidden {
+        border-radius: 0.85rem !important;
+    }
+
+    .truthguard-fact-detail-card h2 {
+        font-size: 1.06rem !important;
+        line-height: 1.32 !important;
+        text-wrap: pretty;
+    }
+
+    .truthguard-fact-detail-card section,
+    .truthguard-fact-detail-card .lg\:grid-cols-2 > div,
+    .truthguard-fact-detail-card .max-w-5xl.rounded-2xl {
+        border-radius: 0.8rem !important;
+        padding: 0.8rem !important;
+    }
+
+    .truthguard-fact-detail-card .mt-5.flex.flex-wrap {
+        display: grid !important;
+        grid-template-columns: 1fr;
+        gap: 0.5rem !important;
+    }
+
+    .truthguard-fact-detail-card .mt-5.flex.flex-wrap > * {
+        min-height: 2.75rem;
+        border-radius: 0.75rem !important;
+    }
+}
+
+.truthguard-mobile-page {
+    color: #0f172a;
+}
+
+@media (min-width: 641px) {
+    .truthguard-user-frame {
+        background: #f5f7fb;
+    }
+
+    .truthguard-user-main {
+        padding-top: 1.25rem !important;
+    }
+
+    .truthguard-mobile-page :is(input, select, textarea) {
+        border-color: rgba(203, 213, 225, 0.92);
+    }
+
+    .truthguard-mobile-page :is(input, select, textarea):focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.22);
+    }
+
+    /* Dashboard */
+    #news-watch {
+        border-color: #dbe3ee !important;
+        border-radius: 0.875rem !important;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    #news-watch .tg-mobile-feed-head {
+        border-color: #e2e8f0 !important;
+        background: #ffffff !important;
+        padding-block: 1.15rem !important;
+    }
+
+    #news-watch .tg-mobile-feed-head h3 {
+        font-size: 1.45rem !important;
+        letter-spacing: 0 !important;
+    }
+
+    #news-watch .tg-fact-feed-row {
+        gap: 1.25rem;
+        padding-block: 1.25rem;
+        transition: background-color 180ms ease;
+    }
+
+    #news-watch .tg-fact-feed-row:hover {
+        background: #f8fafc;
+    }
+
+    #news-watch .tg-mobile-fact-media {
+        min-height: 0 !important;
+        aspect-ratio: 4 / 3;
+        align-self: start;
+        border-radius: 0.65rem !important;
+        background: #f8fafc;
+    }
+
+    #news-watch .tg-mobile-fact-media .tg-fact-main-image {
+        width: 100%;
+        height: 100% !important;
+        min-height: 0 !important;
+        object-fit: contain;
+    }
+
+    #news-watch .tg-mobile-fact-copy h4 {
+        font-size: 1.2rem !important;
+        line-height: 1.45 !important;
+        letter-spacing: 0 !important;
+    }
+
+    #news-watch .tg-mobile-fact-copy p {
+        line-height: 1.7 !important;
+    }
+
+    #news-watch .tg-mobile-fact-chips > * {
+        border-radius: 0.55rem !important;
+    }
+
+    /* History */
+    .truthguard-history-tabs,
+    .truthguard-history-control,
+    .truthguard-history-panel {
+        background: #ffffff !important;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045) !important;
+    }
+
+    .truthguard-history-tabs {
+        border-color: #dbe3ee !important;
+        border-radius: 0.75rem !important;
+    }
+
+    .truthguard-history-tabs > a {
+        border-radius: 0.55rem !important;
+    }
+
+    .truthguard-history-control {
+        border-color: #dbe3ee !important;
+        border-radius: 0.65rem !important;
+    }
+
+    .truthguard-history-panel {
+        border-color: #dbe3ee !important;
+        border-radius: 0.875rem !important;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    .truthguard-history-panel::before {
+        display: none !important;
+    }
+
+    .truthguard-history-toolbar {
+        background: #f8fafc !important;
+    }
+
+    .truthguard-history-row {
+        background: #ffffff !important;
+    }
+
+    .truthguard-history-row:hover {
+        background: #f8fafc !important;
+    }
+
+    .truthguard-history-thumb-frame {
+        border-color: #dbe3ee !important;
+        border-radius: 0.7rem !important;
+        background: #f8fafc !important;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+    }
+
+    .truthguard-history-thumb,
+    .truthguard-history-thumb-placeholder {
+        border-radius: 0.52rem !important;
+    }
+
+    .truthguard-premium-action {
+        border-radius: 0.6rem !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    /* Notifications */
+    .truthguard-notifications-shell {
+        border-color: #dbe3ee !important;
+        border-radius: 0.875rem !important;
+        background: #ffffff !important;
+        box-shadow: 0 12px 34px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    .truthguard-notifications-shell::before,
+    .truthguard-notifications-hero::after {
+        display: none !important;
+    }
+
+    .truthguard-notifications-hero {
+        background: #f8fafc !important;
+    }
+
+    .truthguard-notifications-hero h1 {
+        font-size: 1.45rem !important;
+        letter-spacing: 0 !important;
+    }
+
+    .truthguard-notifications-stat {
+        border-radius: 0.6rem !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-notifications-tab {
+        border-radius: 0.6rem !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-notifications-tab.is-active {
+        border-color: #93c5fd !important;
+        background: #eff6ff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-notification-page-card {
+        border-radius: 0.75rem !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-notification-page-card:hover {
+        transform: translateY(-1px) !important;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.065) !important;
+    }
+
+    .truthguard-notification-card-actions > * {
+        border-radius: 0.55rem !important;
+    }
+
+    /* Settings */
+    .truthguard-settings-hero,
+    .truthguard-settings-rail,
+    .truthguard-settings-panel {
+        border-color: #dbe3ee !important;
+        background: #ffffff !important;
+        backdrop-filter: none !important;
+    }
+
+    .truthguard-settings-hero {
+        border-radius: 0.875rem !important;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    .truthguard-settings-hero h1 {
+        font-size: 1.8rem !important;
+        letter-spacing: 0 !important;
+    }
+
+    .truthguard-settings-hero-summary {
+        border-color: #dbe3ee !important;
+        border-radius: 0.75rem !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-settings-metrics > div {
+        border-color: #e2e8f0 !important;
+        border-radius: 0.65rem !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-settings-rail {
+        border-radius: 0.875rem !important;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045) !important;
+    }
+
+    .truthguard-settings-rail-header > div:first-of-type,
+    .truthguard-settings-search {
+        border-color: #e2e8f0 !important;
+        border-radius: 0.65rem !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-settings-nav-item {
+        border-radius: 0.6rem !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-settings-nav-item > span:first-child {
+        border-radius: 0.55rem !important;
+    }
+
+    .truthguard-settings-panel {
+        border-radius: 0.875rem !important;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    .truthguard-settings-panel-header {
+        background: #f8fafc !important;
+    }
+
+    .truthguard-settings-panel section form,
+    .truthguard-settings-panel section > .grid > div > div,
+    .truthguard-settings-panel section > .grid > aside > div {
+        border-color: #dbe3ee !important;
+        border-radius: 0.75rem !important;
+        background-color: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-settings-panel section :is(input, textarea),
+    .truthguard-settings-panel section .focus-within\:border-blue-400 {
+        border-radius: 0.6rem !important;
+    }
+
+    /* Reports */
+    #latest-detection-result .tg-report-card,
+    #latest-detection-result .tg-report-hero {
+        border-color: #dbe3ee !important;
+        border-radius: 0.875rem !important;
+        background: #ffffff !important;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.045) !important;
+    }
+
+    #latest-detection-result .tg-report-card:hover {
+        transform: none !important;
+        box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06) !important;
+    }
+
+    #latest-detection-result .tg-premium-icon,
+    #latest-detection-result .tg-premium-meta-icon,
+    #latest-detection-result .tg-source-logo-shell {
+        border-radius: 0.65rem !important;
+        box-shadow: none !important;
+    }
+
+    #latest-detection-result .tg-premium-icon::before,
+    #latest-detection-result .tg-premium-icon::after,
+    #latest-detection-result .tg-premium-meta-icon::after,
+    #latest-detection-result .tg-source-logo-shell::after {
+        display: none !important;
+    }
+
+    /* Fact-check detail */
+    .truthguard-fact-detail-card {
+        border-color: #dbe3ee !important;
+        border-radius: 0.875rem !important;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.055) !important;
+    }
+
+    .truthguard-fact-detail-card .relative.mx-auto.overflow-hidden,
+    .truthguard-fact-detail-card section,
+    .truthguard-fact-detail-card .lg\:grid-cols-2 > div,
+    .truthguard-fact-detail-card .max-w-5xl.rounded-2xl {
+        border-radius: 0.7rem !important;
+    }
+
+    .truthguard-fact-detail-actions > * {
+        border-radius: 0.6rem !important;
+    }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+    .truthguard-user-content-column main {
+        padding-right: 1.25rem !important;
+        padding-bottom: calc(6.4rem + env(safe-area-inset-bottom, 0px)) !important;
+        padding-left: 1.25rem !important;
+    }
+
+    .truthguard-user-footer {
+        display: none;
+    }
+
+    .truthguard-topbar {
+        border-bottom: 1px solid #e2e8f0 !important;
+        background: rgba(255, 255, 255, 0.94) !important;
+        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.04) !important;
+    }
+
+    .truthguard-topbar::before {
+        display: none !important;
+    }
+
+    .truthguard-topbar > div {
+        padding: 0.75rem 1.25rem !important;
+    }
+
+    .truthguard-mobile-top-logo {
+        display: inline-flex;
+        width: 2.75rem;
+        height: 2.75rem;
+        flex: 0 0 2.75rem;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #dbe3ee;
+        border-radius: 0.7rem;
+        background: #ffffff;
+        color: #1d4ed8;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    .truthguard-mobile-top-logo::after {
+        display: none;
+    }
+
+    .truthguard-mobile-top-logo img {
+        width: 2rem;
+        height: 2rem;
+        object-fit: contain;
+    }
+
+    .truthguard-mobile-top-logo span {
+        font-size: 0.75rem;
+        font-weight: 800;
+    }
+
+    .truthguard-mobile-tabbar {
+        position: fixed;
+        left: 50%;
+        bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px));
+        z-index: 99996;
+        display: grid;
+        width: min(34rem, calc(100vw - 2rem));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-items: end;
+        gap: 0.35rem;
+        border: 1px solid rgba(203, 213, 225, 0.94);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.94);
+        padding: 0.5rem;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
+        transform: translateX(-50%);
+        backdrop-filter: blur(20px);
+    }
+
+    .truthguard-mobile-tabbar::before,
+    .truthguard-mobile-tabbar::after {
+        display: none;
+    }
+
+    .truthguard-mobile-tab {
+        position: relative;
+        display: flex;
+        min-height: 3.5rem;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.2rem;
+        border-radius: 0.7rem;
+        color: #64748b;
+        font-size: 0.68rem;
+        font-weight: 700;
+        transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+    }
+
+    .truthguard-mobile-tab::before,
+    .truthguard-mobile-tab::after {
+        display: none;
+    }
+
+    .truthguard-mobile-tab-icon {
+        position: relative;
+        display: inline-flex;
+        width: 1.75rem;
+        height: 1.75rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.5rem;
+        background: #f8fafc;
+    }
+
+    .truthguard-mobile-tab.is-active {
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .truthguard-mobile-tab-primary {
+        min-height: 4.45rem;
+        margin-top: -1.25rem;
+        border: 1px solid #1d4ed8;
+        border-radius: 0.9rem;
+        background: #2563eb;
+        color: #ffffff;
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.25);
+        transform: translateY(-0.25rem);
+    }
+
+    .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon {
+        width: 2.6rem;
+        height: 2.6rem;
+        border-radius: 9999px;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .truthguard-mobile-tab-primary.is-active {
+        background: #1d4ed8;
+        color: #ffffff;
+    }
+
+    .truthguard-mobile-tab-dot {
+        position: absolute;
+        top: -0.35rem;
+        right: -0.35rem;
+        display: inline-flex;
+        min-width: 1rem;
+        height: 1rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background: #e11d48;
+        padding-inline: 0.2rem;
+        color: #ffffff;
+        font-size: 0.58rem;
+        box-shadow: 0 0 0 2px #ffffff;
+    }
+
+    .truthguard-settings-layout {
+        grid-template-columns: 15rem minmax(0, 1fr) !important;
+    }
+
+    .truthguard-settings-hero > div {
+        gap: 1rem !important;
+    }
+
+    .truthguard-settings-hero-summary {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 640px) {
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-detection-stage {
+        padding-bottom: calc(13.25rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form {
+        position: fixed;
+        right: max(0.75rem, env(safe-area-inset-right, 0px));
+        bottom: max(0.7rem, env(safe-area-inset-bottom, 0px));
+        left: max(0.75rem, env(safe-area-inset-left, 0px));
+        z-index: 99940;
+        width: auto !important;
+        max-width: none !important;
+        max-height: calc(72svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+        margin: 0 !important;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        pointer-events: auto;
+        scrollbar-width: none;
+        transform: translateZ(0);
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form::-webkit-scrollbar {
+        display: none;
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form > .truthguard-detection-composer,
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form > .truthguard-ai-disclaimer-copy {
+        width: 100%;
+    }
+}
+
+@media (min-width: 641px) {
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-detection-stage {
+        padding-bottom: 0;
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form {
+        position: static;
+        right: auto;
+        bottom: auto;
+        left: auto;
+        z-index: auto;
+        width: 100% !important;
+        max-width: 70rem !important;
+        margin-right: auto !important;
+        margin-left: auto !important;
+        padding-inline: 0;
+        overflow: visible;
+        pointer-events: auto;
+        transform: none;
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form > .truthguard-detection-composer,
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form > .truthguard-ai-disclaimer-copy {
+        width: 100%;
+        margin-right: auto;
+        margin-left: auto;
+        pointer-events: auto;
+    }
+
+    body.truthguard-fact-check-create-route {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-user-frame,
+    body.truthguard-fact-check-create-route .truthguard-user-content-column {
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-user-content-column {
+        background: linear-gradient(180deg, #f7f9fc 0%, #eef2f7 100%);
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-user-main {
+        min-height: 0;
+        overflow: hidden;
+        background: transparent;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-mobile-check,
+    body.truthguard-fact-check-create-route .truthguard-mobile-check > div,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace > .truthguard-detection-shell {
+        height: 100%;
+        min-height: 0;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-stage {
+        height: 100%;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form {
+        position: sticky;
+        bottom: 0;
+        z-index: 30;
+        flex: 0 0 auto;
+        margin-top: auto !important;
+        padding-top: 0.65rem;
+        padding-bottom: max(0.25rem, env(safe-area-inset-bottom, 0px));
+        background: transparent;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-composer {
+        box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.84) inset,
+            inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-composer:focus-within {
+        box-shadow:
+            0 0 0 3px rgba(147, 197, 253, 0.18),
+            0 0 0 1px rgba(255, 255, 255, 0.9) inset,
+            inset 0 1px 0 rgba(255, 255, 255, 0.94);
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-hero,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-recent-card,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-recent-skeleton,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-recent-state {
+        box-shadow: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-recent-card:hover {
+        box-shadow: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-stage::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@media (min-width: 641px) and (max-height: 820px) {
+    body.truthguard-fact-check-create-route .truthguard-user-main {
+        padding-top: 0.75rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-detection-stage {
+        gap: 0.65rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-hero {
+        padding: 0.85rem 1.1rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-hero > .grid {
+        gap: 0.75rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-agent-pill {
+        padding: 0.3rem 0.7rem;
+        font-size: 0.75rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-title {
+        margin-top: 0.45rem !important;
+        font-size: 2rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-intro > p {
+        margin-top: 0.25rem !important;
+        font-size: 0.875rem;
+        line-height: 1.35;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-capability-row {
+        margin-top: 0.65rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-orb {
+        width: 6.25rem;
+        height: 6.25rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-orb-core {
+        inset: 1.4rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-orb img {
+        width: 2.8rem;
+        height: 2.8rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-heading {
+        margin-bottom: 0.5rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-heading h2 {
+        font-size: 1.05rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-subtitle {
+        margin-top: 0.15rem !important;
+        font-size: 0.72rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-heading > a {
+        min-height: 2.25rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-card {
+        min-height: 5.25rem !important;
+        grid-template-columns: 4rem minmax(0, 1fr) 1.35rem !important;
+        padding: 0.5rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-thumb {
+        min-height: 3.75rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-summary {
+        display: none;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-meta {
+        margin-top: 0.35rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-detection-composer {
+        padding: 0.55rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-composer-field {
+        min-height: 3.6rem;
+        padding: 0.5rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-detection-textarea {
+        min-height: 2.8rem !important;
+        padding-top: 0.35rem !important;
+        padding-bottom: 0.35rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-form .truthguard-composer-footer {
+        margin-top: 0.55rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-form .truthguard-ai-disclaimer-copy {
+        margin-top: 0.35rem !important;
+    }
+}
+
+@media (min-width: 641px) and (max-height: 700px) {
+    body.truthguard-fact-check-create-route .truthguard-user-main {
+        padding-top: 0.5rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-title {
+        font-size: 1.75rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-orb {
+        width: 5.25rem;
+        height: 5.25rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-orb-core {
+        inset: 1.15rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-workspace-orb img {
+        width: 2.35rem;
+        height: 2.35rem;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-recent-subtitle,
+    body.truthguard-fact-check-create-route .truthguard-recent-meta {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-detection-stage {
+        padding-bottom: calc(8.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form {
+        position: fixed !important;
+        bottom: max(0.35rem, env(safe-area-inset-bottom, 0px)) !important;
+        max-height: calc(52svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    }
+}
+
+@media (min-width: 1024px) {
+    .truthguard-user-frame {
+        background: #f5f7fb !important;
+    }
+
+    .truthguard-sidebar {
+        border-color: #e2e8f0 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .truthguard-sidebar::before {
+        display: none !important;
+    }
+
+    .truthguard-sidebar .menu-item {
+        min-height: 2.85rem;
+        border-radius: 0.65rem !important;
+    }
+
+    .truthguard-sidebar .menu-item:not(.menu-item-inactive) {
+        background: #eff6ff !important;
+        color: #1d4ed8 !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-sidebar .menu-item:not(.menu-item-inactive)::before {
+        width: 0.18rem !important;
+        background: #2563eb !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-sidebar .menu-item.menu-item-inactive {
+        color: #475569 !important;
+    }
+
+    .truthguard-sidebar .menu-item.menu-item-inactive:hover {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+    }
+
+    .truthguard-sidebar .truthguard-premium-card {
+        border-color: #dbeafe !important;
+        border-radius: 0.75rem !important;
+        background: #f8fbff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-sidebar .truthguard-premium-card::after {
+        display: none !important;
+    }
+
+    .truthguard-topbar {
+        border-color: #e2e8f0 !important;
+        background: rgba(255, 255, 255, 0.94) !important;
+        box-shadow: 0 5px 18px rgba(15, 23, 42, 0.035) !important;
+    }
+
+    .truthguard-topbar::before {
+        display: none !important;
+    }
+
+    .truthguard-topbar > div {
+        min-height: 4.75rem;
+        padding-block: 0.7rem !important;
+    }
+
+    .truthguard-topbar h1 {
+        letter-spacing: 0 !important;
+    }
+
+    .truthguard-shell-toggle {
+        width: 2.65rem !important;
+        height: 2.65rem !important;
+        border-radius: 0.65rem !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-shell-toggle::after,
+    .truthguard-top-icon::after,
+    .truthguard-clock-pill::after,
+    .truthguard-profile-button::before {
+        display: none !important;
+    }
+
+    .truthguard-utility-strip {
+        border-color: #e2e8f0 !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .truthguard-clock-pill {
+        border-color: #e2e8f0 !important;
+        background: #f8fafc !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-top-icon {
+        border-color: transparent !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-top-icon:hover {
+        border-color: #dbeafe !important;
+        background: #eff6ff !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-profile-button {
+        width: 2.75rem !important;
+        height: 2.75rem !important;
+        border-color: #bfdbfe !important;
+        background: #ffffff !important;
+        box-shadow: 0 0 0 3px #eff6ff !important;
+        backdrop-filter: none !important;
+    }
+
+    .truthguard-profile-button:hover,
+    .truthguard-profile-button-active {
+        transform: none !important;
+        box-shadow: 0 0 0 4px #dbeafe !important;
+    }
+
+    .truthguard-profile-popover {
+        border-color: #dbe3ee !important;
+        border-radius: 0.875rem !important;
+        background: #ffffff !important;
+        box-shadow: 0 20px 52px rgba(15, 23, 42, 0.14) !important;
+        backdrop-filter: none !important;
+    }
+
+    .truthguard-profile-popover::after {
+        display: none !important;
+    }
+
+    .truthguard-profile-capsule {
+        border-radius: 0.7rem !important;
+        background: #0f172a !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-profile-capsule::after {
+        display: none !important;
+    }
+
+    .truthguard-profile-action {
+        border-radius: 0.6rem !important;
+        background: #ffffff !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+
+    .truthguard-profile-action::after {
+        display: none !important;
+    }
+
+    .truthguard-profile-action-icon {
+        border-radius: 0.5rem !important;
+        box-shadow: none !important;
+    }
+
+    .truthguard-user-main {
+        padding-right: 1.5rem !important;
+        padding-left: 1.5rem !important;
+    }
+}
+
+.truthguard-splash-lock {
+    overflow: hidden;
+}
+
+.truthguard-app-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483600;
+    display: grid;
+    place-items: center;
+    padding: max(1.25rem, env(safe-area-inset-top, 0px)) max(1.25rem, env(safe-area-inset-right, 0px))
+        max(1.25rem, env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left, 0px));
+    background:
+        linear-gradient(90deg, rgba(37, 99, 235, 0.055) 1px, transparent 1px),
+        linear-gradient(rgba(37, 99, 235, 0.055) 1px, transparent 1px),
+        #f8fbff;
+    background-size: 34px 34px, 34px 34px, auto;
+    color: #0f172a;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 360ms ease, visibility 360ms ease;
+}
+
+.truthguard-app-splash.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.truthguard-app-splash.is-leaving {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.truthguard-app-splash-panel {
+    position: relative;
+    display: grid;
+    width: min(100%, 18rem);
+    justify-items: center;
+    gap: 0.9rem;
+    text-align: center;
+    animation: truthguard-splash-panel-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.truthguard-app-splash-mark {
+    position: relative;
+    display: grid;
+    height: 7.7rem;
+    width: 7.7rem;
+    place-items: center;
+}
+
+.truthguard-app-splash-ring,
+.truthguard-app-splash-ring::before,
+.truthguard-app-splash-ring::after {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+}
+
+.truthguard-app-splash-ring {
+    border: 1px solid rgba(191, 219, 254, 0.92);
+    background:
+        conic-gradient(from 0deg, rgba(37, 99, 235, 0), rgba(37, 99, 235, 0.98), rgba(20, 184, 166, 0.92), rgba(245, 158, 11, 0.58), rgba(37, 99, 235, 0)),
+        rgba(239, 246, 255, 0.88);
+    box-shadow:
+        0 26px 70px rgba(37, 99, 235, 0.18),
+        0 0 0 12px rgba(255, 255, 255, 0.64),
+        inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    animation: truthguard-splash-ring-spin 1.45s linear infinite;
+}
+
+.truthguard-app-splash-ring::before {
+    content: "";
+    inset: 0.32rem;
+    background: #f8fbff;
+}
+
+.truthguard-app-splash-ring::after {
+    content: "";
+    inset: 0.82rem;
+    border: 1px solid rgba(147, 197, 253, 0.74);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.truthguard-app-splash-shield {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    height: 5.65rem;
+    width: 5.65rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: #1d4ed8;
+    font-size: 1rem;
+    font-weight: 900;
+    box-shadow: none;
+    filter: drop-shadow(0 18px 30px rgba(37, 99, 235, 0.2));
+    animation: truthguard-splash-logo-float 1.85s ease-in-out infinite;
+}
+
+.truthguard-app-splash-shield img {
+    height: 5.65rem;
+    width: 5.65rem;
+    object-fit: contain;
+}
+
+.truthguard-app-splash-copy {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.truthguard-app-splash-kicker,
+.truthguard-app-splash-title {
+    margin: 0;
+}
+
+.truthguard-app-splash-kicker {
+    font-size: 1.12rem;
+    font-weight: 900;
+    letter-spacing: 0;
+    color: #0f172a;
+}
+
+.truthguard-app-splash-title {
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.truthguard-app-splash-progress {
+    overflow: hidden;
+    width: min(12rem, 64vw);
+    height: 0.34rem;
+    border-radius: 9999px;
+    background: #dbeafe;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.truthguard-app-splash-progress span {
+    display: block;
+    height: 100%;
+    width: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #14b8a6);
+    transform: translateX(-100%);
+    animation: truthguard-splash-progress 980ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes truthguard-splash-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.65rem) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes truthguard-splash-ring-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes truthguard-splash-logo-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-0.22rem);
+    }
+}
+
+@keyframes truthguard-splash-progress {
+    to {
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 640px) {
+    .truthguard-app-splash-mark {
+        height: 7rem;
+        width: 7rem;
+    }
+
+    .truthguard-app-splash-shield {
+        height: 5.1rem;
+        width: 5.1rem;
+    }
+
+    .truthguard-app-splash-shield img {
+        height: 5.1rem;
+        width: 5.1rem;
+    }
+
+    .truthguard-app-splash-kicker {
+        font-size: 0.98rem;
+    }
+
+    .truthguard-app-splash-title {
+        font-size: 0.64rem;
+    }
+}
+
+.truthguard-pwa-install-button,
+.truthguard-offline-pill {
+    position: fixed;
+    z-index: 2147483000;
+    font-family: inherit;
+    transform: translateZ(0);
+}
+
+.truthguard-pwa-install-button[hidden],
+.truthguard-offline-pill[hidden] {
+    display: none !important;
+}
+
+.truthguard-pwa-install-button {
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    min-height: 2.55rem;
+    border: 1px solid rgba(191, 219, 254, 0.95);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.96);
+    color: #1d4ed8;
+    cursor: pointer;
+    padding: 0 1rem;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 18px 42px rgba(37, 99, 235, 0.2);
+    backdrop-filter: blur(18px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+        background-color 0.2s ease;
+}
+
+.truthguard-pwa-install-button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(147, 197, 253, 0.98);
+    background: #eff6ff;
+    box-shadow: 0 22px 48px rgba(37, 99, 235, 0.24);
+}
+
+.truthguard-pwa-install-button:disabled {
+    cursor: wait;
+    opacity: 0.68;
+}
+
+.truthguard-pwa-install-button:focus-visible {
+    outline: 3px solid rgba(147, 197, 253, 0.95);
+    outline-offset: 3px;
+}
+
+.truthguard-install-guide-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483400;
+    display: grid;
+    place-items: end center;
+    padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+        max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+    background: rgba(15, 23, 42, 0.38);
+    opacity: 0;
+    visibility: hidden;
+    backdrop-filter: blur(12px);
+    transition: opacity 180ms ease, visibility 180ms ease;
+}
+
+.truthguard-install-guide-backdrop.is-visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.truthguard-install-guide-backdrop[hidden] {
+    display: none !important;
+}
+
+.truthguard-install-guide {
+    position: relative;
+    display: grid;
+    width: min(100%, 26rem);
+    gap: 0.9rem;
+    border: 1px solid rgba(191, 219, 254, 0.95);
+    border-radius: 1.25rem;
+    background:
+        linear-gradient(90deg, rgba(37, 99, 235, 0.055) 1px, transparent 1px),
+        linear-gradient(rgba(37, 99, 235, 0.055) 1px, transparent 1px),
+        rgba(255, 255, 255, 0.98);
+    background-size: 28px 28px, 28px 28px, auto;
+    padding: 1rem;
+    color: #0f172a;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+    transform: translateY(1rem) scale(0.98);
+    transition: transform 180ms ease;
+}
+
+.truthguard-install-guide-backdrop.is-visible .truthguard-install-guide {
+    transform: translateY(0) scale(1);
+}
+
+.truthguard-install-guide-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: inline-flex;
+    height: 2rem;
+    width: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.92);
+    color: #64748b;
+}
+
+.truthguard-install-guide-close svg {
+    height: 1rem;
+    width: 1rem;
+}
+
+.truthguard-install-guide-mark {
+    display: inline-flex;
+    height: 3.45rem;
+    width: 3.45rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    filter: drop-shadow(0 14px 24px rgba(37, 99, 235, 0.18));
+}
+
+.truthguard-install-guide-mark img {
+    height: 3.45rem;
+    width: 3.45rem;
+    object-fit: contain;
+}
+
+.truthguard-install-guide-kicker {
+    margin: 0 0 0.2rem;
+    color: #2563eb;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.truthguard-install-guide h2 {
+    margin: 0;
+    padding-right: 2rem;
+    color: #0f172a;
+    font-size: 1.08rem;
+    font-weight: 900;
+    line-height: 1.2;
+}
+
+.truthguard-install-guide-copy,
+.truthguard-install-guide-note {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.55;
+}
+
+.truthguard-install-guide-steps {
+    display: grid;
+    gap: 0.55rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: install-step;
+}
+
+.truthguard-install-guide-steps li {
+    display: grid;
+    grid-template-columns: 1.65rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.65rem;
+    color: #334155;
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.35;
+}
+
+.truthguard-install-guide-steps li::before {
+    counter-increment: install-step;
+    content: counter(install-step);
+    display: inline-flex;
+    height: 1.65rem;
+    width: 1.65rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.55rem;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 900;
+}
+
+.truthguard-install-guide-note {
+    border: 1px solid rgba(191, 219, 254, 0.78);
+    border-radius: 0.85rem;
+    background: rgba(239, 246, 255, 0.72);
+    padding: 0.72rem 0.78rem;
+    color: #475569;
+    font-size: 0.72rem;
+}
+
+.truthguard-install-guide-action {
+    min-height: 2.65rem;
+    border: 0;
+    border-radius: 0.9rem;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 900;
+    box-shadow: 0 16px 32px rgba(37, 99, 235, 0.22);
+}
+
+.truthguard-install-guide-close:focus-visible,
+.truthguard-install-guide-action:focus-visible {
+    outline: 3px solid rgba(147, 197, 253, 0.95);
+    outline-offset: 3px;
+}
+
+.truthguard-offline-pill {
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    max-width: min(22rem, calc(100vw - 2rem));
+    border: 1px solid rgba(251, 191, 36, 0.72);
+    border-radius: 999px;
+    background: rgba(255, 251, 235, 0.96);
+    color: #92400e;
+    padding: 0.72rem 0.95rem;
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.2;
+    box-shadow: 0 18px 42px rgba(146, 64, 14, 0.13);
+    backdrop-filter: blur(18px);
+}
+
+body.truthguard-fact-check-route .truthguard-pwa-install-button {
+    display: none !important;
+}
+
+@media (max-width: 640px) {
+    .truthguard-pwa-install-button {
+        right: 1rem;
+        bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+        left: 1rem;
+        min-height: 2.35rem;
+        padding: 0 0.85rem;
+        font-size: 0.72rem;
+    }
+
+    .truthguard-offline-pill {
+        top: max(0.65rem, env(safe-area-inset-top, 0px));
+        bottom: auto;
+        left: 50%;
+        width: max-content;
+        max-width: calc(100vw - 2rem);
+        padding: 0.56rem 0.78rem;
+        font-size: 0.66rem;
+        text-align: center;
+        transform: translateX(-50%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .truthguard-pwa-install-button {
+        transition: none !important;
+    }
+
+    .truthguard-app-splash,
+    .truthguard-app-splash-panel,
+    .truthguard-app-splash-ring,
+    .truthguard-app-splash-shield,
+    .truthguard-app-splash-progress span {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .truthguard-app-splash-progress span {
+        transform: translateX(0) !important;
+    }
+
+    .truthguard-mobile-agent-mark img,
+    .truthguard-mobile-tabbar,
+    .truthguard-mobile-tabbar::after,
+    .truthguard-mobile-tab-primary,
+    .truthguard-mobile-tab.is-active .truthguard-mobile-tab-icon svg,
+    .truthguard-mobile-tab-primary.is-active .truthguard-mobile-tab-icon svg,
+    .truthguard-mobile-tab-primary:hover .truthguard-mobile-tab-icon svg {
+        animation: none !important;
+    }
+
+    .truthguard-mobile-tabbar::after,
+    .truthguard-mobile-tab,
+    .truthguard-mobile-tab::before,
+    .truthguard-mobile-tab::after,
+    .truthguard-mobile-tab-icon {
+        transition: none !important;
+    }
+
+    .truthguard-mobile-page {
+        animation: none !important;
+    }
+
 }
