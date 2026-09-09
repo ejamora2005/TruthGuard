@@ -2,7 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         @php
@@ -122,6 +122,11 @@
             $rawPageTitle = trim($__env->yieldContent('page_title', ''));
             $rawBrowserTitle = trim($__env->yieldContent('title', ''));
             $truthGuardPageTitle = $formatTruthGuardPageTitle($rawPageTitle !== '' ? $rawPageTitle : $rawBrowserTitle, 'Workspace');
+            $mobileTopbarTitle = request()->routeIs('dashboard') ? 'TruthGuard' : trim((string) strip_tags($rawPageTitle !== '' ? $rawPageTitle : $rawBrowserTitle));
+
+            if ($mobileTopbarTitle === '') {
+                $mobileTopbarTitle = 'Workspace';
+            }
         @endphp
 
         <title>{{ $truthGuardPageTitle }}</title>
@@ -482,6 +487,10 @@
                 overflow: visible;
                 height: 3.12rem;
                 width: 3.12rem;
+                min-width: 3.12rem;
+                flex: 0 0 3.12rem;
+                aspect-ratio: 1 / 1;
+                border-radius: 9999px;
                 border: 1px solid rgba(147, 197, 253, 0.92);
                 background:
                     radial-gradient(circle at 30% 12%, rgba(255, 255, 255, 0.98), transparent 42%),
@@ -526,10 +535,31 @@
             .truthguard-profile-button > span {
                 position: relative;
                 z-index: 1;
+                display: inline-flex;
+                flex: 0 0 2.25rem;
+                aspect-ratio: 1 / 1;
+                border-radius: 9999px !important;
                 border: 1px solid rgba(255, 255, 255, 0.9);
+                object-fit: cover;
                 box-shadow:
                     0 10px 20px rgba(15, 23, 42, 0.16),
                     inset 0 1px 0 rgba(255, 255, 255, 0.86);
+            }
+
+            .truthguard-topbar .truthguard-profile-button {
+                padding: 3px;
+                box-sizing: border-box;
+            }
+
+            .truthguard-topbar .truthguard-profile-button > :is(img, span) {
+                width: 100% !important;
+                height: 100% !important;
+                min-width: 0 !important;
+                flex: none !important;
+                box-sizing: border-box;
+                border-radius: 50% !important;
+                clip-path: circle(50%);
+                object-fit: cover;
             }
 
             .truthguard-profile-button:hover,
@@ -596,10 +626,8 @@
             .truthguard-profile-capsule {
                 position: relative;
                 overflow: hidden;
-                background:
-                    radial-gradient(circle at 92% 0%, rgba(56, 189, 248, 0.3), transparent 34%),
-                    radial-gradient(circle at 16% 0%, rgba(255, 255, 255, 0.18), transparent 36%),
-                    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(29, 78, 216, 0.92));
+                background: linear-gradient(120deg, #eff6ff, #ffffff);
+                border-color: #dbeafe;
                 box-shadow:
                     0 18px 38px rgba(15, 23, 42, 0.16),
                     inset 0 1px 0 rgba(255, 255, 255, 0.2),
@@ -1078,7 +1106,7 @@
                         @endif
 
                         <div class="min-w-0 flex-1">
-                            <h1 class="sr-only">{{ $rawPageTitle !== '' ? $rawPageTitle : $rawBrowserTitle }}</h1>
+                            <h1 class="truthguard-mobile-page-title">{{ $mobileTopbarTitle }}</h1>
                         </div>
 
                         <div class="hidden items-center gap-3 xl:flex">
@@ -1176,14 +1204,14 @@
                                                 <span class="truthguard-profile-menu-status-dot" aria-label="Active account"></span>
                                             </span>
                                             <div class="min-w-0">
-                                                <p class="truncate text-sm font-black text-white" x-text="profileName"></p>
-                                                <p class="mt-1 truncate text-xs font-semibold text-blue-100/80" x-text="profileEmail"></p>
+                                                <p class="truncate text-sm font-black text-slate-800" x-text="profileName"></p>
+                                                <p class="mt-1 truncate text-xs font-semibold text-slate-500" x-text="profileEmail"></p>
                                             </div>
                                         </div>
 
                                         <div x-show="usesSampleProfile" x-cloak class="relative z-10 mt-3 flex flex-wrap items-center gap-2">
                                             <span
-                                                class="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white ring-1 ring-white/15"
+                                                class="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ring-1 ring-blue-100"
                                             >
                                                 Starter Profile
                                             </span>
@@ -1265,7 +1293,7 @@
                         <div class="truthguard-user-footer-inner">
                             <p class="truthguard-user-footer-copy">&copy; {{ now()->year }} TruthGuard. AI-assisted fact checking.</p>
                             <nav class="truthguard-user-footer-links" aria-label="Footer links">
-                                <a href="https://www.facebook.com/" target="_blank" rel="noreferrer" class="truthguard-user-footer-link">
+                                <a href="https://www.facebook.com/profile.php?id=61593664787606" target="_blank" rel="noreferrer" class="truthguard-user-footer-link">
                                     <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                                         <path d="M13.5 21v-7.2h2.4l.45-3h-2.85V8.85c0-.82.4-1.62 1.69-1.62h1.3V4.68s-1.18-.2-2.31-.2c-2.35 0-3.88 1.42-3.88 4v2.32H7.7v3h2.6V21h3.2Z" />
                                     </svg>

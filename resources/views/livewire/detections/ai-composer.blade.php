@@ -2877,6 +2877,72 @@ new class extends Component
             display: none;
         }
 
+        @media (max-width: 639px) {
+            .truthguard-verify-overlay {
+                inset: 0 !important;
+                align-items: center;
+                padding: calc(1rem + env(safe-area-inset-top, 0px)) 0.85rem calc(1.15rem + env(safe-area-inset-bottom, 0px));
+            }
+
+            .truthguard-verify-backdrop {
+                background:
+                    radial-gradient(circle at 20% 14%, rgba(125, 211, 252, 0.34), transparent 32%),
+                    radial-gradient(circle at 82% 74%, rgba(196, 181, 253, 0.24), transparent 38%),
+                    linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(239, 246, 255, 0.98) 58%, rgba(245, 243, 255, 0.97) 100%);
+                backdrop-filter: blur(16px) saturate(1.08);
+                -webkit-backdrop-filter: blur(16px) saturate(1.08);
+            }
+
+            .truthguard-verify-social-field {
+                opacity: 0.42;
+            }
+
+            .truthguard-verify-panel {
+                width: min(21.25rem, calc(100vw - 1.7rem));
+                min-height: auto;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                padding: 0;
+                box-shadow: none;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+            }
+
+            .truthguard-verify-loader {
+                width: min(18.4rem, 100%);
+                height: 14.8rem;
+            }
+
+            .truthguard-verify-panel .mt-5 {
+                margin-top: 0.55rem !important;
+                gap: 0.58rem;
+            }
+
+            .truthguard-verify-title {
+                max-width: min(17.5rem, 100%);
+                font-size: 0.9rem;
+                font-weight: 900;
+                line-height: 1.28;
+            }
+
+            .truthguard-verify-copy {
+                display: block;
+                max-width: min(18rem, 100%);
+                text-align: center;
+                color: #64748b;
+                font-size: 0.72rem;
+                font-weight: 700;
+                line-height: 1.45;
+            }
+
+            .truthguard-verify-progress {
+                width: min(13.5rem, 72vw);
+                height: 0.34rem;
+                opacity: 1;
+            }
+        }
+
         @media (min-width: 640px) {
             .truthguard-verify-panel {
                 width: min(36rem, calc(100vw - 2rem));
@@ -4826,7 +4892,7 @@ new class extends Component
             x-show="submitting"
             x-cloak
             x-transition.opacity.duration.200ms
-            class="fixed inset-0 flex items-center justify-center overflow-hidden px-4 py-6"
+            class="truthguard-verify-overlay fixed inset-0 flex items-center justify-center overflow-hidden px-4 py-6"
             style="z-index: 2147483646;"
         >
             <div class="truthguard-verify-backdrop absolute inset-0"></div>
@@ -4956,6 +5022,7 @@ new class extends Component
 
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
+                    <p class="truthguard-verify-copy" x-text="analyzeCopy()"></p>
                     <div class="truthguard-verify-progress" aria-hidden="true"></div>
                 </div>
             </div>

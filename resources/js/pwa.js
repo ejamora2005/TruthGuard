@@ -1,4 +1,9 @@
 const INSTALL_DISMISSED_KEY = 'truthguard:pwa-install-dismissed';
+const INSTALLED_KEY = 'truthguard:pwa-installed';
+let knownInstalled = false;
+try {
+    knownInstalled = localStorage.getItem(INSTALLED_KEY) === '1';
+} catch { /* Storage may be unavailable in private browsing. */ }
 const INSTALL_UNAVAILABLE_MESSAGE =
     'Install prompt needs HTTPS. You can still use your browser menu to add TruthGuard to your home screen.';
 
@@ -8,6 +13,25 @@ const isStandalone = () =>
     window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
 const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
+
+const canShowInstall = () => isMobileViewport() && !isStandalone() && !knownInstalled;
+
+const rememberInstalled = (installed) => {
+    knownInstalled = installed;
+    try {
+        if (installed) localStorage.setItem(INSTALLED_KEY, '1');
+        else localStorage.removeItem(INSTALLED_KEY);
+    } catch { /* Keep the in-memory state when storage is blocked. */ }
+};
+
+const syncInstallVisibility = () => {
+    if (isStandalone()) rememberInstalled(true);
+    const visible = canShowInstall();
+    document.documentElement.toggleAttribute('data-pwa-install-available', visible);
+    if (!visible) {
+        document.getElementById('truthguard-install-guide')?.remove();
+    }
+};
 
 const shouldShowLaunchSplash = () => isStandalone() && isMobileViewport();
 
@@ -46,6 +70,7 @@ const setInstallHelp = (message = '') => {
 };
 
 const setInstallControls = ({ label = 'Install App', disabled = false, help = '' } = {}) => {
+    syncInstallVisibility();
     getInstallButtons().forEach((button) => {
         setButtonLabel(button, label);
         button.disabled = disabled;
@@ -132,6 +157,7 @@ const createInstallGuide = () => {
 };
 
 const showInstallGuide = () => {
+    if (!canShowInstall()) return;
     const guide = createInstallGuide();
     const steps = installInstructionSteps();
     const stepsList = guide.querySelector('.truthguard-install-guide-steps');
@@ -183,12 +209,8 @@ const hideFloatingInstallButton = () => {
 const handleInstallClick = async (event) => {
     event.preventDefault();
 
-    if (isStandalone()) {
-        setInstallControls({
-            label: 'App Installed',
-            disabled: true,
-            help: 'TruthGuard is already running as an installed app.'
-        });
+    if (!canShowInstall()) {
+        syncInstallVisibility();
         hideFloatingInstallButton();
         return;
     }
@@ -365,11 +387,13 @@ if ('serviceWorker' in navigator) {
 let deferredInstallPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
     if (isStandalone()) {
         return;
     }
 
-    event.preventDefault();
+    // A fresh native prompt also allows installation again after an uninstall.
+    rememberInstalled(false);
     deferredInstallPrompt = event;
 
     onReady(() => {
@@ -387,14 +411,21 @@ window.addEventListener('beforeinstallprompt', (event) => {
 });
 
 window.addEventListener('appinstalled', () => {
+    rememberInstalled(true);
     deferredInstallPrompt = null;
     sessionStorage.removeItem(INSTALL_DISMISSED_KEY);
     hideFloatingInstallButton();
-    setInstallControls({
-        label: 'App Installed',
-        disabled: true,
-        help: 'Installation complete. You can launch TruthGuard from your apps list.'
-    });
+    setInstallControls({ disabled: true });
+});
+
+window.matchMedia('(max-width: 767px)').addEventListener('change', syncInstallVisibility);
+window.matchMedia('(display-mode: standalone)').addEventListener('change', syncInstallVisibility);
+window.addEventListener('pageshow', syncInstallVisibility);
+window.addEventListener('storage', (event) => {
+    if (event.key === INSTALLED_KEY) {
+        knownInstalled = event.newValue === '1';
+        syncInstallVisibility();
+    }
 });
 
 window.addEventListener('offline', () => updateOfflineState(true));
@@ -410,15 +441,7 @@ onReady(() => updateOfflineState(!navigator.onLine));
 onReady(() => {
     bindInstallControls();
 
-    if (isStandalone()) {
-        setInstallControls({
-            label: 'App Installed',
-            disabled: true,
-            help: 'TruthGuard is already running as an installed app.'
-        });
-    } else {
-        setInstallControls({ label: 'Install App', disabled: false });
-    }
+    setInstallControls();
 
     if ('MutationObserver' in window) {
         new MutationObserver(() => bindInstallControls()).observe(document.body, {

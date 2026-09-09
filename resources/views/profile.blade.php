@@ -14,6 +14,12 @@
         'forest' => 'Forest Green',
         'sunset' => 'Sunset Amber',
     ];
+    $themeVars = [
+        'ocean' => '--color-brand-50:#eff6ff;--color-brand-100:#dbeafe;--color-brand-300:#93c5fd;--color-brand-400:#60a5fa;--color-brand-500:#2563eb;--color-brand-600:#1d4ed8;',
+        'forest' => '--color-brand-50:#ecfdf5;--color-brand-100:#d1fae5;--color-brand-300:#6ee7b7;--color-brand-400:#34d399;--color-brand-500:#10b981;--color-brand-600:#059669;',
+        'sunset' => '--color-brand-50:#fff7ed;--color-brand-100:#ffedd5;--color-brand-300:#fdba74;--color-brand-400:#fb923c;--color-brand-500:#f97316;--color-brand-600:#ea580c;',
+    ];
+    $activeThemeVars = $themeVars[$themeKey] ?? $themeVars['ocean'];
     $roleLabel = $user?->isAdmin() ? 'Administrator' : 'User';
     $statusLabel = ucfirst((string) ($user?->subscription_status ?: 'active'));
     $emailVerified = filled($user?->email_verified_at);
@@ -98,6 +104,7 @@
             profileThemeKey: @js($themeKey),
             profileCompletion: @js($profileCompletion),
             sectionQuery: '',
+            returnFocus: null,
             sections: @js(collect($settingsSections)->mapWithKeys(fn ($section) => [$section['id'] => [
                 'label' => $section['label'],
                 'description' => $section['description'],
@@ -106,6 +113,7 @@
             init() {
                 if (this.settingsModalOpen) {
                     document.body.classList.add('truthguard-settings-modal-open');
+                    this.$nextTick(() => this.$refs.settingsDialog?.focus());
                 }
 
                 window.addEventListener('truthguard-profile-updated', (event) => {
@@ -137,8 +145,13 @@
                 const url = new URL(window.location.href);
                 url.searchParams.set('section', section);
                 window.history.replaceState({}, '', url.toString());
+                this.$nextTick(() => {
+                    this.$refs.settingsBody?.scrollTo({ top: 0 });
+                    this.$refs.settingsDialog?.querySelector('.truthguard-settings-modal-tab.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+                });
             },
             openSettings(section) {
+                this.returnFocus = document.activeElement;
                 this.setSection(section);
                 this.settingsModalOpen = true;
                 document.body.classList.add('truthguard-settings-modal-open');
@@ -152,6 +165,24 @@
                 const url = new URL(window.location.href);
                 url.searchParams.delete('section');
                 window.history.replaceState({}, '', url.toString());
+                this.$nextTick(() => this.returnFocus?.isConnected && this.returnFocus.focus({ preventScroll: true }));
+            },
+            trapSettingsFocus(event) {
+                const dialog = this.$refs.settingsDialog;
+                const controls = Array.from(dialog.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'))
+                    .filter(el => !el.disabled && el.tabIndex >= 0 && el.getClientRects().length);
+                const first = controls[0];
+                const last = controls[controls.length - 1];
+                if (!first) {
+                    event.preventDefault();
+                    dialog.focus();
+                } else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
             },
             submitActiveForm() {
                 const forms = {
@@ -181,16 +212,33 @@
                 return query === '' || text.toLowerCase().includes(query);
             },
         }"
-        @keydown.escape.window="if (settingsModalOpen) closeSettingsModal()"
+        style="{{ $activeThemeVars }}"
+        @keydown.escape.window="if (settingsModalOpen && !document.querySelector('.truthguard-account-delete-dialog')?.getClientRects().length) closeSettingsModal()"
     >
         <style>
             .truthguard-settings-page {
-                --tg-settings-ink: #071426;
+                --tg-settings-ink: #1e3a5f;
                 --tg-settings-muted: #64748b;
                 --tg-settings-line: rgba(148, 163, 184, 0.2);
-                --tg-settings-blue: #2563eb;
+                --tg-settings-blue: var(--color-brand-500, #2563eb);
+                --tg-settings-blue-600: var(--color-brand-600, #1d4ed8);
                 --tg-settings-cyan: #06b6d4;
+                --tg-settings-soft: var(--color-brand-50, #eff6ff);
+                --tg-settings-soft-strong: var(--color-brand-100, #dbeafe);
                 position: relative;
+                font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                color: var(--tg-settings-ink);
+            }
+
+            .truthguard-settings-modal {
+                --tg-settings-ink: #1e3a5f;
+                --tg-settings-muted: #64748b;
+                --tg-settings-line: rgba(148, 163, 184, 0.2);
+                --tg-settings-blue: var(--color-brand-500, #2563eb);
+                --tg-settings-blue-600: var(--color-brand-600, #1d4ed8);
+                --tg-settings-cyan: #06b6d4;
+                --tg-settings-soft: var(--color-brand-50, #eff6ff);
+                --tg-settings-soft-strong: var(--color-brand-100, #dbeafe);
                 font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                 color: var(--tg-settings-ink);
             }
@@ -210,13 +258,13 @@
             .truthguard-settings-hero {
                 position: relative;
                 isolation: isolate;
-                border-color: rgba(51, 65, 85, 0.82) !important;
+                border-color: rgba(147, 197, 253, 0.78) !important;
                 background:
-                    radial-gradient(circle at 82% 8%, rgba(56, 189, 248, 0.25), transparent 26%),
-                    radial-gradient(circle at 12% 92%, rgba(37, 99, 235, 0.3), transparent 30%),
-                    linear-gradient(135deg, #071426 0%, #0b1d36 54%, #102b4c 100%) !important;
-                color: white;
-                box-shadow: 0 30px 80px rgba(2, 8, 23, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+                    radial-gradient(circle at 82% 8%, rgba(56, 189, 248, 0.18), transparent 26%),
+                    radial-gradient(circle at 12% 92%, rgba(37, 99, 235, 0.12), transparent 30%),
+                    linear-gradient(135deg, #ffffff 0%, #f8fbff 48%, var(--tg-settings-soft) 100%) !important;
+                color: var(--tg-settings-ink);
+                box-shadow: 0 24px 58px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
                 backdrop-filter: none !important;
             }
 
@@ -226,11 +274,11 @@
                 inset: 0;
                 z-index: -1;
                 background-image:
-                    linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+                    linear-gradient(rgba(37, 99, 235, 0.055) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(37, 99, 235, 0.055) 1px, transparent 1px);
                 background-size: 28px 28px;
-                mask-image: linear-gradient(90deg, #000, transparent 92%);
-                -webkit-mask-image: linear-gradient(90deg, #000, transparent 92%);
+                mask-image: linear-gradient(90deg, rgb(255, 255, 255), transparent 92%);
+                -webkit-mask-image: linear-gradient(90deg, rgb(255, 255, 255), transparent 92%);
                 pointer-events: none;
             }
 
@@ -242,9 +290,9 @@
                 z-index: -1;
                 width: 15rem;
                 height: 15rem;
-                border: 1px solid rgba(125, 211, 252, 0.13);
+                border: 1px solid rgba(147, 197, 253, 0.42);
                 border-radius: 9999px;
-                box-shadow: 0 0 0 2.4rem rgba(125, 211, 252, 0.025), 0 0 0 5rem rgba(99, 102, 241, 0.02);
+                box-shadow: 0 0 0 2.4rem rgba(219, 234, 254, 0.28), 0 0 0 5rem rgba(239, 246, 255, 0.55);
                 pointer-events: none;
             }
 
@@ -252,16 +300,16 @@
                 display: inline-flex;
                 align-items: center;
                 gap: 0.55rem;
-                border: 1px solid rgba(125, 211, 252, 0.24);
+                border: 1px solid rgba(147, 197, 253, 0.82);
                 border-radius: 9999px;
-                background: rgba(15, 23, 42, 0.44);
+                background: rgba(239, 246, 255, 0.86);
                 padding: 0.42rem 0.75rem;
-                color: #bae6fd;
+                color: var(--tg-settings-blue-600);
                 font-size: 0.69rem;
                 font-weight: 800;
                 letter-spacing: 0.12em;
                 text-transform: uppercase;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
             }
 
             .truthguard-settings-eyebrow > span:first-child {
@@ -279,10 +327,10 @@
                 height: 5.5rem;
                 flex: 0 0 5.5rem;
                 place-items: center;
-                border: 1px solid rgba(125, 211, 252, 0.22);
+                border: 1px solid rgba(147, 197, 253, 0.78);
                 border-radius: 1.65rem;
-                background: linear-gradient(145deg, rgba(255, 255, 255, 0.15), rgba(125, 211, 252, 0.05));
-                box-shadow: 0 18px 42px rgba(2, 8, 23, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+                background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(219, 234, 254, 0.7));
+                box-shadow: 0 18px 42px rgba(37, 99, 235, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.94);
             }
 
             .truthguard-settings-avatar-shell img {
@@ -290,7 +338,7 @@
                 height: 4.55rem !important;
                 border-radius: 1.25rem !important;
                 box-shadow: none !important;
-                --tw-ring-shadow: 0 0 0 3px rgba(255, 255, 255, 0.12) !important;
+                --tw-ring-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92) !important;
             }
 
             .truthguard-settings-avatar-shell .truthguard-settings-presence {
@@ -299,46 +347,47 @@
                 bottom: -0.15rem;
                 width: 1.2rem;
                 height: 1.2rem;
-                border: 4px solid #0b1d36;
+                border: 4px solid #ffffff;
                 border-radius: 9999px;
                 background: #34d399;
                 box-shadow: 0 0 16px rgba(52, 211, 153, 0.6);
             }
 
             .truthguard-settings-hero h1 {
-                color: #fff !important;
+                color: var(--tg-settings-ink) !important;
                 font-size: clamp(2rem, 3vw, 3rem) !important;
-                letter-spacing: -0.045em !important;
+                letter-spacing: 0 !important;
                 line-height: 1.02;
             }
 
             .truthguard-settings-hero-copy {
-                color: #a9bdd5 !important;
+                color: #64748b !important;
             }
 
             .truthguard-settings-status-chip {
                 display: inline-flex;
                 align-items: center;
                 gap: 0.4rem;
-                border: 1px solid rgba(148, 163, 184, 0.16) !important;
+                border: 1px solid rgba(191, 219, 254, 0.82) !important;
                 border-radius: 9999px;
-                background: rgba(15, 23, 42, 0.45) !important;
+                background: rgba(255, 255, 255, 0.88) !important;
                 padding: 0.42rem 0.72rem;
-                color: #dbeafe !important;
+                color: #475569 !important;
                 font-size: 0.7rem;
                 font-weight: 750;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
             }
 
             .truthguard-settings-status-chip.is-success {
-                border-color: rgba(52, 211, 153, 0.22) !important;
-                color: #a7f3d0 !important;
+                border-color: rgba(52, 211, 153, 0.34) !important;
+                background: rgba(236, 253, 245, 0.92) !important;
+                color: #047857 !important;
             }
 
             .truthguard-settings-hero-summary {
-                border-color: rgba(125, 211, 252, 0.18) !important;
-                background: linear-gradient(145deg, rgba(255, 255, 255, 0.11), rgba(15, 23, 42, 0.24)) !important;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 22px 50px rgba(2, 8, 23, 0.2) !important;
+                border-color: rgba(191, 219, 254, 0.86) !important;
+                background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.84)) !important;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 22px 50px rgba(37, 99, 235, 0.1) !important;
                 backdrop-filter: blur(18px) !important;
             }
 
@@ -350,7 +399,7 @@
                 flex: 0 0 5.25rem;
                 place-items: center;
                 border-radius: 9999px;
-                background: conic-gradient(#22d3ee calc(var(--completion) * 1%), rgba(148, 163, 184, 0.16) 0);
+                background: conic-gradient(var(--tg-settings-blue) calc(var(--completion) * 1%), rgba(191, 219, 254, 0.8) 0);
                 box-shadow: 0 0 32px rgba(34, 211, 238, 0.12);
             }
 
@@ -360,8 +409,8 @@
                 height: 4.25rem;
                 place-items: center;
                 border-radius: inherit;
-                background: #0c1e36;
-                color: #fff;
+                background: #ffffff;
+                color: var(--tg-settings-blue-600);
                 font-size: 1.2rem;
                 font-weight: 900;
             }
@@ -374,18 +423,18 @@
             }
 
             .truthguard-settings-save-button:disabled {
-                border-color: rgba(148, 163, 184, 0.14);
-                background: rgba(51, 65, 85, 0.72) !important;
-                color: #94a3b8 !important;
+                border-color: rgba(191, 219, 254, 0.82);
+                background: #e0f2fe !important;
+                color: #64748b !important;
                 box-shadow: none !important;
             }
 
             .truthguard-settings-metrics > div {
                 position: relative;
                 overflow: hidden;
-                border-color: rgba(148, 163, 184, 0.13) !important;
-                background: rgba(15, 23, 42, 0.42) !important;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+                border-color: rgba(191, 219, 254, 0.74) !important;
+                background: rgba(255, 255, 255, 0.82) !important;
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
             }
 
             .truthguard-settings-metrics > div::after {
@@ -400,18 +449,18 @@
             }
 
             .truthguard-settings-metrics p:first-child {
-                color: #7188a3 !important;
+                color: #64748b !important;
             }
 
             .truthguard-settings-metrics p:last-child {
-                color: #e8f2ff !important;
+                color: var(--tg-settings-ink) !important;
             }
 
             .truthguard-settings-rail,
             .truthguard-settings-panel {
                 border-color: rgba(203, 213, 225, 0.72) !important;
                 background: rgba(255, 255, 255, 0.94) !important;
-                box-shadow: 0 24px 60px rgba(15, 23, 42, 0.075), inset 0 1px 0 #fff !important;
+                box-shadow: 0 24px 60px rgba(37, 99, 235, 0.075), inset 0 1px 0 #fff !important;
                 backdrop-filter: blur(22px) !important;
             }
 
@@ -423,7 +472,7 @@
             .truthguard-settings-search {
                 border-color: rgba(191, 219, 254, 0.72) !important;
                 background: #fff !important;
-                box-shadow: 0 8px 20px rgba(15, 23, 42, 0.045) !important;
+                box-shadow: 0 8px 20px rgba(37, 99, 235, 0.055) !important;
             }
 
             .truthguard-settings-nav-item {
@@ -467,7 +516,7 @@
                 border-color: rgba(203, 213, 225, 0.74) !important;
                 border-radius: 1.35rem !important;
                 background-color: rgba(255, 255, 255, 0.98) !important;
-                box-shadow: 0 16px 38px rgba(15, 23, 42, 0.055) !important;
+                box-shadow: 0 16px 38px rgba(37, 99, 235, 0.055) !important;
             }
 
             .truthguard-settings-panel input:not([type="hidden"]),
@@ -476,6 +525,7 @@
                 border-radius: 0.9rem !important;
             }
 
+            body.truthguard-settings-modal-open,
             body.truthguard-settings-modal-open .truthguard-user-content-column {
                 overflow: hidden !important;
             }
@@ -487,7 +537,7 @@
                     radial-gradient(circle at 8% 0%, rgba(186, 230, 253, 0.2), transparent 30%),
                     linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
                 padding: 1.25rem;
-                box-shadow: 0 22px 58px rgba(15, 23, 42, 0.065), inset 0 1px 0 #fff;
+                box-shadow: 0 22px 58px rgba(37, 99, 235, 0.065), inset 0 1px 0 #fff;
             }
 
             .truthguard-settings-launch-card {
@@ -500,7 +550,7 @@
                 background: rgba(255, 255, 255, 0.94);
                 padding: 1.15rem;
                 text-align: left;
-                box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045), inset 0 1px 0 #fff;
+                box-shadow: 0 12px 30px rgba(37, 99, 235, 0.045), inset 0 1px 0 #fff;
                 transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
             }
 
@@ -535,8 +585,13 @@
             .truthguard-settings-modal {
                 position: fixed;
                 inset: 0;
+                z-index: 2147483400;
                 display: grid;
                 place-items: center;
+                width: 100%;
+                height: 100vh;
+                height: 100dvh;
+                overflow: hidden;
                 padding: max(1rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
                     max(1rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
             }
@@ -545,27 +600,109 @@
                 position: absolute;
                 inset: 0;
                 border: 0;
-                background: rgba(7, 20, 38, 0.58);
-                backdrop-filter: blur(12px);
+                background: rgba(15, 23, 42, 0.38);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
             }
 
             .truthguard-settings-modal-dialog {
                 position: relative;
                 display: flex;
                 width: min(70rem, calc(100vw - 2rem));
-                max-height: calc(100dvh - 2rem);
+                height: min(50rem, calc(100dvh - 2rem));
+                max-height: 100%;
+                min-width: 0;
                 flex-direction: column;
                 overflow: hidden;
-                border: 1px solid rgba(191, 219, 254, 0.72);
-                border-radius: 1.75rem;
-                background: #f8fafc;
-                box-shadow: 0 36px 100px rgba(2, 8, 23, 0.34), inset 0 1px 0 #fff;
+                border: 1px solid rgba(147, 197, 253, 0.9);
+                border-radius: 1.5rem;
+                background:
+                    linear-gradient(180deg, #ffffff 0%, #f8fbff 58%, var(--tg-settings-soft) 100%);
+                color: var(--tg-settings-ink);
+                box-shadow: 0 34px 88px rgba(37, 99, 235, 0.18), inset 0 1px 0 #ffffff;
+                animation: truthguard-settings-dialog-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            }
+
+            @keyframes truthguard-settings-dialog-enter {
+                from { opacity: 0; transform: translateY(12px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .truthguard-settings-modal-dialog {
+                    animation: none;
+                }
+
+                .truthguard-settings-modal,
+                .truthguard-settings-modal * {
+                    transition-duration: 0ms !important;
+                    scroll-behavior: auto !important;
+                }
             }
 
             .truthguard-settings-modal-header {
-                background:
-                    radial-gradient(circle at 92% 0%, rgba(56, 189, 248, 0.18), transparent 30%),
-                    linear-gradient(135deg, #071426, #102b4c);
+                background: linear-gradient(120deg, #ffffff, #f0f7ff);
+                border-bottom: 1px solid rgba(191, 219, 254, 0.84);
+                color: var(--tg-settings-ink);
+            }
+
+            .truthguard-settings-modal-mark,
+            .truthguard-settings-modal-close,
+            .truthguard-settings-modal-tab {
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+            }
+
+            .truthguard-settings-modal-mark {
+                border-color: rgba(147, 197, 253, 0.78) !important;
+                background: rgba(239, 246, 255, 0.88) !important;
+                color: var(--tg-settings-blue-600) !important;
+            }
+
+            .truthguard-settings-modal-close {
+                border-color: rgba(191, 219, 254, 0.86) !important;
+                background: rgba(255, 255, 255, 0.9) !important;
+                color: #64748b !important;
+            }
+
+            .truthguard-settings-modal-close:hover {
+                background: var(--tg-settings-soft) !important;
+                color: var(--tg-settings-blue-600) !important;
+            }
+
+            .truthguard-settings-modal-kicker {
+                color: var(--tg-settings-blue-600) !important;
+            }
+
+            .truthguard-settings-modal-title {
+                color: var(--tg-settings-ink) !important;
+                white-space: normal;
+                overflow-wrap: anywhere;
+                line-height: 1.3;
+                letter-spacing: 0;
+            }
+
+            .truthguard-settings-modal-subtitle {
+                color: #64748b !important;
+            }
+
+            .truthguard-settings-modal-tab {
+                min-height: 2.75rem;
+                scroll-snap-align: start;
+                border-color: rgba(191, 219, 254, 0.82) !important;
+                background: rgba(255, 255, 255, 0.82) !important;
+                color: #475569 !important;
+            }
+
+            .truthguard-settings-modal-tab:hover {
+                background: var(--tg-settings-soft) !important;
+                color: var(--tg-settings-blue-600) !important;
+            }
+
+            .truthguard-settings-modal-tab.is-active {
+                border-color: rgba(96, 165, 250, 0.82) !important;
+                background: linear-gradient(135deg, var(--tg-settings-soft), #ffffff) !important;
+                color: var(--tg-settings-blue-600) !important;
+                box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12), inset 0 1px 0 #ffffff;
             }
 
             .truthguard-settings-modal-nav {
@@ -578,9 +715,38 @@
 
             .truthguard-settings-modal-body {
                 min-height: 0;
+                flex: 1;
+                background: #f6f8fc;
+                scrollbar-gutter: stable;
                 overflow-x: hidden;
                 overflow-y: auto;
                 overscroll-behavior: contain;
+            }
+
+            .truthguard-settings-modal :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+                min-width: 0;
+                max-width: 100%;
+                font-size: 1rem;
+            }
+
+            .truthguard-settings-modal :is(button, a):focus-visible {
+                outline: 2px solid var(--tg-settings-blue);
+                outline-offset: 2px;
+            }
+
+            .truthguard-settings-modal-close {
+                width: 2.75rem;
+                height: 2.75rem;
+                border-radius: 0.75rem;
+            }
+
+            .truthguard-settings-modal-body :is(section, form, fieldset, div) {
+                min-width: 0;
+            }
+
+            .truthguard-settings-modal-body .truthguard-settings-panel section form {
+                border-color: #e2e8f0;
+                box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
             }
 
             .truthguard-settings-modal-body .truthguard-settings-panel {
@@ -628,6 +794,14 @@
                     font-size: 1.35rem !important;
                 }
 
+                .truthguard-settings-eyebrow > span:nth-child(n+3) {
+                    display: none;
+                }
+
+                .truthguard-settings-eyebrow > span:nth-child(2) {
+                    white-space: nowrap;
+                }
+
                 .truthguard-settings-hero-copy,
                 .truthguard-settings-hero-summary,
                 .truthguard-settings-metrics {
@@ -655,24 +829,89 @@
                     padding: 0.8rem;
                 }
 
-                .truthguard-settings-launch-card {
-                    min-height: 9.5rem;
-                    border-radius: 1rem;
-                    padding: 0.9rem;
+                body:not(.truthguard-admin-app) .truthguard-settings-launch-card {
+                    display: grid;
+                    grid-template-columns: 2.75rem minmax(0, 1fr);
+                    column-gap: 0.85rem;
+                    min-height: 0;
+                    text-align: left;
+                    border-radius: 0.875rem !important;
+                    box-shadow: 0 4px 16px rgba(30, 64, 175, 0.045);
+                    animation: truthguard-mobile-page-enter 360ms ease both;
+                }
+
+                .truthguard-settings-launch-card > span:first-child {
+                    grid-column: 1;
+                    grid-row: 1 / 4;
+                }
+
+                .truthguard-settings-launch-card > span:first-child > span:last-child {
+                    display: none;
+                }
+
+                .truthguard-settings-launch-card > span:not(:first-child) {
+                    grid-column: 2;
+                    min-width: 0;
+                    margin-top: 0;
+                }
+
+                .truthguard-settings-launch-card > span:nth-child(2) {
+                    font-size: 0.875rem;
+                    line-height: 1.4;
+                }
+
+                .truthguard-settings-launch-card > span:last-child {
+                    padding-top: 0.5rem;
+                }
+
+                .truthguard-settings-launch-card > span:last-child > span:last-child {
+                    color: #64748b;
+                }
+
+                .truthguard-settings-overview > div:first-child > div > p:last-child {
+                    display: none;
+                }
+
+                .truthguard-settings-overview h2 {
+                    font-size: 1rem !important;
+                    letter-spacing: 0;
+                }
+
+                .truthguard-settings-modal-dialog {
+                    padding-bottom: env(safe-area-inset-bottom, 0px);
                 }
 
                 .truthguard-settings-modal {
                     align-items: end;
-                    padding: 0;
+                    padding: max(0.5rem, env(safe-area-inset-top, 0px)) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
                 }
 
                 .truthguard-settings-modal-dialog {
                     width: 100%;
-                    max-height: calc(100dvh - env(safe-area-inset-top, 0px));
+                    height: 100%;
+                    max-height: 100%;
                     border-right: 0;
                     border-bottom: 0;
                     border-left: 0;
                     border-radius: 1.25rem 1.25rem 0 0;
+                }
+
+                .truthguard-settings-modal-title {
+                    font-size: 1.0625rem;
+                }
+
+                .truthguard-settings-modal-mark,
+                .truthguard-settings-modal-kicker {
+                    display: none;
+                }
+
+                .truthguard-settings-modal-body {
+                    scrollbar-gutter: auto;
+                    padding-bottom: 0.75rem;
+                }
+
+                .truthguard-settings-modal-header {
+                    padding: 0.875rem 1rem 0.5rem;
                 }
             }
         </style>
@@ -721,16 +960,16 @@
                         </div>
 
                         <div class="min-w-0 flex-1">
-                            <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-sky-200/70">Profile health</p>
-                            <p class="mt-1 text-base font-black text-white">Workspace ready</p>
-                            <p class="mt-1 text-xs leading-5 text-slate-400">Complete your identity for stronger account recovery.</p>
+                            <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600/70">Profile health</p>
+                            <p class="mt-1 text-base font-black text-slate-700">Workspace ready</p>
+                            <p class="mt-1 text-xs leading-5 text-slate-500">Complete your identity for stronger account recovery.</p>
                         </div>
                     </div>
 
-                    <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+                    <div class="mt-4 flex items-center justify-between gap-3 border-t border-blue-100 pt-4">
                         <div class="min-w-0">
-                            <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">Quick setup</p>
-                            <p class="mt-1 truncate text-sm font-bold text-slate-200">Review your identity profile</p>
+                            <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">Quick setup</p>
+                            <p class="mt-1 truncate text-sm font-bold text-slate-700">Review your identity profile</p>
                         </div>
                         <button
                             type="button"
@@ -766,7 +1005,7 @@
             <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <p class="text-[11px] font-black uppercase tracking-[0.16em] text-blue-600">Settings modules</p>
-                    <h2 class="mt-1 text-xl font-black tracking-tight text-slate-950 sm:text-2xl">Choose what you want to manage</h2>
+                    <h2 class="mt-1 text-xl font-black tracking-tight text-slate-800 sm:text-2xl">Choose what you want to manage</h2>
                     <p class="mt-1 text-sm text-slate-500">Changes open in a focused window, keeping the main settings page clean.</p>
                 </div>
                 <span class="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
@@ -802,7 +1041,7 @@
                             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{{ $section['status'] }}</span>
                         </span>
 
-                        <span class="mt-4 block text-base font-black text-slate-950">{{ $section['label'] }}</span>
+                        <span class="mt-4 block text-base font-black text-slate-800">{{ $section['label'] }}</span>
                         <span class="mt-1 block text-xs leading-5 text-slate-500">{{ $section['description'] }}</span>
 
                         <span class="mt-auto block pt-4">
@@ -819,78 +1058,80 @@
             </div>
         </section>
 
-        <div
-            x-show="settingsModalOpen"
-            x-cloak
-            x-transition.opacity.duration.180ms
-            class="truthguard-settings-modal"
-            style="display: none; z-index: 2147483400;"
-        >
-            <button type="button" class="truthguard-settings-modal-backdrop" @click="closeSettingsModal()" aria-label="Close settings window"></button>
-
-            <section
-                x-ref="settingsDialog"
-                tabindex="-1"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="truthguard-settings-modal-title"
-                class="truthguard-settings-modal-dialog"
+        <template x-teleport="body">
+            <div
+                x-show="settingsModalOpen"
+                x-cloak
+                x-transition.opacity.duration.180ms
+                class="truthguard-settings-modal"
+                style="display: none; {{ $activeThemeVars }}"
             >
-                <header class="truthguard-settings-modal-header shrink-0 px-4 pb-4 pt-4 text-white sm:px-5 sm:pt-5">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex min-w-0 items-center gap-3">
-                            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-sky-300">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9.25 12.2 1.85 1.85 3.9-4.1"></path>
-                                </svg>
-                            </span>
-                            <div class="min-w-0">
-                                <p class="text-[10px] font-black uppercase tracking-[0.18em] text-sky-300">Settings workspace</p>
-                                <h2 id="truthguard-settings-modal-title" class="mt-1 truncate text-xl font-black text-white" x-text="activeSectionLabel()">Personal Information</h2>
-                                <p class="mt-1 truncate text-xs text-slate-300" x-text="activeSectionDescription()">Name, email, identity</p>
+                <button type="button" tabindex="-1" class="truthguard-settings-modal-backdrop" @click="closeSettingsModal()" aria-label="Close settings window"></button>
+
+                <section
+                    x-ref="settingsDialog"
+                    tabindex="-1"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="truthguard-settings-modal-title"
+                    class="truthguard-settings-modal-dialog"
+                    @keydown.tab="trapSettingsFocus($event)"
+                >
+                    <header class="truthguard-settings-modal-header shrink-0 px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <span class="truthguard-settings-modal-mark inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m9.25 12.2 1.85 1.85 3.9-4.1"></path>
+                                    </svg>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="truthguard-settings-modal-kicker text-[10px] font-black uppercase tracking-[0.18em]">Settings workspace</p>
+                                    <h2 id="truthguard-settings-modal-title" class="truthguard-settings-modal-title mt-1 truncate text-xl font-black" x-text="activeSectionLabel()">Personal Information</h2>
+                                    <p class="truthguard-settings-modal-subtitle mt-1 truncate text-xs" x-text="activeSectionDescription()">Name, email, identity</p>
+                                </div>
                             </div>
-                        </div>
 
-                        <button
-                            type="button"
-                            @click="closeSettingsModal()"
-                            class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-slate-300 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-4 focus:ring-sky-400/20"
-                            aria-label="Close settings"
-                        >
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
-                            </svg>
-                        </button>
-                    </div>
-
-                    <nav class="truthguard-settings-modal-nav mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Settings modal sections">
-                        @foreach ($settingsSections as $section)
                             <button
                                 type="button"
-                                @click="setSection('{{ $section['id'] }}')"
-                                class="inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition focus:outline-none focus:ring-4 focus:ring-sky-400/20"
-                                :class="activeSection === '{{ $section['id'] }}'
-                                    ? 'border-sky-300/40 bg-sky-400/20 text-white'
-                                    : 'border-white/10 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'"
+                                @click="closeSettingsModal()"
+                                class="truthguard-settings-modal-close inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition focus:outline-none focus:ring-4 focus:ring-sky-400/20"
+                                aria-label="Close settings"
                             >
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ $section['icon'] }}"></path>
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
                                 </svg>
-                                {{ $section['label'] }}
                             </button>
-                        @endforeach
-                    </nav>
-                </header>
+                        </div>
 
-                <div class="truthguard-settings-modal-body">
-                    <div class="truthguard-settings-panel">
-                        <livewire:profile.update-profile-information-form />
-                        <livewire:profile.update-password-form />
-                        <livewire:profile.delete-user-form />
+                        <nav class="truthguard-settings-modal-nav mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Settings modal sections">
+                            @foreach ($settingsSections as $section)
+                                <button
+                                    type="button"
+                                    @click="setSection('{{ $section['id'] }}')"
+                                    class="truthguard-settings-modal-tab inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition focus:outline-none focus:ring-4 focus:ring-sky-400/20"
+                                    :class="activeSection === '{{ $section['id'] }}' ? 'is-active' : ''"
+                                    :aria-pressed="activeSection === '{{ $section['id'] }}'"
+                                >
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $section['icon'] }}"></path>
+                                    </svg>
+                                    {{ $section['label'] }}
+                                </button>
+                            @endforeach
+                        </nav>
+                    </header>
+
+                    <div class="truthguard-settings-modal-body" x-ref="settingsBody">
+                        <div class="truthguard-settings-panel">
+                            <livewire:profile.update-profile-information-form />
+                            <livewire:profile.update-password-form />
+                            <livewire:profile.delete-user-form />
+                        </div>
                     </div>
-                </div>
-            </section>
-        </div>
+                </section>
+            </div>
+        </template>
     </div>
 @endsection
