@@ -90,7 +90,7 @@
                         </button>
                     </div>
 
-                    <p class="mt-4 text-sm text-slate-500">Install TruthGuard as an app so you can use it like mobile/desktop software instead of a normal browser tab.</p>
+                    <p data-pwa-install-content class="mt-4 text-sm text-slate-500">Add TruthGuard to your home screen for quick access.</p>
                 </div>
 
                 <div class="relative">

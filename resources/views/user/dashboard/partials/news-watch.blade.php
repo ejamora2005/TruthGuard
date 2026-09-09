@@ -47,13 +47,17 @@
         }
 
         #news-watch .tg-rating-banner {
+            /* tan(28deg) keeps the center midway between the two clipped edges. */
+            --ribbon-inset: 4.5rem;
             align-items: center;
             border: 1px solid rgb(255 255 255 / 0.55);
             border-radius: 0;
-            bottom: 1.15rem;
+            bottom: calc(var(--ribbon-inset) * 0.531709 - 1rem);
             box-shadow: 0 10px 24px rgb(15 23 42 / 0.22);
             box-sizing: border-box;
             display: flex;
+            gap: 0.35rem;
+            height: 2rem;
             justify-content: center;
             left: auto;
             letter-spacing: 0;
@@ -64,14 +68,14 @@
             padding: 0.4rem 0.65rem;
             pointer-events: none;
             position: absolute;
-            right: -4.15rem;
+            right: calc(var(--ribbon-inset) - 7rem);
             text-align: center;
             top: auto;
             transform: rotate(-28deg);
             transform-origin: center;
             visibility: visible;
             white-space: nowrap;
-            width: 78%;
+            width: 14rem;
             writing-mode: horizontal-tb;
             z-index: 3;
             -webkit-backdrop-filter: blur(8px);
@@ -85,6 +89,17 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        #news-watch .tg-rating-banner .tg-rating-source-logo {
+            width: 1.15rem;
+            height: 1.15rem;
+            flex: 0 0 1.15rem;
+            margin-right: 0;
+            padding: 0.1rem;
+            border-radius: 50%;
+            background: #fff;
+            object-fit: contain;
         }
 
         .tg-rating-banner-danger {
@@ -240,6 +255,10 @@
             box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.11);
         }
 
+        #news-watch .tg-feed-window-mobile {
+            display: none;
+        }
+
         #news-watch .tg-feed-pagination-bar {
             border-top: 1px solid rgba(203, 213, 225, 0.78);
             background:
@@ -355,24 +374,55 @@
         }
 
         @media (max-width: 640px) {
-            #news-watch .tg-rating-banner {
-                bottom: 0.9rem;
-                min-height: 1.8rem;
-                padding: 0.34rem 0.5rem;
-                right: -3.25rem;
-                width: 74%;
-            }
-
-            #news-watch .tg-feed-window {
+            #news-watch .tg-feed-monitor-title-row {
+                flex: 1 1 100%;
                 min-width: 0;
-                width: 100%;
-                padding: 0.55rem 0.65rem;
+                justify-content: space-between;
             }
 
-            #news-watch .tg-feed-window-icon {
-                width: 2rem;
-                height: 2rem;
-                flex-basis: 2rem;
+            #news-watch .tg-feed-monitor-label {
+                min-width: 0;
+                font-size: 0.62rem;
+                letter-spacing: 0.14em;
+                white-space: nowrap;
+            }
+
+            #news-watch .tg-rating-banner {
+                --ribbon-inset: 4rem;
+                min-height: 2rem;
+                padding: 0.34rem 0.5rem;
+            }
+
+            #news-watch .tg-feed-window-desktop {
+                display: none;
+            }
+
+            #news-watch .tg-feed-window-mobile {
+                display: inline-flex;
+                width: auto;
+                min-width: 0;
+                flex: 0 0 auto;
+                gap: 0.32rem;
+                border-radius: 9999px;
+                padding: 0.34rem 0.5rem;
+                box-shadow: 0 7px 15px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.94);
+            }
+
+            #news-watch .tg-feed-window-mobile .tg-feed-window-icon,
+            #news-watch .tg-feed-window-mobile .tg-feed-window-copy > span,
+            #news-watch .tg-feed-window-mobile .tg-feed-window-live {
+                display: none;
+            }
+
+            #news-watch .tg-feed-window-mobile .tg-feed-window-copy {
+                display: block;
+            }
+
+            #news-watch .tg-feed-window-mobile .tg-feed-window-copy > strong {
+                display: block;
+                font-size: 0.66rem;
+                line-height: 1;
+                white-space: nowrap;
             }
 
             #news-watch .tg-feed-pagination-bar {
@@ -418,7 +468,24 @@
         <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div class="max-w-3xl">
                 <div class="flex flex-wrap items-center gap-3">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Verified source monitor</p>
+                    <div class="tg-feed-monitor-title-row flex items-center gap-2">
+                        <p class="tg-feed-monitor-label text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Verified source monitor</p>
+                        @if ($feedLookbackDays > 0)
+                            <span class="tg-feed-window tg-feed-window-mobile" aria-label="Coverage window: {{ $feedWindowLabel }}">
+                                <span class="tg-feed-window-icon" aria-hidden="true">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 3v3m10-3v3M4.75 9h14.5M6 5.5h12A1.5 1.5 0 0 1 19.5 7v11A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18V7A1.5 1.5 0 0 1 6 5.5Z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 13h3m-3 3h6"></path>
+                                    </svg>
+                                </span>
+                                <span class="tg-feed-window-copy">
+                                    <span>Coverage window</span>
+                                    <strong>{{ \Illuminate\Support\Str::headline($feedWindowLabel) }}</strong>
+                                </span>
+                                <span class="tg-feed-window-live">Live</span>
+                            </span>
+                        @endif
+                    </div>
                     <div class="flex -space-x-2">
                         @foreach ($sourceRows as $source)
                             <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-slate-100 shadow-sm" title="{{ $source['name'] }}">
@@ -435,7 +502,7 @@
             </div>
 
             @if ($feedLookbackDays > 0)
-                <div class="tg-feed-window" aria-label="Coverage window: {{ $feedWindowLabel }}">
+                <div class="tg-feed-window tg-feed-window-desktop" aria-label="Coverage window: {{ $feedWindowLabel }}">
                     <span class="tg-feed-window-icon" aria-hidden="true">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M7 3v3m10-3v3M4.75 9h14.5M6 5.5h12A1.5 1.5 0 0 1 19.5 7v11A1.5 1.5 0 0 1 18 19.5H6A1.5 1.5 0 0 1 4.5 18V7A1.5 1.5 0 0 1 6 5.5Z"></path>
@@ -509,6 +576,9 @@
                             'tg-rating-banner-safe' => $ratingTone === 'safe',
                             'tg-rating-banner-neutral' => ! in_array($ratingTone, ['danger', 'warning', 'safe'], true),
                         ])>
+                            @if ($logoUrl)
+                                <img src="{{ $logoUrl }}" alt="{{ $publisherName }} logo" loading="lazy" width="18" height="18" class="tg-rating-source-logo">
+                            @endif
                             <span class="block text-sm font-black leading-none">
                                 {{ $rating }}
                             </span>

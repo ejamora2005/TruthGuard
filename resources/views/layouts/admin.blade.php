@@ -362,6 +362,17 @@
                                         </a>
                                     </li>
                                     <li>
+                                        <a href="{{ route('facebook.webhook-simulator.create') }}" class="menu-item {{ request()->routeIs('facebook.webhook-simulator.*') ? '' : 'menu-item-inactive' }} group" :class="sidebarExpanded ? 'justify-start' : 'lg:justify-center'">
+                                            <span class="{{ request()->routeIs('facebook.webhook-simulator.*') ? 'menu-item-icon-active' : 'menu-item-icon-inactive' }}">
+                                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 7.5h14A2.5 2.5 0 0 1 21.5 10v5A2.5 2.5 0 0 1 19 17.5h-6l-4 3v-3H5A2.5 2.5 0 0 1 2.5 15v-5A2.5 2.5 0 0 1 5 7.5Z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 12.5h5.5M8 10h8M8 15h3.5"></path>
+                                                </svg>
+                                            </span>
+                                            <span x-show="sidebarExpanded || window.innerWidth < 1024" x-cloak class="menu-item-text">FB Simulator</span>
+                                        </a>
+                                    </li>
+                                    <li>
                                         <a href="{{ route('notifications.index') }}" data-tour="notifications" class="menu-item {{ request()->routeIs('notifications.*') ? '' : 'menu-item-inactive' }} group" :class="sidebarExpanded ? 'justify-start' : 'lg:justify-center'">
                                             <span class="{{ request()->routeIs('notifications.*') ? 'menu-item-icon-active' : 'menu-item-icon-inactive' }} relative">
                                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">

@@ -10,6 +10,8 @@ use App\Http\Controllers\AdminFactCheckSourceController;
 use App\Http\Controllers\AutomationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DetectionController;
+use App\Http\Controllers\FacebookWebhookSimulatorController;
+use App\Http\Controllers\FacebookWebhookController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PrivacyPolicyController;
@@ -33,6 +35,11 @@ Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirectToGoog
 Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])->name('google.callback');
 Route::get('auth/facebook/redirect', [GoogleAuthController::class, 'redirectToFacebook'])->name('facebook.redirect');
 Route::get('auth/facebook/callback', [GoogleAuthController::class, 'handleFacebookCallback'])->name('facebook.callback');
+
+Route::get('webhooks/facebook', [FacebookWebhookController::class, 'verify'])->name('webhooks.facebook.verify');
+Route::post('webhooks/facebook', [FacebookWebhookController::class, 'handle'])
+    ->withoutMiddleware(PreventRequestForgery::class)
+    ->name('webhooks.facebook.handle');
 
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
@@ -72,6 +79,12 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('admin/dashboard', AdminAppController::class)
             ->middleware(EnsureAdmin::class)
             ->name('admin.dashboard');
+        Route::get('admin/facebook-webhook-simulator', [FacebookWebhookSimulatorController::class, 'create'])
+            ->middleware(EnsureAdmin::class)
+            ->name('facebook.webhook-simulator.create');
+        Route::post('admin/facebook-webhook-simulator', [FacebookWebhookSimulatorController::class, 'store'])
+            ->middleware(EnsureAdmin::class)
+            ->name('facebook.webhook-simulator.store');
         Route::get('admin/{any}', AdminAppController::class)
             ->where('any', '.*')
             ->middleware(EnsureAdmin::class);

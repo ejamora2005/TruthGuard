@@ -52,6 +52,12 @@ return [
         'client_id' => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
         'redirect' => env('FACEBOOK_REDIRECT_URI'),
+        'page_id' => env('FACEBOOK_PAGE_ID'),
+        'page_access_token' => env('FACEBOOK_PAGE_ACCESS_TOKEN'),
+        'graph_version' => env('FACEBOOK_GRAPH_VERSION', 'v26.0'),
+        'webhook_verify_token' => env('FACEBOOK_WEBHOOK_VERIFY_TOKEN'),
+        'auto_reply_enabled' => env('FACEBOOK_AUTO_REPLY_ENABLED', false),
+        'system_user_id' => env('FACEBOOK_SYSTEM_USER_ID'),
     ],
 
     'live_verification' => [
