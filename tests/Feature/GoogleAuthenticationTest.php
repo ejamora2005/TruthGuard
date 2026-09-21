@@ -22,6 +22,17 @@ class GoogleAuthenticationTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_google_login_returns_to_the_selected_review(): void
+    {
+        Notification::fake();
+        $this->mockGoogleUser();
+        $url = route('dashboard.fact-check', ['factCheck' => 'review-123']);
+
+        $this->withSession(['url.intended' => $url])->get(route('google.callback'))
+            ->assertRedirect($url)->assertSessionMissing('url.intended');
+        $this->assertAuthenticated();
+    }
+
     public function test_verified_google_user_is_created_as_active_regular_user(): void
     {
         Notification::fake();
