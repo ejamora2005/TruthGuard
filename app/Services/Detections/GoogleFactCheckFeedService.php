@@ -110,18 +110,19 @@ class GoogleFactCheckFeedService
     {
         $items = [];
         $seen = [];
-        $timeout = max(1, min((int) config('services.google_fact_check.timeout', 3), 2));
+        $timeout = max(1, (int) config('services.google_fact_check.feed_timeout', 20));
+        $connectTimeout = min($timeout, max(1, (int) config('services.google_fact_check.feed_connect_timeout', 10)));
         $pageSize = max(3, min((int) config('services.google_fact_check.feed_page_size', 8), 10));
 
         $searches = $this->searches($queries, $publisherSites);
-        $responses = Http::pool(function (Pool $pool) use ($apiKey, $searches, $pageSize, $maxAgeDays, $timeout): array {
+        $responses = Http::pool(function (Pool $pool) use ($apiKey, $searches, $pageSize, $maxAgeDays, $timeout, $connectTimeout): array {
             return collect($searches)
-                ->mapWithKeys(function (array $search, int $index) use ($pool, $apiKey, $pageSize, $maxAgeDays, $timeout): array {
+                ->mapWithKeys(function (array $search, int $index) use ($pool, $apiKey, $pageSize, $maxAgeDays, $timeout, $connectTimeout): array {
                     return [
                         'search_'.$index => $pool
                             ->as('search_'.$index)
                             ->acceptJson()
-                            ->connectTimeout(1)
+                            ->connectTimeout($connectTimeout)
                             ->timeout($timeout)
                             ->get(self::ENDPOINT, $this->searchParams($apiKey, $search, $pageSize, $maxAgeDays)),
                     ];
@@ -226,18 +227,19 @@ class GoogleFactCheckFeedService
      */
     private function fetchDirectPublisherItems(array $sources, int $limit): array
     {
-        $timeout = max(4, min((int) config('services.google_fact_check.timeout', 3) + 2, 8));
+        $timeout = max(1, (int) config('services.google_fact_check.feed_timeout', 20));
+        $connectTimeout = min($timeout, max(1, (int) config('services.google_fact_check.feed_connect_timeout', 10)));
         $responses = [];
 
         try {
-            $responses = Http::pool(function (Pool $pool) use ($sources, $timeout): array {
+            $responses = Http::pool(function (Pool $pool) use ($sources, $timeout, $connectTimeout): array {
                 return collect($sources)
                     ->mapWithKeys(fn (array $source, int $index): array => [
                         'direct_'.$index => $pool
                             ->as('direct_'.$index)
                             ->acceptJson()
                             ->withHeaders($this->previewImageHeaders())
-                            ->connectTimeout(1)
+                            ->connectTimeout($connectTimeout)
                             ->timeout($timeout)
                             ->get($source['url']),
                     ])

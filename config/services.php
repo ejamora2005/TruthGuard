@@ -95,6 +95,8 @@ return [
         'feed_queries' => array_values(array_filter(array_map('trim', explode(',', env('GOOGLE_FACT_CHECK_FEED_QUERIES', 'Reuters fact check,Philippines,viral misinformation,fake news'))))),
         'feed_publisher_sites' => array_values(array_filter(array_map('trim', explode(',', env('GOOGLE_FACT_CHECK_FEED_PUBLISHER_SITES', 'verafiles.org,rappler.com,factcheck.afp.com,abs-cbn.com,pressone.ph,tsek.ph,reuters.com'))))),
         'feed_page_size' => env('GOOGLE_FACT_CHECK_FEED_PAGE_SIZE', 8),
+        'feed_timeout' => env('GOOGLE_FACT_CHECK_FEED_TIMEOUT', 20),
+        'feed_connect_timeout' => env('GOOGLE_FACT_CHECK_FEED_CONNECT_TIMEOUT', 10),
         'feed_cache_minutes' => env('GOOGLE_FACT_CHECK_FEED_CACHE_MINUTES', 30),
         'feed_cache_seconds' => env('GOOGLE_FACT_CHECK_FEED_CACHE_SECONDS', 10),
         'feed_refresh_seconds' => env('GOOGLE_FACT_CHECK_FEED_REFRESH_SECONDS', 10),

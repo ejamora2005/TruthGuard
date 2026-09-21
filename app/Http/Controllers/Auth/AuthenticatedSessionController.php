@@ -51,13 +51,7 @@ class AuthenticatedSessionController extends Controller
             $notifications->sendWelcomeOnce($user);
         }
 
-        $request->session()->forget('url.intended');
-
-        return redirect()->to(
-            $user?->isAdmin()
-                ? route('admin.dashboard', absolute: false)
-                : route('dashboard', absolute: false)
-        );
+        return redirect()->to(app(\App\Services\Auth\PostLoginDestination::class)->resolve($request, $user));
     }
 
     /**

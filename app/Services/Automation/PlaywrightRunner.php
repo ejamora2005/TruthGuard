@@ -89,7 +89,7 @@ class PlaywrightRunner
             'scrollPauseMs' => (int) ($options['scroll_pause_ms'] ?? config('playwright.scroll_pause_ms')),
             'retries' => (int) ($options['retries'] ?? config('playwright.retries')),
             'screenshotDir' => is_string($screenshotDirectory) ? $screenshotDirectory : storage_path('app/private/playwright/screenshots'),
-            'logLevel' => env('PLAYWRIGHT_LOG_LEVEL', env('LOG_LEVEL', 'debug')),
+            'logLevel' => config('playwright.log_level'),
             'userAgent' => $options['user_agent'] ?? config('playwright.user_agent'),
             'storageStatePath' => $options['storage_state_path'] ?? config('playwright.storage_state_path'),
         ];
