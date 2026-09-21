@@ -4,33 +4,33 @@
 
     $featureCards = [
         [
-            'title' => 'Autonomous Decision Making',
-            'description' => 'TruthGuard agents recommend verdicts automatically using risk signals and configured decision thresholds.',
+            'title' => 'Image & Video Checks',
+            'description' => 'Upload media to check for signs of AI generation or manipulation, then review the result and its supporting context.',
             'icon' => 'M12 3 19 6v5c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-3Z M9.5 12l1.8 1.8 3.2-3.2',
         ],
         [
-            'title' => 'Complex Workflow Automation',
-            'description' => 'Automate multi-step verification processes across extraction, source checks, scoring, and reporting.',
+            'title' => 'Claims & Source Links',
+            'description' => 'Describe a claim or paste a source link into the Fact Check workspace to start a review.',
             'icon' => 'M5 7h4v4H5z M15 7h4v4h-4z M10 13h4v4h-4z M9 9h6 M7 11v2 M17 11v2',
         ],
         [
-            'title' => 'Multi-Agent Collaboration',
-            'description' => 'Run specialized agents for media detection, claim parsing, source verification, and final scoring.',
+            'title' => 'Public Claim Reviews',
+            'description' => 'Browse recent fact checks from independent publishers, with source links and the publisher\'s rating.',
             'icon' => 'M8 8a2.5 2.5 0 1 0 0.001 0 M16 8a2.5 2.5 0 1 0 0.001 0 M12 16a2.5 2.5 0 1 0 0.001 0 M9.8 9.4l2.4 5.2 M14.2 9.4l-2.4 5.2',
         ],
         [
-            'title' => 'Secure and Compliant',
-            'description' => 'Keep auditable case history and review traces for accountability and policy-aligned moderation.',
+            'title' => 'Your Check History',
+            'description' => 'Find previous checks by date, keyword, or result. Reopen a report to review its confidence and evidence.',
             'icon' => 'M12 3 19 6v5c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-3Z M12 9v4 M12 15h.01',
         ],
         [
-            'title' => 'Rapid Integration',
-            'description' => 'Connect to verification APIs and data sources quickly using reusable automation components.',
+            'title' => 'Activity Notifications',
+            'description' => 'Keep track of fact-check updates, news reviews, and account activity in your notification inbox.',
             'icon' => 'M4 12h4l2-6 4 12 2-6h4 M12 4v2 M12 18v2',
         ],
         [
-            'title' => 'Customizable Agents',
-            'description' => 'Tune scoring logic, labels, and escalation behavior to your team workflow and policy requirements.',
+            'title' => 'Personal Settings',
+            'description' => 'Manage your profile photo, account information, theme, password, and privacy settings in one place.',
             'icon' => 'M4 7h16 M4 12h16 M4 17h16 M8 5v4 M16 10v4 M10 15v4',
         ],
     ];
@@ -55,7 +55,7 @@
         [
             'time' => '00:42',
             'title' => 'Compare trusted sources',
-            'description' => 'Related reports and source records are matched before a verdict is shown.',
+            'description' => 'Review related reports and source links when evidence is available.',
             'status' => 'Sources matched',
             'verdict' => 'Cross-check',
             'accent' => 'amber',
@@ -65,7 +65,7 @@
             'title' => 'Get a clear result',
             'description' => 'The report labels the claim as real, false, misleading, or needing review.',
             'status' => 'Report generated',
-            'verdict' => 'Verified',
+            'verdict' => 'Review result',
             'accent' => 'emerald',
         ],
     ];
@@ -84,12 +84,12 @@
         ],
         'sales' => [
             'title' => 'Election Monitoring',
-            'description' => 'Track high-velocity misinformation around campaigns and civic events.',
+            'description' => 'Look up public reviews of election-related claims and check the original reporting.',
             'benefits' => [
-                'Rapid claim pattern detection',
-                'Cross-source consistency checks',
-                'Escalation of high-risk narratives',
-                'Daily summary reporting',
+                'Search published claim reviews',
+                'Filter reviews by publisher',
+                'Read the publisher\'s rating',
+                'Open the original source',
             ],
             'image' => 'welcome/usecase-election-monitoring.jpg',
         ],
@@ -109,31 +109,31 @@
             'description' => 'Review school-related claims and rumors affecting student safety or services.',
             'benefits' => [
                 'Faster rumor verification',
-                'Structured escalation path',
+                'Source links for further reading',
                 'Reliable case documentation',
                 'Reduced false alarm spread',
             ],
             'image' => 'welcome/usecase-campus-monitoring.jpg',
         ],
         'legal' => [
-            'title' => 'Policy Review',
-            'description' => 'Map flagged content against policy and keep auditable decision trails.',
+            'title' => 'Everyday Media Literacy',
+            'description' => 'Take a closer look at unfamiliar images, videos, and claims before passing them on.',
             'benefits' => [
-                'Policy-aligned verdicting',
-                'Transparent moderation basis',
-                'Lower reviewer variance',
-                'Compliance-ready logs',
+                'Check media for warning signs',
+                'Compare independent sources',
+                'Understand confidence indicators',
+                'Revisit saved check results',
             ],
             'image' => 'welcome/usecase-policy-review.jpg',
         ],
         'operations' => [
-            'title' => 'Government Response Ops',
-            'description' => 'Monitor misinformation during emergencies and support public communication teams.',
+            'title' => 'Public Advisory Checks',
+            'description' => 'Review suspicious public advisories and look for supporting source material.',
             'benefits' => [
-                'High-risk incident prioritization',
-                'Weather/location claim verification',
-                'Cross-team response visibility',
-                'Quicker public advisory support',
+                'Submit a claim or source link',
+                'Read related publisher reviews',
+                'Inspect the original evidence',
+                'Confirm urgent details with official sources',
             ],
             'image' => 'welcome/usecase-government-response.jpg',
         ],
@@ -141,81 +141,74 @@
 
     $testimonials = [
         [
-            'quote' => 'TruthGuard reduced our manual verification workload and helped us flag misleading media much faster.',
-            'author' => 'Sarah Johnson',
-            'title' => 'Content Verification Lead',
-            'company' => 'City News Desk',
-            'avatar' => 'welcome/testimonial-sarah-johnson.jpg',
+            'quote' => 'A confidence score describes the system\'s assessment. It is not proof that a claim is true or false.',
+            'author' => 'Understand the score',
+            'title' => 'Read the explanation alongside the result.',
         ],
         [
-            'quote' => 'The risk scoring and case timeline made moderation decisions more consistent across our response team.',
-            'author' => 'Michael Chen',
-            'title' => 'Digital Response Manager',
-            'company' => 'Public Safety Office',
-            'avatar' => 'welcome/testimonial-michael-chen.jpg',
+            'quote' => 'Public review ratings belong to the credited publisher. Open their report to see the evidence and context.',
+            'author' => 'Read the original source',
+            'title' => 'Check publication dates and what was actually reviewed.',
         ],
         [
-            'quote' => 'Cross-source checks gave us confidence when debunking recycled images and false-context claims.',
-            'author' => 'Elena Rodriguez',
-            'title' => 'Fact-Check Coordinator',
-            'company' => 'Civic Media Lab',
-            'avatar' => 'welcome/testimonial-elena-rodriguez.jpg',
+            'quote' => 'Some claims lack enough evidence for a reliable conclusion. Pause before sharing and seek additional sources.',
+            'author' => 'Leave room for uncertainty',
+            'title' => 'TruthGuard can make mistakes; review important claims carefully.',
         ],
     ];
 
     $plans = [
         [
-            'name' => 'Starter',
-            'description' => 'Perfect for individuals and small projects',
-            'monthly' => '$29',
-            'annualMonthly' => '$24.17',
-            'annualLabel' => 'Billed annually ($290/year)',
+            'name' => 'Free',
+            'description' => 'Start with public reviews and a personal account.',
+            'monthly' => 'PHP 0',
+            'annualMonthly' => 'PHP 0',
+            'annualLabel' => 'No subscription charge',
             'features' => [
-                '2 AI agents',
-                '100 agent runs per month',
-                'Basic integrations',
-                'Email support',
-                '7-day history',
+                'Browse public claim reviews',
+                'Search and filter by publisher',
+                'Personal Fact Check workspace',
+                'Check history and notifications',
             ],
-            'cta' => 'Start Free Trial',
+            'cta' => auth()->check() ? 'Open workspace' : 'Create free account',
+            'url' => auth()->check() ? route('detections.create') : route('register'),
+            'status' => 'Available now',
             'highlighted' => false,
             'enterprise' => false,
         ],
         [
-            'name' => 'Professional',
-            'description' => 'Ideal for growing teams and businesses',
-            'monthly' => '$99',
-            'annualMonthly' => '$82.50',
-            'annualLabel' => 'Billed annually ($990/year)',
+            'name' => 'Plus',
+            'description' => 'A planned low-cost option for regular users.',
+            'monthly' => 'PHP 49',
+            'annualMonthly' => 'PHP 39',
+            'annualLabel' => 'Planned annual price: PHP 468/year',
             'features' => [
-                '10 AI agents',
-                '1,000 agent runs per month',
-                'Advanced integrations',
-                'Priority support',
-                '30-day history',
-                'Custom agent training',
-                'Team collaboration',
+                'Planned personal subscription',
+                'Final usage limits to be announced',
+                'No payment collected today',
             ],
-            'cta' => 'Start Free Trial',
+            'cta' => 'Ask about Plus',
+            'url' => 'mailto:truthguard2026@gmail.com?subject=TruthGuard%20Plus%20plan',
+            'status' => 'Planned',
             'highlighted' => true,
             'enterprise' => false,
         ],
         [
-            'name' => 'Enterprise',
-            'description' => 'For organizations with advanced needs',
+            'name' => 'Supporter',
+            'description' => 'A planned option for people who want to support TruthGuard.',
+            'monthly' => 'PHP 99',
+            'annualMonthly' => 'PHP 79',
+            'annualLabel' => 'Planned annual price: PHP 948/year',
             'features' => [
-                'Unlimited AI agents',
-                'Custom agent runs',
-                'All integrations',
-                'Dedicated support',
-                'Unlimited history',
-                'Advanced security',
-                'SLA guarantees',
-                'Private deployment options',
+                'Planned supporter subscription',
+                'Final benefits to be announced',
+                'No payment collected today',
             ],
-            'cta' => 'Contact Sales',
+            'cta' => 'Ask about Supporter',
+            'url' => 'mailto:truthguard2026@gmail.com?subject=TruthGuard%20Supporter%20plan',
+            'status' => 'Planned',
             'highlighted' => false,
-            'enterprise' => true,
+            'enterprise' => false,
         ],
     ];
 @endphp
@@ -224,7 +217,7 @@
     x-data="landingTemplate()"
     x-init="init()"
     data-testimonials-count="{{ count($testimonials) }}"
-    class="min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900 antialiased"
+    class="tg-welcome min-h-screen bg-gradient-to-b from-slate-50 to-white text-slate-900 antialiased"
     style="font-family: 'Poppins', sans-serif;"
 >
     <style>
@@ -717,67 +710,7 @@
             }
         }
     </style>
-    <header x-ref="siteHeader" class="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/85 backdrop-blur-md">
-        <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-            <a href="#home" @click.prevent="scrollToSection('home')" class="flex shrink-0 items-center gap-3">
-                @if ($logoUrl !== '')
-                    <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-10 w-10 object-contain">
-                @else
-                    <span class="inline-flex h-10 w-10 items-center justify-center text-sm font-bold text-blue-600">TG</span>
-                @endif
-                <span class="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">TruthGuard</span>
-            </a>
-
-            <nav class="hidden flex-1 items-center justify-center gap-5 text-sm font-medium text-slate-700 md:flex md:px-6 lg:gap-8 xl:gap-10">
-                <a href="#features" @click.prevent="scrollToSection('features')" class="whitespace-nowrap transition hover:text-blue-600">Features</a>
-                <a href="#use-cases" @click.prevent="scrollToSection('use-cases')" class="whitespace-nowrap transition hover:text-blue-600">Use Cases</a>
-                <a href="#testimonials" @click.prevent="scrollToSection('testimonials')" class="whitespace-nowrap transition hover:text-blue-600">Testimonials</a>
-                <a href="#pricing" @click.prevent="scrollToSection('pricing')" class="whitespace-nowrap transition hover:text-blue-600">Pricing</a>
-                <a href="#install" @click.prevent="scrollToSection('install')" class="whitespace-nowrap transition hover:text-blue-600">Install App</a>
-            </nav>
-
-            <div class="hidden shrink-0 items-center gap-3 md:flex lg:gap-4">
-                @auth
-                    <a href="{{ route('dashboard') }}" class="whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-700 lg:px-4">Dashboard</a>
-                    <a href="{{ route('detections.create') }}" class="whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:from-blue-700 hover:to-violet-700 lg:px-4">New Detection</a>
-                @else
-                    <a href="{{ route('login') }}" class="whitespace-nowrap rounded-xl border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-700">Log In</a>
-                    @if (Route::has('register'))
-                        <a href="{{ route('register') }}" class="whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-blue-700 hover:to-violet-700">Register</a>
-                    @endif
-                @endauth
-            </div>
-
-            <button type="button" class="text-slate-700 md:hidden" @click="isMenuOpen = !isMenuOpen" aria-label="Toggle menu">
-                <svg x-show="!isMenuOpen" x-cloak class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-                <svg x-show="isMenuOpen" x-cloak class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-
-        <div x-show="isMenuOpen" x-cloak x-transition class="border-t border-slate-200 bg-white py-4 md:hidden">
-            <div class="container mx-auto flex flex-col space-y-4 px-4">
-                <a href="#features" class="py-1 text-slate-700" @click.prevent="scrollToSection('features', true)">Features</a>
-                <a href="#use-cases" class="py-1 text-slate-700" @click.prevent="scrollToSection('use-cases', true)">Use Cases</a>
-                <a href="#pricing" class="py-1 text-slate-700" @click.prevent="scrollToSection('pricing', true)">Pricing</a>
-                <a href="#testimonials" class="py-1 text-slate-700" @click.prevent="scrollToSection('testimonials', true)">Testimonials</a>
-                <a href="#install" class="py-1 text-slate-700" @click.prevent="scrollToSection('install', true)">Install App</a>
-                <div class="border-t border-slate-200 pt-3">
-                    @auth
-                        <a href="{{ route('dashboard') }}" class="block rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700">Dashboard</a>
-                    @else
-                        <a href="{{ route('login') }}" class="block rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700">Log in</a>
-                        @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="mt-2 block rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2 text-center text-sm font-semibold text-white">Register</a>
-                        @endif
-                    @endauth
-                </div>
-            </div>
-        </div>
-    </header>
+    @include('layouts.partials.public-header')
 
     <main>
         <section id="home" class="overflow-hidden pb-12 pt-6 md:pb-24 md:pt-12">
@@ -785,13 +718,13 @@
                 <div class="min-w-0">
                     <div class="mb-4 inline-flex max-w-full items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 sm:mb-6 sm:text-sm">
                         <span class="sm:hidden">TruthGuard workflow</span>
-                        <span class="hidden sm:inline">TruthGuard 1.0 - Agentic Verification Workflow</span>
+                        <span class="hidden sm:inline">AI-assisted fact checking</span>
                     </div>
                     <h1 class="bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
-                        Full-Stack AI Verification for Social Misinformation
+                        TruthGuard
                     </h1>
                     <p class="mt-4 max-w-xl text-base text-slate-600 sm:mt-6 sm:text-lg">
-                        Detect fake media, automate claim verification, and produce explainable verdicts with AI-assisted workflows built for real response teams.
+                        Check images, videos, and online claims. Explore independent fact checks, review the evidence, and keep your own results in one place.
                     </p>
 
                     <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row">
@@ -810,7 +743,7 @@
                         </button>
                     </div>
 
-                    <p class="mt-4 text-sm text-slate-500">Use TruthGuard as an installed app, not just a browser tab.</p>
+                    <p class="mt-4 text-sm text-slate-500">AI-assisted results can be wrong. Review sources before sharing.</p>
                 </div>
 
                 <div class="relative min-w-0 reveal">
@@ -890,8 +823,8 @@
         <section id="features" class="reveal bg-slate-50 py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
-                    <h2 class="text-3xl font-bold md:text-4xl">Powerful TruthGuard Features</h2>
-                    <p class="mt-4 text-lg text-slate-600">Everything needed to detect, verify, and report misinformation with confidence.</p>
+                    <h2 class="text-3xl font-bold md:text-4xl">What You Can Do With TruthGuard</h2>
+                    <p class="mt-4 text-lg text-slate-600">From a suspicious post to a saved review, keep the evidence within reach.</p>
                 </div>
 
                 <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -916,14 +849,15 @@
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
                     <h2 class="text-3xl font-bold md:text-4xl">TruthGuard Use Cases</h2>
-                    <p class="mt-4 text-lg text-slate-600">Switch between use-case tabs just like the original template flow.</p>
+                    <p class="mt-4 text-lg text-slate-600">Verification for the claims your team encounters every day.</p>
                 </div>
 
-                <div class="mb-10 flex flex-wrap justify-center gap-2">
+                <div class="tg-welcome-tabs mb-10 flex flex-wrap justify-center gap-2">
                     @foreach ($useCases as $key => $case)
                         <button
                             type="button"
                             @click="activeUseCase='{{ $key }}'"
+                            :aria-pressed="activeUseCase === '{{ $key }}'"
                             :class="activeUseCase === '{{ $key }}' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'"
                             class="rounded-lg border px-4 py-2 text-sm font-medium transition"
                         >
@@ -949,9 +883,7 @@
                                     @endforeach
                                 </ul>
 
-                                <button class="rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:from-blue-700 hover:to-violet-700">
-                                    Learn More
-                                </button>
+                                <a href="{{ route('reviews.index') }}" class="inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">Explore claim reviews</a>
                             </div>
                             <div class="flex items-center justify-center bg-slate-100 p-8 lg:w-1/2">
                                 <img src="{{ asset($case['image']) }}" alt="{{ $case['title'] }}" class="h-auto max-w-full rounded-lg shadow-md">
@@ -965,27 +897,26 @@
         <section id="testimonials" class="reveal bg-gradient-to-b from-white to-slate-50 py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
-                    <h2 class="text-3xl font-bold md:text-4xl">What Teams Say About TruthGuard</h2>
-                    <p class="mt-4 text-lg text-slate-600">Template-style testimonial carousel with navigation controls.</p>
+                    <h2 class="text-3xl font-bold md:text-4xl">Before You Share</h2>
+                    <p class="mt-4 text-lg text-slate-600">Three habits for a more careful review.</p>
                 </div>
 
                 <div class="relative mx-auto max-w-4xl">
                     @foreach ($testimonials as $i => $testimonial)
                         <article x-show="currentTestimonial === {{ $i }}" x-cloak x-transition class="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg md:p-12">
-                            <p class="mb-8 text-xl italic text-slate-800 md:text-2xl">"{{ $testimonial['quote'] }}"</p>
+                            <p class="mb-8 text-lg leading-relaxed text-slate-800 md:text-xl">{{ $testimonial['quote'] }}</p>
                             <div class="flex items-center">
-                                <img src="{{ asset($testimonial['avatar']) }}" alt="{{ $testimonial['author'] }}" class="mr-4 h-16 w-16 rounded-full border-2 border-blue-100 object-cover">
+                                <span class="mr-4 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 font-bold text-blue-700">{{ $i + 1 }}</span>
                                 <div>
                                     <h4 class="text-lg font-bold">{{ $testimonial['author'] }}</h4>
                                     <p class="text-slate-600">{{ $testimonial['title'] }}</p>
-                                    <p class="text-blue-600">{{ $testimonial['company'] }}</p>
                                 </div>
                             </div>
                         </article>
                     @endforeach
 
                     <div class="mt-8 flex justify-center gap-4">
-                        <button @click="prevTestimonial(true)" class="rounded-full border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Previous testimonial">
+                        <button @click="prevTestimonial(true)" class="rounded-full border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Previous review tip">
                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" />
                             </svg>
@@ -993,11 +924,11 @@
 
                         <div class="flex items-center gap-2">
                             @foreach ($testimonials as $i => $testimonial)
-                                <button @click="goToTestimonial({{ $i }})" :class="currentTestimonial === {{ $i }} ? 'bg-blue-600' : 'bg-slate-300'" class="h-3 w-3 rounded-full" aria-label="Go to testimonial {{ $i + 1 }}"></button>
+                                <button type="button" @click="goToTestimonial({{ $i }})" :aria-current="currentTestimonial === {{ $i }} ? 'true' : 'false'" class="tg-carousel-dot" aria-label="Go to review tip {{ $i + 1 }}"></button>
                             @endforeach
                         </div>
 
-                        <button @click="nextTestimonial(true)" class="rounded-full border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Next testimonial">
+                        <button @click="nextTestimonial(true)" class="rounded-full border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Next review tip">
                             <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6" />
                             </svg>
@@ -1010,15 +941,15 @@
         <section id="pricing" class="reveal py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
-                    <h2 class="text-3xl font-bold md:text-4xl">Simple, Transparent Pricing</h2>
-                    <p class="mt-4 text-lg text-slate-600">Monthly and annual pricing toggle just like the original template.</p>
+                    <h2 class="text-3xl font-bold md:text-4xl">Start Free. Keep It Affordable.</h2>
+                    <p class="mt-4 text-lg text-slate-600">Prices in Philippine pesos. Paid plans are planned and are not yet available for purchase.</p>
 
                     <div class="mb-12 mt-8 flex items-center justify-center">
                         <span class="mr-3" :class="isAnnual ? 'text-slate-600' : 'font-medium text-slate-900'">Monthly</span>
-                        <button @click="isAnnual = !isAnnual" class="relative inline-flex h-6 w-12 items-center rounded-full bg-slate-200" aria-label="Toggle pricing period">
+                        <button type="button" @click="isAnnual = !isAnnual" role="switch" :aria-checked="isAnnual" class="tg-pricing-switch relative inline-flex items-center rounded-full" aria-label="Annual billing">
                             <span :class="isAnnual ? 'translate-x-7' : 'translate-x-1'" class="inline-block h-4 w-4 transform rounded-full bg-white transition"></span>
                         </button>
-                        <span class="ml-3" :class="isAnnual ? 'font-medium text-slate-900' : 'text-slate-600'">Annual <span class="text-sm font-medium text-green-600">Save 20%</span></span>
+                        <span class="ml-3" :class="isAnnual ? 'font-medium text-slate-900' : 'text-slate-600'">Annual <span class="text-sm font-medium text-green-600">Save about 20%</span></span>
                     </div>
                 </div>
 
@@ -1031,42 +962,40 @@
 
                         <article
                             @class([
-                                'reveal overflow-hidden rounded-xl',
+                                'tg-plan-card reveal flex flex-col overflow-hidden rounded-lg',
                                 'border-2 border-blue-600 shadow-lg shadow-blue-100' => $isHighlighted,
                                 'border border-slate-200 shadow-sm' => ! $isHighlighted,
                             ])
                         >
-                            @if ($isHighlighted)
-                                <div class="bg-blue-600 py-2 text-center text-sm font-medium text-white">Most Popular</div>
-                            @endif
+                            <div @class(['px-4 py-2 text-center text-sm font-medium', 'bg-blue-600 text-white' => $isHighlighted, 'bg-blue-50 text-blue-700' => ! $isHighlighted])>{{ $plan['status'] }}</div>
 
                             <div class="bg-white p-6 md:p-8">
                                 <h3 class="text-2xl font-bold">{{ $plan['name'] }}</h3>
-                                <p class="mt-2 text-slate-600">{{ $plan['description'] }}</p>
-                                <div class="mb-6 mt-6">
+                                <p class="tg-plan-description mt-2 text-slate-600">{{ $plan['description'] }}</p>
+                                <div class="tg-plan-price-block mb-6 mt-6">
                                     @if (! $isEnterprise)
-                                        <span class="text-4xl font-bold" x-show="isAnnual">{{ $plan['annualMonthly'] ?? $plan['monthly'] ?? '' }}</span>
-                                        <span class="text-4xl font-bold" x-show="!isAnnual" x-cloak>{{ $plan['monthly'] ?? '' }}</span>
+                                        <span class="tg-plan-price text-4xl font-bold" x-show="isAnnual">{{ str_replace('PHP ', "\u{20B1}", $plan['annualMonthly'] ?? $plan['monthly'] ?? '') }}</span>
+                                        <span class="tg-plan-price text-4xl font-bold" x-show="!isAnnual" x-cloak>{{ str_replace('PHP ', "\u{20B1}", $plan['monthly'] ?? '') }}</span>
                                         <span class="text-slate-600">/month</span>
-                                        <div class="mt-1 text-sm text-slate-500" x-show="isAnnual" x-cloak>{{ $plan['annualLabel'] ?? '' }}</div>
+                                        <div class="mt-1 text-sm text-slate-500" x-show="isAnnual" x-cloak>{{ str_replace('PHP ', "\u{20B1}", $plan['annualLabel'] ?? '') }}</div>
                                     @else
                                         <span class="text-2xl font-bold">Custom Pricing</span>
                                     @endif
                                 </div>
 
-                                <button
+                                <a href="{{ $plan['url'] }}"
                                     @class([
-                                        'w-full rounded-lg px-4 py-2.5 text-sm font-semibold transition',
-                                        'bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:from-blue-700 hover:to-violet-700' => $isHighlighted,
+                                        'inline-flex min-h-11 w-full items-center justify-center rounded-lg px-4 py-2.5 text-center text-sm font-semibold transition',
+                                        'bg-blue-600 text-white hover:bg-blue-700' => $isHighlighted,
                                         'border border-slate-300 bg-white text-slate-800 hover:bg-slate-50' => ! $isHighlighted,
                                     ])
                                 >
                                     {{ $plan['cta'] }}
-                                </button>
+                                </a>
                             </div>
 
-                            <div class="border-t border-slate-200 bg-slate-50 p-6 md:p-8">
-                                <p class="mb-4 font-semibold">What's included:</p>
+                            <div class="flex-1 border-t border-slate-200 bg-slate-50 p-6 md:p-8">
+                                <p class="mb-4 font-semibold">{{ $plan['status'] === 'Planned' ? 'Plan status' : 'Available features' }}</p>
                                 <ul class="space-y-3">
                                     @foreach ($plan['features'] as $includedFeature)
                                         <li class="flex items-start gap-2 text-sm text-slate-700">
@@ -1128,70 +1057,7 @@
         </button>
     </main>
 
-    <footer class="bg-slate-900 text-slate-300">
-        <div class="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-            <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-5">
-                <div class="lg:col-span-2">
-                    <a href="#home" @click.prevent="scrollToSection('home')" class="mb-6 flex items-center gap-3">
-                        @if ($logoUrl !== '')
-                            <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-9 w-9 object-contain">
-                        @else
-                            <span class="inline-flex h-9 w-9 items-center justify-center text-sm font-bold text-blue-600">TG</span>
-                        @endif
-                        <span class="text-xl font-bold text-white">TruthGuard</span>
-                    </a>
-                    <p class="max-w-md">
-                        TruthGuard builds AI-powered verification workflows for responsible digital information sharing.
-                    </p>
-                </div>
-
-                <div>
-                    <h3 class="mb-4 font-semibold text-white">Product</h3>
-                    <ul class="space-y-3 text-sm">
-                        <li><a href="#features" @click.prevent="scrollToSection('features')" class="transition hover:text-white">Features</a></li>
-                        <li><a href="#use-cases" @click.prevent="scrollToSection('use-cases')" class="transition hover:text-white">Use Cases</a></li>
-                        <li><a href="#pricing" @click.prevent="scrollToSection('pricing')" class="transition hover:text-white">Pricing</a></li>
-                        <li><a href="#install" @click.prevent="scrollToSection('install')" class="transition hover:text-white">Install App</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 class="mb-4 font-semibold text-white">Platform</h3>
-                    <ul class="space-y-3 text-sm">
-                        <li><a href="#home" @click.prevent="scrollToSection('home')" class="transition hover:text-white">Overview</a></li>
-                        <li><a href="#testimonials" @click.prevent="scrollToSection('testimonials')" class="transition hover:text-white">Testimonials</a></li>
-                        <li><a href="#" class="transition hover:text-white">API (Coming Soon)</a></li>
-                        <li><a href="#" class="transition hover:text-white">Security</a></li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 class="mb-4 font-semibold text-white">Support</h3>
-                    <ul class="space-y-3 text-sm">
-                        @auth
-                            <li><a href="{{ route('dashboard') }}" class="transition hover:text-white">Dashboard</a></li>
-                        @else
-                            <li><a href="{{ route('login') }}" class="transition hover:text-white">Log In</a></li>
-                            @if (Route::has('register'))
-                                <li><a href="{{ route('register') }}" class="transition hover:text-white">Register</a></li>
-                            @endif
-                        @endauth
-                        <li><a href="#" class="transition hover:text-white">Help Center</a></li>
-                        <li><a href="#" class="transition hover:text-white">Contact</a></li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 text-sm md:flex-row">
-                <p>&copy; {{ date('Y') }} TruthGuard. All rights reserved.</p>
-                <div class="flex gap-6">
-                    <a href="#" class="transition hover:text-white">Terms</a>
-                    <a href="#" class="transition hover:text-white">Privacy</a>
-                    <a href="#" class="transition hover:text-white">Cookies</a>
-                </div>
-            </div>
-        </div>
-    </footer>
+    @include('layouts.partials.public-footer')
 
     <script>
         function landingTemplate() {
@@ -1200,7 +1066,7 @@
                 activeUseCase: 'customer-service',
                 currentTestimonial: 0,
                 totalTestimonials: 1,
-                isAnnual: true,
+                isAnnual: false,
                 autoRotateId: null,
                 showBackTop: false,
                 scrollHandler: null,

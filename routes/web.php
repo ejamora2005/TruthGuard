@@ -29,6 +29,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', WelcomePage::class)->name('home');
+Route::get('claim-reviews', \App\Http\Controllers\PublicClaimReviewController::class)->name('reviews.index');
 Route::get('privacy-policy', [PrivacyPolicyController::class, 'policy'])->name('privacy.policy');
 
 Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle'])->name('google.redirect');

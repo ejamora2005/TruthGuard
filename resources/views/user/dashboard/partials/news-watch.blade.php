@@ -1,8 +1,8 @@
 @php
     $feed = $factCheckFeed ?? ['configured' => false, 'items' => []];
     $allFeedItems = collect($feed['items'] ?? []);
-    $feedPerPage = 10;
-    $feedPageName = 'fact_page';
+    $feedPerPage = $reviewPageSize ?? 10;
+    $feedPageName = $reviewPageParameter ?? 'fact_page';
     $feedTotal = $allFeedItems->count();
     $feedLookbackDays = max(0, (int) ($feed['max_age_days'] ?? 0));
     $feedWindowLabel = $feedLookbackDays > 0 ? 'last '.$feedLookbackDays.' days' : 'latest reviews';
@@ -15,7 +15,8 @@
     $feedPageNumbers = collect(range(1, $feedTotalPages))
         ->filter(fn (int $page): bool => $page === 1 || $page === $feedTotalPages || abs($page - $feedCurrentPage) <= 1)
         ->values();
-    $feedPageUrl = function (int $page) use ($feedPageName): string {
+    $feedRoute = $reviewListRoute ?? 'dashboard';
+    $feedPageUrl = function (int $page) use ($feedPageName, $feedRoute): string {
         $query = request()->query();
         unset($query[$feedPageName]);
 
@@ -23,7 +24,7 @@
             $query[$feedPageName] = $page;
         }
 
-        return route('dashboard', $query).'#news-watch';
+        return route($feedRoute, $query).'#news-watch';
     };
     $updatedAt = $feed['updated_at'] ?? null;
     $sourceRows = $allFeedItems
@@ -634,8 +635,8 @@
                                 <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">{{ $item['host'] }}</span>
                             @endif
                             @if (! empty($item['url']))
-                                <a href="{{ $item['url'] }}" target="_blank" rel="noopener noreferrer" class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-blue-700 transition hover:border-blue-200 hover:bg-blue-50">
-                                    Original source
+                                <a href="{{ ($publicReviewList ?? false) ? $detailUrl : $item['url'] }}" @unless($publicReviewList ?? false) target="_blank" rel="noopener noreferrer" @endunless class="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-blue-700 transition hover:border-blue-200 hover:bg-blue-50">
+                                    {{ ($publicReviewList ?? false) ? 'Read review' : 'Original source' }}
                                 </a>
                             @endif
                         </div>

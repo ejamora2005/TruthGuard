@@ -276,6 +276,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M7 12h10M10 17h4"></path>
                     </svg>
                     <select
+                        data-tg-select
                         name="sort"
                         class="min-h-11 min-w-[9rem] border-0 bg-transparent px-3 text-sm font-semibold text-slate-900 outline-none focus:ring-0"
                         onchange="this.form.submit()"
