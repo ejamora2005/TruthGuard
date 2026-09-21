@@ -77,6 +77,9 @@ x-app: &app
 services:
   app:
     <<: *app
+    networks:
+      - truthguard-internal
+      - dokploy-network
     ports:
       - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
     healthcheck:
@@ -88,12 +91,16 @@ services:
 
   worker:
     <<: *app
+    networks:
+      - truthguard-internal
     user: www-data
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=300", "--max-time=3600"]
     stop_grace_period: 330s
 
   scheduler:
     <<: *app
+    networks:
+      - truthguard-internal
     user: www-data
     command: ["php", "artisan", "schedule:work"]
     stop_grace_period: 330s
@@ -106,6 +113,8 @@ services:
       MYSQL_USER: ${DB_USERNAME:-truthguard}
       MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.production}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env.production}
+    networks:
+      - truthguard-internal
     volumes:
       - database:/var/lib/mysql
     healthcheck:
@@ -118,3 +127,9 @@ services:
 volumes:
   storage:
   database:
+
+networks:
+  truthguard-internal:
+    driver: bridge
+  dokploy-network:
+    external: true
