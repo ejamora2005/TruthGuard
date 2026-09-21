@@ -26,8 +26,6 @@ class GoogleAuthController extends Controller
                 ->with('auth_error', 'Google sign-in is not configured yet.');
         }
 
-        request()->session()->forget('url.intended');
-
         return $this->socialiteDriver('google')->redirect();
     }
 
@@ -56,8 +54,6 @@ class GoogleAuthController extends Controller
                 ->route('login')
                 ->with('auth_error', 'Facebook sign-in is not configured yet.');
         }
-
-        request()->session()->forget('url.intended');
 
         return $this->socialiteDriver('facebook')
             ->scopes(['email'])
@@ -232,7 +228,6 @@ class GoogleAuthController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->save();
         app(TruthGuardNotificationManager::class)->sendWelcomeOnce($user);
-        request()->session()->forget('url.intended');
 
         return redirect()->to($this->postLoginPath($user));
     }
@@ -308,8 +303,6 @@ class GoogleAuthController extends Controller
 
     private function postLoginPath(User $user): string
     {
-        return $user->isAdmin()
-            ? route('admin.dashboard', absolute: false)
-            : route('dashboard', absolute: false);
+        return app(\App\Services\Auth\PostLoginDestination::class)->resolve(request(), $user);
     }
 }

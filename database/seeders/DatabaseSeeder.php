@@ -16,6 +16,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        if (app()->environment('production')) {
+            throw new \RuntimeException('Demo accounts must not be seeded in production.');
+        }
+
         // User::factory(10)->create();
 
         $admin = User::query()

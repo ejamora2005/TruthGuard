@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'log_level' => env('PLAYWRIGHT_LOG_LEVEL', env('LOG_LEVEL', 'warning')),
     'enabled' => env('PLAYWRIGHT_ENABLED', true),
     'node_binary' => env('PLAYWRIGHT_NODE_BINARY', 'node'),
     'script_path' => env('PLAYWRIGHT_SCRIPT_PATH', 'automation/playwright/cli.mjs'),

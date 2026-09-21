@@ -108,5 +108,5 @@ Artisan::command('truthguard:notify-public-claim-reviews {--limit=} {--dry-run} 
     return 0;
 })->purpose('Email active users when new public claim reviews are added to the latest feed.');
 
-Schedule::command('truthguard:archive-detections')->daily();
-Schedule::command('truthguard:notify-public-claim-reviews')->everyThirtyMinutes();
+Schedule::command('truthguard:archive-detections')->daily()->withoutOverlapping();
+Schedule::command('truthguard:notify-public-claim-reviews')->everyThirtyMinutes()->withoutOverlapping();
