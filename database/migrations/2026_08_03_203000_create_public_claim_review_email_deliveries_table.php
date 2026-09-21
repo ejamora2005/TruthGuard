@@ -16,9 +16,15 @@ return new class extends Migration
             $table->id();
             $table
                 ->foreignId('public_claim_review_announcement_id')
-                ->constrained('public_claim_review_announcements')
+                ->constrained(
+                    table: 'public_claim_review_announcements',
+                    indexName: 'pcred_announcement_fk'
+                )
                 ->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table
+                ->foreignId('user_id')
+                ->constrained(indexName: 'pcred_user_fk')
+                ->cascadeOnDelete();
             $table->timestamp('sent_at')->useCurrent();
             $table->timestamps();
 
