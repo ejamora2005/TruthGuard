@@ -2,6 +2,142 @@
 @tailwind components;
 @tailwind utilities;
 
+.tg-welcome #pricing .tg-plan-price { font-size: 36px !important; line-height: 1.2 !important; letter-spacing: 0; color: #0f172a; }
+.tg-welcome #pricing .tg-plan-price-block { min-height: 90px; }
+.tg-welcome #pricing .tg-plan-description { min-height: 72px; line-height: 1.6; }
+.tg-welcome #pricing .tg-plan-card h3 { font-size: 22px !important; }
+.tg-welcome #pricing .tg-plan-card a { border-radius: 8px !important; min-height: 44px; }
+
+.tg-public-reviews-page { min-height: 100dvh; background: #fff; }
+.tg-public-container { width: min(1200px, 100%); margin-inline: auto; padding-inline: 24px; }
+.tg-public-review-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px max(24px, calc((100% - 1152px) / 2)); border-bottom: 1px solid #e2e8f0; background: #fff; }
+.tg-public-brand { display: inline-flex; align-items: center; gap: 10px; color: #1e293b; font-size: 20px; font-weight: 700; }
+.tg-public-brand img { width: 36px; height: 36px; object-fit: contain; }
+.tg-public-heading { padding-block: 36px 24px; max-width: 680px; }
+.tg-public-eyebrow { margin-bottom: 8px; color: #2563eb; font-size: 12px; font-weight: 700; }
+.tg-public-heading h1 { margin-bottom: 12px; font-size: 32px; line-height: 1.2; font-weight: 700; }
+.tg-public-heading > p:last-child, .tg-public-preview-heading > div > p:last-child { color: #64748b; font-size: 15px; line-height: 1.6; }
+.tg-public-link { display: inline-flex; min-height: 44px; align-items: center; color: #1d4ed8; font-size: 14px; font-weight: 600; }
+.tg-public-filters { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; padding-block: 16px 24px; border-bottom: 1px solid #e2e8f0; }
+.tg-public-filters label { display: grid; gap: 6px; min-width: 0; flex: 1 1 240px; font-size: 13px; font-weight: 600; }
+.tg-public-filters input, .tg-public-filters select, .tg-public-filters .tg-select-trigger { min-height: 46px; width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; background: white; font-size: 16px; }
+.tg-public-submit { min-height: 46px; border-radius: 8px; padding: 10px 24px; color: #fff; background: #2563eb; font-weight: 600; }
+.tg-public-submit:hover { background: #1d4ed8; }
+.tg-public-results { margin-block: 20px; color: #64748b; font-size: 13px; }
+.tg-public-review-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+.tg-public-review { min-width: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, 0.035); }
+.tg-public-review-media { aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; }
+.tg-public-review-media > img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
+.tg-public-review-media > .tg-public-review-placeholder { max-width: 96px; max-height: 96px; object-fit: contain; color: #64748b; }
+.tg-public-review-copy { display: flex; flex: 1; flex-direction: column; gap: 12px; padding: 18px; }
+.tg-public-review-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tg-public-review-publisher { display: inline-flex; align-items: center; gap: 6px; color: #475569; font-size: 12px; font-weight: 600; }
+.tg-public-review-publisher img { width: 20px; height: 20px; object-fit: contain; }
+.tg-public-review-rating { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #f1f5f9; color: #475569; }
+.tg-public-review-rating[data-tone="danger"] { color: #b91c1c; background: #fef2f2; }
+.tg-public-review-rating[data-tone="warning"] { color: #92400e; background: #fffbeb; }
+.tg-public-review-rating[data-tone="safe"] { color: #047857; background: #ecfdf5; }
+.tg-public-review h3 { font-size: 17px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.tg-public-review-copy > p { color: #64748b; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; }
+.tg-public-review-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid #f1f5f9; font-size: 12px; color: #64748b; }
+.tg-public-review-footer a { display: inline-flex; gap: 6px; align-items: center; min-height: 44px; color: #1d4ed8; font-weight: 600; }
+.tg-public-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 28px; font-size: 13px; }
+.tg-public-pagination a { padding: 12px; border: 1px solid #dbeafe; border-radius: 8px; color: #1d4ed8; }
+.tg-public-pagination [aria-disabled] { color: #94a3b8; }
+.tg-public-empty { grid-column: 1 / -1; padding: 40px 0; color: #64748b; }
+.tg-public-empty h2 { margin-bottom: 8px; font-size: 20px; color: #334155; }
+.tg-public-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-top: 36px; padding-block: 24px; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0; }
+.tg-public-preview { padding-block: 48px; background: #fff; border-block: 1px solid #e2e8f0; }
+.tg-public-preview-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
+.tg-public-preview-heading h2 { font-size: 26px; line-height: 1.3; font-weight: 700; margin-bottom: 8px; }
+:is(.tg-public-reviews-page, .tg-public-preview) :is(a, button, input, select):focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+@media (max-width: 1000px) { .tg-public-review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+    .tg-public-container { padding-inline: 16px; }
+    .tg-public-review-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .tg-public-heading h1 { font-size: 28px; }
+    .tg-public-filters { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .tg-public-preview { padding-block: 32px; }
+    .tg-public-pagination { font-size: 12px; gap: 8px; }
+}
+
+select[data-tg-select][hidden], .tg-select-menu[hidden] { display: none !important; }
+
+.tg-select-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 2.75rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.6rem 0.65rem;
+    background: transparent;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: left;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.tg-select-trigger::after {
+    content: '';
+    width: 0.4rem;
+    height: 0.4rem;
+    flex-shrink: 0;
+    border-right: 2px solid #64748b;
+    border-bottom: 2px solid #64748b;
+    transform: rotate(45deg);
+    transition: transform 150ms ease;
+}
+.tg-select-trigger[aria-expanded="true"]::after { transform: rotate(225deg); }
+.tg-select-trigger:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.tg-select-menu {
+    position: fixed;
+    z-index: 10000;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.375rem;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    background: #fff;
+    color: #334155;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14), 0 3px 8px rgba(37, 99, 235, 0.06);
+    outline: none;
+    animation: tg-menu-enter 140ms ease-out;
+}
+.tg-select-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    cursor: pointer;
+}
+.tg-select-option:hover, .tg-select-option.is-focused { background: #eff6ff; color: #1d4ed8; }
+.tg-select-option[aria-selected="true"] { color: #1d4ed8; font-weight: 700; }
+.tg-select-option[aria-selected="true"]::after { content: '\2713'; }
+.tg-select-option[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+@keyframes tg-menu-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .tg-select-menu { animation: none; } }
+
+.tg-welcome :is(button, a):focus-visible { outline: 2px solid #2563eb; outline-offset: 4px; }
+.tg-welcome button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.tg-welcome-tabs button { min-height: 44px; border-radius: 8px; box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04); }
+.tg-welcome-tabs button[aria-pressed="true"] { box-shadow: 0 4px 12px rgba(37, 99, 235, 0.22); }
+.tg-welcome .tg-carousel-dot { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 50%; background: transparent; }
+.tg-carousel-dot::after { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #cbd5e1; transition: background 150ms ease, width 150ms ease; }
+.tg-carousel-dot[aria-current="true"]::after { width: 1.25rem; border-radius: 4px; background: #2563eb; }
+.tg-welcome .tg-pricing-switch { width: 3.25rem; height: 2.75rem; padding: 0; background: transparent; }
+.tg-pricing-switch::before { content: ''; position: absolute; inset: 0.625rem 0; border-radius: 999px; background: #cbd5e1; transition: background 150ms ease; }
+.tg-pricing-switch[aria-checked="true"]::before { background: #2563eb; }
+.tg-pricing-switch > span { position: relative; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18); }
+
 /* Hidden until the mobile browser confirms install UI is appropriate. */
 html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-help], [data-pwa-install-content], #install-help, #install, a[href="#install"], #truthguard-install-guide) {
     display: none !important;
