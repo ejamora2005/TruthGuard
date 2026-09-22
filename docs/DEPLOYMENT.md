@@ -24,6 +24,8 @@ On PowerShell, you can instead run your PHP 8.4 executable with `artisan key:gen
 
 Every Compose command must include `--env-file .env.production` so MySQL and Laravel use the same credentials.
 
+If a deployment reuses an existing MySQL volume, changing `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, or `DB_ROOT_PASSWORD` in Dokploy does not update the already-initialized database. Keep those values stable, restore from backup with matching credentials, or intentionally recreate the database volume only when you are prepared to lose that stored data.
+
 ```sh
 docker compose --env-file .env.production config --quiet
 docker compose --env-file .env.production build --pull
