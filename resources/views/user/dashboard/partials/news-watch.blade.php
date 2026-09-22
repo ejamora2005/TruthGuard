@@ -1,6 +1,79 @@
 @php
     $feed = $factCheckFeed ?? ['configured' => false, 'items' => []];
     $allFeedItems = collect($feed['items'] ?? []);
+    $feedSearchParameter = $reviewSearchParameter ?? 'review_search';
+    $feedCategoryParameter = $reviewCategoryParameter ?? 'review_category';
+    $feedSearch = trim((string) request()->query($feedSearchParameter, ''));
+    $feedCategory = (string) request()->query($feedCategoryParameter, 'all');
+    $feedCategories = [
+        'all' => 'All',
+        'ai-generated' => 'AI Generated',
+        'fake-news' => 'Fake News',
+        'manipulated' => 'Manipulated Media',
+        'miscaptioned' => 'Miscaptioned',
+        'misleading' => 'Misleading',
+        'partly-false' => 'Partly False',
+        'missing-context' => 'Missing Context',
+        'unconfirmed' => 'Unconfirmed',
+        'confirmed' => 'Confirmed',
+        'other' => 'Other Reviews',
+    ];
+    $feedCategory = array_key_exists($feedCategory, $feedCategories) ? $feedCategory : 'all';
+    $feedItemText = function (array $item): string {
+        return \Illuminate\Support\Str::lower(implode(' ', array_filter([
+            $item['headline'] ?? null,
+            $item['claim'] ?? null,
+            $item['claimant'] ?? null,
+            $item['rating'] ?? null,
+            $item['publisher'] ?? null,
+            $item['query'] ?? null,
+            $item['host'] ?? null,
+            $item['source_domain'] ?? null,
+        ], fn ($value) => is_scalar($value) && trim((string) $value) !== '')));
+    };
+    $feedItemCategory = function (array $item): string {
+        $rating = \App\Services\Detections\FactCheckRatingNormalizer::shortLabel(
+            (string) ($item['rating'] ?? 'Reviewed'),
+            (string) ($item['headline'] ?? ''),
+            (string) ($item['claim'] ?? ''),
+        );
+
+        return match ($rating) {
+            'AI-Generated' => 'ai-generated',
+            'False' => 'fake-news',
+            'Manipulated' => 'manipulated',
+            'Miscaptioned' => 'miscaptioned',
+            'Misleading' => 'misleading',
+            'Partly False' => 'partly-false',
+            'Missing Context' => 'missing-context',
+            'Unconfirmed' => 'unconfirmed',
+            'Confirmed' => 'confirmed',
+            default => 'other',
+        };
+    };
+    $categoryCounts = collect(array_keys($feedCategories))
+        ->mapWithKeys(fn (string $category): array => [
+            $category => $category === 'all'
+                ? $allFeedItems->count()
+                : $allFeedItems->filter(fn ($item): bool => is_array($item) && $feedItemCategory($item) === $category)->count(),
+        ]);
+    $allFeedItems = $allFeedItems
+        ->filter(function ($item) use ($feedSearch, $feedCategory, $feedItemText, $feedItemCategory): bool {
+            if (! is_array($item)) {
+                return false;
+            }
+
+            if ($feedCategory !== 'all' && $feedItemCategory($item) !== $feedCategory) {
+                return false;
+            }
+
+            if ($feedSearch === '') {
+                return true;
+            }
+
+            return \Illuminate\Support\Str::contains($feedItemText($item), \Illuminate\Support\Str::lower($feedSearch));
+        })
+        ->values();
     $feedPerPage = $reviewPageSize ?? 10;
     $feedPageName = $reviewPageParameter ?? 'fact_page';
     $feedTotal = $allFeedItems->count();
@@ -16,6 +89,20 @@
         ->filter(fn (int $page): bool => $page === 1 || $page === $feedTotalPages || abs($page - $feedCurrentPage) <= 1)
         ->values();
     $feedRoute = $reviewListRoute ?? 'dashboard';
+    $feedFilterUrl = function (array $overrides = []) use ($feedRoute, $feedPageName, $feedSearchParameter, $feedCategoryParameter): string {
+        $query = array_merge(request()->query(), $overrides);
+        unset($query[$feedPageName]);
+
+        if (($query[$feedSearchParameter] ?? '') === '') {
+            unset($query[$feedSearchParameter]);
+        }
+
+        if (($query[$feedCategoryParameter] ?? 'all') === 'all') {
+            unset($query[$feedCategoryParameter]);
+        }
+
+        return route($feedRoute, $query).'#news-watch';
+    };
     $feedPageUrl = function (int $page) use ($feedPageName, $feedRoute): string {
         $query = request()->query();
         unset($query[$feedPageName]);
@@ -41,6 +128,30 @@
 
 @once
     <style>
+        #news-watch .tg-feed-header-layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: 1.25rem;
+        }
+
+        #news-watch .tg-feed-header-copy { display: contents; }
+        #news-watch .tg-feed-heading { min-width: 0; }
+        #news-watch .tg-feed-controls { grid-column: 1 / -1; min-width: 0; }
+        #news-watch .tg-feed-search { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 0.75rem; width: 100%; }
+        #news-watch .tg-feed-field { display: grid; gap: 0.4rem; min-width: 0; }
+        #news-watch .tg-feed-field-label { color: #64748b; font-size: 0.75rem; font-weight: 600; letter-spacing: 0; }
+        #news-watch .tg-feed-select { width: 100%; min-width: 0; height: 2.75rem; border: 1px solid #cbd5e1; border-radius: 8px; background-color: #fff; padding: 0 2.25rem 0 0.85rem; color: #1e293b; font-size: 0.875rem; font-weight: 600; }
+        #news-watch .tg-feed-select:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+        #news-watch .tg-feed-filter-summary { display: none; }
+        @media (min-width: 640px) {
+            #news-watch .tg-feed-search { grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); }
+        }
+
+        @media (min-width: 1024px) {
+            #news-watch .tg-feed-header-layout { grid-template-columns: minmax(0, 1fr) auto; }
+            #news-watch .tg-feed-window-desktop { grid-column: 2; grid-row: 1; align-self: center; }
+        }
+
         @media (min-width: 1280px) {
             .tg-fact-feed-row {
                 grid-template-columns: 18rem minmax(0, 1fr);
@@ -461,13 +572,318 @@
                 white-space: nowrap;
             }
         }
+        #news-watch { border-radius: 12px; box-shadow: 0 4px 20px rgb(15 23 42 / 0.035); }
+        #news-watch .tg-mobile-feed-head { background: #fff; }
+        #news-watch .tg-feed-heading h3 { font-size: 1.5rem; line-height: 1.3; letter-spacing: 0; }
+        #news-watch .tg-feed-monitor-label { letter-spacing: 0; font-size: 0.6875rem; color: #64748b; }
+        #news-watch .tg-feed-controls { border-top: 1px solid #edf1f5; padding-top: 1rem; }
+        #news-watch .tg-feed-search { gap: 0.75rem; align-items: stretch; }
+        #news-watch .tg-feed-field { gap: 0; border: 1px solid #dce3ec; border-radius: 8px; background: #f8fafc; padding: 0.625rem 0.875rem; transition: border-color 160ms, box-shadow 160ms, background 160ms; }
+        #news-watch .tg-feed-field:focus-within { border-color: #2563eb; background: #fff; box-shadow: 0 0 0 3px rgb(37 99 235 / 0.09); }
+        #news-watch .tg-feed-field-label { font-size: 0.6875rem; font-weight: 600; color: #64748b; line-height: 1.5; }
+        #news-watch .tg-feed-select { height: 2rem; padding-left: 0; border: 0; background-color: transparent; box-shadow: none; cursor: pointer; font-size: 0.875rem; }
+        #news-watch .tg-feed-select:focus-visible { outline-offset: 0; outline-width: 1px; }
+        #news-watch .tg-feed-search-input { display: flex; align-items: center; min-height: 2rem; }
+        #news-watch .tg-feed-search-input > span { left: 0; }
+        #news-watch #truthguard-feed-search { height: 2rem; min-width: 0; border: 0; border-radius: 0; background: transparent; padding-left: 1.65rem; padding-right: 5.5rem; font-size: 0.875rem; box-shadow: none; }
+        #news-watch .tg-feed-search-input > button { top: -0.8rem; bottom: 0; right: 0; min-width: 4.5rem; border-radius: 6px; font-size: 0.75rem; }
+        #news-watch .tg-feed-filter-summary { display: none; }
+        #news-watch .tg-feed-filter-summary strong { display: inline-grid; place-items: center; min-width: 1.75rem; height: 1.5rem; padding: 0 0.35rem; margin-right: 0.25rem; border-radius: 5px; background: #eff6ff; color: #1d4ed8; }
+        #news-watch .tg-feed-window { border-radius: 8px; background: #f8fafc; border-color: #e2e8f0; box-shadow: none; }
+        #news-watch .tg-feed-window-icon { background: #eff6ff; color: #2563eb; border-radius: 6px; box-shadow: none; }
+        #news-watch .tg-feed-window-copy > span { letter-spacing: 0; }
+        #news-watch .tg-fact-feed-row { gap: 1.25rem; padding-top: 1.25rem; padding-bottom: 1.25rem; }
+        #news-watch .tg-mobile-fact-media { align-self: start; min-height: 0; border-radius: 8px; aspect-ratio: 4 / 3; }
+        #news-watch .tg-fact-main-image { min-height: 0; height: 100%; }
+        #news-watch .tg-mobile-fact-copy h4 { font-size: 1.125rem; line-height: 1.5; letter-spacing: 0; margin-top: 0.625rem; }
+        #news-watch .tg-mobile-fact-copy > p { font-size: 0.875rem; line-height: 1.75; margin-top: 0.625rem; }
+        #news-watch .tg-mobile-fact-labels { letter-spacing: 0; font-size: 0.6875rem; }
+        #news-watch .tg-mobile-fact-chips { margin-top: 0.875rem; }
+        #news-watch .tg-mobile-fact-chips > * { border-radius: 6px; }
+        @media (min-width: 1024px) {
+            #news-watch .tg-fact-feed-row { grid-template-columns: 15rem minmax(0, 1fr); }
+        }
+        @media (max-width: 639px) {
+            #news-watch .tg-feed-heading h3 { font-size: 1.25rem; }
+            #news-watch .tg-mobile-fact-media { width: 100%; max-height: 22rem; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #news-watch .tg-feed-field { transition: none; }
+        }
+        #news-watch .tg-mobile-feed-list { display: block; }
+        #news-watch .tg-fact-feed-row { display: grid; min-width: 0; }
+        #news-watch .tg-rating-banner { display: none; }
+        #news-watch .tg-rating-meta-chip { white-space: normal; line-height: 1.4; }
+        #news-watch { overflow: visible; }
+        #news-watch .tg-mobile-feed-head { border-radius: 12px 12px 0 0; }
+        #news-watch .tg-category-field { position: relative; padding: 0; overflow: visible; }
+        #news-watch .tg-category-picker { min-width: 0; height: 100%; }
+        #news-watch .tg-category-picker summary { display: flex; align-items: center; gap: .6rem; min-height: 4rem; padding: .625rem .875rem; cursor: pointer; list-style: none; }
+        #news-watch .tg-category-picker summary::-webkit-details-marker { display: none; }
+        #news-watch .tg-category-copy { display: grid; gap: .22rem; flex: 1; min-width: 0; }
+        #news-watch .tg-category-copy strong { font-size: .875rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+        #news-watch .tg-category-count { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 1.75rem; padding: .2rem .4rem; border: 1px solid #dbeafe; border-radius: 6px; background: #eff6ff; color: #2563eb; font-size: .6875rem; font-weight: 800; }
+        #news-watch .tg-category-chevron { display: inline-flex; align-items: center; justify-content: center; width: 1.65rem; height: 1.65rem; flex: 0 0 1.65rem; border-radius: 6px; color: #64748b; transition: transform 160ms ease, background-color 160ms ease, color 160ms ease; }
+        #news-watch .tg-category-chevron svg { width: .95rem; height: .95rem; }
+        #news-watch .tg-category-picker[open] .tg-category-chevron { transform: rotate(180deg); background: #eff6ff; color: #2563eb; }
+        #news-watch .tg-category-menu { position: absolute; top: calc(100% + .5rem); left: 0; right: 0; z-index: 40; max-height: 20rem; overflow-y: auto; overscroll-behavior: contain; padding: .375rem; border: 1px solid #dce3ec; border-radius: 8px; background: #fff; box-shadow: 0 12px 32px rgb(15 23 42 / .14); }
+        #news-watch .tg-category-menu a { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.75rem; padding: .5rem .625rem; border-radius: 5px; color: #334155; font-size: .8125rem; text-decoration: none; }
+        #news-watch .tg-category-menu a:hover { background: #f1f5f9; }
+        #news-watch .tg-category-menu a[aria-current] { background: #eff6ff; color: #1d4ed8; font-weight: 700; }
+        #news-watch .tg-category-menu a[aria-current] .tg-category-count { background: #dbeafe; color: #1d4ed8; }
+        #news-watch .tg-category-picker summary:focus-visible, #news-watch .tg-category-menu a:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; border-radius: 6px; }
+
+        #news-watch {
+            scroll-margin-top: 6rem;
+        }
+
+        #news-watch .tg-feed-controls {
+            position: relative;
+            z-index: 5;
+            margin-top: 1.05rem;
+            border-top: 1px solid #e6edf5;
+            padding-top: 1rem;
+        }
+
+        #news-watch .tg-feed-search {
+            align-items: stretch;
+            gap: 0.85rem;
+        }
+
+        @media (min-width: 768px) {
+            #news-watch .tg-feed-search {
+                grid-template-columns: minmax(15rem, 20rem) minmax(0, 1fr);
+            }
+        }
+
+        #news-watch .tg-feed-field {
+            min-height: 4.25rem;
+            border-color: #dbe3ee;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #ffffff, #f8fafc);
+            box-shadow: 0 8px 20px rgb(15 23 42 / 0.04), inset 0 1px 0 #ffffff;
+        }
+
+        #news-watch .tg-feed-field:focus-within {
+            border-color: #93c5fd;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgb(37 99 235 / 0.11), 0 10px 22px rgb(15 23 42 / 0.05);
+        }
+
+        #news-watch .tg-feed-field-label {
+            color: #64748b;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        #news-watch .tg-category-picker summary {
+            min-height: 4.25rem;
+            padding: 0.65rem 0.85rem;
+        }
+
+        #news-watch .tg-feed-search-input {
+            min-height: 2.5rem;
+            padding-top: 0.05rem;
+        }
+
+        #news-watch #truthguard-feed-search {
+            height: 2.45rem;
+            padding-right: 6.25rem;
+            font-weight: 650;
+        }
+
+        #news-watch .tg-feed-search-input > span {
+            left: 0;
+        }
+
+        #news-watch .tg-feed-search-input > button {
+            top: 0;
+            right: 0;
+            bottom: 0;
+            min-width: 5.35rem;
+            border-radius: 8px;
+            box-shadow: 0 8px 18px rgb(37 99 235 / 0.2);
+        }
+
+        #news-watch .tg-feed-search {
+            align-items: center;
+        }
+
+        @media (min-width: 768px) {
+            #news-watch .tg-feed-search {
+                grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+            }
+        }
+
+        #news-watch .tg-feed-field {
+            display: flex;
+            min-height: 3.05rem;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.35rem 0.65rem;
+        }
+
+        #news-watch .tg-category-picker,
+        #news-watch .tg-feed-search-input {
+            width: 100%;
+        }
+
+        #news-watch .tg-category-picker summary {
+            min-height: 2.35rem;
+            padding: 0;
+        }
+
+        #news-watch .tg-category-copy {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            white-space: nowrap;
+        }
+
+        #news-watch .tg-category-copy .tg-feed-field-label::after {
+            content: ':';
+        }
+
+        #news-watch .tg-category-copy strong {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #news-watch .tg-feed-search .tg-feed-field:not(.tg-category-field) > .tg-feed-field-label {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+        }
+
+        #news-watch .tg-feed-search-input {
+            min-height: 2.35rem;
+            padding-top: 0;
+        }
+
+        #news-watch #truthguard-feed-search {
+            height: 2.35rem;
+            padding-left: 1.85rem;
+            padding-right: 5.8rem;
+        }
+
+        #news-watch .tg-feed-search-input > span {
+            left: 0.1rem;
+        }
+
+        #news-watch .tg-feed-search-input > button {
+            min-width: 5.1rem;
+        }
+
+        #news-watch .tg-mobile-feed-list {
+            display: block !important;
+            margin-top: 0 !important;
+            padding-inline: 1.25rem !important;
+        }
+
+        #news-watch .tg-mobile-feed-list > :not([hidden]) ~ :not([hidden]) {
+            border-top-width: 1px !important;
+        }
+
+        #news-watch .tg-fact-feed-row {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr);
+            align-items: start;
+            gap: 1.35rem;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            padding: 1.45rem 0 !important;
+            box-shadow: none !important;
+        }
+
+        #news-watch .tg-fact-feed-row:hover {
+            background: transparent !important;
+        }
+
+        #news-watch .tg-mobile-fact-media {
+            width: 100%;
+            min-height: 0 !important;
+            aspect-ratio: 16 / 10;
+            border-radius: 0.8rem !important;
+            background: #f8fafc;
+        }
+
+        #news-watch .tg-mobile-fact-media .tg-fact-main-image {
+            min-height: 0 !important;
+            height: 100% !important;
+            object-fit: contain;
+            padding: 0.25rem !important;
+        }
+
+        #news-watch .tg-mobile-fact-copy {
+            min-width: 0;
+            padding: 0 !important;
+        }
+
+        #news-watch .tg-mobile-fact-copy h4 {
+            font-size: 1.2rem !important;
+            line-height: 1.45 !important;
+            letter-spacing: 0 !important;
+            margin-top: 0.65rem !important;
+        }
+
+        #news-watch .tg-mobile-fact-copy > p {
+            max-width: 64rem;
+            font-size: 0.95rem !important;
+            line-height: 1.7 !important;
+            margin-top: 0.7rem !important;
+        }
+
+        #news-watch .tg-mobile-fact-labels {
+            letter-spacing: 0.08em;
+        }
+
+        #news-watch .tg-mobile-fact-chips {
+            flex-wrap: wrap !important;
+            overflow: visible !important;
+            margin-inline: 0 !important;
+            padding: 0 !important;
+        }
+
+        #news-watch .tg-mobile-fact-chips > * {
+            flex: 0 1 auto !important;
+            white-space: normal !important;
+        }
+
+        @media (min-width: 768px) {
+            #news-watch .tg-fact-feed-row {
+                grid-template-columns: 18rem minmax(0, 1fr);
+            }
+        }
+
+        @media (min-width: 1280px) {
+            #news-watch .tg-fact-feed-row {
+                grid-template-columns: 20rem minmax(0, 1fr);
+            }
+        }
+
+        @media (max-width: 767px) {
+            #news-watch .tg-mobile-feed-list {
+                padding-inline: 1rem !important;
+            }
+
+            #news-watch .tg-mobile-fact-media {
+                max-height: 22rem;
+            }
+        }
     </style>
 @endonce
 
-<section id="news-watch" class="tg-mobile-feed overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-md">
+<section id="news-watch" class="tg-mobile-feed rounded-[28px] border border-slate-200 bg-white shadow-md">
     <div class="tg-mobile-feed-head border-b border-slate-200 bg-slate-50/80 px-5 py-5 sm:px-6 sm:py-6">
-        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-            <div class="max-w-3xl">
+        <div class="tg-feed-header-layout">
+            <div class="tg-feed-header-copy">
+                <div class="tg-feed-heading">
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="tg-feed-monitor-title-row flex items-center gap-2">
                         <p class="tg-feed-monitor-label text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Verified source monitor</p>
@@ -500,6 +916,61 @@
                     </div>
                 </div>
                 <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Latest public claim reviews</h3>
+                </div>
+                <div class="tg-feed-controls">
+                    <form method="GET" action="{{ route($feedRoute) }}#news-watch" class="tg-feed-search" role="search">
+                        @foreach (request()->except([$feedSearchParameter, $feedCategoryParameter, $feedPageName]) as $key => $value)
+                            @if (is_scalar($value))
+                                <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                            @endif
+                        @endforeach
+                        <div class="tg-feed-field tg-category-field">
+                            <input type="hidden" name="{{ $feedCategoryParameter }}" value="{{ $feedCategory }}">
+                            <details class="tg-category-picker" x-data x-ref="picker" @click.outside="$refs.picker.open = false" @keydown.escape.prevent="$refs.picker.open = false; $refs.trigger.focus()">
+                                <summary x-ref="trigger">
+                                    <span class="tg-category-copy"><span class="tg-feed-field-label">Category</span><strong>{{ $feedCategory === 'all' ? 'All categories' : $feedCategories[$feedCategory] }}</strong></span>
+                                    <span class="tg-category-count">{{ $categoryCounts[$feedCategory] ?? 0 }}</span>
+                                    <span class="tg-category-chevron" aria-hidden="true">
+                                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="m5 7.5 5 5 5-5" stroke-linecap="round" stroke-linejoin="round"></path>
+                                        </svg>
+                                    </span>
+                                </summary>
+                                <nav class="tg-category-menu" aria-label="Review categories">
+                                @foreach ($feedCategories as $categoryKey => $categoryLabel)
+                                    <a href="{{ $feedFilterUrl([$feedCategoryParameter => $categoryKey]) }}" @if ($feedCategory === $categoryKey) aria-current="true" @endif>
+                                        <span>{{ $categoryKey === 'all' ? 'All categories' : $categoryLabel }}</span>
+                                        <span class="tg-category-count">{{ $categoryCounts[$categoryKey] ?? 0 }}</span>
+                                    </a>
+                                @endforeach
+                                </nav>
+                            </details>
+                        </div>
+                        <div class="tg-feed-field">
+                        <label for="truthguard-feed-search" class="tg-feed-field-label">Search reviews</label>
+                        <div class="tg-feed-search-input relative min-w-0">
+                        <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <circle cx="11" cy="11" r="7"></circle>
+                                <path stroke-linecap="round" d="m20 20-3.5-3.5"></path>
+                            </svg>
+                        </span>
+                        <input
+                            id="truthguard-feed-search"
+                            type="search"
+                            name="{{ $feedSearchParameter }}"
+                            value="{{ $feedSearch }}"
+                            placeholder="Search claims or sources..."
+                            class="h-11 w-full rounded-lg border border-slate-300 bg-white pl-10 pr-24 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        >
+                        <button type="submit" class="absolute inset-y-1 right-1 inline-flex items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-bold text-white transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                            Search
+                        </button>
+                        </div>
+                        </div>
+                    </form>
+
+                </div>
             </div>
 
             @if ($feedLookbackDays > 0)
@@ -526,19 +997,15 @@
                 @php
                     $tone = $item['tone'] ?? 'neutral';
                     $rawRating = (string) ($item['rating'] ?? 'Reviewed');
-                    $rating = \App\Services\Detections\FactCheckRatingNormalizer::shortLabel(
-                        $rawRating,
-                        (string) ($item['headline'] ?? ''),
-                        (string) ($item['claim'] ?? ''),
-                    );
-                    $ratingTone = \App\Services\Detections\FactCheckRatingNormalizer::toneFor($rating) ?: $tone;
+                    $rating = $item['source_rating'] ?? null;
+                    $ratingTone = $rating ? \App\Services\Detections\FactCheckRatingNormalizer::toneFor($rating) : 'neutral';
                     $logoUrl = $item['logo_url'] ?? null;
                     $publisherName = $item['publisher'] ?? 'Fact-check partner';
                     $detailUrl = ! empty($item['id'])
                         ? route('dashboard.fact-check', ['factCheck' => $item['id']])
                         : ($item['url'] ?: route('detections.create'));
                 @endphp
-                <article class="tg-fact-feed-row tg-mobile-fact-card grid gap-5 py-6 xl:items-stretch">
+                <article class="tg-fact-feed-row grid gap-5 py-6">
                     <a
                         href="{{ $detailUrl }}"
                         class="tg-mobile-fact-media group relative min-h-52 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100"
@@ -608,7 +1075,7 @@
                                 'tg-rating-meta-chip-safe' => $ratingTone === 'safe',
                                 'tg-rating-meta-chip-neutral' => ! in_array($ratingTone, ['danger', 'warning', 'safe'], true),
                             ])>
-                                Rating: {{ $rating }}
+                                {{ $rating ? 'Source rating: '.$rating : 'Rating unavailable' }}
                             </span>
                             @if (! empty($item['query']))
                                 <span class="rounded-full bg-blue-50 px-2.5 py-1 text-[0.68rem] text-blue-700">
@@ -628,7 +1095,6 @@
                         </h4>
 
                         <p class="mt-3 max-w-4xl text-sm leading-7 text-slate-600 sm:text-base">{{ $item['claim'] }}</p>
-
                         <div class="tg-mobile-fact-chips mt-4 flex flex-wrap gap-2 text-xs font-semibold text-slate-500">
                             <span class="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">Claimant: {{ $item['claimant'] ?? 'Online claim' }}</span>
                             @if (! empty($item['host']))
@@ -719,10 +1185,15 @@
         </div>
     @else
         <div class="m-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center sm:m-6">
+            @if ($feedSearch !== '' || $feedCategory !== 'all')
+                <p class="text-sm font-semibold text-slate-800">No reviews match your filters.</p>
+                <a href="{{ $feedFilterUrl([$feedSearchParameter => '', $feedCategoryParameter => 'all']) }}" class="mt-3 inline-flex min-h-10 items-center text-sm font-semibold text-blue-700 hover:underline">Clear filters</a>
+            @else
             <p class="text-sm font-semibold text-slate-800">
                 {{ ($feed['configured'] ?? false) ? ($feedLookbackDays > 0 ? 'No public claim reviews were returned from the '.$feedWindowLabel.'.' : 'No public claim reviews were returned for the current feed topics.') : 'Connect Google Fact Check API to enable the live fact-check wire.' }}
             </p>
             <p class="mt-2 text-sm text-slate-500">Feed topics: {{ $feed['query_label'] ?? 'Philippines, viral misinformation, fake news' }}</p>
+            @endif
         </div>
     @endif
 </section>

@@ -274,6 +274,78 @@
             .tg-score-ring { height: 7.25rem; width: 7.25rem; }
             .tg-ai-hero::before { display: none; }
         }
+
+        .tg-ai-report { position: relative; isolation: isolate; overflow-wrap: anywhere; padding-bottom: .5rem; }
+        .tg-ai-report * { letter-spacing: 0 !important; }
+        .tg-ai-report .tg-ai-surface { border: 1px solid rgba(203, 213, 225, .86); border-radius: 18px; background: linear-gradient(180deg, #fff 0%, #fbfdff 100%); box-shadow: 0 20px 55px rgba(15, 23, 42, .08); }
+        .tg-report-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 1.25rem; border: 1px solid rgba(203, 213, 225, .86); border-radius: 22px; background: linear-gradient(135deg, #fff 0%, #f8fbff 58%, rgb(var(--tg-accent-rgb) / .05) 100%); box-shadow: 0 24px 70px rgba(15, 23, 42, .09); }
+        .tg-report-evidence, .tg-ai-report .tg-ai-hero { border: 1px solid rgba(226, 232, 240, .96); border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.88) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.9); padding: 1rem; }
+        .tg-ai-report .tg-ai-hero { align-self: stretch; display: flex; align-items: center; background: linear-gradient(135deg, #fff 0%, rgb(var(--tg-accent-rgb) / .045) 100%); }
+        .tg-ai-report .tg-ai-hero::before { display: none; }
+        .tg-ai-report .tg-ai-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.72), 0 8px 22px rgba(15,23,42,.06); }
+        .tg-ai-report .tg-ai-media { min-height: 0; max-height: none; border-radius: 16px; background: linear-gradient(135deg, #f8fafc 0%, #eef4fb 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.85); }
+        .tg-ai-report .tg-ai-media img, .tg-ai-report .tg-ai-media video { display: block; width: 100%; height: auto; max-height: 30rem; object-fit: contain; border-radius: 15px; }
+        .tg-ai-report .tg-score-ring { box-shadow: 0 18px 44px rgb(var(--tg-accent-rgb) / .17); }
+        .tg-ai-report .tg-score-ring::after { box-shadow: inset 0 0 0 1px rgba(226,232,240,.85); }
+        .tg-report-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: rgba(203,213,225,.78); border: 1px solid rgba(203,213,225,.86); border-radius: 18px; overflow: hidden; box-shadow: 0 16px 42px rgba(15,23,42,.06); }
+        .tg-report-metrics > div { position: relative; padding: 1rem 1.25rem; background: linear-gradient(180deg, #fff 0%, #f8fafc 100%); }
+        .tg-report-metrics > div::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: rgb(var(--tg-accent-rgb) / .65); content: ''; }
+        .tg-report-metrics dt { font-size: .8125rem; font-weight: 700; color: #64748b; }
+        .tg-report-metrics dd { margin-top: .25rem; font-size: 1.5rem; font-weight: 800; color: #0f172a; }
+        .tg-report-body { display: flex; flex-direction: column; gap: 1.25rem; }
+        .tg-report-main, .tg-report-insights { display: contents; }
+        .tg-report-assessment { order: 1; }
+        .tg-report-insights > article { order: 2; }
+        .tg-report-sources { order: 3; }
+        .tg-report-method { order: 4; }
+        .tg-report-insights > div { order: 5; }
+        .tg-report-process { counter-reset: report-step; }
+        .tg-report-process li { counter-increment: report-step; }
+        .tg-report-process li::before { content: counter(report-step); display: grid; place-items: center; flex: 0 0 1.5rem; height: 1.5rem; border-radius: 50%; background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+        .tg-report-process li > span:first-child { display: none; }
+        .tg-report-header { align-items: center; justify-content: space-between; }
+        .tg-report-title { min-width: 0; }
+        .tg-report-kicker, .tg-report-date, .tg-report-action { white-space: nowrap; }
+        .tg-report-kicker, .tg-report-date { overflow: hidden; text-overflow: ellipsis; }
+        .tg-report-actions { flex-wrap: nowrap; }
+        .tg-report-actions a, .tg-source-jump { box-shadow: 0 8px 20px rgba(15, 23, 42, .055); }
+        .tg-source-jump { border: 1px solid rgba(203,213,225,.85); background: linear-gradient(180deg, #fff 0%, #f8fafc 100%); }
+        .tg-source-jump:hover { border-color: rgb(var(--tg-accent-rgb) / .38); box-shadow: 0 10px 22px rgb(var(--tg-accent-rgb) / .11); }
+        .tg-ai-report .tg-ai-source { border-color: rgba(203, 213, 225, .82); background: linear-gradient(180deg, #fff 0%, #fbfdff 100%); box-shadow: 0 10px 28px rgba(15,23,42,.045); }
+        .tg-ai-report .tg-ai-source:hover { border-color: rgb(var(--tg-accent-rgb) / .42); box-shadow: 0 16px 36px rgb(var(--tg-accent-rgb) / .09); }
+        .tg-ai-report .tg-ai-signal-track { height: .45rem; background: #edf2f7; box-shadow: inset 0 1px 2px rgba(15,23,42,.08); }
+        .tg-ai-report .tg-ai-metric { border-color: rgba(203,213,225,.82); background: linear-gradient(180deg, #fff 0%, #f8fafc 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.88); }
+        .tg-ai-report details.tg-ai-surface summary { list-style: none; }
+        .tg-ai-report details.tg-ai-surface summary::-webkit-details-marker { display: none; }
+        .tg-report-method { overflow: hidden; }
+        .tg-report-method-summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: -1.25rem; padding: 1.25rem; border-radius: 18px; transition: background .18s ease, box-shadow .18s ease; }
+        .tg-report-method-summary:hover { background: linear-gradient(135deg, #f8fbff 0%, rgb(var(--tg-accent-rgb) / .055) 100%); }
+        .tg-report-method-summary:focus-visible { outline: 3px solid rgb(var(--tg-accent-rgb) / .22); outline-offset: -3px; }
+        .tg-report-method[open] .tg-report-method-summary { border-bottom: 1px solid rgba(226, 232, 240, .9); border-radius: 18px 18px 0 0; background: linear-gradient(135deg, #f8fbff 0%, rgb(var(--tg-accent-rgb) / .045) 100%); }
+        .tg-report-method-icon { display: inline-grid; width: 2.55rem; height: 2.55rem; flex: 0 0 auto; place-items: center; border-radius: .9rem; background: #eff6ff; color: #2563eb; box-shadow: inset 0 0 0 1px #dbeafe; }
+        .tg-report-method-toggle { display: inline-flex; flex: 0 0 auto; align-items: center; gap: .55rem; border-radius: 999px; background: #eff6ff; padding: .45rem .55rem .45rem .8rem; color: #1d4ed8; font-size: .75rem; font-weight: 800; box-shadow: inset 0 0 0 1px #dbeafe; }
+        .tg-report-method-chevron { display: inline-grid; width: 1.55rem; height: 1.55rem; place-items: center; border-radius: 999px; background: #fff; transition: transform .18s ease; }
+        .tg-report-method[open] .tg-report-method-chevron { transform: rotate(180deg); }
+        .tg-report-method-body { margin-top: 1.25rem; padding-top: 1rem; }
+        .tg-related-image { background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%); }
+        #source-verification { scroll-margin-top: 6.5rem; }
+        #source-verification:target { border-color: rgb(var(--tg-accent-rgb) / .5); box-shadow: 0 0 0 4px rgb(var(--tg-accent-rgb) / .12), 0 20px 55px rgba(15, 23, 42, .1); }
+        @media (max-width: 640px) {
+            .tg-report-header { gap: .5rem; }
+            .tg-report-title { gap: .45rem; }
+            .tg-report-title-icon { width: 2rem; height: 2rem; border-radius: .75rem; }
+            .tg-report-kicker { font-size: .62rem; letter-spacing: .08em !important; }
+            .tg-report-date { max-width: 7.75rem; font-size: .68rem; }
+            .tg-report-actions { flex: 0 0 auto; gap: .35rem; }
+            .tg-report-action { min-height: 2.15rem !important; gap: .3rem !important; border-radius: .7rem !important; padding-inline: .55rem !important; font-size: .68rem !important; }
+            .tg-report-action svg { width: .85rem; height: .85rem; }
+        }
+        @media (min-width: 768px) {
+            .tg-report-overview { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); padding: 1.5rem; gap: 2rem; }
+            .tg-report-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+            .tg-report-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .tg-report-assessment, .tg-report-sources, .tg-report-method, .tg-report-insights > div { grid-column: 1 / -1; }
+        }
     </style>
 @endonce
 
@@ -283,32 +355,32 @@
     class="tg-ai-report truthguard-scroll-target space-y-5 sm:space-y-6"
     style="--tg-accent: {{ $tone['accent'] }}; --tg-accent-rgb: {{ $tone['accentRgb'] }};"
 >
-    <div class="flex flex-col gap-3 px-1 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex min-w-0 items-center gap-3">
-            <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+    <div class="tg-report-header flex gap-2 px-1">
+        <div class="tg-report-title flex items-center gap-3">
+            <span class="tg-report-title-icon inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
                     <path stroke-linecap="round" stroke-linejoin="round" d="m9.4 12.2 1.7 1.7 3.7-4" />
                 </svg>
             </span>
             <div class="min-w-0">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-700">AI verification report</p>
-                <p class="mt-0.5 truncate text-sm font-medium text-slate-500">
-                    Analysis #{{ $selectedDetection->id }} · {{ $selectedDetection->analyzed_at?->format('M d, Y · h:i A') ?? 'Processing' }}
+                <p class="tg-report-kicker text-xs font-black uppercase tracking-[0.18em] text-blue-700">AI verification report</p>
+                <p class="tg-report-date mt-0.5 truncate text-sm font-medium text-slate-500">
+                    {{ $selectedDetection->analyzed_at?->format('M d, Y · h:i A') ?? 'Processing' }}
                 </p>
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="tg-report-actions flex items-center gap-2">
             @if (! auth()->user()?->isAdmin())
-                <a href="{{ route('history') }}" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
+                <a href="{{ route('history') }}" class="tg-report-action inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 12a8 8 0 1 0 2.35-5.65M4 4.5v4.2h4.2M12 8v4l2.7 1.7" />
                     </svg>
                     History
                 </a>
             @endif
-            <a href="{{ route('detections.create') }}" class="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-3.5 text-sm font-bold text-white transition hover:bg-blue-700">
+            <a href="{{ route('detections.create') }}" class="tg-report-action inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3.5 text-sm font-bold text-white transition hover:bg-blue-700">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                     <path stroke-linecap="round" d="M12 5v14M5 12h14" />
                 </svg>
@@ -317,114 +389,8 @@
         </div>
     </div>
 
-    <article class="tg-ai-surface tg-ai-hero p-5 sm:p-7 lg:p-9">
-        <div class="grid items-center gap-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-10">
-            <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] ring-1 {{ $tone['badge'] }}">
-                        <span class="h-2 w-2 rounded-full" style="background: {{ $tone['accent'] }}"></span>
-                        {{ $tone['risk'] }}
-                    </span>
-                    <span class="rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
-                        {{ $contentType }} analysis
-                    </span>
-                </div>
-
-                <h2 class="mt-5 max-w-3xl text-3xl font-black leading-[1.08] tracking-tight text-slate-950 sm:text-5xl">
-                    {{ $tone['label'] }}
-                </h2>
-                <p class="mt-4 max-w-3xl text-base font-medium leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                    {{ $tone['summary'] }}
-                </p>
-
-                <div class="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-slate-600">
-                    <span class="inline-flex items-center gap-2">
-                        <svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 17.5 9 12l3 3 7-8" />
-                        </svg>
-                        {{ $sourceCount }} sources reviewed
-                    </span>
-                    <span class="inline-flex items-center gap-2">
-                        <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
-                        </svg>
-                        {{ $trustedSourceCount }} trusted checks
-                    </span>
-                </div>
-            </div>
-
-            <div class="flex items-center justify-center gap-5 lg:flex-col">
-                <div class="tg-score-ring" style="--tg-score: {{ $confidenceScore }}" aria-label="{{ $confidenceScore }} percent verdict confidence">
-                    <span class="text-center">
-                        <strong class="block text-3xl font-black tracking-tight {{ $tone['text'] }}">{{ $confidenceScore }}%</strong>
-                        <small class="mt-0.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Confidence</small>
-                    </span>
-                </div>
-                <div class="text-left lg:text-center">
-                    <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Risk score</p>
-                    <p class="mt-1 text-2xl font-black text-slate-950">{{ $riskScore }}%</p>
-                </div>
-            </div>
-        </div>
-    </article>
-
-    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-        <main class="min-w-0 space-y-5">
-            <article class="tg-ai-surface overflow-hidden">
-                <div class="border-b border-slate-100 px-5 py-5 sm:px-7">
-                    <div class="flex items-center gap-3">
-                        <span class="tg-ai-icon bg-blue-50 text-blue-700">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3 14 8.5 19.5 10.5 14 12.5 12 18l-2-5.5L4.5 10.5 10 8.5 12 3Z" />
-                                <path stroke-linecap="round" d="m18.5 16 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
-                            </svg>
-                        </span>
-                        <div>
-                            <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-700">TruthGuard intelligence</p>
-                            <h3 class="mt-0.5 text-xl font-black text-slate-950">AI assessment</h3>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-6 p-5 sm:p-7">
-                    <div>
-                        <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Executive summary</p>
-                        <p class="mt-3 text-base font-medium leading-8 text-slate-800 sm:text-lg">{{ $assessment }}</p>
-                    </div>
-
-                    @if ($reasoning !== $assessment)
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
-                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Why this result</p>
-                            <p class="mt-2 text-sm leading-7 text-slate-700 sm:text-base">{{ $reasoning }}</p>
-                        </div>
-                    @endif
-
-                    <div class="rounded-2xl p-4 sm:p-5" style="border: 1px solid rgb(var(--tg-accent-rgb) / .22); background: rgb(var(--tg-accent-rgb) / .055);">
-                        <div class="flex gap-3">
-                            <span class="tg-ai-icon {{ $tone['iconBg'] }}">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.2 11 14l4-4.4" />
-                                </svg>
-                            </span>
-                            <div class="min-w-0">
-                                <p class="text-xs font-black uppercase tracking-[0.14em] {{ $tone['text'] }}">Recommended action</p>
-                                <p class="mt-2 text-base font-semibold leading-7 text-slate-900">{{ $recommendation }}</p>
-                                @if (is_array($topSource))
-                                    <a href="{{ $topSource['url'] }}" target="_blank" rel="noreferrer" class="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-blue-700">
-                                        Review strongest source
-                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M8 7h9v9" />
-                                        </svg>
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </article>
-
-            <article class="tg-ai-surface p-5 sm:p-7">
+    <div class="tg-report-overview">
+            <article class="tg-report-evidence min-w-0">
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex items-center gap-3">
                         <span class="tg-ai-icon bg-slate-100 text-slate-700">
@@ -434,14 +400,19 @@
                             </svg>
                         </span>
                         <div>
-                            <h3 class="text-xl font-black text-slate-950">Evidence submitted</h3>
+                            <h3 class="text-xl font-black text-slate-950">Submitted Evidence</h3>
                             <p class="mt-0.5 text-sm font-medium text-slate-500">{{ $contentType }} · {{ $sourceLabel }}</p>
                         </div>
                     </div>
-                    <span class="hidden rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 sm:inline-flex">Input</span>
+                    <a href="#source-verification" class="tg-source-jump hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 sm:inline-flex">
+                        View Source verification
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m7 10 5 5 5-5" />
+                        </svg>
+                    </a>
                 </div>
 
-                <div class="tg-ai-media mt-5 overflow-hidden border border-slate-200">
+                <div class="tg-ai-media mt-4 border border-slate-200">
                     @if ($selectedDetection->media_type === 'image' && $mediaUrl)
                         <img src="{{ $mediaUrl }}" alt="Analyzed media" class="h-full max-h-[30rem] w-full object-contain">
                     @elseif ($selectedDetection->media_type === 'video' && $mediaUrl)
@@ -466,6 +437,12 @@
                     @endif
                 </div>
 
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-500">
+                    <span>{{ $contentType }}@if ($selectedDetection->created_at) - {{ $selectedDetection->created_at->format('M d, Y h:i A') }}@endif</span>
+                    @if ($selectedDetection->media_type === 'image' && $mediaUrl)
+                        <a href="{{ $mediaUrl }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-700 hover:underline">View full image</a>
+                    @endif
+                </div>
                 @if (($selectedDetection->media_type === 'image' || $selectedDetection->media_type === 'video' || $selectedIsDocument) && $claimText !== '')
                     <div class="mt-4 rounded-2xl bg-slate-50 p-4 sm:p-5">
                         <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Claim or caption</p>
@@ -487,7 +464,124 @@
                 @endif
             </article>
 
-            <article class="tg-ai-surface p-5 sm:p-7">
+    <article class="tg-ai-hero min-w-0">
+        <div class="flex flex-col gap-6">
+            <div class="min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] ring-1 {{ $tone['badge'] }}">
+                        <span class="h-2 w-2 rounded-full" style="background: {{ $tone['accent'] }}"></span>
+                        {{ $tone['risk'] }}
+                    </span>
+                    <span class="rounded-full bg-white/80 px-3 py-1.5 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                        {{ $contentType }} analysis
+                    </span>
+                    @if ($selectedDetection->processing_status)
+                        <span class="text-sm font-semibold text-slate-600">{{ \Illuminate\Support\Str::headline($selectedDetection->processing_status) }}</span>
+                    @endif
+                </div>
+
+                <h2 class="mt-5 max-w-3xl text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">
+                    {{ $tone['label'] }}
+                </h2>
+                <p class="mt-4 max-w-3xl text-base font-medium leading-7 text-slate-600 sm:text-lg sm:leading-8">
+                    {{ $tone['summary'] }}
+                </p>
+
+                <div class="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-slate-600">
+                    <span class="inline-flex items-center gap-2">
+                        <svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 17.5 9 12l3 3 7-8" />
+                        </svg>
+                        {{ $sourceCount }} sources reviewed
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
+                        </svg>
+                        {{ $trustedSourceCount }} trusted checks
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex w-full flex-wrap items-center gap-5">
+                <div class="tg-score-ring" style="--tg-score: {{ $confidenceScore }}" aria-label="{{ $confidenceScore }} percent verdict confidence">
+                    <span class="text-center">
+                        <strong class="block text-3xl font-black tracking-tight {{ $tone['text'] }}">{{ $confidenceScore }}%</strong>
+                        <small class="mt-0.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Confidence</small>
+                    </span>
+                </div>
+                <div class="text-left">
+                    <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Risk score</p>
+                    <p class="mt-1 text-2xl font-black text-slate-950">{{ $riskScore }}%</p>
+                </div>
+            </div>
+        </div>
+    </article>
+
+    </div>
+    <dl class="tg-report-metrics">
+        @foreach (['AI confidence' => $confidenceScore.'%', 'Risk score' => $riskScore.'%', 'Sources reviewed' => $sourceCount, 'Trusted sources' => $trustedSourceCount] as $metric => $value)
+            <div><dt>{{ $metric }}</dt><dd>{{ $value }}</dd></div>
+        @endforeach
+    </dl>
+    <div class="tg-report-body">
+        <div class="tg-report-main">
+            <article class="tg-ai-surface tg-report-assessment overflow-hidden">
+                <div class="border-b border-slate-100 px-5 py-5 sm:px-7">
+                    <div class="flex items-center gap-3">
+                        <span class="tg-ai-icon bg-blue-50 text-blue-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3 14 8.5 19.5 10.5 14 12.5 12 18l-2-5.5L4.5 10.5 10 8.5 12 3Z" />
+                                <path stroke-linecap="round" d="m18.5 16 .8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
+                            </svg>
+                        </span>
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-700">TruthGuard intelligence</p>
+                            <h3 class="mt-0.5 text-xl font-black text-slate-950">AI assessment</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-6 p-5 sm:p-7">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Assessment</p>
+                        <p class="mt-3 text-base font-medium leading-8 text-slate-800 sm:text-lg">{{ $assessment }}</p>
+                    </div>
+
+                    @if ($reasoning !== $assessment)
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Why this result</p>
+                            <p class="mt-2 text-sm leading-7 text-slate-700 sm:text-base">{{ $reasoning }}</p>
+                        </div>
+                    @endif
+
+                    <div class="rounded-2xl p-4 sm:p-5" style="border-left: 3px solid #059669; background: #ecfdf5;">
+                        <div class="flex gap-3">
+                            <span class="tg-ai-icon {{ $tone['iconBg'] }}">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.2 11 14l4-4.4" />
+                                </svg>
+                            </span>
+                            <div class="min-w-0">
+                                <p class="text-xs font-black uppercase tracking-[0.14em] {{ $tone['text'] }}">Recommended action</p>
+                                <p class="mt-2 text-base font-semibold leading-7 text-slate-900">{{ $recommendation }}</p>
+                                @if (is_array($topSource))
+                                    <a href="{{ $topSource['url'] }}" target="_blank" rel="noreferrer" class="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition hover:bg-blue-700">
+                                        Review strongest source
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M8 7h9v9" />
+                                        </svg>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+
+            <article id="source-verification" class="tg-ai-surface tg-report-sources p-5 sm:p-7">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <span class="tg-ai-icon bg-blue-50 text-blue-700">
@@ -497,7 +591,7 @@
                         </span>
                         <div>
                             <h3 class="text-xl font-black text-slate-950">Source verification</h3>
-                            <p class="mt-0.5 text-sm font-medium text-slate-500">Evidence used to cross-check the result.</p>
+                            <p class="mt-0.5 text-sm font-medium text-slate-500">Sources used to verify this claim.</p>
                         </div>
                     </div>
                     <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-black text-slate-600">{{ $sourceCount }} total</span>
@@ -505,6 +599,15 @@
 
                 <div class="mt-5 grid gap-3">
                     @forelse ($primarySources as $source)
+                        @if ($loop->first || ($primarySources[$loop->index - 1]['source_type'] ?? 'reference') !== ($source['source_type'] ?? 'reference'))
+                            <h4 class="mt-3 text-sm font-semibold text-slate-700">{{ match ($source['source_type'] ?? 'reference') {
+                                'fact_check' => 'Fact-check sources',
+                                'news' => 'News sources',
+                                'official', 'weather' => 'Official sources',
+                                'source_trace' => 'Original sources',
+                                default => 'Additional references',
+                            } }}</h4>
+                        @endif
                         @php
                             $linkHost = parse_url($source['url'], PHP_URL_HOST) ?: $source['url'];
                             $name = $source['name'] ?? $linkHost;
@@ -518,6 +621,9 @@
                                     <span class="rounded-full px-2.5 py-1 text-[11px] font-black ring-1 {{ $sourceBadgeClass($source) }}">{{ \Illuminate\Support\Str::limit($sourceBadgeText($source), 30) }}</span>
                                 </span>
                                 <span class="mt-1 block break-words text-xs font-semibold text-slate-400">{{ preg_replace('/^www\./', '', (string) $linkHost) }}{{ $date !== '' ? ' · '.$date : '' }}</span>
+                                @if (filled($source['title'] ?? $source['headline'] ?? null))
+                                    <span class="mt-2 block text-sm font-semibold text-slate-900">{{ $source['title'] ?? $source['headline'] }}</span>
+                                @endif
                                 <span class="mt-2 block text-sm leading-6 text-slate-600">{{ \Illuminate\Support\Str::limit($reason, 170) }}</span>
                             </span>
                             <span class="inline-flex items-center gap-2 text-sm font-black text-blue-700">
@@ -534,7 +640,7 @@
                 </div>
 
                 @if ($socialSources->isNotEmpty())
-                    <section class="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5" aria-labelledby="social-context-title">
+                    <section class="mt-5 border-t border-slate-200 pt-5" aria-labelledby="social-context-title">
                         <div class="flex items-start gap-3">
                             <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path stroke-linecap="round" d="M4.9 19.1a10 10 0 0 1 0-14.2M19.1 4.9a10 10 0 0 1 0 14.2M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4" /></svg>
@@ -572,9 +678,9 @@
                     </section>
                 @endif
             </article>
-        </main>
+        </div>
 
-        <aside class="tg-ai-sticky min-w-0 space-y-5">
+        <div class="tg-report-insights">
             <article class="tg-ai-surface p-5">
                 <div class="flex items-center justify-between gap-3">
                     <div>
@@ -620,15 +726,33 @@
             </article>
 
             @if ($aiBasis->isNotEmpty() || $aiLimitations->isNotEmpty())
-                <article class="tg-ai-surface p-5">
-                    <div>
-                        <span class="block text-xs font-black uppercase tracking-[0.14em] text-slate-400">Transparency</span>
-                        <h3 class="mt-1 text-base font-black text-slate-950">How AI reached this result</h3>
-                    </div>
-                    <div class="mt-4 border-t border-slate-100 pt-4">
+                <details class="tg-ai-surface tg-report-method p-5">
+                    <summary class="tg-report-method-summary cursor-pointer">
+                        <span class="flex min-w-0 items-center gap-3">
+                            <span class="tg-report-method-icon" aria-hidden="true">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 12h7M8.5 15h4.5M8.5 9h7" />
+                                </svg>
+                            </span>
+                            <span class="min-w-0">
+                                <span class="block text-xs font-black uppercase tracking-[0.14em] text-slate-400">Transparency</span>
+                                <span class="mt-1 block text-base font-black text-slate-950">How TruthGuard Reached This Result</span>
+                            </span>
+                        </span>
+                        <span class="tg-report-method-toggle">
+                            Details
+                            <span class="tg-report-method-chevron" aria-hidden="true">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                                </svg>
+                            </span>
+                        </span>
+                    </summary>
+                    <div class="tg-report-method-body">
                         @if ($aiBasis->isNotEmpty())
                             <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Evidence used</p>
-                            <ul class="mt-3 space-y-2.5">
+                            <ul class="tg-report-process mt-3 space-y-2.5">
                                 @foreach ($aiBasis as $basis)
                                     <li class="flex gap-2.5 text-sm leading-6 text-slate-700">
                                         <span class="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-600"></span>
@@ -649,13 +773,13 @@
                             </ul>
                         @endif
                     </div>
-                </article>
+                </details>
             @endif
 
             <div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-blue-950">
                 <strong class="font-black">Important:</strong> AI-supported results can be incomplete. Check the original material and cited sources before making consequential decisions.
             </div>
-        </aside>
+        </div>
     </div>
 
     @if ($relatedPosts->isNotEmpty() || $recentFactChecks->isNotEmpty())
@@ -693,7 +817,7 @@
                     @php
                         $publisherName = $item['publisher'] ?? 'Fact-check partner';
                         $detailUrl = ! empty($item['id']) && ! auth()->user()?->isAdmin()
-                            ? route('dashboard.fact-check', ['factCheck' => $item['id']])
+                            ? route('dashboard.fact-check', ['factCheck' => $item['id'], 'detection' => $selectedDetection->id])
                             : ($item['url'] ?? route('dashboard'));
                         $rating = $ratingNormalizer::shortLabel((string) ($item['rating'] ?? 'Reviewed'), (string) ($item['headline'] ?? ''), (string) ($item['claim'] ?? ''));
                         $itemImage = $item['image_url'] ?? $item['logo_url'] ?? null;

@@ -65,6 +65,11 @@ class PublicClaimReview extends Model
             'date_label' => $publishedAt?->format('M d, Y') ?? 'Date unavailable',
             'timestamp' => $publishedAt?->timestamp ?? 0,
             'saved' => true,
+            'full_headline' => data_get($this->source_payload, 'full_headline', $this->headline),
+            'full_claim' => data_get($this->source_payload, 'full_claim', $this->claim),
+            'source_rating' => data_get($this->source_payload, 'source_rating'),
+            'source_claimant' => data_get($this->source_payload, 'source_claimant'),
+            'original_url' => data_get($this->source_payload, 'original_url'),
         ];
     }
 
