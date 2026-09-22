@@ -102,6 +102,60 @@ class GoogleFactCheckFeedService
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function relatedTo(array $current, int $limit = 4, ?int $maxAgeDays = null): array
+    {
+        $limit = max(1, min($limit, 8));
+        $maxAgeDays = $this->normalizeFeedMaxAgeDays($maxAgeDays);
+        $feed = $this->latest(self::MAX_FEED_LIMIT, $maxAgeDays);
+        $keywords = $this->relationKeywords($current);
+        $currentId = $this->string($current['id'] ?? null);
+        $currentUrl = $this->string($current['url'] ?? null);
+        $seen = [];
+
+        return collect($feed['items'] ?? [])
+            ->filter(fn ($item): bool => is_array($item))
+            ->reject(function (array $item) use ($currentId, $currentUrl): bool {
+                $itemId = $this->string($item['id'] ?? null);
+                $itemUrl = $this->string($item['url'] ?? null);
+
+                return ($currentId !== null && $itemId !== null && hash_equals($currentId, $itemId))
+                    || ($currentUrl !== null && $itemUrl !== null && $this->sameUrl($currentUrl, $itemUrl));
+            })
+            ->map(function (array $item) use ($current, $keywords): array {
+                return [
+                    'item' => $item,
+                    'score' => $this->relationScore($current, $item, $keywords),
+                ];
+            })
+            ->filter(fn (array $scored): bool => $scored['score'] > 0)
+            ->sort(function (array $first, array $second): int {
+                $scoreComparison = $second['score'] <=> $first['score'];
+
+                return $scoreComparison !== 0
+                    ? $scoreComparison
+                    : ((int) ($second['item']['timestamp'] ?? 0) <=> (int) ($first['item']['timestamp'] ?? 0));
+            })
+            ->map(function (array $scored) use (&$seen) {
+                $item = $scored['item'];
+                $key = $this->string($item['url'] ?? null) ?: $this->string($item['id'] ?? null);
+
+                if ($key === null || isset($seen[$key])) {
+                    return null;
+                }
+
+                $seen[$key] = true;
+
+                return $item;
+            })
+            ->filter()
+            ->take($limit)
+            ->values()
+            ->all();
+    }
+
+    /**
      * @param  array<int, string>  $queries
      * @param  array<int, string>  $publisherSites
      * @return array<int, array<string, mixed>>
@@ -312,6 +366,7 @@ class GoogleFactCheckFeedService
         $rating = $this->string(data_get($post, 'meta.review_rating')) ?? $this->ratingFromText($headline.' '.$claim);
         $date = $this->parseWordPressDate($post);
         $imageUrl = $this->extractWordPressPreviewImage($post, $url);
+        $originalUrl = $this->extractOriginalPostUrl($post, $url);
 
         if (! Str::startsWith(Str::lower($headline), ['fact check', 'fact-check'])) {
             $headline = 'Fact Check: '.$headline;
@@ -321,6 +376,11 @@ class GoogleFactCheckFeedService
             'id' => substr(hash('sha256', 'publisher-latest|'.$url), 0, 24),
             'publisher' => Str::limit($publisher, 54, ''),
             'headline' => Str::limit($headline, 150),
+            'full_headline' => $headline,
+            'full_claim' => $claim,
+            'source_rating' => $this->string(data_get($post, 'meta.review_rating')),
+            'source_claimant' => $this->string(data_get($post, 'meta.claim_author_name')),
+            'original_url' => $originalUrl,
             'claim' => Str::limit($claim, 250),
             'claimant' => Str::limit($claimant, 70),
             'rating' => Str::limit($rating, 50, ''),
@@ -419,6 +479,59 @@ class GoogleFactCheckFeedService
         $gmtDate = $this->string(data_get($post, 'date_gmt'));
 
         return $gmtDate ? $this->parseDate($gmtDate.' UTC') : null;
+    }
+
+    private function extractOriginalPostUrl(array $payload, ?string $factCheckUrl = null): ?string
+    {
+        $candidates = [
+            data_get($payload, 'original_url'),
+            data_get($payload, 'originalUrl'),
+            data_get($payload, 'original_post_url'),
+            data_get($payload, 'originalPostUrl'),
+            data_get($payload, 'source_url'),
+            data_get($payload, 'sourceUrl'),
+            data_get($payload, 'claim_url'),
+            data_get($payload, 'claimUrl'),
+            data_get($payload, 'meta.original_url'),
+            data_get($payload, 'meta.original_post_url'),
+            data_get($payload, 'meta.source_url'),
+            data_get($payload, 'meta.claim_url'),
+            data_get($payload, 'meta.claim_source_url'),
+            data_get($payload, 'itemReviewed.url'),
+            data_get($payload, 'itemReviewed.sameAs'),
+            data_get($payload, 'claimReviewed.url'),
+            data_get($payload, 'url'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $url = $this->validHttpUrl($candidate);
+
+            if ($url !== null && ! $this->sameUrl($url, $factCheckUrl)) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    private function validHttpUrl(mixed $value): ?string
+    {
+        $url = $this->string($value);
+
+        if ($url === null || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return null;
+        }
+
+        return Str::startsWith(Str::lower($url), ['http://', 'https://']) ? $url : null;
+    }
+
+    private function sameUrl(string $first, ?string $second): bool
+    {
+        if ($second === null) {
+            return false;
+        }
+
+        return rtrim(Str::lower($first), '/') === rtrim(Str::lower($second), '/');
     }
 
     private function htmlText(mixed $value): ?string
@@ -532,6 +645,76 @@ class GoogleFactCheckFeedService
     }
 
     /**
+     * @return array<int, string>
+     */
+    private function relationKeywords(array $item): array
+    {
+        $text = Str::lower(implode(' ', array_filter([
+            $this->string($item['full_headline'] ?? null),
+            $this->string($item['headline'] ?? null),
+            $this->string($item['full_claim'] ?? null),
+            $this->string($item['claim'] ?? null),
+        ])));
+        $text = preg_replace('/[^a-z0-9\s]+/', ' ', $text) ?? '';
+        $stopWords = [
+            'about', 'after', 'also', 'been', 'claim', 'claims', 'could', 'false', 'fact', 'from',
+            'have', 'into', 'latest', 'more', 'news', 'online', 'post', 'public', 'review', 'says',
+            'that', 'their', 'there', 'this', 'through', 'with', 'without',
+        ];
+
+        return collect(preg_split('/\s+/', $text) ?: [])
+            ->map(fn (string $word): string => trim($word))
+            ->filter(fn (string $word): bool => strlen($word) >= 4 && ! in_array($word, $stopWords, true))
+            ->unique()
+            ->take(18)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $keywords
+     */
+    private function relationScore(array $current, array $candidate, array $keywords): int
+    {
+        $score = 0;
+
+        foreach ([
+            ['query', 70],
+            ['source_domain', 45],
+            ['host', 35],
+            ['publisher', 35],
+            ['source_rating', 30],
+            ['rating', 20],
+        ] as [$key, $weight]) {
+            $currentValue = $this->string($current[$key] ?? null);
+            $candidateValue = $this->string($candidate[$key] ?? null);
+
+            if ($currentValue !== null && $candidateValue !== null && Str::lower($currentValue) === Str::lower($candidateValue)) {
+                $score += $weight;
+            }
+        }
+
+        if (($current['tone'] ?? null) && ($candidate['tone'] ?? null) && $current['tone'] === $candidate['tone']) {
+            $score += 12;
+        }
+
+        $candidateText = Str::lower(implode(' ', array_filter([
+            $this->string($candidate['full_headline'] ?? null),
+            $this->string($candidate['headline'] ?? null),
+            $this->string($candidate['full_claim'] ?? null),
+            $this->string($candidate['claim'] ?? null),
+        ])));
+
+        foreach ($keywords as $keyword) {
+            if (Str::contains($candidateText, $keyword)) {
+                $score += 14;
+            }
+        }
+
+        return $score;
+    }
+
+    /**
      * @param  array{query: ?string, publisher: ?string, label: string, type: string}  $search
      * @return array<string, mixed>
      */
@@ -544,6 +727,7 @@ class GoogleFactCheckFeedService
         $publisher = $this->string(data_get($review, 'publisher.name')) ?? 'Google Fact Check';
         $rating = $this->string($review['textualRating'] ?? null) ?? 'Reviewed';
         $url = $this->string($review['url'] ?? null);
+        $originalUrl = $this->extractOriginalPostUrl($claim, $url) ?? $this->extractOriginalPostUrl($review, $url);
         $date = $this->parseDate($review['reviewDate'] ?? $claim['claimDate'] ?? null);
         $claimant = $this->string($claim['claimant'] ?? null) ?? 'Online claim';
         $host = $url ? parse_url($url, PHP_URL_HOST) : null;
@@ -564,6 +748,11 @@ class GoogleFactCheckFeedService
             'publisher' => Str::limit($publisher, 54, ''),
             'headline' => Str::limit($headline, 150),
             'claim' => Str::limit($claimText, 250),
+            'full_headline' => $headline,
+            'full_claim' => $claimText,
+            'source_rating' => $this->string($review['textualRating'] ?? null),
+            'source_claimant' => $this->string($claim['claimant'] ?? null),
+            'original_url' => $originalUrl,
             'claimant' => Str::limit($claimant, 70),
             'rating' => Str::limit($rating, 50, ''),
             'tone' => $this->ratingTone($rating),

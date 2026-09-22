@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\GoogleFactCheckFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -88,6 +89,42 @@ class UserDashboardDetectionIntegrationTest extends TestCase
             ->assertSee('Fact check result')
             ->assertDontSee('TG-'.str_pad((string) $detection->id, 4, '0', STR_PAD_LEFT))
             ->assertSee(route('detections.result', $detection), false);
+    }
+
+    public function test_detection_result_layout_renders_a_single_back_control(): void
+    {
+        $user = User::factory()->create();
+        $detection = Detection::query()->create([
+            'user_id' => $user->id,
+            'source_kind' => 'upload',
+            'platform' => 'web',
+            'media_type' => 'image',
+            'caption_text' => 'Possible misinformation case',
+            'fake_score' => 24,
+            'processing_status' => 'completed',
+            'analysis_summary' => 'No strong manipulation indicators were detected.',
+            'verification_summary' => 'Sources reviewed.',
+            'explanation_summary' => 'The submitted media appears low risk.',
+            'verification_sources' => [],
+            'verdict' => 'real',
+            'analyzed_at' => now(),
+        ]);
+
+        $this->mock(GoogleFactCheckFeedService::class, function ($mock): void {
+            $mock->shouldReceive('latest')->once()->with(6)->andReturn(['items' => []]);
+        });
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('detections.result', $detection));
+
+        $response
+            ->assertOk()
+            ->assertSee('Detection Result')
+            ->assertSee(route('detections.create'), false)
+            ->assertDontSee('Go back to the previous page');
+
+        $this->assertSame(1, substr_count($response->getContent(), 'class="truthguard-shell-toggle shrink-0"'));
     }
 
     public function test_admin_can_still_open_the_shared_detection_center(): void

@@ -8,6 +8,24 @@ use Tests\TestCase;
 
 class PublicClaimReviewTest extends TestCase
 {
+    public function test_full_source_fields_survive_persistence_without_inferred_rating_fallback(): void
+    {
+        $review = new PublicClaimReview([
+            'headline' => 'Truncated title', 'rating' => 'False',
+            'source_payload' => [
+                'full_headline' => 'Full publisher title',
+                'full_claim' => 'Full claim',
+                'source_rating' => null,
+                'original_url' => 'https://facebook.com/public/posts/123',
+            ],
+        ]);
+        $item = $review->toFeedItem();
+        $this->assertSame('Full publisher title', $item['full_headline']);
+        $this->assertSame('Full claim', $item['full_claim']);
+        $this->assertNull($item['source_rating']);
+        $this->assertSame('https://facebook.com/public/posts/123', $item['original_url']);
+    }
+
     public function test_public_claim_review_exports_dashboard_feed_item_shape(): void
     {
         $review = new PublicClaimReview([

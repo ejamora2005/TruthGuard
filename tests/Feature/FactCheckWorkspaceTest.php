@@ -163,10 +163,13 @@ class FactCheckWorkspaceTest extends TestCase
 
         $detection = $this->createDetection($user, [
             'caption_text' => 'A claim submitted for verification.',
+            'media_path' => 'detections/report-evidence.jpg',
             'analysis_summary' => 'The available evidence conflicts with the submitted claim.',
             'explanation_summary' => 'The strongest public source directly contradicts the central claim.',
             'verification_summary' => 'One trusted public reference was compared.',
             'signals' => [
+                'ai_basis' => [['label' => 'Compared the submitted claim with public sources']],
+                'ai_limitations' => [['label' => 'Original capture date could not be verified']],
                 'textual' => [
                     ['label' => 'Direct source contradiction', 'weight' => 82],
                 ],
@@ -206,16 +209,24 @@ class FactCheckWorkspaceTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('AI verification report', $html);
-        $this->assertStringContainsString('Executive summary', $html);
+        $this->assertStringContainsString('Assessment', $html);
+        $this->assertStringContainsString('Submitted Evidence', $html);
+        $this->assertStringContainsString('/storage/detections/report-evidence.jpg', $html);
+        $this->assertStringContainsString('View full image', $html);
+        $this->assertTrue(strpos($html, 'Submitted Evidence') < strpos($html, 'TruthGuard intelligence'));
         $this->assertStringContainsString('Recommended action', $html);
         $this->assertStringContainsString('Decision factors', $html);
         $this->assertStringContainsString('Source verification', $html);
+        $this->assertStringContainsString('href="#source-verification"', $html);
+        $this->assertStringContainsString('id="source-verification"', $html);
         $this->assertStringContainsString('Example Fact Check', $html);
         $this->assertStringContainsString('Cross-platform social context (1)', $html);
         $this->assertStringContainsString('View related content', $html);
         $this->assertStringContainsString('Related public fact-check with an image', $html);
         $this->assertStringContainsString('height: 160px', $html);
-        $this->assertStringNotContainsString('<details', $html);
+        $this->assertStringContainsString('<details', $html);
+        $this->assertStringContainsString('How TruthGuard Reached This Result', $html);
+        $this->assertStringContainsString('Original capture date could not be verified', $html);
     }
 
     /**

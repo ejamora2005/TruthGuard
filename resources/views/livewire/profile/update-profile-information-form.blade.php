@@ -193,12 +193,14 @@ new class extends Component
             }
 
             if (file.size > this.avatarUploadMaxBytes) {
-                this.avatarUploadError = `Profile photo must be ${this.avatarUploadMaxMb}MB or less.`;
+                const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                this.avatarUploadError = `${file.name || 'Profile photo'} (${fileSizeMb}MB) exceeds the ${this.avatarUploadMaxMb}MB limit. Choose a smaller image.`;
 
                 if (this.$refs.avatarInput) {
                     this.$refs.avatarInput.value = '';
                 }
 
+                window.alert(this.avatarUploadError);
                 return;
             }
 
@@ -551,6 +553,7 @@ new class extends Component
 
                         <p
                             x-show="avatarUploadError"
+                            role="alert"
                             x-cloak
                             class="mt-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600"
                             x-text="avatarUploadError"

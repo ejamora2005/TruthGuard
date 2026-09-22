@@ -138,8 +138,18 @@ class DashboardController extends Controller
 
         abort_if($item === null, 404);
 
+        $reportDetection = null;
+        if ($request->filled('detection')) {
+            $request->validate(['detection' => ['integer', 'min:1']]);
+            $reportDetection = Detection::query()
+                ->where('user_id', $request->user()->id)
+                ->findOrFail($request->integer('detection'));
+        }
+
         return view('user.dashboard.fact-check', [
             'item' => $item,
+            'relatedFactChecks' => $feedService->relatedTo($item, 4, self::FACT_CHECK_FEED_LOOKBACK_DAYS),
+            'reportDetection' => $reportDetection,
         ]);
     }
 

@@ -10,7 +10,7 @@
 @section('page_back_url', route('detections.create'))
 
 @section('content')
-    <div class="truthguard-mobile-page truthguard-mobile-result mx-auto w-full max-w-[1242px] py-2 sm:py-3">
+    <div class="truthguard-mobile-page truthguard-mobile-result mx-auto w-full max-w-[1400px] py-2 sm:py-3">
         @include('detections.partials.advanced-result-card', ['selectedDetection' => $selectedDetection])
     </div>
 @endsection

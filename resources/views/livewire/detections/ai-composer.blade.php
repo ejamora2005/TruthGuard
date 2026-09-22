@@ -3554,11 +3554,12 @@ new class extends Component
                 }
 
                 this.clearPreview();
-                this.uploadError = this.uploadLimitMessage();
+                this.uploadError = `${file.name || 'Selected file'} (${this.formatFileSize(file.size)}) exceeds the ${this.uploadMaxMb}MB upload limit. Choose a smaller file.`;
                 this.pasteStatus = null;
                 this.drivePickerMessage = null;
                 this.dragActive = false;
 
+                window.alert(this.uploadError);
                 return true;
             },
             rejectUnsupportedFile(file) {
@@ -3879,7 +3880,7 @@ new class extends Component
                     const metadataSize = Number(metadata?.size || 0);
 
                     if (metadataSize > maxBytes) {
-                        throw new Error(`Drive file must be ${this.uploadMaxMb}MB or less.`);
+                        throw new RangeError(`Drive file must be ${this.uploadMaxMb}MB or less. Choose a smaller file.`);
                     }
                 }
 
@@ -3902,13 +3903,13 @@ new class extends Component
                 const contentLength = Number(response.headers.get('content-length') || 0);
 
                 if (contentLength > maxBytes) {
-                    throw new Error(`Drive file must be ${this.uploadMaxMb}MB or less.`);
+                    throw new RangeError(`Drive file must be ${this.uploadMaxMb}MB or less. Choose a smaller file.`);
                 }
 
                 const blob = await response.blob();
 
                 if (blob.size > maxBytes) {
-                    throw new Error(`Drive file must be ${this.uploadMaxMb}MB or less.`);
+                    throw new RangeError(`Drive file must be ${this.uploadMaxMb}MB or less. Choose a smaller file.`);
                 }
 
                 return new File([blob], this.driveFileName(fileName, mimeType), {
@@ -3950,6 +3951,9 @@ new class extends Component
                     }
                 } catch (error) {
                     this.drivePickerError = error?.message || 'Could not import from Google Drive.';
+                    if (error instanceof RangeError) {
+                        window.alert(this.drivePickerError);
+                    }
                 } finally {
                     this.drivePickerLoading = false;
 

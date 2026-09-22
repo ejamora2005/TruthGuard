@@ -127,6 +127,8 @@
             if ($mobileTopbarTitle === '') {
                 $mobileTopbarTitle = 'Workspace';
             }
+
+            $pageBackUrl = trim((string) $__env->yieldContent('page_back_url', ''));
         @endphp
 
         <title>{{ $truthGuardPageTitle }}</title>
@@ -1057,7 +1059,13 @@
             >
                 <header class="truthguard-topbar sticky top-0 z-[99997] w-full border-b border-[color:var(--tg-shell-border)] backdrop-blur-xl">
                     <div class="flex w-full items-center gap-2.5 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3 lg:px-6 lg:py-4">
-                        @if ($hideMobileNav)
+                        @if ($pageBackUrl !== '')
+                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0" aria-label="Go back" title="Go back">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                </svg>
+                            </a>
+                        @elseif ($hideMobileNav)
                             <button
                                 type="button"
                                 class="truthguard-shell-toggle shrink-0 lg:hidden"
@@ -1069,14 +1077,6 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                                 </svg>
                             </button>
-                        @endif
-
-                        @hasSection('page_back_url')
-                            <a href="@yield('page_back_url')" class="truthguard-shell-toggle shrink-0" aria-label="Go back">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                                </svg>
-                            </a>
                         @else
                             <a
                                 href="{{ route('dashboard') }}"
