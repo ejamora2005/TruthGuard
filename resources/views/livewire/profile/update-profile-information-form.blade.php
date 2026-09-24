@@ -103,6 +103,7 @@ new class extends Component
     $formEmail = old('email', (string) ($authUser?->email ?? ''));
     $formUsername = old('username', (string) ($authUser?->username ?? ''));
     $formThemePreference = old('theme_preference', (string) ($authUser?->theme_preference ?: 'ocean'));
+    $formEmailUpdatesEnabled = (bool) old('email_updates_enabled', (bool) ($authUser?->email_updates_enabled ?? false));
     $currentTheme = collect($themeOptions)->firstWhere('key', $formThemePreference) ?? $themeOptions[0];
     $starterAvatarUrls = collect(['ocean', 'forest', 'sunset'])->mapWithKeys(
         fn (string $theme) => [$theme => asset("images/avatars/default-{$theme}.svg")]
@@ -124,6 +125,7 @@ new class extends Component
         profileName: @js($formName),
         profileEmail: @js($formEmail),
         profileUsername: @js($formUsername),
+        emailUpdatesEnabled: @js($formEmailUpdatesEnabled),
         profileBio: '',
         profileTheme: @js($formThemePreference),
         storedAvatarUrl: @js($storedAvatarUrl),
@@ -413,6 +415,39 @@ new class extends Component
                                 placeholder="Cybersecurity analyst, fact-check reviewer, or newsroom editor."
                             ></textarea>
                         </div>
+
+                        <div class="rounded-[24px] border border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-slate-50 p-4">
+                            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="flex gap-3">
+                                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100" aria-hidden="true">
+                                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6.5h16v11H4z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m4 7 8 6 8-6"></path>
+                                        </svg>
+                                    </span>
+                                    <div>
+                                        <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Email permission</p>
+                                        <h4 class="mt-1 text-sm font-black text-slate-950">Optional product and fact-check updates</h4>
+                                        <p class="mt-1 text-sm leading-6 text-slate-600">
+                                            Turn this on only if you want TruthGuard to send public claim-review alerts, feature announcements, and non-critical system updates.
+                                            Password reset, verification, and security emails may still be sent when needed.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <label class="inline-flex w-full shrink-0 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:w-auto">
+                                    <input type="hidden" name="email_updates_enabled" value="0">
+                                    <input
+                                        type="checkbox"
+                                        name="email_updates_enabled"
+                                        value="1"
+                                        x-model="emailUpdatesEnabled"
+                                        class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    >
+                                    <span class="text-sm font-bold text-slate-800" x-text="emailUpdatesEnabled ? 'Allowed' : 'Not allowed'"></span>
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -470,6 +505,7 @@ new class extends Component
             <input type="hidden" name="email" x-model="profileEmail">
             <input type="hidden" name="username" x-model="profileUsername">
             <input type="hidden" name="theme_preference" x-model="profileTheme">
+            <input type="hidden" name="email_updates_enabled" x-bind:value="emailUpdatesEnabled ? '1' : '0'">
             <input type="hidden" name="return_section" value="photo">
 
             <aside class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-xl">
@@ -636,6 +672,7 @@ new class extends Component
             <input type="hidden" name="email" x-model="profileEmail">
             <input type="hidden" name="username" x-model="profileUsername">
             <input type="hidden" name="theme_preference" x-model="profileTheme">
+            <input type="hidden" name="email_updates_enabled" x-bind:value="emailUpdatesEnabled ? '1' : '0'">
             <input type="hidden" name="return_section" value="appearance">
 
             <div class="space-y-5">

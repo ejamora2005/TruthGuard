@@ -24,6 +24,7 @@ class ProfileController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)->ignore($user->id)],
             'username' => ['nullable', 'string', 'alpha_dash:ascii', 'max:64', Rule::unique(User::class)->ignore($user->id)],
             'theme_preference' => ['required', 'string', Rule::in(['ocean', 'forest', 'sunset'])],
+            'email_updates_enabled' => ['sometimes', 'boolean'],
             'avatar' => ['nullable', 'image', "max:{$avatarMaxKb}", 'mimes:jpg,jpeg,png,webp,gif'],
         ], [
             'avatar.max' => "Profile photos must be {$avatarMaxMb}MB or less.",
@@ -42,6 +43,10 @@ class ProfileController extends Controller
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
+        }
+
+        if ($request->has('email_updates_enabled')) {
+            $user->email_updates_enabled = $request->boolean('email_updates_enabled');
         }
 
         $storedAvatarPath = $user->profile_photo_path;

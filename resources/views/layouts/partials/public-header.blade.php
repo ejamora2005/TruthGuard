@@ -1,5 +1,5 @@
 @php($logoUrl = asset(config('app.truthguard_logo', 'images/truthguard-logo.png')))
-    <header @unless(request()->routeIs('home')) x-data="{ isMenuOpen: false }" @endunless @keydown.escape.window="isMenuOpen = false" x-ref="siteHeader" class="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/85 backdrop-blur-md">
+    <header x-data="{ isMenuOpen: false }" @keydown.escape.window="isMenuOpen = false" x-ref="siteHeader" class="truthguard-public-header relative sticky top-0 z-50 w-full border-b border-slate-200 bg-white/85 backdrop-blur-md">
         <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <a href="{{ route('home') }}#home" @if(request()->routeIs('home')) @click.prevent="scrollToSection('home')" @endif class="flex shrink-0 items-center gap-3">
                 @if ($logoUrl !== '')
@@ -7,7 +7,7 @@
                 @else
                     <span class="inline-flex h-10 w-10 items-center justify-center text-sm font-bold text-blue-600">TG</span>
                 @endif
-                <span class="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">TruthGuard</span>
+                <span class="truthguard-public-brand-name bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-xl font-bold text-transparent">TruthGuard</span>
             </a>
 
             <nav class="hidden flex-1 items-center justify-center gap-5 text-sm font-medium text-slate-700 xl:flex xl:px-6 xl:gap-8">
@@ -41,21 +41,27 @@
             </button>
         </div>
 
-        <div x-show="isMenuOpen" x-cloak x-transition class="border-t border-slate-200 bg-white py-4 xl:hidden">
-            <div class="container mx-auto flex flex-col space-y-4 px-4">
-                <a href="{{ route('home') }}#features" class="py-1 text-slate-700" @if(request()->routeIs('home')) @click.prevent="scrollToSection('features', true)" @endif>Features</a>
-                <a href="{{ route('reviews.index') }}" class="py-1 text-slate-700">Claim Reviews</a>
-                <a href="{{ route('home') }}#use-cases" class="py-1 text-slate-700" @if(request()->routeIs('home')) @click.prevent="scrollToSection('use-cases', true)" @endif>Use Cases</a>
-                <a href="{{ route('home') }}#pricing" class="py-1 text-slate-700" @if(request()->routeIs('home')) @click.prevent="scrollToSection('pricing', true)" @endif>Pricing</a>
-                <a href="{{ route('home') }}#testimonials" class="py-1 text-slate-700" @if(request()->routeIs('home')) @click.prevent="scrollToSection('testimonials', true)" @endif>Review Tips</a>
-                <a href="{{ route('home') }}#install" class="py-1 text-slate-700" @if(request()->routeIs('home')) @click.prevent="scrollToSection('install', true)" @endif>Install App</a>
-                <div class="border-t border-slate-200 pt-3">
+        <div x-show="isMenuOpen" x-cloak x-transition class="truthguard-public-mobile-menu xl:hidden">
+            <div class="truthguard-public-menu-inner container mx-auto px-4">
+                <div class="truthguard-public-menu-heading">
+                    <span>Explore TruthGuard</span>
+                    <span>Verification workspace</span>
+                </div>
+                <nav class="truthguard-public-menu-links" aria-label="Mobile site navigation">
+                    <a href="{{ route('home') }}#features" class="truthguard-public-menu-link" @if(request()->routeIs('home')) @click.prevent="scrollToSection('features', true)" @endif><span>Features</span><span aria-hidden="true">↗</span></a>
+                    <a href="{{ route('reviews.index') }}" class="truthguard-public-menu-link"><span>Claim Reviews</span><span aria-hidden="true">↗</span></a>
+                    <a href="{{ route('home') }}#use-cases" class="truthguard-public-menu-link" @if(request()->routeIs('home')) @click.prevent="scrollToSection('use-cases', true)" @endif><span>Use Cases</span><span aria-hidden="true">↗</span></a>
+                    <a href="{{ route('home') }}#pricing" class="truthguard-public-menu-link" @if(request()->routeIs('home')) @click.prevent="scrollToSection('pricing', true)" @endif><span>Pricing</span><span aria-hidden="true">↗</span></a>
+                    <a href="{{ route('home') }}#testimonials" class="truthguard-public-menu-link" @if(request()->routeIs('home')) @click.prevent="scrollToSection('testimonials', true)" @endif><span>Review Tips</span><span aria-hidden="true">↗</span></a>
+                    <a href="{{ route('home') }}#install" class="truthguard-public-menu-link" @if(request()->routeIs('home')) @click.prevent="scrollToSection('install', true)" @endif><span>Install App</span><span aria-hidden="true">↗</span></a>
+                </nav>
+                <div class="truthguard-public-menu-actions">
                     @auth
-                        <a href="{{ route('dashboard') }}" class="block rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700">Dashboard</a>
+                        <a href="{{ route('dashboard') }}" class="truthguard-public-menu-secondary">Dashboard</a>
                     @else
-                        <a href="{{ route('login') }}" class="block rounded-lg border border-slate-300 px-4 py-2 text-center text-sm font-semibold text-slate-700">Log in</a>
+                        <a href="{{ route('login') }}" class="truthguard-public-menu-secondary">Log in</a>
                         @if (Route::has('register'))
-                            <a href="{{ route('register') }}" class="mt-2 block rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2 text-center text-sm font-semibold text-white">Register</a>
+                            <a href="{{ route('register') }}" class="truthguard-public-menu-primary">Register <span aria-hidden="true">→</span></a>
                         @endif
                     @endauth
                 </div>

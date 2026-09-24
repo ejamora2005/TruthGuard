@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
     'username',
     'email',
     'password',
+    'email_updates_enabled',
     'is_admin',
     'subscription_tier',
     'subscription_status',
@@ -65,6 +66,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'email_updates_enabled' => 'boolean',
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'subscription_renews_at' => 'datetime',

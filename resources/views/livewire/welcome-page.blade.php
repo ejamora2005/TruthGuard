@@ -716,11 +716,7 @@
         <section id="home" class="overflow-hidden pb-12 pt-6 md:pb-24 md:pt-12">
             <div class="mx-auto grid min-w-0 w-full max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-8">
                 <div class="min-w-0">
-                    <div class="mb-4 inline-flex max-w-full items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 sm:mb-6 sm:text-sm">
-                        <span class="sm:hidden">TruthGuard workflow</span>
-                        <span class="hidden sm:inline">AI-assisted fact checking</span>
-                    </div>
-                    <h1 class="bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
+                    <h1 class="truthguard-welcome-title bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
                         TruthGuard
                     </h1>
                     <p class="mt-4 max-w-xl text-base text-slate-600 sm:mt-6 sm:text-lg">

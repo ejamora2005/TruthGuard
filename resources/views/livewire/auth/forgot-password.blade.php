@@ -18,7 +18,7 @@
                     <span class="inline-flex h-16 w-16 items-center justify-center text-xl font-bold text-cyan-700">TG</span>
                 @endif
                 <div class="text-center">
-                    <p class="text-base font-bold text-slate-900">TruthGuard</p>
+                    <p class="truthguard-auth-brand text-base font-bold text-slate-900">TruthGuard</p>
                     <p class="text-xs text-slate-500">AI-Powered Media Verification</p>
                 </div>
             </a>

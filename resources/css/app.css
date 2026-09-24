@@ -61,6 +61,817 @@
     .tg-public-pagination { font-size: 12px; gap: 8px; }
 }
 
+/* Final mobile overrides: these must remain after the component-specific
+   responsive blocks above. */
+@media (max-width: 640px) {
+    body:not(.truthguard-admin-app) .truthguard-public-brand-name {
+        font-size: 1.25rem !important;
+        line-height: 1.2 !important;
+        letter-spacing: -0.02em;
+    }
+
+    .truthguard-auth-brand {
+        background: linear-gradient(90deg, #2563eb, #4f46e5, #7c3aed);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent !important;
+    }
+
+    .truthguard-public-mobile-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        z-index: 60;
+        max-height: calc(100dvh - 4.5rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border: 0;
+        border-bottom: 1px solid rgba(191, 219, 254, 0.8);
+        border-radius: 0 0 1.5rem 1.5rem;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-public-menu-inner {
+        display: grid;
+        gap: 0.9rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+
+    .truthguard-public-menu-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0 0.15rem;
+    }
+
+    .truthguard-public-menu-heading span:first-child {
+        color: #0f172a;
+        font-size: 0.92rem !important;
+        font-weight: 900;
+        letter-spacing: -0.015em;
+    }
+
+    .truthguard-public-menu-heading span:last-child {
+        color: #64748b;
+        font-size: 0.62rem !important;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .truthguard-public-menu-links {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    .truthguard-public-menu-link {
+        display: flex;
+        min-width: 0;
+        min-height: 3rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        border: 1px solid rgba(191, 219, 254, 0.72);
+        border-radius: 0.95rem;
+        background: rgba(255, 255, 255, 0.82);
+        padding: 0.65rem 0.75rem;
+        color: #334155;
+        font-size: 0.72rem !important;
+        font-weight: 800;
+        text-decoration: none;
+        box-shadow: 0 7px 16px rgba(37, 99, 235, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .truthguard-public-menu-link span:first-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .truthguard-public-menu-link span:last-child {
+        flex: 0 0 auto;
+        color: #3b82f6;
+        font-size: 0.9rem !important;
+    }
+
+    .truthguard-public-menu-link:hover,
+    .truthguard-public-menu-link:focus-visible {
+        border-color: #93c5fd;
+        background: #ffffff;
+        color: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .truthguard-public-menu-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        border-top: 1px solid rgba(191, 219, 254, 0.72);
+        padding-top: 0.9rem;
+    }
+
+    .truthguard-public-menu-secondary,
+    .truthguard-public-menu-primary {
+        display: inline-flex;
+        min-height: 2.85rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        border-radius: 0.9rem;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.74rem !important;
+        font-weight: 900;
+        text-decoration: none;
+    }
+
+    .truthguard-public-menu-secondary {
+        border: 1px solid #cbd5e1;
+        background: rgba(255, 255, 255, 0.82);
+        color: #334155;
+    }
+
+    .truthguard-public-menu-primary {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #ffffff;
+        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+
+    .truthguard-public-menu-primary span { font-size: 0.95rem !important; }
+
+    .truthguard-public-menu-secondary:hover,
+    .truthguard-public-menu-secondary:focus-visible {
+        border-color: #93c5fd;
+        color: #1d4ed8;
+    }
+
+    .truthguard-public-menu-primary:hover,
+    .truthguard-public-menu-primary:focus-visible {
+        background: linear-gradient(135deg, #1d4ed8, #6d28d9);
+    }
+
+    @media (max-width: 350px) {
+        .truthguard-public-menu-links { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    body.truthguard-auth-page {
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow: hidden !important;
+    }
+    .truthguard-auth-shell {
+        min-height: 100dvh;
+        padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+    }
+    .truthguard-auth-card {
+        width: min(100%, 27rem);
+        max-height: calc(100dvh - 1rem);
+        overflow: hidden;
+    }
+
+    .truthguard-mobile-tabbar { gap: 0.12rem !important; }
+    .truthguard-mobile-tab,
+    .truthguard-mobile-tab:hover,
+    .truthguard-mobile-tab:focus-visible,
+    .truthguard-mobile-tab.is-active { transform: none !important; }
+    .truthguard-mobile-tab-primary,
+    .truthguard-mobile-tab-primary:hover,
+    .truthguard-mobile-tab-primary:focus-visible,
+    .truthguard-mobile-tab-primary.is-active {
+        margin-top: -0.85rem !important;
+        transform: translateY(-0.18rem) !important;
+        box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24), 0 0 0 3px rgba(219, 234, 254, 0.72) !important;
+    }
+    #news-watch .tg-feed-search { grid-template-columns: minmax(0, 1fr) !important; gap: 0.55rem !important; }
+    #news-watch .tg-feed-search-input { position: relative; overflow: hidden; }
+    #news-watch #truthguard-feed-search { min-width: 0; max-width: 100%; padding-right: 5.4rem; }
+    #news-watch .tg-feed-search-input > button { right: 0.15rem; min-width: 4.65rem; max-width: 4.65rem; }
+    #news-watch .tg-category-menu { z-index: 100 !important; max-height: min(16rem, 46dvh); }
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form {
+        position: fixed !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        z-index: 99940 !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        padding: 0.55rem 0.65rem max(0.55rem, env(safe-area-inset-bottom, 0px));
+        background: rgba(248, 250, 252, 0.96);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(191, 219, 254, 0.82);
+        box-shadow: 0 -18px 42px rgba(30, 64, 175, 0.14);
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form::before {
+        content: '';
+        display: block;
+        width: 2.75rem;
+        height: 0.22rem;
+        margin: 0 auto 0.45rem;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #38bdf8, #2563eb, #8b5cf6);
+        opacity: 0.8;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form > .truthguard-detection-composer {
+        max-height: none !important;
+        overflow: visible !important;
+        border: 1px solid rgba(191, 219, 254, 0.9) !important;
+        border-radius: 1.35rem !important;
+        padding: 0.45rem !important;
+        background: rgba(255, 255, 255, 0.98) !important;
+        box-shadow: 0 12px 28px rgba(30, 64, 175, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-field {
+        min-height: 3.55rem !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border-radius: 1rem !important;
+        border-color: rgba(226, 232, 240, 0.95) !important;
+        background: linear-gradient(135deg, #f8fbff 0%, #ffffff 62%, #f5f3ff 100%) !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-textarea {
+        min-height: 2.55rem !important;
+        max-height: 3.25rem !important;
+        overflow: hidden !important;
+        resize: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-footer,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-ai-disclaimer-copy {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-footer {
+        margin-top: 0.35rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-mobile-ai-disclaimer {
+        margin-top: 0.35rem !important;
+        color: #64748b;
+        font-size: 0.62rem !important;
+        line-height: 1.1rem !important;
+    }
+}
+
+/* Keep the guided prompts useful without letting them consume the workspace.
+   Recent public fact checks should remain visible above the composer. */
+@media (min-width: 641px) {
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts {
+        padding: 0.8rem 1rem !important;
+        border-radius: 1.25rem !important;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.05) !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child {
+        gap: 0.25rem !important;
+        align-items: center !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child > div:first-child > span:first-child,
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts h3 {
+        display: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child p:last-child {
+        margin-top: 0.15rem !important;
+        max-width: none !important;
+        font-size: 0.72rem !important;
+        line-height: 1.1rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:last-child {
+        margin-top: 0.55rem !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card {
+        min-height: 0 !important;
+        padding: 0.7rem 0.8rem !important;
+        border-radius: 0.9rem !important;
+        box-shadow: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:first-child,
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-last-child(2) {
+        display: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-child(2) {
+        margin-top: 0 !important;
+        font-size: 0.58rem !important;
+        line-height: 0.85rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-child(3) {
+        margin-top: 0.1rem !important;
+        font-size: 0.78rem !important;
+        line-height: 1rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:last-child {
+        margin-top: 0.25rem !important;
+        font-size: 0.68rem !important;
+        line-height: 0.9rem !important;
+    }
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts {
+    margin-top: 0.75rem !important;
+    padding: 0.55rem 0.75rem !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+@media (max-width: 640px) {
+    body.truthguard-fact-check-create-route .truthguard-voice-button,
+    body.truthguard-fact-check-create-route .truthguard-voice-button:hover:not(:disabled),
+    body.truthguard-fact-check-create-route .truthguard-voice-button[aria-pressed="true"] {
+        border-color: transparent !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #2563eb !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-voice-button::before,
+    body.truthguard-fact-check-create-route .truthguard-voice-button::after {
+        display: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-voice-button[aria-pressed="true"] {
+        color: #e11d48 !important;
+    }
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-hero {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 1.35rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-sidebar > div:first-child > a > img,
+body.truthguard-fact-check-create-route .truthguard-sidebar > div:first-child > a > span {
+    width: 2.65rem !important;
+    height: 2.65rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-sidebar > div:first-child > a p {
+    font-size: 1.35rem !important;
+    line-height: 1.1 !important;
+    letter-spacing: -0.025em;
+    background: linear-gradient(90deg, #2563eb 0%, #4f46e5 55%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+}
+
+/* Keep the primary sidebar brand consistent with the welcome page on every
+   authenticated route and viewport size. */
+.truthguard-sidebar > div:first-child > a p {
+    background: linear-gradient(90deg, #2563eb 0%, #4f46e5 55%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-workspace-orb img {
+    width: 4.35rem !important;
+    height: 4.35rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-orb {
+    width: 8.35rem !important;
+    height: 8.35rem !important;
+    align-self: center !important;
+    justify-self: end !important;
+    margin-right: 0.25rem;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-orb-core {
+    inset: 1.8rem !important;
+}
+
+@media (min-width: 641px) {
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-hero {
+        position: relative !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-hero > .grid {
+        display: block !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-intro {
+        max-width: calc(100% - 12rem) !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-orb {
+        position: absolute !important;
+        top: 50% !important;
+        right: 1.35rem !important;
+        margin: 0 !important;
+        transform: translateY(-50%) !important;
+        animation: none !important;
+    }
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompts {
+    display: block !important;
+    margin: 0.35rem auto 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompts > div:first-child {
+    display: none !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompts > div:last-child {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem !important;
+    margin: 0 !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card {
+    display: inline-flex !important;
+    min-height: 0 !important;
+    width: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #475569 !important;
+    text-align: center !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:first-child,
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(2),
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(3),
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(5),
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(6) {
+    display: none !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(4) {
+    display: inline !important;
+    margin: 0 !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    line-height: 1rem !important;
+    white-space: nowrap;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-hero > .grid {
+    min-height: 0 !important;
+    align-items: center !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-capability-row {
+    margin-bottom: 0.05rem !important;
+    padding-bottom: 0.05rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-capability-row .truthguard-capability-pill:first-child,
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-mobile-ready-status,
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-mobile-service-status {
+    display: none !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-recent-section {
+    margin-top: 0 !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts {
+    margin-top: 0.35rem !important;
+    padding: 0.3rem 0.45rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child p:first-child {
+    margin: 0 !important;
+    font-size: 0.58rem !important;
+    line-height: 0.8rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:last-child {
+    margin-top: 0.25rem !important;
+    gap: 0.35rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card {
+    min-height: 2rem !important;
+    padding: 0.35rem 0.55rem !important;
+    border-radius: 0.7rem !important;
+}
+
+@media (max-width: 640px) {
+    body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-pre-result-workspace .truthguard-detection-stage {
+        padding-bottom: calc(15rem + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-pre-result-workspace .truthguard-pre-result-form {
+        bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)) !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child {
+    display: block !important;
+    text-align: center;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child p:last-child {
+    display: none !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:last-child {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+    margin-top: 0.4rem !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card {
+    min-height: 2.4rem !important;
+    padding: 0.55rem 0.7rem !important;
+    border-radius: 0.85rem !important;
+    text-align: center !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06) !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:first-child,
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-child(2),
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-last-child(2) {
+    display: none !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-child(3),
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:last-child {
+    display: inline !important;
+    margin: 0 !important;
+    font-size: 0.72rem !important;
+    line-height: 1rem !important;
+    font-weight: 800 !important;
+}
+
+body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:last-child {
+    display: none !important;
+}
+
+
+.truthguard-voice-button {
+    position: relative;
+    isolation: isolate;
+    overflow: visible !important;
+    border-color: rgba(147, 197, 253, 0.72) !important;
+    background: linear-gradient(145deg, #ffffff 0%, #eff6ff 52%, #f5f3ff 100%) !important;
+    color: #2563eb !important;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+}
+
+.truthguard-voice-button::before,
+.truthguard-voice-button::after {
+    position: absolute;
+    inset: -0.22rem;
+    z-index: -1;
+    border-radius: inherit;
+    content: '';
+    pointer-events: none;
+}
+
+.truthguard-voice-button::before {
+    background: conic-gradient(from 180deg, rgba(56, 189, 248, 0), rgba(59, 130, 246, 0.72), rgba(139, 92, 246, 0.7), rgba(56, 189, 248, 0));
+    opacity: 0.72;
+    filter: blur(0.5px);
+}
+
+.truthguard-voice-button::after {
+    inset: -0.45rem;
+    border: 1px solid rgba(96, 165, 250, 0.22);
+    opacity: 0;
+    transform: scale(0.86);
+}
+
+.truthguard-voice-button:hover:not(:disabled) {
+    color: #4f46e5 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 12px 25px rgba(79, 70, 229, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.98) !important;
+}
+
+.truthguard-voice-button[aria-pressed="true"] {
+    border-color: rgba(244, 114, 182, 0.58) !important;
+    background: linear-gradient(145deg, #fff1f2, #fdf2f8 48%, #eef2ff) !important;
+    color: #e11d48 !important;
+    box-shadow: 0 10px 26px rgba(225, 29, 72, 0.2), 0 0 0 4px rgba(251, 113, 133, 0.1) !important;
+}
+
+.truthguard-voice-button[aria-pressed="true"]::after {
+    opacity: 1;
+    animation: truthguard-voice-wave 1.55s ease-out infinite;
+}
+
+.truthguard-voice-button svg {
+    filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.18));
+}
+
+@keyframes truthguard-voice-wave {
+    0% { opacity: 0.58; transform: scale(0.86); }
+    70%, 100% { opacity: 0; transform: scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .truthguard-voice-button[aria-pressed="true"]::after {
+        animation: none;
+        opacity: 0.5;
+        transform: scale(1);
+    }
+}
+
+/* Mobile containment fixes for auth, dashboard filters, navigation, and the
+   fact-check composer. Keep these rules last so they win over component-local
+   responsive styles. */
+@media (max-width: 640px) {
+    html,
+    body.truthguard-auth-page {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    body.truthguard-auth-page {
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow-y: hidden;
+    }
+
+    .truthguard-auth-shell {
+        min-height: 100dvh;
+        padding: max(0.5rem, env(safe-area-inset-top, 0px)) 0.75rem max(0.5rem, env(safe-area-inset-bottom, 0px));
+    }
+
+    .truthguard-auth-card {
+        width: min(100%, 27rem);
+        max-height: calc(100dvh - 1rem);
+        overflow: hidden;
+    }
+
+    /* The register card has more fields than the login card. Compact it on
+       short phones instead of creating a second page scroll area. */
+    .truthguard-auth-card form {
+        min-width: 0;
+    }
+
+    .truthguard-mobile-tabbar {
+        gap: 0.12rem;
+        padding-right: 0.3rem;
+        padding-left: 0.3rem;
+    }
+
+    .truthguard-mobile-tab {
+        z-index: 1;
+        min-width: 0;
+        overflow: hidden;
+        transform: none;
+    }
+
+    .truthguard-mobile-tab:hover,
+    .truthguard-mobile-tab:focus-visible,
+    .truthguard-mobile-tab.is-active {
+        transform: none;
+    }
+
+    .truthguard-mobile-tab-primary,
+    .truthguard-mobile-tab-primary:hover,
+    .truthguard-mobile-tab-primary:focus-visible,
+    .truthguard-mobile-tab-primary.is-active {
+        z-index: 2;
+        margin-top: -0.85rem;
+        transform: translateY(-0.18rem);
+        box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24), 0 0 0 3px rgba(219, 234, 254, 0.72);
+    }
+
+    #news-watch .tg-feed-search {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.55rem;
+        min-width: 0;
+    }
+
+    #news-watch .tg-feed-field,
+    #news-watch .tg-category-field,
+    #news-watch .tg-feed-search-input {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #news-watch .tg-feed-search-input {
+        position: relative;
+        overflow: hidden;
+    }
+
+    #news-watch #truthguard-feed-search {
+        min-width: 0;
+        max-width: 100%;
+        padding-right: 5.4rem;
+        text-overflow: ellipsis;
+    }
+
+    #news-watch .tg-feed-search-input > button {
+        right: 0.15rem;
+        min-width: 4.65rem;
+        max-width: 4.65rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #news-watch .tg-category-menu {
+        z-index: 100;
+        max-height: min(16rem, 46dvh);
+    }
+
+    body.truthguard-fact-check-create-route {
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow: hidden;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-user-frame,
+    body.truthguard-fact-check-create-route .truthguard-user-content-column,
+    body.truthguard-fact-check-create-route .truthguard-user-main,
+    body.truthguard-fact-check-create-route .truthguard-mobile-check,
+    body.truthguard-fact-check-create-route .truthguard-mobile-check > div,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace > .truthguard-detection-shell {
+        height: 100dvh;
+        min-height: 0;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-user-frame,
+    body.truthguard-fact-check-create-route .truthguard-user-content-column,
+    body.truthguard-fact-check-create-route .truthguard-user-main {
+        overflow: hidden;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-stage {
+        min-height: 0;
+        padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: none;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-stage::-webkit-scrollbar {
+        display: none;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 99940;
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none;
+        margin: 0 !important;
+        padding: 0.45rem 0.65rem max(0.4rem, env(safe-area-inset-bottom, 0px));
+        overflow: visible;
+        background: rgba(247, 249, 252, 0.94);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form > .truthguard-detection-composer,
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form > .truthguard-ai-disclaimer-copy {
+        width: 100%;
+        margin-right: auto;
+        margin-left: auto;
+    }
+}
+
 select[data-tg-select][hidden], .tg-select-menu[hidden] { display: none !important; }
 
 .tg-select-trigger {
@@ -4277,4 +5088,108 @@ body.truthguard-fact-check-route .truthguard-pwa-install-button {
         scroll-behavior: auto;
     }
 
+}
+
+@media (max-width: 640px) {
+    body:not(.truthguard-admin-app) .truthguard-welcome-title {
+        font-size: 2.5rem !important;
+        line-height: 1.08 !important;
+        letter-spacing: -0.035em;
+    }
+
+    .truthguard-mobile-tabbar { gap: 0.12rem !important; }
+    .truthguard-mobile-tab,
+    .truthguard-mobile-tab:hover,
+    .truthguard-mobile-tab:focus-visible,
+    .truthguard-mobile-tab.is-active { transform: none !important; }
+    .truthguard-mobile-tab-primary,
+    .truthguard-mobile-tab-primary:hover,
+    .truthguard-mobile-tab-primary:focus-visible,
+    .truthguard-mobile-tab-primary.is-active {
+        margin-top: -0.85rem !important;
+        transform: translateY(-0.18rem) !important;
+        box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24), 0 0 0 3px rgba(219, 234, 254, 0.72) !important;
+    }
+    #news-watch .tg-feed-search { grid-template-columns: minmax(0, 1fr) !important; gap: 0.55rem !important; }
+    #news-watch .tg-feed-search-input { position: relative; overflow: hidden; }
+    #news-watch #truthguard-feed-search { min-width: 0; max-width: 100%; padding-right: 5.4rem; }
+    #news-watch .tg-feed-search-input > button { right: 0.15rem; min-width: 4.65rem; max-width: 4.65rem; }
+    #news-watch .tg-category-menu { z-index: 100 !important; max-height: min(16rem, 46dvh); }
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form {
+        position: fixed !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        z-index: 99940 !important;
+        width: 100% !important;
+        max-width: none !important;
+        max-height: none !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        padding: 0.45rem 0.65rem max(0.4rem, env(safe-area-inset-bottom, 0px));
+        background: rgba(247, 249, 252, 0.94);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+    }
+}
+
+@media (min-width: 641px) {
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts {
+        padding: 0.8rem 1rem !important;
+        border-radius: 1.25rem !important;
+        box-shadow: 0 10px 24px rgba(37, 99, 235, 0.05) !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child {
+        gap: 0.25rem !important;
+        align-items: center !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child > div:first-child > span:first-child,
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts h3 {
+        display: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:first-child p:last-child {
+        margin-top: 0.15rem !important;
+        max-width: none !important;
+        font-size: 0.72rem !important;
+        line-height: 1.1rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompts > div:last-child {
+        margin-top: 0.55rem !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card {
+        min-height: 0 !important;
+        padding: 0.7rem 0.8rem !important;
+        border-radius: 0.9rem !important;
+        box-shadow: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:first-child,
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-last-child(2) {
+        display: none !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-child(2) {
+        margin-top: 0 !important;
+        font-size: 0.58rem !important;
+        line-height: 0.85rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:nth-child(3) {
+        margin-top: 0.1rem !important;
+        font-size: 0.78rem !important;
+        line-height: 1rem !important;
+    }
+
+    body.truthguard-fact-check-create-route .truthguard-guided-prompt-card > span:last-child {
+        margin-top: 0.25rem !important;
+        font-size: 0.68rem !important;
+        line-height: 0.9rem !important;
+    }
 }

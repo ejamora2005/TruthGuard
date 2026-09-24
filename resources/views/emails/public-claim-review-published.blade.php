@@ -23,5 +23,6 @@
 Read review
 @endcomponent
 
-TruthGuard sends these updates so you can track fresh public fact-checks as they appear.
+You are receiving this because email updates are enabled in your TruthGuard account settings.
+You can turn optional update emails off anytime from your profile settings.
 @endcomponent
