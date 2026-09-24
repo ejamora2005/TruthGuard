@@ -3,7 +3,7 @@
     $logoUrl = is_file(public_path($logoPath)) ? asset($logoPath) : null;
 @endphp
 
-<div class="relative flex h-dvh w-full items-center justify-center overflow-hidden bg-slate-100 px-4 sm:px-6 lg:px-8">
+<div class="truthguard-auth-shell relative flex h-dvh w-full items-center justify-center overflow-hidden bg-slate-100 px-4 sm:px-6 lg:px-8">
     <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_52%,#e8f1ff_100%)]"></div>
     <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_15%,rgba(14,165,233,0.26)_0%,transparent_34%),radial-gradient(circle_at_85%_80%,rgba(59,130,246,0.22)_0%,transparent_38%)]"></div>
     <div class="pointer-events-none absolute left-1/2 top-1/2 h-[26rem] w-[26rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-sky-200/45 [animation:spin_40s_linear_infinite]"></div>
@@ -13,7 +13,7 @@
     <div class="relative z-10 w-full max-w-md">
         <div
             x-data="{ socialAuthLoading: null }"
-            class="rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-5 [@media(max-height:820px)]:p-4"
+            class="truthguard-auth-card rounded-2xl border-2 border-slate-300 bg-white p-4 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-5 [@media(max-height:820px)]:p-4"
         >
             <a href="{{ route('home') }}" class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2 [@media(max-height:820px)]:mb-3 [@media(max-height:820px)]:gap-1.5">
                 @if ($logoUrl)
@@ -22,7 +22,7 @@
                     <span class="inline-flex h-16 w-16 items-center justify-center text-xl font-bold text-cyan-700 [@media(max-height:820px)]:h-14 [@media(max-height:820px)]:w-14 [@media(max-height:820px)]:text-lg">TG</span>
                 @endif
                 <div class="text-center">
-                    <p class="text-base font-bold text-slate-900">TruthGuard</p>
+                    <p class="truthguard-auth-brand text-base font-bold text-slate-900">TruthGuard</p>
                     <p class="text-xs text-slate-500">AI-Powered Media Verification</p>
                 </div>
             </a>

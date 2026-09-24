@@ -3159,6 +3159,11 @@ new class extends Component
             locationAccuracy: null,
             locationLabel: 'Current location',
             locationRequestInFlight: false,
+            voiceSupported: false,
+            voiceListening: false,
+            voiceError: null,
+            voiceRecognition: null,
+            voiceTranscriptBuffer: '',
             hasResult: @js((bool) $activeDetection),
             updateViewportOffset() {
                 const header = document.querySelector('header');
@@ -3192,6 +3197,7 @@ new class extends Component
                     this.preloadGooglePicker();
                 }
 
+                this.setupVoiceInput();
                 window.addEventListener('resize', () => this.updateViewportOffset());
                 this.$watch('hasFile', () => this.updateScrollLock());
             },
@@ -3967,14 +3973,144 @@ new class extends Component
                 this.$nextTick(() => this.$refs.composerInput?.focus());
             },
             usePrompt(prompt) {
+                this.menuOpen = false;
+                this.composerError = null;
+                this.selectedInputType = null;
+
                 if (this.$refs.composerInput) {
                     this.$refs.composerInput.value = prompt;
                     this.composerValue = prompt;
                 }
+
+                if (this.composerUrl()) {
+                    this.selectedInputType = 'link';
+                }
+
+                this.$nextTick(() => {
+                    this.resizeComposer();
+                    this.$refs.composerInput?.focus();
+
+                    const input = this.$refs.composerInput;
+
+                    if (input && typeof input.setSelectionRange === 'function') {
+                        input.setSelectionRange(input.value.length, input.value.length);
+                    }
+                });
+            },
+            setupVoiceInput() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                this.voiceSupported = !!SpeechRecognition;
+
+                if (! this.voiceSupported) {
+                    return;
+                }
+
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                const pageLanguage = document.documentElement.lang || navigator.language || 'en-US';
+                recognition.lang = pageLanguage === 'en' ? 'en-US' : (pageLanguage === 'fil' ? 'fil-PH' : pageLanguage);
+
+                recognition.onstart = () => {
+                    this.voiceListening = true;
+                    this.voiceError = null;
+                };
+
+                recognition.onend = () => {
+                    this.voiceListening = false;
+                };
+
+                recognition.onerror = (event) => {
+                    this.voiceListening = false;
+                    this.voiceError = event?.error === 'not-allowed'
+                        ? 'Microphone access was denied. Allow it in the browser address bar.'
+                        : event?.error === 'no-speech'
+                            ? 'No speech was detected. Speak closer to the microphone and try again.'
+                            : 'Voice input stopped. Try again.';
+                };
+
+                recognition.onresult = (event) => {
+                    let finalTranscript = '';
+
+                    for (let index = event.resultIndex; index < event.results.length; index += 1) {
+                        const transcript = event.results[index]?.[0]?.transcript || '';
+
+                        if (event.results[index].isFinal) {
+                            finalTranscript += transcript;
+                        }
+                    }
+
+                    if (finalTranscript.trim()) {
+                        this.insertVoiceText(finalTranscript);
+                    }
+                };
+
+                this.voiceRecognition = recognition;
+            },
+            toggleVoiceInput() {
+                if (! this.voiceSupported || ! this.voiceRecognition) {
+                    this.voiceError = 'Voice input is not supported in this browser. Use Chrome or Edge.';
+                    return;
+                }
+
+                if (this.voiceListening) {
+                    this.voiceRecognition.stop();
+                    return;
+                }
+
+                try {
+                    this.voiceError = null;
+                    this.voiceTranscriptBuffer = '';
+                    this.voiceRecognition.start();
+                } catch (error) {
+                    this.voiceError = 'Voice input is already starting. Try again.';
+                }
+            },
+            insertVoiceText(text) {
+                const transcript = (text || '').trim();
+
+                if (! transcript) {
+                    return;
+                }
+
+                const currentValue = this.composerValue || '';
+                const separator = currentValue && ! /\s$/.test(currentValue) ? ' ' : '';
+                const nextValue = `${currentValue}${separator}${transcript}`;
+
+                this.composerValue = nextValue;
+
+                if (this.$refs.composerInput) {
+                    this.$refs.composerInput.value = nextValue;
+                    this.$refs.composerInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                if (this.composerUrl()) {
+                    this.selectedInputType = 'link';
+                }
+
+                this.composerError = this.isComposerOverLimit()
+                    ? 'The claim exceeds the allowed length.'
+                    : null;
+
                 this.$nextTick(() => {
                     this.resizeComposer();
                     this.$refs.composerInput?.focus();
                 });
+            },
+            requestDeviceAccess(type) {
+                if (type === 'files') {
+                    this.triggerPicker('all');
+                    return;
+                }
+
+                if (type === 'location') {
+                    this.requestLocation();
+                    return;
+                }
+
+                if (type === 'microphone') {
+                    this.toggleVoiceInput();
+                }
             },
             formatFileSize(bytes) {
                 if (! Number.isFinite(bytes) || bytes <= 0) {
@@ -4331,6 +4467,204 @@ new class extends Component
                     @change="syncPreviewFromInput($event)"
                 >
 
+                @if (! $activeDetection)
+                    <section class="truthguard-guided-prompts rounded-[30px] border border-blue-100/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex min-w-0 gap-3">
+                                <span class="hidden" aria-hidden="true">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.2 12.2 11 14l3.8-4"></path>
+                                    </svg>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Guided prompts</p>
+                                    <h3 class="hidden">Start with a structured fact-check template</h3>
+                                    <p class="mt-0 text-center text-xs font-semibold text-slate-500">Choose a guide</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            @foreach ($shortcutPrompts as $shortcutPrompt)
+                                <button
+                                    type="button"
+                                    class="truthguard-guided-prompt-card group relative flex min-h-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white px-3 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
+                                    data-prompt="{{ $shortcutPrompt['prompt'] }}"
+                                    @click="usePrompt($el.dataset.prompt)"
+                                >
+                                    <span class="hidden" aria-hidden="true"></span>
+                                    <span class="hidden">
+                                        <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm transition group-hover:bg-blue-600" aria-hidden="true">
+                                            @switch($loop->index)
+                                                @case(1)
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 8h10M7 12h6M5.5 19.5v-3.2A7.5 7.5 0 1 1 9 18.9l-3.5.6Z"></path>
+                                                    </svg>
+                                                    @break
+                                                @case(2)
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                                        <rect x="4" y="5" width="16" height="14" rx="2"></rect>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m8 14 2.5-2.5L13 14l2-2 3 3"></path>
+                                                    </svg>
+                                                    @break
+                                                @case(3)
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m9.5 14.5 5-5M8 16l-1.3 1.3a3.2 3.2 0 0 1-4.5-4.5L5 10a3.2 3.2 0 0 1 4.5 0M16 8l1.3-1.3a3.2 3.2 0 0 1 4.5 4.5L19 14a3.2 3.2 0 0 1-4.5 0"></path>
+                                                    </svg>
+                                                    @break
+                                                @default
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z"></path>
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.5 12h5"></path>
+                                                    </svg>
+                                            @endswitch
+                                        </span>
+                                        <span class="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-blue-700">
+                                            Template
+                                        </span>
+                                    </span>
+
+                                    <span class="hidden">
+                                        {{ $shortcutPrompt['eyebrow'] ?? '' }}
+                                    </span>
+                                    <span class="relative block whitespace-nowrap text-center text-xs font-black text-slate-950">
+                                        {{ $shortcutPrompt['label'] }}
+                                    </span>
+                                    <span class="hidden">
+                                        {{ $shortcutPrompt['description'] ?? '' }}
+                                    </span>
+                                    <span class="hidden">
+                                        Use template
+                                        <svg class="h-3.5 w-3.5 transition group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-5-5 5 5-5 5"></path>
+                                        </svg>
+                                    </span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </section>
+
+                    @if (false)
+                    <section class="rounded-[30px] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="flex min-w-0 gap-3">
+                                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-sm" aria-hidden="true">
+                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.6 12.1 11 14.5l4.7-5"></path>
+                                    </svg>
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Device permissions</p>
+                                    <h3 class="mt-1 text-base font-black text-slate-950 sm:text-lg">Allow access only when you need it</h3>
+                                    <p class="mt-1 max-w-2xl text-sm font-medium leading-6 text-slate-600">
+                                        TruthGuard asks permission before using files, location, or microphone. This is especially helpful on mobile where the browser requires a user tap before showing permission prompts.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 grid gap-3 md:grid-cols-3">
+                            <article class="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100" aria-hidden="true">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 3.8h6.8L18 8v12.2H7V3.8Z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4v4.4H18"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.4 13h5.2M9.4 16h4"></path>
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h4 class="text-sm font-black text-slate-950">File access</h4>
+                                            <span
+                                                class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]"
+                                                :class="hasFile ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'"
+                                                x-text="hasFile ? 'Selected' : 'Optional'"
+                                            ></span>
+                                        </div>
+                                        <p class="mt-2 text-xs font-medium leading-5 text-slate-500">
+                                            Choose an image, video, screenshot, or PDF as evidence for fact-checking.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-blue-600 px-4 py-2.5 text-xs font-black text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
+                                    @click="requestDeviceAccess('files')"
+                                >
+                                    Choose file
+                                </button>
+                            </article>
+
+                            <article class="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-cyan-700 shadow-sm ring-1 ring-cyan-100" aria-hidden="true">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 21s6-5.4 6-11a6 6 0 0 0-12 0c0 5.6 6 11 6 11Z"></path>
+                                            <circle cx="12" cy="10" r="2.1"></circle>
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h4 class="text-sm font-black text-slate-950">Location access</h4>
+                                            <span
+                                                class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]"
+                                                :class="locationStatus === 'granted' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' : (locationStatus === 'requesting' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100' : (locationStatus === 'denied' || locationStatus === 'error' ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-100' : 'bg-slate-100 text-slate-500 ring-1 ring-slate-200'))"
+                                                x-text="locationStatus === 'granted' ? 'Allowed' : (locationStatus === 'requesting' ? 'Requesting' : (locationStatus === 'denied' ? 'Denied' : (locationStatus === 'unsupported' ? 'Unsupported' : 'Optional')))"
+                                            ></span>
+                                        </div>
+                                        <p class="mt-2 text-xs font-medium leading-5 text-slate-500">
+                                            Add local weather/context signals when the claim depends on your area.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="mt-4 inline-flex w-full items-center justify-center rounded-2xl border px-4 py-2.5 text-xs font-black shadow-sm transition focus-visible:outline-none focus-visible:ring-4"
+                                    :class="locationStatus === 'granted' ? 'border-emerald-200 bg-emerald-50 text-emerald-700 focus-visible:ring-emerald-100' : 'border-cyan-200 bg-white text-cyan-700 hover:bg-cyan-50 focus-visible:ring-cyan-100'"
+                                    @click="requestDeviceAccess('location')"
+                                    x-text="locationStatus === 'granted' ? 'Location allowed' : 'Allow location'"
+                                ></button>
+                            </article>
+
+                            <article class="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-violet-700 shadow-sm ring-1 ring-violet-100" aria-hidden="true">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.8a3.2 3.2 0 0 0-3.2 3.2v4.6a3.2 3.2 0 1 0 6.4 0V7A3.2 3.2 0 0 0 12 3.8Z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.8 10.8a6.2 6.2 0 0 0 12.4 0M12 17v3.2M8.8 20.2h6.4"></path>
+                                        </svg>
+                                    </span>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h4 class="text-sm font-black text-slate-950">Microphone access</h4>
+                                            <span
+                                                class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em]"
+                                                :class="voiceListening ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-100' : (voiceSupported ? 'bg-slate-100 text-slate-500 ring-1 ring-slate-200' : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100')"
+                                                x-text="voiceListening ? 'Listening' : (voiceSupported ? 'Optional' : 'Unsupported')"
+                                            ></span>
+                                        </div>
+                                        <p class="mt-2 text-xs font-medium leading-5 text-slate-500">
+                                            Speak your claim and let the browser write it into the input box.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="mt-4 inline-flex w-full items-center justify-center rounded-2xl border px-4 py-2.5 text-xs font-black shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-4"
+                                    :class="voiceListening ? 'border-rose-200 bg-rose-50 text-rose-700 focus-visible:ring-rose-100' : 'border-violet-200 bg-white text-violet-700 hover:bg-violet-50 focus-visible:ring-violet-100'"
+                                    :disabled="!voiceSupported"
+                                    @click="requestDeviceAccess('microphone')"
+                                    x-text="voiceListening ? 'Stop listening' : 'Allow microphone'"
+                                ></button>
+                            </article>
+                        </div>
+                    </section>
+                    @endif
+                @endif
+
                 <div
                     class="truthguard-detection-composer relative rounded-[30px] p-2.5 sm:p-3"
                         :class="[
@@ -4591,6 +4925,26 @@ new class extends Component
 
                         <button
                             type="button"
+                            class="truthguard-voice-button inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:h-12 sm:w-12"
+                            :class="voiceListening ? 'border-rose-200 bg-rose-50 text-rose-600 ring-4 ring-rose-100' : 'border-slate-200 bg-white hover:border-blue-200 hover:text-blue-700'"
+                            :disabled="!voiceSupported"
+                            :aria-disabled="!voiceSupported ? 'true' : 'false'"
+                            :aria-pressed="voiceListening ? 'true' : 'false'"
+                            :title="voiceSupported ? (voiceListening ? 'Stop voice input' : 'Speak to type') : 'Voice input is not supported in this browser'"
+                            @click="toggleVoiceInput()"
+                        >
+                            <span class="sr-only" x-text="voiceListening ? 'Stop voice input' : 'Speak to type'"></span>
+                            <svg x-show="!voiceListening" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.8a3.2 3.2 0 0 0-3.2 3.2v4.6a3.2 3.2 0 1 0 6.4 0V7A3.2 3.2 0 0 0 12 3.8Z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.8 10.8a6.2 6.2 0 0 0 12.4 0M12 17v3.2M8.8 20.2h6.4"></path>
+                            </svg>
+                            <svg x-show="voiceListening" x-cloak class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                <rect x="7" y="7" width="10" height="10" rx="2"></rect>
+                            </svg>
+                        </button>
+
+                        <button
+                            type="button"
                             class="truthguard-mobile-inline-submit truthguard-analyze-button relative inline-flex shrink-0 items-center justify-center overflow-hidden text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60 sm:hidden"
                             :class="[
                                 canAnalyze()
@@ -4629,6 +4983,19 @@ new class extends Component
                             <circle cx="12" cy="12" r="9"></circle>
                         </svg>
                         <span x-text="pasteStatus"></span>
+                    </div>
+
+                    <div
+                        x-show="voiceListening || voiceError"
+                        x-cloak
+                        x-transition.opacity
+                        class="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm"
+                        :class="voiceError ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-blue-100 bg-blue-50 text-blue-700'"
+                        role="status"
+                        aria-live="polite"
+                    >
+                        <span class="inline-flex h-2 w-2 rounded-full" :class="voiceError ? 'bg-rose-500' : 'animate-pulse bg-blue-500'" aria-hidden="true"></span>
+                        <span x-text="voiceError || 'Listening... speak now'"></span>
                     </div>
 
                     <div

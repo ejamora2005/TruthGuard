@@ -160,6 +160,10 @@ class PublicClaimReviewNotificationService
         User::query()
             ->where('subscription_status', 'active')
             ->whereNotNull('email')
+            ->when(
+                Schema::hasColumn('users', 'email_updates_enabled'),
+                fn ($query) => $query->where('email_updates_enabled', true),
+            )
             ->chunkById($chunkSize, function ($users) use ($announcement, &$notified): void {
                 foreach ($users as $user) {
                     if ($this->userAlreadyReceivedAnnouncement($user, $announcement)) {

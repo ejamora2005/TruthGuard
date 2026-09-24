@@ -34,12 +34,14 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'email_updates_enabled' => ['sometimes', 'boolean'],
         ]);
 
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'email_updates_enabled' => $request->boolean('email_updates_enabled'),
             'is_admin' => false,
             'subscription_tier' => 'free',
             'subscription_status' => 'active',

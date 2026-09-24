@@ -1452,11 +1452,31 @@ class LiveVerificationEvidenceService
                 $sourceType = (string) ($source['source_type'] ?? 'reference');
 
                 if ($sourceType === 'fact_check') {
+                    // A fact-check provider is not evidence by itself. Only keep a
+                    // review when its title/summary actually overlaps the claim.
+                    $body = Str::lower(trim(collect([
+                        $source['name'] ?? null,
+                        $source['purpose'] ?? null,
+                        $source['summary'] ?? null,
+                    ])->filter()->implode(' ')));
+
+                    return $body !== ''
+                        && ($quotedPhrases !== [] || $keywords !== [])
+                        && $this->calculateClaimMatchScore($body, $topic, $keywords, $quotedPhrases) >= 1;
+                }
+
+                if (in_array($sourceType, ['official', 'weather', 'source_trace'], true)) {
                     return true;
                 }
 
-                if (in_array($sourceType, ['official', 'weather', 'source_trace', 'social_context'], true)) {
-                    return true;
+                if ($sourceType === 'social_context') {
+                    // Search-result landing pages are discovery routes, not
+                    // corroborating sources. Keep only an actual matched page
+                    // returned by the web-search collector.
+                    return in_array(strtolower((string) ($source['status'] ?? '')), [
+                        'openai web-search match',
+                        'scraped-social-match',
+                    ], true) && filter_var($source['url'] ?? null, FILTER_VALIDATE_URL);
                 }
 
                 $url = Str::lower((string) ($source['url'] ?? ''));

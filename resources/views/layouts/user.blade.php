@@ -1389,6 +1389,7 @@
         </form>
 
         @include('auth.partials.session-timeout-modal')
+        @include('auth.partials.device-permissions-onboarding')
         @include('layouts.partials.logout-confirmation-modal', ['logoutScope' => 'user'])
         @include('layouts.partials.onboarding-tour', ['showOnboardingTour' => $showOnboardingTour])
 

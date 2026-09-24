@@ -7,6 +7,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\Process\Process;
 
 class OpenAiDetectionReportService
 {
@@ -67,9 +68,9 @@ class OpenAiDetectionReportService
             return null;
         }
 
-        $imageInput = $this->buildImageInput($uploadedFile);
+        $mediaInputs = $this->buildMediaInputs($uploadedFile);
 
-        if ($imageInput === null) {
+        if ($mediaInputs === []) {
             return null;
         }
 
@@ -78,7 +79,7 @@ class OpenAiDetectionReportService
                 ->acceptJson()
                 ->asJson()
                 ->timeout((int) config('services.openai.timeout', 40))
-                ->post('https://api.openai.com/v1/responses', $this->claimExtractionPayload($context, $imageInput));
+                ->post('https://api.openai.com/v1/responses', $this->claimExtractionPayload($context, $mediaInputs));
 
             if (! $response->successful()) {
                 Log::warning('OpenAI claim extraction request failed; continuing without image text.', [
@@ -129,10 +130,8 @@ class OpenAiDetectionReportService
             ],
         ];
 
-        $imageInput = $this->buildImageInput($uploadedFile);
-
-        if ($imageInput !== null) {
-            $content[] = $imageInput;
+        foreach ($this->buildMediaInputs($uploadedFile) as $mediaInput) {
+            $content[] = $mediaInput;
         }
 
         $payload = [
@@ -180,10 +179,10 @@ class OpenAiDetectionReportService
 
     /**
      * @param  array<string, mixed>  $context
-     * @param  array<string, string>  $imageInput
+     * @param  array<int, array<string, string>>  $mediaInputs
      * @return array<string, mixed>
      */
-    private function claimExtractionPayload(array $context, array $imageInput): array
+    private function claimExtractionPayload(array $context, array $mediaInputs): array
     {
         return [
             'model' => (string) config('services.openai.model', 'gpt-5.4'),
@@ -210,7 +209,7 @@ class OpenAiDetectionReportService
                             'type' => 'input_text',
                             'text' => $this->buildClaimExtractionPrompt($context),
                         ],
-                        $imageInput,
+                        ...$mediaInputs,
                     ],
                 ],
             ],
@@ -234,6 +233,7 @@ class OpenAiDetectionReportService
             'Do not invent sources, dates, people, locations, quotes, or certainty that is not present in the provided basis.',
             'Preserve the supplied verdict and risk score because trusted-source reconciliation has already been applied upstream. If evidence is limited, say that clearly.',
             'Use social-context sources to discuss where else the uploaded image, video, text, or link appears, including reposts, comments, corrections, or conflicting captions. Do not treat social posts as authoritative proof unless a trusted fact-check or official source also supports that conclusion.',
+            'For uploaded videos, inspect the representative frames supplied in the request. Do not say that a video was visually verified if no frames are available; state that video verification is incomplete and requires manual review of the full clip and audio.',
             'When web search is available, search the submitted claim across public Facebook, Instagram, TikTok, X, YouTube, Reddit, and Threads pages. Return only social matches that were actually found, with their real source URL and a concise description of the related content. Never invent a social post or claim that a private or inaccessible post was reviewed.',
             'If verification sources include a public fact-check rating, lead with the source and rating, for example: "Based on the source, this claim is AI-generated, misinformation." Preserve specific ratings such as Missing context, Miscaptioned, Manipulated media, AI-generated, misinformation, Misleading, No official confirmation found, False, or Confirmed when provided. Do not collapse a specific rating to only "False" unless that is the only supplied rating. Do not contradict a supplied trusted fact-check rating.',
             'For a source-backed fact-check match, ground the first sentence in the fact-check source headline, claim summary, and rating. Do not restate extracted image text as the exact claim.',
@@ -404,40 +404,94 @@ class OpenAiDetectionReportService
         ];
     }
 
-    private function buildImageInput(?UploadedFile $uploadedFile): ?array
+    /** @return array<int, array<string, string>> */
+    private function buildMediaInputs(?UploadedFile $uploadedFile): array
     {
         if (! (bool) config('services.openai.image_context_enabled', true) || ! $uploadedFile) {
-            return null;
+            return [];
         }
 
         $mime = (string) $uploadedFile->getMimeType();
 
+        if (Str::startsWith($mime, 'video/')) {
+            return $this->extractVideoFrameInputs($uploadedFile);
+        }
+
         if (! Str::startsWith($mime, 'image/')) {
-            return null;
+            return [];
         }
 
         $maxBytes = max(0, (int) config('services.openai.image_max_bytes', 4194304));
 
         if ($maxBytes > 0 && $uploadedFile->getSize() > $maxBytes) {
-            return null;
+            return [];
         }
 
         $path = $uploadedFile->getRealPath() ?: $uploadedFile->getPathname();
 
         if (! is_string($path) || $path === '' || ! is_file($path)) {
-            return null;
+            return [];
         }
 
         $contents = file_get_contents($path);
 
         if ($contents === false) {
-            return null;
+            return [];
         }
 
-        return [
+        return [[
             'type' => 'input_image',
             'image_url' => 'data:'.$mime.';base64,'.base64_encode($contents),
-        ];
+        ]];
+    }
+
+    /** @return array<int, array<string, string>> */
+    private function extractVideoFrameInputs(UploadedFile $uploadedFile): array
+    {
+        $path = $uploadedFile->getRealPath() ?: $uploadedFile->getPathname();
+
+        if (! is_string($path) || $path === '' || ! is_file($path)) {
+            return [];
+        }
+
+        $durationProbe = new Process([
+            'ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+            '-of', 'default=noprint_wrappers=1:nokey=1', $path,
+        ]);
+        $durationProbe->setTimeout(15);
+        $durationProbe->run();
+        $duration = $durationProbe->isSuccessful() && is_numeric(trim($durationProbe->getOutput()))
+            ? max(0.0, (float) trim($durationProbe->getOutput()))
+            : 0.0;
+        $seeks = $duration > 2 ? [0.0, round($duration / 2, 2), max(0.0, round($duration - 1, 2))] : [0.0];
+        $frames = [];
+
+        foreach (array_values(array_unique($seeks)) as $seek) {
+            $output = tempnam(sys_get_temp_dir(), 'truthguard-frame-');
+
+            if ($output === false) {
+                continue;
+            }
+
+            @unlink($output);
+            $output .= '.jpg';
+
+            $process = new Process(['ffmpeg', '-y', '-ss', (string) $seek, '-i', $path, '-frames:v', '1', '-vf', 'scale=1280:-2', $output]);
+            $process->setTimeout(30);
+            $process->run();
+            $contents = $process->isSuccessful() && is_file($output) ? file_get_contents($output) : false;
+
+            if ($contents !== false && $contents !== '') {
+                $frames[] = [
+                    'type' => 'input_image',
+                    'image_url' => 'data:image/jpeg;base64,'.base64_encode($contents),
+                ];
+            }
+
+            @unlink($output);
+        }
+
+        return $frames;
     }
 
     /**
@@ -620,6 +674,11 @@ class OpenAiDetectionReportService
     private function isAllowedSocialUrl(string $url): bool
     {
         $host = Str::lower((string) parse_url($url, PHP_URL_HOST));
+
+        if (Str::contains($host, ['shop.tiktok.com', 'seller-us.tiktok.com', 'ads.tiktok.com'])
+            || Str::contains(Str::lower((string) parse_url($url, PHP_URL_PATH)), ['/shop/', '/product/'])) {
+            return false;
+        }
 
         if ($host === '') {
             return false;

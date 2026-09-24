@@ -643,8 +643,6 @@ class DetectionPipeline
             ]);
         }
 
-        $sources->push(...$this->buildSocialContextSources($sourceUrl, $captionText, $notes, $platform));
-
         if (Str::contains($context, ['weather', 'typhoon', 'storm', 'flood', 'rainfall'])) {
             $sources->push(
                 [
@@ -918,7 +916,7 @@ class DetectionPipeline
         }
 
         $prefix = match ($mediaType) {
-            'video' => "TruthGuard reviewed the video's media cues, caption language, and source context.",
+            'video' => "TruthGuard reviewed the video's available metadata, caption language, and source context; full frame and audio verification requires extracted frames and manual review of the complete clip.",
             'image' => 'TruthGuard reviewed the image, its surrounding text, and available source context.',
             'document' => 'TruthGuard reviewed the document content, surrounding text, and available source context.',
             default => 'TruthGuard reviewed the submitted content, its text cues, and the available source context.',

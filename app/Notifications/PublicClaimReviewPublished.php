@@ -6,6 +6,7 @@ use App\Models\PublicClaimReviewAnnouncement;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class PublicClaimReviewPublished extends Notification
@@ -22,6 +23,10 @@ class PublicClaimReviewPublished extends Notification
      */
     public function via(object $notifiable): array
     {
+        if (Schema::hasColumn('users', 'email_updates_enabled') && ! (bool) ($notifiable->email_updates_enabled ?? false)) {
+            return [];
+        }
+
         return ['mail'];
     }
 
