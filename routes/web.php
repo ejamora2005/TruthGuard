@@ -32,6 +32,15 @@ Route::get('/', WelcomePage::class)->name('home');
 Route::get('claim-reviews', \App\Http\Controllers\PublicClaimReviewController::class)->name('reviews.index');
 Route::get('privacy-policy', [PrivacyPolicyController::class, 'policy'])->name('privacy.policy');
 
+if (app()->environment('local')) {
+    Route::get('test-error/403', fn () => response()->view('errors.403', [], 403));
+    Route::get('test-error/404', fn () => response()->view('errors.404', [], 404));
+    Route::get('test-error/419', fn () => response()->view('errors.419', [], 419));
+    Route::get('test-error/429', fn () => response()->view('errors.429', [], 429));
+    Route::get('test-error/500', fn () => response()->view('errors.500', [], 500));
+    Route::get('test-error/503', fn () => response()->view('errors.503', [], 503));
+}
+
 Route::get('auth/google/redirect', [GoogleAuthController::class, 'redirectToGoogle'])->name('google.redirect');
 Route::get('auth/google/callback', [GoogleAuthController::class, 'handleGoogleCallback'])->name('google.callback');
 Route::get('auth/facebook/redirect', [GoogleAuthController::class, 'redirectToFacebook'])->name('facebook.redirect');
