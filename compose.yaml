@@ -194,7 +194,9 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env.production}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env.production}
     networks:
-      - truthguard-internal
+      truthguard-internal:
+        aliases:
+          - database
     volumes:
       - database:/var/lib/mysql
     healthcheck:
@@ -203,6 +205,17 @@ services:
       timeout: 5s
       retries: 30
       start_period: 90s
+
+  adminer:
+    image: adminer:latest
+    restart: unless-stopped
+    environment:
+      ADMINER_DEFAULT_SERVER: database
+    expose:
+      - "8080"
+    networks:
+      - truthguard-internal
+      - dokploy-network
 
 volumes:
   storage:
