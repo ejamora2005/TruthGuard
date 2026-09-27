@@ -19,7 +19,7 @@ class TruthGuardNotificationManager
 
     public function sendFactCheckResultOnce(Detection $detection): void
     {
-        // Verification results are available on the result page; users should not get a separate alert.
+        app(NotificationEventService::class)->analysisComplete($detection);
     }
 
     /**

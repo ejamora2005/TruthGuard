@@ -93,6 +93,7 @@
 @section('page_subtitle', 'Account, security, and workspace preferences')
 
 @section('content')
+    @include('notifications.settings')
     <div
         class="truthguard-mobile-page truthguard-mobile-settings truthguard-settings-page mx-auto w-full max-w-[1380px] space-y-5 pb-2"
         x-data="{

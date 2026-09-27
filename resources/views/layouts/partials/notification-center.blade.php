@@ -82,6 +82,7 @@
         deleteUrlTemplate: @js(url('/notifications/__ID__')),
         init() {
             this.showInitialToast();
+            window.addEventListener('truthguard:notification', () => this.fetchNotifications());
             this.pollTimer = window.setInterval(() => this.fetchNotifications(), 30000);
         },
         showInitialToast() {

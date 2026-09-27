@@ -5,8 +5,8 @@ namespace App\Services\Detections;
 use App\Models\Detection;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DetectionPipeline
@@ -17,8 +17,9 @@ class DetectionPipeline
         private readonly LiveVerificationEvidenceService $liveVerificationEvidenceService,
         private readonly DetectionRetentionService $retentionService,
         private readonly OpenAiDetectionReportService $openAiDetectionReportService,
-    ) {
-    }
+        private readonly FilipinoNewsClassifier $filipinoNewsClassifier,
+        private readonly DeepfakeCnnClassifier $deepfakeCnnClassifier,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $validated
@@ -141,7 +142,20 @@ class DetectionPipeline
         ?string $platform,
     ): array {
         $signals = $this->buildSignals($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType);
+        $localNlpClassification = $this->filipinoNewsClassifier->classify($captionText, $notes);
+        $deepfakeCnnClassification = $this->deepfakeCnnClassifier->classify($uploadedFile, $mediaType);
+
+        if ($localNlpClassification !== null) {
+            $signals = $this->attachLocalNlpSignal($signals, $localNlpClassification);
+        }
+
+        if ($deepfakeCnnClassification !== null) {
+            $signals = $this->attachDeepfakeCnnSignal($signals, $deepfakeCnnClassification);
+        }
+
         $fakeScore = $this->calculateFakeScore($signals);
+        $fakeScore = $this->applyLocalNlpRiskFloor($fakeScore, $localNlpClassification);
+        $fakeScore = $this->applyDeepfakeCnnRiskFloor($fakeScore, $deepfakeCnnClassification);
         $verdict = $this->determineVerdict($fakeScore);
         $verificationSources = $this->buildVerificationSources($sourceUrl, $captionText, $notes, $platform);
 
@@ -593,6 +607,116 @@ class DetectionPipeline
     }
 
     /**
+     * @param  array<string, array<int, array<string, mixed>>>  $signals
+     * @param  array<string, mixed>  $classification
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private function attachLocalNlpSignal(array $signals, array $classification): array
+    {
+        $confidence = (float) ($classification['confidence'] ?? 0.0);
+        $fakeProbability = (float) ($classification['fake_probability'] ?? 0.0);
+        $rawVerdict = (string) ($classification['raw_verdict'] ?? 'Uncertain');
+        $displayConfidence = (string) round($confidence * 100);
+        $weight = match ((string) ($classification['verdict'] ?? 'review')) {
+            'fake' => max(22, min(52, (int) round($fakeProbability * 52))),
+            'real' => 1,
+            default => 0,
+        };
+
+        $signals['local_nlp'][] = [
+            'label' => "Filipino article classifier rated the text as {$rawVerdict} ({$displayConfidence}% confidence)",
+            'weight' => $weight,
+            'verdict' => (string) ($classification['verdict'] ?? 'review'),
+            'predicted_label' => (string) ($classification['predicted_label'] ?? ''),
+            'real_probability' => round((float) ($classification['real_probability'] ?? 0.0), 4),
+            'fake_probability' => round($fakeProbability, 4),
+            'word_count' => (int) ($classification['word_count'] ?? 0),
+            'reason' => (string) ($classification['reason'] ?? ''),
+        ];
+
+        return $signals;
+    }
+
+    /**
+     * @param  array<string, array<int, array<string, mixed>>>  $signals
+     * @param  array<string, mixed>  $classification
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    private function attachDeepfakeCnnSignal(array $signals, array $classification): array
+    {
+        $fakeProbability = max(0.0, min(1.0, (float) ($classification['fake_probability'] ?? 0.0)));
+        $threshold = max(0.0, min(1.0, (float) ($classification['threshold'] ?? 0.5)));
+        $screeningScore = max(0, min(100, (int) ($classification['screening_score'] ?? round($fakeProbability * 100))));
+        $label = (string) ($classification['label'] ?? ($fakeProbability >= $threshold ? 'fake' : 'real'));
+        $mediaType = (string) ($classification['media_type'] ?? 'image');
+        $modelLabel = $mediaType === 'video' ? 'Video CNN' : 'Image CNN';
+        $displayProbability = number_format($fakeProbability * 100, 1);
+        $displayThreshold = number_format($threshold * 100, 1);
+        $weight = match (true) {
+            $fakeProbability >= max(0.85, $threshold) => max(55, min(80, (int) round($fakeProbability * 80))),
+            $fakeProbability >= $threshold => max(34, min(58, (int) round($fakeProbability * 70))),
+            $fakeProbability >= max(0.0, $threshold - 0.10) => 14,
+            default => 1,
+        };
+
+        $signals['deepfake_cnn'][] = [
+            'label' => "{$modelLabel} rated this upload as {$label} with {$displayProbability}% fake probability",
+            'weight' => $weight,
+            'verdict' => $label,
+            'fake_probability' => round($fakeProbability, 4),
+            'threshold' => round($threshold, 4),
+            'media_type' => $mediaType,
+            'aggregation_method' => (string) ($classification['aggregation_method'] ?? ''),
+            'frames_used' => (int) ($classification['frames_used'] ?? 0),
+            'screening_score' => $screeningScore,
+            'summary' => (string) ($classification['summary'] ?? "CNN threshold was {$displayThreshold}%."),
+        ];
+
+        return $signals;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $classification
+     */
+    private function applyLocalNlpRiskFloor(int $fakeScore, ?array $classification): int
+    {
+        if ($classification === null || ($classification['verdict'] ?? null) !== 'fake') {
+            return $fakeScore;
+        }
+
+        $confidence = (float) ($classification['confidence'] ?? 0.0);
+        $highConfidenceThreshold = (float) config('services.filipino_news_classifier.high_confidence_threshold', 0.85);
+
+        if ($confidence < $highConfidenceThreshold) {
+            return $fakeScore;
+        }
+
+        $floor = max(45, min(99, (int) config('services.filipino_news_classifier.fake_score_floor', 72)));
+
+        return max($fakeScore, $floor);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $classification
+     */
+    private function applyDeepfakeCnnRiskFloor(int $fakeScore, ?array $classification): int
+    {
+        if ($classification === null) {
+            return $fakeScore;
+        }
+
+        $fakeProbability = max(0.0, min(1.0, (float) ($classification['fake_probability'] ?? 0.0)));
+        $threshold = max(0.0, min(1.0, (float) ($classification['threshold'] ?? 0.5)));
+        $label = (string) ($classification['label'] ?? '');
+
+        if ($label !== 'fake' && $fakeProbability < $threshold) {
+            return $fakeScore;
+        }
+
+        return max($fakeScore, max(45, min(99, (int) round($fakeProbability * 100))));
+    }
+
+    /**
      * @param  array<string, array<int, array<string, int|string>>>  $signals
      */
     private function calculateFakeScore(array $signals): int
@@ -959,32 +1083,25 @@ class DetectionPipeline
         $normalized = strtolower(trim($signalLabel));
 
         return match (true) {
+            str_contains($normalized, 'video cnn') => 'the trained video model sampled frames, focused on face regions, and found visual patterns associated with manipulated or synthetic video content',
+            str_contains($normalized, 'image cnn') => 'the trained image model found visual patterns associated with manipulated or synthetic face images',
+            str_contains($normalized, 'filipino article classifier') => str_contains($normalized, 'likely fake')
+                    ? 'the local Filipino article model found wording patterns closer to fake-source examples in its training data'
+                    : 'the local Filipino article model found wording patterns closer to mainstream-source examples in its training data',
             str_contains($normalized, 'limited corroborating context'),
-            str_contains($normalized, 'manual corroboration')
-                => 'the post does not yet have enough independent reporting, official confirmation, or source context to fully support the claim',
-            str_contains($normalized, 'ai-generation terms')
-                => 'the filename, metadata, or surrounding source wording contains terms commonly associated with synthetic or AI-generated content',
-            str_contains($normalized, 'editing-oriented terms')
-                => 'the available source details hint that the content may have been edited, rendered, or altered before posting',
-            str_contains($normalized, 'frame-level verification')
-                => 'videos can mislead through cropped sequences, reused clips, or missing context between frames',
-            str_contains($normalized, 'shortened source link')
-                => 'short links can hide the original publisher and make provenance harder to confirm',
-            str_contains($normalized, 'stable protocol')
-                => 'a malformed or incomplete link weakens source traceability and makes verification less reliable',
-            str_contains($normalized, 'high-urgency language')
-                => 'urgent language can pressure people to reshare before checking whether the claim is complete and accurate',
-            str_contains($normalized, 'conspiracy-style framing')
-                => 'claims framed around hidden truths or cover-ups need stronger outside evidence before they should be trusted',
-            str_contains($normalized, 'weak sourcing')
-                => 'the text itself admits uncertainty or relies on secondhand sourcing instead of a verifiable original record',
+            str_contains($normalized, 'manual corroboration') => 'the post does not yet have enough independent reporting, official confirmation, or source context to fully support the claim',
+            str_contains($normalized, 'ai-generation terms') => 'the filename, metadata, or surrounding source wording contains terms commonly associated with synthetic or AI-generated content',
+            str_contains($normalized, 'editing-oriented terms') => 'the available source details hint that the content may have been edited, rendered, or altered before posting',
+            str_contains($normalized, 'frame-level verification') => 'videos can mislead through cropped sequences, reused clips, or missing context between frames',
+            str_contains($normalized, 'shortened source link') => 'short links can hide the original publisher and make provenance harder to confirm',
+            str_contains($normalized, 'stable protocol') => 'a malformed or incomplete link weakens source traceability and makes verification less reliable',
+            str_contains($normalized, 'high-urgency language') => 'urgent language can pressure people to reshare before checking whether the claim is complete and accurate',
+            str_contains($normalized, 'conspiracy-style framing') => 'claims framed around hidden truths or cover-ups need stronger outside evidence before they should be trusted',
+            str_contains($normalized, 'weak sourcing') => 'the text itself admits uncertainty or relies on secondhand sourcing instead of a verifiable original record',
             str_contains($normalized, 'official incident cross-checking'),
-            str_contains($normalized, 'source validation')
-                => 'event-driven claims are safer to judge when they can be compared with timestamped official bulletins and reporting',
-            str_contains($normalized, 'all-caps emphasis')
-                => 'heavy emphasis can amplify emotional pressure without adding verifiable evidence',
-            default
-                => 'it affects how easily the claim can be traced, checked, and matched against outside evidence',
+            str_contains($normalized, 'source validation') => 'event-driven claims are safer to judge when they can be compared with timestamped official bulletins and reporting',
+            str_contains($normalized, 'all-caps emphasis') => 'heavy emphasis can amplify emotional pressure without adding verifiable evidence',
+            default => 'it affects how easily the claim can be traced, checked, and matched against outside evidence',
         };
     }
 

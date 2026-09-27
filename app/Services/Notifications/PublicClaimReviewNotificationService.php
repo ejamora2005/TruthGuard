@@ -2,6 +2,7 @@
 
 namespace App\Services\Notifications;
 
+use App\Jobs\AnnounceFactCheck;
 use App\Models\PublicClaimReviewAnnouncement;
 use App\Models\PublicClaimReviewEmailDelivery;
 use App\Models\User;
@@ -16,8 +17,7 @@ class PublicClaimReviewNotificationService
 {
     public function __construct(
         private readonly GoogleFactCheckFeedService $feedService,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array{enabled: bool, checked: int, seeded: int, announced: int, notified: int, existing_notified: int}
@@ -114,6 +114,7 @@ class PublicClaimReviewNotificationService
                 continue;
             }
 
+            AnnounceFactCheck::dispatch($announcement->id)->afterCommit();
             $announced++;
             $notified += $this->notifyActiveUsers($announcement);
         }

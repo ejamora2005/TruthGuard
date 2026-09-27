@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Detection;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class AdminDataController extends Controller
@@ -572,7 +573,7 @@ class AdminDataController extends Controller
     }
 
     /**
-     * @param  array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon}  $range
+     * @param  array{0: Carbon, 1: Carbon}  $range
      */
     private function loggedTokenTotalForRange(array $range): int
     {
@@ -757,13 +758,13 @@ class AdminDataController extends Controller
                 'tone' => 'success',
             ],
             [
-                'title' => 'Deepfake stage now has a real model wrapper',
-                'detail' => 'The pipeline can call a model adapter before the evidence engine and fall back safely if the model is unavailable.',
+                'title' => 'Trained media models are connected',
+                'detail' => 'The pipeline can call the deployed image and video CNN adapters before the evidence engine and fall back safely if a model is unavailable.',
                 'tone' => 'success',
             ],
             [
-                'title' => 'CNN adapter and training utilities were added',
-                'detail' => 'A CNN inference adapter, a starter Keras trainer, and dataset preparation tooling are now in the repo.',
+                'title' => 'Filipino article classifier is available as an internal service',
+                'detail' => 'Long-form Filipino text can be scored through the local transformer service when the container is healthy.',
                 'tone' => 'brand',
             ],
             [
@@ -777,12 +778,12 @@ class AdminDataController extends Controller
     private function projectTrackerNextActions(): array
     {
         return [
-            'Download the real FaceForensics++ and Celeb-DF datasets or point the manifest to their existing local paths.',
-            'Run dataset preparation so training, validation, and test folders are generated for the CNN workflow.',
-            'Install tensorflow-cpu and FFmpeg in the model environment before training and video frame extraction.',
-            'Train the first CNN checkpoint, record validation accuracy, and connect the saved model through DEEPFAKE_CNN_MODEL_PATH.',
-            'Run an end-to-end admin smoke test after the first real CNN model is connected.',
-            'Prepare deployment hardening such as production env setup, model file delivery, and request telemetry.',
+            'Verify the Dokploy deployment pulls Git LFS artifacts before building images.',
+            'Run php artisan truthguard:models:health --load from the deployed app container after the NLP service is healthy.',
+            'Run php artisan migrate --force and keep the database queue worker plus scheduler online.',
+            'Enable browser push on a real production account and send one own-account test notification.',
+            'Monitor queue failures, model health, and upload processing after the first production smoke test.',
+            'Keep training datasets outside the application image; only the deployed inference artifacts belong in automation/models.',
         ];
     }
 
@@ -886,8 +887,8 @@ class AdminDataController extends Controller
                     [
                         'title' => 'Deepfake model wrapper stage',
                         'status' => 'added',
-                        'summary' => 'The pipeline can run a pluggable deepfake model adapter before evidence analysis.',
-                        'proof' => 'The deepfake_detection stage now reports real wrapper statuses such as completed or not-configured.',
+                        'summary' => 'The pipeline can run trained image and video CNN adapters before evidence analysis.',
+                        'proof' => 'Configured Keras model paths are used by DeepfakeCnnClassifier and cnn_adapter.py.',
                     ],
                     [
                         'title' => 'CNN adapter and dataset tooling',
@@ -896,10 +897,16 @@ class AdminDataController extends Controller
                         'proof' => 'The repo includes cnn_adapter.py, train_cnn.py, and prepare_dataset.py.',
                     ],
                     [
-                        'title' => 'First trained CNN checkpoint connected to production flow',
-                        'status' => 'missing',
-                        'summary' => 'The wrapper is ready, but a real trained model file still has to be trained and connected.',
-                        'proof' => 'DEEPFAKE_CNN_MODEL_PATH still needs a real model checkpoint.',
+                        'title' => 'Trained media checkpoints connected to production flow',
+                        'status' => 'added',
+                        'summary' => 'Separate trained Keras checkpoints are configured for image and video uploads.',
+                        'proof' => 'DEEPFAKE_CNN_MODEL_PATH and DEEPFAKE_VIDEO_MODEL_PATH point at deployment artifacts under automation/models.',
+                    ],
+                    [
+                        'title' => 'Filipino transformer classifier service',
+                        'status' => 'added',
+                        'summary' => 'The article-level Filipino fake-news model runs as an internal FastAPI service.',
+                        'proof' => 'Laravel uses TRUTHGUARD_NLP_URL and Docker Compose routes it to the nlp service.',
                     ],
                     [
                         'title' => 'ViT and CNN+LSTM extensions',
@@ -922,14 +929,14 @@ class AdminDataController extends Controller
                     [
                         'title' => 'Regression and smoke verification around major pipeline changes',
                         'status' => 'partial',
-                        'summary' => 'Syntax checks and smoke tests are in place, but automated end-to-end coverage is still incomplete.',
-                        'proof' => 'Some verification exists, but deeper deployment-grade test coverage is still pending.',
+                        'summary' => 'Focused push, model configuration, and pipeline tests cover the production-critical paths; a few legacy suite expectations still need cleanup.',
+                        'proof' => 'Deployment checks include model health, Docker Compose validation, push tests, and browser service-worker tests.',
                     ],
                     [
                         'title' => 'Deployment hardening and telemetry',
-                        'status' => 'missing',
-                        'summary' => 'Production deployment, direct request telemetry, and model-refresh operations still need to be formalized.',
-                        'proof' => 'The repo is not yet tracking production-grade AI billing and model lifecycle telemetry.',
+                        'status' => 'partial',
+                        'summary' => 'Dokploy configuration, model delivery, queue setup, and Firebase push are wired; richer model telemetry can be added after launch.',
+                        'proof' => 'Compose defines app, worker, scheduler, database, and internal NLP services with deployable model artifacts.',
                     ],
                 ],
             ],

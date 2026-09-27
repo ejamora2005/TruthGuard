@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'truthguard-static';
-const CACHE_VERSION = '2026-08-05.2';
+const CACHE_VERSION = '2026-09-27.1';
 const STATIC_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -36,6 +36,7 @@ const PRIVATE_PREFIXES = [
   '/password',
   '/privacy-policy/consent',
   '/profile',
+  '/push',
   '/register',
   '/reset-password',
   '/sanctum',
@@ -166,3 +167,53 @@ async function staleWhileRevalidate(request) {
     )
   );
 }
+
+
+// FCM sends data-only Web Push messages. One native handler displays them in
+// both foreground and background, so no second worker or SDK auto-display is used.
+function safeNotificationUrl(value) {
+  try {
+    const url = new URL(value || '/notifications', self.location.origin);
+    const allowed = /^\/(?:notifications|profile|claim-reviews|detections\/[0-9]+\/result|dashboard\/fact-checks\/[A-Za-z0-9_-]+)$/;
+    if (url.origin === self.location.origin && !url.search && !url.hash && allowed.test(url.pathname)) {
+      return url.href;
+    }
+  } catch { /* Fall back to the protected notification center. */ }
+  return `${self.location.origin}/notifications`;
+}
+
+self.addEventListener('push', (event) => {
+  let payload;
+  try { payload = event.data?.json(); } catch { return; }
+  const data = payload?.data;
+  if (!data?.notification_id || !data?.title || !data?.body) return;
+  event.waitUntil((async () => {
+    await self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/pwa/icon-192.png',
+      badge: '/pwa/icon-32.png',
+      tag: `truthguard-${data.notification_id}`,
+      timestamp: Number(data.timestamp) || Date.now(),
+      data: { url: safeNotificationUrl(data.url), notificationId: data.notification_id },
+    });
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    windows.forEach((client) => client.postMessage({ type: 'TRUTHGUARD_NOTIFICATION' }));
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = safeNotificationUrl(event.notification.data?.url);
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = windows.find((client) => client.url === url)
+      || windows.find((client) => new URL(client.url).origin === self.location.origin);
+    if (existing) {
+      try {
+        const target = existing.url === url ? existing : await existing.navigate(url);
+        if (target) { await target.focus(); return; }
+      } catch { /* Closed windows may no longer be navigable. */ }
+    }
+    await self.clients.openWindow(url);
+  })());
+});

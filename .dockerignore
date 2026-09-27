@@ -20,7 +20,9 @@ public/Template
 public/vendor/tailadmin-app
 database/*.sqlite*
 automation/datasets
-automation/models
+automation/models/deepfake-cnn.keras
+automation/models/**/*.tmp
+automation/models/**/.cache
 **/__pycache__
 *.log
 tests

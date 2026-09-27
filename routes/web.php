@@ -1,23 +1,25 @@
 <?php
 
-use App\Http\Controllers\Auth\GoogleAuthController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Auth\SessionTimeoutController;
 use App\Http\Controllers\AdminAppController;
 use App\Http\Controllers\AdminDataController;
 use App\Http\Controllers\AdminFactCheckSourceController;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\SessionTimeoutController;
 use App\Http\Controllers\AutomationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DetectionController;
-use App\Http\Controllers\FacebookWebhookSimulatorController;
 use App\Http\Controllers\FacebookWebhookController;
+use App\Http\Controllers\FacebookWebhookSimulatorController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\PrivacyPolicyController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Middleware\EnsureAutomationToken;
+use App\Http\Controllers\PublicClaimReviewController;
+use App\Http\Controllers\PushNotificationController;
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureAutomationToken;
 use App\Http\Middleware\EnsurePrivacyPolicyAccepted;
 use App\Http\Middleware\EnsureWelcomeNotificationSent;
 use App\Http\Middleware\ExpireIdleSession;
@@ -29,7 +31,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', WelcomePage::class)->name('home');
-Route::get('claim-reviews', \App\Http\Controllers\PublicClaimReviewController::class)->name('reviews.index');
+Route::get('claim-reviews', PublicClaimReviewController::class)->name('reviews.index');
 Route::get('privacy-policy', [PrivacyPolicyController::class, 'policy'])->name('privacy.policy');
 
 if (app()->environment('local')) {
@@ -123,3 +125,14 @@ Route::post('automation/playwright/runs', [AutomationController::class, 'store']
     ->withoutMiddleware(PreventRequestForgery::class)
     ->middleware(EnsureAutomationToken::class)
     ->name('automation.playwright.runs.store');
+
+// Web middleware retains session authentication and Laravel CSRF protection.
+Route::middleware(['auth', ExpireIdleSession::class, EnsurePrivacyPolicyAccepted::class])
+    ->prefix('push')->name('push.')->controller(PushNotificationController::class)
+    ->group(function () {
+        Route::get('settings', 'settings')->name('settings');
+        Route::post('subscriptions', 'register')->middleware('throttle:30,1')->name('register');
+        Route::delete('subscriptions', 'remove')->name('remove');
+        Route::patch('preferences', 'preferences')->name('preferences');
+        Route::post('test', 'test')->middleware('throttle:3,1')->name('test');
+    });

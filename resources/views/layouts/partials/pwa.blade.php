@@ -15,3 +15,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('pwa/icon-32.png') }}">
 <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('pwa/icon-192.png') }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('pwa/apple-touch-icon.png') }}">
+
+@auth
+    <meta name="truthguard-push-settings" content="{{ route('push.settings', absolute: false) }}">
+@endauth

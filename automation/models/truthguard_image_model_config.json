@@ -1,0 +1,37 @@
+{
+  "model_name": "TruthGuard MobileNetV2 Fine-Tuned Image Classifier",
+  "model_file": "truthguard_image_model.keras",
+  "threshold": 0.47499999999999976,
+  "image_size": 224,
+  "label_mapping": {
+    "0": "real",
+    "1": "fake"
+  },
+  "positive_class": "fake",
+  "preprocessing": {
+    "color_mode": "RGB",
+    "resize": [
+      224,
+      224
+    ],
+    "input_range": "0_to_255_float32",
+    "model_contains_mobilenetv2_preprocess_input": true
+  },
+  "test_metrics": {
+    "accuracy": 0.91295,
+    "precision": 0.9169106511862696,
+    "recall": 0.9082,
+    "f1": 0.9125345390605376,
+    "auc": 0.9740071700000001,
+    "confusion_matrix": [
+      [
+        9177,
+        823
+      ],
+      [
+        918,
+        9082
+      ]
+    ]
+  }
+}

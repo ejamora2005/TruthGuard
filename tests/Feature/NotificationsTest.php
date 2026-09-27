@@ -6,10 +6,10 @@ use App\Models\Detection;
 use App\Models\PublicClaimReviewAnnouncement;
 use App\Models\PublicClaimReviewEmailDelivery;
 use App\Models\User;
-use App\Notifications\FactCheckResultReady;
 use App\Notifications\PublicClaimReviewPublished;
 use App\Notifications\WelcomeToTruthGuard;
 use App\Services\Detections\GoogleFactCheckFeedService;
+use App\Services\Notifications\NotificationEventService;
 use App\Services\Notifications\PublicClaimReviewNotificationService;
 use App\Services\Notifications\TruthGuardNotificationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +20,12 @@ use Tests\TestCase;
 class NotificationsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['firebase.enabled' => false, 'services.google_fact_check.feed_news_notifications_enabled' => true, 'services.google_fact_check.feed_news_notifications_seed_baseline' => true]);
+    }
 
     protected function tearDown(): void
     {
@@ -39,7 +45,7 @@ class NotificationsTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Notification Center')
+            ->assertSee('Notifications')
             ->assertSee('Welcome to TruthGuard');
     }
 
@@ -151,7 +157,7 @@ class NotificationsTest extends TestCase
         );
     }
 
-    public function test_fact_check_result_notifications_are_not_sent(): void
+    public function test_fact_check_result_notifications_are_stored_once_without_email(): void
     {
         Notification::fake();
 
@@ -188,8 +194,8 @@ class NotificationsTest extends TestCase
         Notification::assertNothingSent();
 
         $this->assertSame(
-            0,
-            $user->fresh()->notifications()->where('type', FactCheckResultReady::class)->count()
+            1,
+            $user->fresh()->notifications()->where('type', NotificationEventService::class)->count()
         );
     }
 
@@ -198,7 +204,7 @@ class NotificationsTest extends TestCase
         Notification::fake();
         config()->set('services.google_fact_check.feed_news_notifications_seed_baseline', false);
 
-        $activeUser = User::factory()->create(['subscription_status' => 'active']);
+        $activeUser = User::factory()->create(['subscription_status' => 'active', 'email_updates_enabled' => true]);
         $inactiveUser = User::factory()->create(['subscription_status' => 'inactive']);
         $this->mockPublicClaimReviewFeed();
 
@@ -227,7 +233,7 @@ class NotificationsTest extends TestCase
         Notification::fake();
         config()->set('services.google_fact_check.feed_news_notifications_seed_baseline', false);
 
-        $user = User::factory()->create(['subscription_status' => 'active']);
+        $user = User::factory()->create(['subscription_status' => 'active', 'email_updates_enabled' => true]);
         $this->mockPublicClaimReviewFeed(expectedCalls: 2);
         $service = app(PublicClaimReviewNotificationService::class);
 
@@ -246,7 +252,7 @@ class NotificationsTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create(['subscription_status' => 'active']);
+        $user = User::factory()->create(['subscription_status' => 'active', 'email_updates_enabled' => true]);
         $this->mockPublicClaimReviewFeed();
 
         $result = app(PublicClaimReviewNotificationService::class)->announceLatest(limit: 5);

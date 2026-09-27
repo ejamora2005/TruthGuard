@@ -1,0 +1,7 @@
+# CPU inference dependencies for the Colab-trained Filipino transformer model.
+# For CUDA installs, follow the PyTorch selector for your GPU/CUDA version.
+fastapi>=0.118,<1
+uvicorn[standard]>=0.37,<1
+transformers>=4.57,<5
+torch>=2.6
+safetensors>=0.6,<1

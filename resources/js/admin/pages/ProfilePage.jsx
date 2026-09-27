@@ -13,6 +13,8 @@ export default function ProfilePage() {
                 description="Current administrator details and runtime configuration for the React admin workspace."
             />
 
+            <a href="/profile#notification-settings" className="inline-flex rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white">Notification settings</a>
+
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <Panel>
                     <div className="flex flex-col items-center text-center">

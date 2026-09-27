@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Services\Automation\ScrapeOrchestrator;
 use App\Services\Detections\DetectionRetentionService;
+use App\Services\Detections\ModelHealthService;
 use App\Services\Notifications\PublicClaimReviewNotificationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -42,7 +43,7 @@ Artisan::command('truthguard:scrape-source {targetUrl?} {--source=generic-feed} 
             'ready_selectors' => array_values($this->option('ready-selector')),
             'trigger_source' => 'command',
         ], $user);
-    } catch (\Throwable $throwable) {
+    } catch (Throwable $throwable) {
         $this->error($throwable->getMessage());
 
         return 1;
@@ -107,6 +108,22 @@ Artisan::command('truthguard:notify-public-claim-reviews {--limit=} {--dry-run} 
 
     return 0;
 })->purpose('Email active users when new public claim reviews are added to the latest feed.');
+
+Artisan::command('truthguard:models:health {--load : Load each configured model and run a safe probe where supported} {--json : Emit JSON instead of a table}', function () {
+    $result = app(ModelHealthService::class)->check((bool) $this->option('load'));
+
+    if ($this->option('json')) {
+        $this->line(json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+        return $result['ok'] ? 0 : 1;
+    }
+
+    foreach ($result['models'] as $name => $check) {
+        $this->line($name.': '.(($check['ok'] ?? false) ? 'PASS' : 'FAIL'));
+    }
+
+    return $result['ok'] ? 0 : 1;
+})->purpose('Check trained model deployment readiness without exposing model internals publicly.');
 
 Schedule::command('truthguard:archive-detections')->daily()->withoutOverlapping();
 Schedule::command('truthguard:notify-public-claim-reviews')->everyThirtyMinutes()->withoutOverlapping();

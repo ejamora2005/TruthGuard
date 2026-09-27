@@ -1,5 +1,6 @@
 import './bootstrap';
 import './pwa';
+import './push-notifications';
 import '../css/app.css';
 import './admin/admin-ui.css';
 import React from 'react';

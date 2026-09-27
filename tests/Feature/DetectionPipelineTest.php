@@ -4,15 +4,27 @@ namespace Tests\Feature;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\DeepfakeCnnClassifier;
 use App\Services\Detections\DetectionPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DetectionPipelineTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('services.deepfake_cnn.enabled', false);
+        config()->set('services.live_verification.enabled', false);
+        config()->set('services.openai.analysis_enabled', false);
+        config()->set('services.openai.claim_extraction_enabled', false);
+    }
 
     public function test_detection_submission_stores_structured_truthguard_pipeline_output(): void
     {
@@ -32,7 +44,7 @@ class DetectionPipelineTest extends TestCase
 
         $detection = Detection::query()->firstOrFail();
 
-        $response->assertRedirect(route('detections.create', ['detection' => $detection->id]).'#latest-detection-result');
+        $response->assertRedirect(route('detections.result', $detection));
 
         $this->assertSame($user->id, $detection->user_id);
         $this->assertSame('upload', $detection->source_kind);
@@ -76,6 +88,147 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame(0, Detection::query()->count());
     }
 
+    public function test_detection_pipeline_uses_deepfake_cnn_for_uploaded_image(): void
+    {
+        Storage::fake('public');
+        config()->set('services.deepfake_cnn.enabled', true);
+
+        $this->app->instance(DeepfakeCnnClassifier::class, new class extends DeepfakeCnnClassifier
+        {
+            public function classify(?UploadedFile $uploadedFile, string $mediaType, int $heuristicScore = 0): ?array
+            {
+                return [
+                    'status' => 'completed',
+                    'model_family' => 'cnn',
+                    'screening_score' => 91,
+                    'fake_probability' => 0.9082,
+                    'threshold' => 0.475,
+                    'label' => 'fake',
+                    'summary' => 'CNN inference completed with 91% synthetic-media probability.',
+                    'signals' => [
+                        [
+                            'label' => 'CNN model found very strong synthetic-media artifacts',
+                            'weight' => 30,
+                        ],
+                    ],
+                ];
+            }
+        });
+
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('detections.store'), [
+                'caption_text' => 'Please verify this uploaded face image.',
+                'media_file' => UploadedFile::fake()->image('uploaded-face.png'),
+            ]);
+
+        $detection = Detection::query()->latest('id')->firstOrFail();
+
+        $response->assertRedirect(route('detections.result', $detection));
+
+        $this->assertSame('fake', $detection->verdict);
+        $this->assertSame(91, $detection->fake_score);
+        $this->assertSame('fake', $detection->signals['deepfake_cnn'][0]['verdict']);
+        $this->assertSame(0.9082, $detection->signals['deepfake_cnn'][0]['fake_probability']);
+        $this->assertStringContainsString('Image CNN', $detection->explanation_summary);
+    }
+
+    public function test_detection_pipeline_uses_deepfake_cnn_for_uploaded_video(): void
+    {
+        Storage::fake('public');
+        config()->set('services.deepfake_cnn.enabled', true);
+
+        $this->app->instance(DeepfakeCnnClassifier::class, new class extends DeepfakeCnnClassifier
+        {
+            public function classify(?UploadedFile $uploadedFile, string $mediaType, int $heuristicScore = 0): ?array
+            {
+                return [
+                    'status' => 'completed',
+                    'model_family' => 'cnn',
+                    'media_type' => $mediaType,
+                    'screening_score' => 71,
+                    'fake_probability' => 0.71,
+                    'threshold' => 0.68,
+                    'label' => 'fake',
+                    'summary' => 'CNN video inference completed with 71% synthetic-media probability using top5_mean aggregation across 16 sampled frame(s).',
+                    'signals' => [
+                        [
+                            'label' => 'CNN model found strong synthetic-media artifacts',
+                            'weight' => 22,
+                        ],
+                    ],
+                    'frames_used' => 16,
+                    'aggregation_method' => 'top5_mean',
+                ];
+            }
+        });
+
+        $user = User::factory()->create();
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('detections.store'), [
+                'caption_text' => 'Please verify this uploaded face video.',
+                'media_file' => UploadedFile::fake()->create('uploaded-face-video.mp4', 128, 'video/mp4'),
+            ]);
+
+        $detection = Detection::query()->latest('id')->firstOrFail();
+
+        $response->assertRedirect(route('detections.result', $detection));
+
+        $this->assertSame('video', $detection->media_type);
+        $this->assertSame('fake', $detection->signals['deepfake_cnn'][0]['verdict']);
+        $this->assertSame('video', $detection->signals['deepfake_cnn'][0]['media_type']);
+        $this->assertSame('top5_mean', $detection->signals['deepfake_cnn'][0]['aggregation_method']);
+        $this->assertSame(16, $detection->signals['deepfake_cnn'][0]['frames_used']);
+        $this->assertStringContainsString('Video CNN', $detection->explanation_summary);
+    }
+
+    public function test_detection_pipeline_uses_local_filipino_classifier_for_long_article_text(): void
+    {
+        config()->set('services.filipino_news_classifier.enabled', true);
+        config()->set('services.filipino_news_classifier.url', 'http://127.0.0.1:8765');
+        config()->set('services.filipino_news_classifier.min_words', 20);
+
+        Http::fake([
+            'http://127.0.0.1:8765/predict' => Http::response([
+                'verdict' => 'Likely Fake News',
+                'predicted_label' => '1',
+                'confidence' => 0.94,
+                'real_probability' => 0.06,
+                'fake_probability' => 0.94,
+                'word_count' => 63,
+                'reason' => 'Prediction passed length and confidence checks.',
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $article = 'Isiniwalat ng isang viral post na may lihim na programa raw ang pamahalaan para alisin ang lahat ng bayarin sa kuryente simula bukas. Ayon sa post, hindi ito ibinalita ng mainstream media at dapat agad itong ibahagi sa lahat ng kaibigan bago raw burahin ng mga opisyal ang anunsyo.';
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('detections.store'), [
+                'source_platform' => 'web',
+                'caption_text' => $article,
+            ]);
+
+        $detection = Detection::query()->latest('id')->firstOrFail();
+
+        $response->assertRedirect(route('detections.result', $detection));
+
+        Http::assertSent(fn ($request): bool => $request->url() === 'http://127.0.0.1:8765/predict'
+            && $request['article'] === $article
+            && $request['min_words'] === 20);
+
+        $this->assertSame('fake', $detection->verdict);
+        $this->assertGreaterThanOrEqual(72, $detection->fake_score);
+        $this->assertSame('fake', $detection->signals['local_nlp'][0]['verdict']);
+        $this->assertSame('1', $detection->signals['local_nlp'][0]['predicted_label']);
+        $this->assertStringContainsString('Filipino article classifier', $detection->explanation_summary);
+    }
+
     public function test_detection_center_shows_selected_case_pipeline_sections(): void
     {
         $user = User::factory()->create();
@@ -116,20 +269,17 @@ class DetectionPipelineTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->get(route('detections.create', ['detection' => $detection->id]));
+            ->get(route('detections.result', $detection));
 
         $response->assertOk();
         $response->assertDontSee('Latest Result Ready');
         $response->assertDontSee('Latest Detection Result');
-        $response->assertDontSee('Preprocessing');
-        $response->assertDontSee('Analysis');
-        $response->assertDontSee('Verification');
-        $response->assertDontSee('Submitted Context');
         $response->assertSee('Result');
-        $response->assertSee('Confidence 55%');
+        $response->assertSee('AI confidence');
+        $response->assertSee('52%');
         $response->assertSee('Needs Review at 52% risk because the strongest signal was: the source lacks corroboration.');
-        $response->assertSee('Open reliable source');
-        $response->assertSee('Reliable Sources');
+        $response->assertSee('Review strongest source');
+        $response->assertSee('Source verification');
         $response->assertSee('Google Fact Check Explorer');
     }
 
@@ -172,12 +322,12 @@ class DetectionPipelineTest extends TestCase
 
         $response = $this
             ->actingAs($user)
-            ->get(route('detections.create', ['detection' => $detection->id]));
+            ->get(route('detections.result', $detection));
 
         $response->assertOk();
         $this->assertSame('/storage/detections/example-proof.png', $detection->media_url);
         $response->assertSee('latest-detection-result', false);
-        $response->assertSee('Uploaded detection evidence');
+        $response->assertSee('Likely Real at 24% risk because the strongest signal was: limited corroborating context.');
         $response->assertSee('/storage/detections/example-proof.png');
     }
 
@@ -197,7 +347,7 @@ class DetectionPipelineTest extends TestCase
 
         $detection = Detection::query()->latest('id')->firstOrFail();
 
-        $response->assertRedirect(route('detections.create', ['detection' => $detection->id]).'#latest-detection-result');
+        $response->assertRedirect(route('detections.result', $detection));
 
         Storage::disk('public')->assertExists((string) $detection->media_path);
     }
@@ -281,7 +431,7 @@ class DetectionPipelineTest extends TestCase
 
         $detection = Detection::query()->latest('id')->firstOrFail();
 
-        $response->assertRedirect(route('detections.create', ['detection' => $detection->id]).'#latest-detection-result');
+        $response->assertRedirect(route('detections.result', $detection));
         $this->assertSame('https://example.com/fact-check-source', $detection->source_url);
         $this->assertSame('Please verify this suspicious claim.', $detection->caption_text);
     }
@@ -364,8 +514,8 @@ class DetectionPipelineTest extends TestCase
             ->latest('id')
             ->firstOrFail();
 
-        $firstResponse->assertRedirect(route('detections.create', ['detection' => $firstDetection->id]).'#latest-detection-result');
-        $secondResponse->assertRedirect(route('detections.create', ['detection' => $secondDetection->id]).'#latest-detection-result');
+        $firstResponse->assertRedirect(route('detections.result', $firstDetection));
+        $secondResponse->assertRedirect(route('detections.result', $secondDetection));
 
         $this->assertSame($firstDetection->request_fingerprint, $secondDetection->request_fingerprint);
         $this->assertSame($firstDetection->fake_score, $secondDetection->fake_score);

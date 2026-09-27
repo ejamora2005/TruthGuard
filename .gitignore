@@ -32,7 +32,11 @@
 /storage/framework/views-runtime
 /storage/tmp-*
 /admin-frontend
-/automation/models/*.keras
+# Production model artifacts are tracked with Git LFS. Keep legacy or ad-hoc
+# checkpoints ignored unless they are wired into config/services.php.
+/automation/models/deepfake-cnn.keras
+/automation/models/**/*.tmp
+/automation/models/**/.cache
 /20'
 /vendor
 Homestead.json

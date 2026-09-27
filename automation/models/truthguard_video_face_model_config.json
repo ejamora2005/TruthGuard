@@ -1,0 +1,31 @@
+{
+  "model_type": "video_face_cnn_mobilenetv2_16frames",
+  "image_size": 224,
+  "frames_per_video": 16,
+  "face_crop": true,
+  "label_map": {
+    "0": "real",
+    "1": "fake"
+  },
+  "positive_class": "fake",
+  "aggregation_method": "top5_mean",
+  "threshold": 0.68,
+  "test_metrics": {
+    "balanced_accuracy": 0.6657303370786517,
+    "accuracy": 0.6657303370786517,
+    "precision": 0.6903225806451613,
+    "recall": 0.601123595505618,
+    "f1": 0.6426426426426426,
+    "auc": 0.7216891806590078,
+    "confusion_matrix": [
+      [
+        130,
+        48
+      ],
+      [
+        71,
+        107
+      ]
+    ]
+  }
+}
