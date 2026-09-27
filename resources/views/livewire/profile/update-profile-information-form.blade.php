@@ -236,8 +236,8 @@ new class extends Component
         role="tabpanel"
         class="p-4 sm:p-6"
     >
-        <div class="grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
-            <aside class="space-y-4">
+        <div class="truthguard-personal-layout grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
+            <aside class="truthguard-profile-summary space-y-4">
                 <div class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-xl">
                     <div class="bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 px-5 py-5 text-white">
                         <div class="flex items-start justify-between gap-4">
@@ -416,7 +416,7 @@ new class extends Component
                             ></textarea>
                         </div>
 
-                        <div class="rounded-[24px] border border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-slate-50 p-4">
+                        <div class="truthguard-email-permission-card rounded-[24px] border border-blue-100 bg-gradient-to-br from-blue-50/80 via-white to-slate-50 p-4">
                             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="flex gap-3">
                                     <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm ring-1 ring-blue-100" aria-hidden="true">
@@ -435,7 +435,7 @@ new class extends Component
                                     </div>
                                 </div>
 
-                                <label class="inline-flex w-full shrink-0 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:w-auto">
+                                <label class="truthguard-email-permission-toggle inline-flex w-full shrink-0 cursor-pointer items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:w-auto">
                                     <input type="hidden" name="email_updates_enabled" value="0">
                                     <input
                                         type="checkbox"
@@ -468,7 +468,7 @@ new class extends Component
                     </div>
                 @endif
 
-                <div class="flex flex-col gap-3 rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+                <div class="truthguard-settings-action-footer flex flex-col gap-3 rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
                     <p class="text-sm text-slate-500">Identity changes update your TruthGuard profile and workspace menus.</p>
 
                     <button
@@ -497,7 +497,7 @@ new class extends Component
             method="POST"
             action="{{ route('profile.update') }}"
             enctype="multipart/form-data"
-            class="grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]"
+            class="truthguard-photo-layout grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]"
         >
             @csrf
             @method('patch')
@@ -508,7 +508,7 @@ new class extends Component
             <input type="hidden" name="email_updates_enabled" x-bind:value="emailUpdatesEnabled ? '1' : '0'">
             <input type="hidden" name="return_section" value="photo">
 
-            <aside class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-xl">
+            <aside class="truthguard-photo-preview-card overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-xl">
                 <div class="bg-gradient-to-br from-indigo-500 via-blue-500 to-sky-400 px-5 py-5 text-white">
                     <div class="flex items-center justify-between gap-3">
                         <div>
@@ -549,7 +549,7 @@ new class extends Component
                 </div>
             </aside>
 
-            <div class="space-y-4">
+            <div class="truthguard-photo-content space-y-4">
                 <div class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
                     <div class="flex items-center gap-3 border-b border-slate-200/70 bg-white/65 px-5 py-4">
                         <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
@@ -616,7 +616,7 @@ new class extends Component
                     @endif
                 </div>
 
-                <div class="flex flex-col gap-3 rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:flex-row sm:items-center">
+                <div class="truthguard-settings-action-footer flex flex-col gap-3 rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:flex-row sm:items-center">
                     <button
                         type="submit"
                         class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:-translate-y-0.5 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
@@ -663,7 +663,7 @@ new class extends Component
             method="POST"
             action="{{ route('profile.update') }}"
             enctype="multipart/form-data"
-            class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_292px]"
+            class="truthguard-appearance-layout grid gap-6 xl:grid-cols-[minmax(0,1fr)_292px]"
             @submit="saveLocalPreferences()"
         >
             @csrf
@@ -675,7 +675,7 @@ new class extends Component
             <input type="hidden" name="email_updates_enabled" x-bind:value="emailUpdatesEnabled ? '1' : '0'">
             <input type="hidden" name="return_section" value="appearance">
 
-            <div class="space-y-5">
+            <div class="truthguard-appearance-main space-y-5">
                 <div class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
                     <div class="flex flex-col gap-3 border-b border-slate-200/70 bg-white/65 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div class="flex items-center gap-3">
@@ -778,7 +778,7 @@ new class extends Component
                     </div>
                 </div>
 
-                <div class="flex justify-end rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+                <div class="truthguard-settings-action-footer flex justify-end rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
                     <button
                         type="submit"
                         class="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:-translate-y-0.5 hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
@@ -791,7 +791,7 @@ new class extends Component
                 </div>
             </div>
 
-            <aside class="overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 text-white shadow-[0_24px_70px_rgba(37,99,235,0.18)] xl:sticky xl:top-28 xl:self-start">
+            <aside class="truthguard-appearance-preview-card overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 text-white shadow-[0_24px_70px_rgba(37,99,235,0.18)] xl:sticky xl:top-28 xl:self-start">
                 <div class="border-b border-white/20 px-5 py-4">
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-50/80">Preview</p>
                     <h3 class="mt-1 text-base font-black">Workspace sample</h3>

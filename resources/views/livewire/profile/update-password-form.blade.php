@@ -85,8 +85,8 @@ new class extends Component
     }"
     x-on:password-updated.window="saved = true; passwordValue = ''; clearTimeout(timer); timer = setTimeout(() => saved = false, 2600)"
 >
-    <div class="grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
-        <aside class="space-y-4">
+    <div class="truthguard-security-layout grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
+        <aside class="truthguard-security-summary space-y-4">
             <div class="overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 text-white shadow-[0_24px_70px_rgba(37,99,235,0.18)]">
                 <div class="px-5 py-5">
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-50/80">Security</p>
@@ -140,7 +140,7 @@ new class extends Component
             </div>
         </aside>
 
-        <form id="truthguard-password-form" wire:submit="updatePassword" class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <form id="truthguard-password-form" wire:submit="updatePassword" class="truthguard-settings-primary-form overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div class="flex items-center gap-3 border-b border-slate-200/70 bg-white/65 px-5 py-4">
                 <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
@@ -271,7 +271,7 @@ new class extends Component
                     </div>
                 </div>
 
-                <div class="rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-slate-50/90 via-white/90 to-blue-50/70 p-4 shadow-inner">
+                <div class="truthguard-password-strength-card rounded-[24px] border border-slate-200/80 bg-gradient-to-br from-slate-50/90 via-white/90 to-blue-50/70 p-4 shadow-inner">
                     <div class="flex items-center justify-between gap-3">
                         <span class="text-sm font-semibold text-slate-700">Password strength</span>
                         <span class="text-sm font-bold text-slate-900" x-text="strengthLabel()">Weak</span>
@@ -288,7 +288,7 @@ new class extends Component
                 </div>
             </div>
 
-            <div class="flex flex-col gap-3 border-t border-slate-200/70 bg-white/65 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="truthguard-settings-action-footer flex flex-col gap-3 border-t border-slate-200/70 bg-white/65 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <p x-show="saved" x-cloak class="text-sm font-semibold text-emerald-600">Password updated.</p>
                 <p x-show="!saved" class="text-sm text-slate-500">Use a unique password for your TruthGuard account.</p>
 

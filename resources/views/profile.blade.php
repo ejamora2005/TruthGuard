@@ -920,6 +920,382 @@
                 .truthguard-settings-modal-header {
                     padding: 0.875rem 1rem 0.5rem;
                 }
+
+                .truthguard-settings-page,
+                .truthguard-settings-page *,
+                .truthguard-settings-modal,
+                .truthguard-settings-modal * {
+                    box-sizing: border-box;
+                }
+
+                .truthguard-settings-page {
+                    max-width: 100%;
+                    overflow-x: clip;
+                    padding-right: 0.25rem;
+                    padding-left: 0.25rem;
+                }
+
+                .truthguard-settings-hero,
+                .truthguard-settings-overview,
+                .truthguard-settings-launch-card {
+                    width: 100%;
+                    max-width: 100%;
+                }
+
+                .truthguard-settings-modal-header > div:first-child {
+                    gap: 0.75rem;
+                }
+
+                .truthguard-settings-modal-header > div:first-child > div:first-child {
+                    min-width: 0;
+                    flex: 1 1 auto;
+                }
+
+                .truthguard-settings-modal-title {
+                    max-width: 100%;
+                    font-size: 1rem !important;
+                    line-height: 1.25;
+                    white-space: normal;
+                }
+
+                .truthguard-settings-modal-subtitle {
+                    max-width: 100%;
+                    white-space: normal;
+                    line-height: 1.35;
+                }
+
+                .truthguard-settings-modal-close {
+                    width: 2.75rem !important;
+                    height: 2.75rem !important;
+                    flex: 0 0 2.75rem;
+                    border-radius: 0.9rem;
+                }
+
+                .truthguard-settings-modal-nav {
+                    margin-top: 0.75rem !important;
+                    gap: 0.45rem !important;
+                    scroll-snap-type: x proximity;
+                    -webkit-overflow-scrolling: touch;
+                }
+
+                .truthguard-settings-modal-tab {
+                    min-height: 2.45rem;
+                    flex: 0 0 auto;
+                    gap: 0.4rem !important;
+                    padding: 0.55rem 0.7rem !important;
+                    white-space: nowrap;
+                    border-radius: 0.8rem !important;
+                    font-size: 0.75rem;
+                    line-height: 1;
+                }
+
+                .truthguard-settings-modal-tab svg {
+                    width: 0.95rem;
+                    height: 0.95rem;
+                    flex: 0 0 auto;
+                }
+
+                .truthguard-settings-modal-body {
+                    overflow-x: hidden;
+                    background: #f7faff;
+                }
+
+                .truthguard-settings-modal-body [role="tabpanel"] {
+                    width: 100%;
+                    max-width: 100%;
+                    padding: 1rem !important;
+                }
+
+                .truthguard-settings-modal-body :is(.truthguard-personal-layout, .truthguard-photo-layout, .truthguard-appearance-layout, .truthguard-security-layout) {
+                    display: grid;
+                    width: 100%;
+                    max-width: 100%;
+                    gap: 1.35rem !important;
+                    grid-template-columns: minmax(0, 1fr) !important;
+                }
+
+                .truthguard-personal-layout > form,
+                .truthguard-photo-content,
+                .truthguard-appearance-main,
+                .truthguard-security-layout > form {
+                    order: 1;
+                    min-width: 0;
+                }
+
+                .truthguard-profile-summary,
+                .truthguard-photo-preview-card,
+                .truthguard-appearance-preview-card,
+                .truthguard-security-summary {
+                    order: 2;
+                    width: 100%;
+                    max-width: 100%;
+                    min-width: 0;
+                    margin-top: 0.15rem;
+                }
+
+                .truthguard-settings-modal-body :is(form, aside, section, div) {
+                    min-width: 0;
+                }
+
+                .truthguard-settings-modal-body :is(.rounded-\[28px\], .rounded-\[24px\], .rounded-\[22px\], #notification-settings) {
+                    max-width: 100%;
+                    border-radius: 1.05rem !important;
+                }
+
+                .truthguard-settings-modal-body :is(.px-5, .p-5, .py-5) {
+                    padding: 1rem !important;
+                }
+
+                .truthguard-settings-modal-body :is(.space-y-5 > :not([hidden]) ~ :not([hidden])) {
+                    margin-top: 1rem !important;
+                }
+
+                .truthguard-settings-modal-body :is(label, p, span, h2, h3, h4) {
+                    overflow-wrap: anywhere;
+                }
+
+                .truthguard-settings-modal :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 0 !important;
+                }
+
+                .truthguard-settings-modal textarea {
+                    min-height: 7rem;
+                }
+
+                .truthguard-settings-modal input[type="checkbox"] {
+                    width: 1.25rem !important;
+                    height: 1.25rem !important;
+                    min-width: 1.25rem !important;
+                    max-width: 1.25rem !important;
+                    flex: 0 0 1.25rem !important;
+                    aspect-ratio: 1 / 1;
+                    padding: 0 !important;
+                    border-radius: 0.35rem !important;
+                }
+
+                .truthguard-email-permission-card {
+                    padding: 1rem !important;
+                }
+
+                .truthguard-email-permission-card > div {
+                    gap: 0.9rem !important;
+                }
+
+                .truthguard-email-permission-card > div > div:first-child {
+                    align-items: flex-start;
+                    gap: 0.75rem;
+                }
+
+                .truthguard-email-permission-card h4,
+                .truthguard-email-permission-card p {
+                    line-height: 1.45;
+                }
+
+                .truthguard-email-permission-toggle {
+                    width: auto !important;
+                    min-height: 2.75rem;
+                    justify-content: flex-start !important;
+                    align-self: flex-start;
+                    gap: 0.65rem !important;
+                    padding: 0.7rem 0.85rem !important;
+                    border-radius: 0.9rem !important;
+                }
+
+                .truthguard-settings-action-footer {
+                    align-items: stretch !important;
+                    gap: 0.75rem !important;
+                    padding: 1rem !important;
+                    border-radius: 1rem !important;
+                }
+
+                .truthguard-settings-action-footer p {
+                    line-height: 1.45;
+                }
+
+                .truthguard-settings-action-footer button[type="submit"],
+                #notification-settings [data-push-save] {
+                    width: 100%;
+                    min-height: 3rem;
+                    justify-content: center;
+                    border-radius: 0.95rem !important;
+                    padding: 0.8rem 1rem !important;
+                }
+
+                .truthguard-photo-content .truthguard-settings-action-footer button[type="submit"] {
+                    order: 99;
+                }
+
+                .truthguard-password-strength-card {
+                    padding: 1rem !important;
+                    border-radius: 1rem !important;
+                }
+
+                .truthguard-password-strength-card > div:first-child {
+                    align-items: center;
+                }
+
+                .truthguard-password-strength-card > div:last-child {
+                    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                    gap: 0.55rem 0.75rem !important;
+                }
+
+                .truthguard-password-strength-card > div:last-child span {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.35rem;
+                    min-width: 0;
+                    line-height: 1.25;
+                }
+
+                .truthguard-password-strength-card > div:last-child span::before {
+                    content: '';
+                    width: 0.42rem;
+                    height: 0.42rem;
+                    flex: 0 0 0.42rem;
+                    border-radius: 9999px;
+                    background: currentColor;
+                    opacity: 0.55;
+                }
+
+                #truthguard-password-form input {
+                    padding-right: 0.75rem !important;
+                }
+
+                #truthguard-password-form button[aria-label] {
+                    width: 3rem;
+                    height: 3rem;
+                    flex: 0 0 3rem;
+                }
+
+                .truthguard-profile-summary > div:first-child {
+                    overflow: hidden;
+                    border-radius: 1rem !important;
+                }
+
+                .truthguard-profile-summary img {
+                    width: 4rem !important;
+                    height: 4rem !important;
+                    border-radius: 1rem !important;
+                }
+
+                .truthguard-profile-summary h2 {
+                    margin-top: 0.85rem !important;
+                    font-size: 1rem !important;
+                }
+
+                .truthguard-profile-summary > div:first-child > div:last-child {
+                    gap: 0.6rem !important;
+                    padding: 0.85rem !important;
+                }
+
+                .truthguard-profile-summary > div:first-child > div:last-child > div {
+                    padding: 0.7rem 0.8rem !important;
+                    border-radius: 0.85rem !important;
+                }
+
+                .truthguard-profile-summary > div:first-child > div:last-child span:first-child {
+                    font-size: 0.8rem;
+                }
+
+                #notification-settings {
+                    width: 100%;
+                    max-width: 100%;
+                    padding: 1rem !important;
+                    border-color: rgba(191, 219, 254, 0.8) !important;
+                    background: rgba(255, 255, 255, 0.96) !important;
+                    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.07) !important;
+                }
+
+                #notification-settings h2 {
+                    font-size: 1rem;
+                    font-weight: 900;
+                    color: #0f172a;
+                }
+
+                #notification-settings h3 {
+                    margin-top: 0.65rem !important;
+                    font-size: 0.9rem;
+                }
+
+                #notification-settings h3,
+                #notification-settings > p {
+                    line-height: 1.45;
+                }
+
+                #notification-settings .truthguard-push-device-actions {
+                    display: none !important;
+                }
+
+                #notification-settings .truthguard-push-status {
+                    margin-top: 0.75rem !important;
+                    border-radius: 0.9rem;
+                    background: #f8fafc;
+                    padding: 0.75rem 0.85rem;
+                    font-size: 0.8rem;
+                    line-height: 1.45;
+                }
+
+                #notification-settings .truthguard-push-preference-grid {
+                    display: grid;
+                    width: min(100%, 24rem);
+                    margin: 1rem auto 0 !important;
+                    grid-template-columns: minmax(0, 1fr) !important;
+                    gap: 0.75rem !important;
+                }
+
+                #notification-settings .truthguard-push-preference-row {
+                    min-height: 3rem;
+                    align-items: center;
+                    gap: 0.85rem !important;
+                    border-color: rgba(203, 213, 225, 0.86) !important;
+                    border-radius: 0.95rem !important;
+                    background: #ffffff;
+                    padding: 0.75rem 0.95rem !important;
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    line-height: 1.25;
+                    color: #1e293b;
+                }
+
+                #notification-settings .truthguard-push-preference-row span {
+                    min-width: 0;
+                }
+
+                #notification-settings .truthguard-push-description {
+                    width: min(100%, 24rem);
+                    margin: 0.9rem auto 0 !important;
+                    font-size: 0.78rem;
+                    line-height: 1.45;
+                    color: #64748b;
+                }
+
+                #notification-settings .truthguard-push-desktop-hint,
+                #notification-settings .truthguard-push-save-label-desktop {
+                    display: none !important;
+                }
+
+                #notification-settings .truthguard-push-save-label-mobile {
+                    display: inline !important;
+                }
+
+                #notification-settings .truthguard-push-actions {
+                    width: min(100%, 24rem);
+                    margin: 1.1rem auto 0 !important;
+                    gap: 0.75rem !important;
+                }
+
+                #notification-settings .truthguard-push-actions [data-push-test] {
+                    order: 1;
+                    width: 100%;
+                    min-height: 2.85rem;
+                    border-radius: 0.95rem !important;
+                }
+
+                #notification-settings [data-push-save] {
+                    order: 2;
+                }
             }
         </style>
 
