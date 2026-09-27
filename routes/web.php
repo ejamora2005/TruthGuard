@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminAppController;
+use App\Http\Controllers\AdminAnnouncementController;
 use App\Http\Controllers\AdminDataController;
 use App\Http\Controllers\AdminFactCheckSourceController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -83,6 +84,8 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
                 Route::get('detections', [AdminDataController::class, 'detections']);
                 Route::get('ai-usage', [AdminDataController::class, 'aiUsage']);
                 Route::get('project-tracker', [AdminDataController::class, 'projectTracker']);
+                Route::get('announcements', [AdminAnnouncementController::class, 'index']);
+                Route::post('announcements', [AdminAnnouncementController::class, 'store'])->middleware('throttle:10,1');
                 Route::get('fact-check-sources', [AdminFactCheckSourceController::class, 'index']);
                 Route::post('fact-check-sources', [AdminFactCheckSourceController::class, 'store']);
                 Route::patch('fact-check-sources/{factCheckSource}', [AdminFactCheckSourceController::class, 'update']);

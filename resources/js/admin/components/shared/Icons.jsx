@@ -52,6 +52,17 @@ export function SourcesIcon(props) {
     );
 }
 
+export function AnnouncementsIcon(props) {
+    return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 14.5V9.25A2.25 2.25 0 0 1 7.25 7H10l5.4-2.7A1.1 1.1 0 0 1 17 5.28v13.44a1.1 1.1 0 0 1-1.6.98L10 17H7.25A2.25 2.25 0 0 1 5 14.75v-.25Z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 7v10" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.25 9.25a4 4 0 0 1 0 5.5" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 14.5 6.25 20h2.5L7.5 14.5" />
+        </svg>
+    );
+}
+
 export function AIUsageIcon(props) {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" {...props}>

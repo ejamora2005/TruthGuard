@@ -9,17 +9,18 @@ const titleMap = {
     '/users': 'Users',
     '/subscriptions': 'Subscriptions',
     '/detections': 'Detection Queue',
+    '/announcements': 'Announcements',
     '/fact-check-sources': 'Fact Check Sources',
     '/ai-usage': 'AI Usage',
     '/profile': 'Profile',
 };
 
-const mobileNavItems = ['/dashboard', '/project-tracker', '/detections', '/users', '/fact-check-sources'];
+const mobileNavItems = ['/dashboard', '/project-tracker', '/announcements', '/users', '/fact-check-sources'];
 const mobileLabels = {
     '/dashboard': 'Home',
     '/project-tracker': 'Track',
     '/users': 'Users',
-    '/detections': 'Queue',
+    '/announcements': 'Notice',
     '/fact-check-sources': 'Sources',
 };
 
@@ -45,7 +46,7 @@ function AdminMobileTabBar() {
                     <NavLink
                         key={to}
                         to={to}
-                        className={({ isActive }) => `truthguard-admin-mobile-tab ${to === '/detections' ? 'truthguard-admin-mobile-tab-primary' : ''} ${isActive ? 'is-active' : ''}`}
+                        className={({ isActive }) => `truthguard-admin-mobile-tab ${to === '/announcements' ? 'truthguard-admin-mobile-tab-primary' : ''} ${isActive ? 'is-active' : ''}`}
                     >
                         <span className="truthguard-admin-mobile-tab-icon">
                             <Icon className="h-5 w-5" />

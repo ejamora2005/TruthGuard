@@ -7,6 +7,7 @@ import SubscriptionsPage from './pages/SubscriptionsPage';
 import DetectionsPage from './pages/DetectionsPage';
 import FactCheckSourcesPage from './pages/FactCheckSourcesPage';
 import AIUsagePage from './pages/AIUsagePage';
+import AnnouncementsPage from './pages/AnnouncementsPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -21,6 +22,7 @@ export default function App() {
                     <Route path="users" element={<UsersPage />} />
                     <Route path="subscriptions" element={<SubscriptionsPage />} />
                     <Route path="detections" element={<DetectionsPage />} />
+                    <Route path="announcements" element={<AnnouncementsPage />} />
                     <Route path="fact-check-sources" element={<FactCheckSourcesPage />} />
                     <Route path="ai-usage" element={<AIUsagePage />} />
                     <Route path="profile" element={<ProfilePage />} />

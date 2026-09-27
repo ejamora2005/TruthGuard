@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { getAdminConfig } from '../../lib/admin-config';
-import { AIUsageIcon, DashboardIcon, DetectionsIcon, ProfileIcon, ProjectTrackerIcon, SourcesIcon, SubscriptionIcon, UsersIcon } from '../shared/Icons';
+import { AIUsageIcon, AnnouncementsIcon, DashboardIcon, DetectionsIcon, ProfileIcon, ProjectTrackerIcon, SourcesIcon, SubscriptionIcon, UsersIcon } from '../shared/Icons';
 
 export const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -8,6 +8,7 @@ export const navItems = [
     { to: '/users', label: 'Users', icon: UsersIcon },
     { to: '/subscriptions', label: 'Subscriptions', icon: SubscriptionIcon },
     { to: '/detections', label: 'Detection Queue', icon: DetectionsIcon },
+    { to: '/announcements', label: 'Announcements', icon: AnnouncementsIcon },
     { to: '/fact-check-sources', label: 'Fact Check Sources', icon: SourcesIcon },
     { to: '/ai-usage', label: 'AI Usage', icon: AIUsageIcon },
     { to: '/profile', label: 'Profile', icon: ProfileIcon },
