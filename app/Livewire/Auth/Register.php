@@ -43,12 +43,17 @@ class Register extends Component
     {
         $validated = $this->validate();
 
-        User::create([
+        $userAttributes = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'password_set_at' => now(),
-        ]);
+        ];
+
+        if (User::hasPasswordSetAtColumn()) {
+            $userAttributes['password_set_at'] = now();
+        }
+
+        User::create($userAttributes);
 
         session()->flash('status', 'Registration successful. Please sign in to continue.');
 

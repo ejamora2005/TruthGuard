@@ -76,6 +76,8 @@ class ProfileTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('Finish securing your TruthGuard account')
+            ->assertSee('Show password')
+            ->assertSee('Show confirm password')
             ->assertSee('Set password')
             ->assertDontSee('Notification settings');
     }

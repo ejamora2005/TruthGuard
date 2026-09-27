@@ -13,6 +13,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Throwable;
 
 #[Fillable([
     'name',
@@ -234,7 +235,20 @@ class User extends Authenticatable
 
     public function needsPasswordSetup(): bool
     {
+        if (! static::hasPasswordSetAtColumn()) {
+            return false;
+        }
+
         return $this->password_set_at === null;
+    }
+
+    public static function hasPasswordSetAtColumn(): bool
+    {
+        try {
+            return Schema::hasColumn((new static())->getTable(), 'password_set_at');
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     public function completeCurrentOnboarding(): void

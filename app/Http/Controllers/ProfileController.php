@@ -90,7 +90,9 @@ class ProfileController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if (! $user->needsPasswordSetup()) {
+        $tracksPasswordSetup = User::hasPasswordSetAtColumn();
+
+        if ($tracksPasswordSetup && ! $user->needsPasswordSetup()) {
             return redirect()->route('dashboard');
         }
 
@@ -98,10 +100,15 @@ class ProfileController extends Controller
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        $user->forceFill([
+        $updates = [
             'password' => Hash::make($validated['password']),
-            'password_set_at' => now(),
-        ])->save();
+        ];
+
+        if ($tracksPasswordSetup) {
+            $updates['password_set_at'] = now();
+        }
+
+        $user->forceFill($updates)->save();
 
         $request->session()->forget([
             'truthguard_google_setup_prompt',

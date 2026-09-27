@@ -136,12 +136,11 @@ class GoogleAuthController extends Controller
                 return $this->updateLinkedGoogleUser($existingUser, $socialUser, $googleId, $email);
             }
 
-            return User::query()->create([
+            $userAttributes = [
                 'name' => $this->nullableString($socialUser->getName()) ?: Str::before($email, '@'),
                 'email' => $email,
                 'email_verified_at' => now(),
                 'password' => Hash::make(Str::random(48)),
-                'password_set_at' => null,
                 'is_admin' => false,
                 'subscription_tier' => 'free',
                 'subscription_status' => 'active',
@@ -149,7 +148,13 @@ class GoogleAuthController extends Controller
                 'google_avatar_url' => $this->normalizeUrl($socialUser->getAvatar()),
                 'last_login_at' => null,
                 'theme_preference' => 'ocean',
-            ]);
+            ];
+
+            if (User::hasPasswordSetAtColumn()) {
+                $userAttributes['password_set_at'] = null;
+            }
+
+            return User::query()->create($userAttributes);
         });
     }
 
@@ -189,17 +194,22 @@ class GoogleAuthController extends Controller
     {
         $email = (string) $socialUser->getEmail();
 
+        $userDefaults = [
+            'name' => $socialUser->getName() ?: Str::before($email, '@'),
+            'password' => Hash::make(Str::random(40)),
+            'email_verified_at' => now(),
+            'is_admin' => false,
+            'subscription_tier' => 'free',
+            'subscription_status' => 'active',
+        ];
+
+        if (User::hasPasswordSetAtColumn()) {
+            $userDefaults['password_set_at'] = null;
+        }
+
         $user = User::firstOrCreate(
             ['email' => $email],
-            [
-                'name' => $socialUser->getName() ?: Str::before($email, '@'),
-                'password' => Hash::make(Str::random(40)),
-                'password_set_at' => null,
-                'email_verified_at' => now(),
-                'is_admin' => false,
-                'subscription_tier' => 'free',
-                'subscription_status' => 'active',
-            ]
+            $userDefaults
         );
 
         $this->ensureUserCanSignIn($user);

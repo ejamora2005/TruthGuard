@@ -37,17 +37,22 @@ class RegisteredUserController extends Controller
             'email_updates_enabled' => ['sometimes', 'boolean'],
         ]);
 
-        $user = User::create([
+        $userAttributes = [
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'password_set_at' => now(),
             'email_updates_enabled' => $request->boolean('email_updates_enabled'),
             'is_admin' => false,
             'subscription_tier' => 'free',
             'subscription_status' => 'active',
             'last_login_at' => null,
-        ]);
+        ];
+
+        if (User::hasPasswordSetAtColumn()) {
+            $userAttributes['password_set_at'] = now();
+        }
+
+        $user = User::create($userAttributes);
 
         if (User::profileTableExists()) {
             $user->profile()->firstOrCreate([], [
