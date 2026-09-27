@@ -114,6 +114,19 @@
         return route($feedRoute, $query).'#news-watch';
     };
     $updatedAt = $feed['updated_at'] ?? null;
+    $updatedAtLabel = null;
+
+    if ($updatedAt) {
+        try {
+            $updatedAt = $updatedAt instanceof \Illuminate\Support\Carbon
+                ? $updatedAt
+                : \Illuminate\Support\Carbon::parse($updatedAt);
+            $updatedAtLabel = $updatedAt->copy()->timezone(config('app.timezone', 'UTC'))->format('M j, Y g:i A');
+        } catch (\Throwable) {
+            $updatedAtLabel = null;
+        }
+    }
+
     $sourceRows = $allFeedItems
         ->map(fn ($item) => [
             'name' => $item['publisher'] ?? 'Source',
@@ -903,6 +916,12 @@
                             </span>
                         @endif
                     </div>
+                    @if ($updatedAtLabel)
+                        <span class="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-white px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-slate-500 shadow-sm" title="The feed was checked for new public claim reviews at this time.">
+                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                            Last checked {{ $updatedAtLabel }}
+                        </span>
+                    @endif
                     <div class="flex -space-x-2">
                         @foreach ($sourceRows as $source)
                             <span class="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-slate-100 shadow-sm" title="{{ $source['name'] }}">

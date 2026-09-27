@@ -19,7 +19,7 @@ class GoogleFactCheckFeedService
     private const MAX_FEED_LIMIT = 500;
 
     /**
-     * @return array{configured: bool, source_label: string, query_label: string, updated_at: ?Carbon, cache_minutes: int, cache_seconds: int, cache_label: string, refresh_seconds: int, max_age_days: int, items: array<int, array<string, mixed>>}
+     * @return array{configured: bool, source_label: string, query_label: string, updated_at: ?Carbon, source_updated_at: ?Carbon, cache_minutes: int, cache_seconds: int, cache_label: string, refresh_seconds: int, max_age_days: int, items: array<int, array<string, mixed>>}
      */
     public function latest(int $limit = 10, ?int $maxAgeDays = null): array
     {
@@ -28,33 +28,37 @@ class GoogleFactCheckFeedService
         $queries = $this->queries();
         $publisherSites = $this->publisherSites();
         $apiKey = trim((string) config('services.google_fact_check.key'));
+        $checkedAt = now();
+        $cacheSeconds = $this->feedCacheSeconds();
+        $directPayload = $this->directPublisherPayload($limit, $cacheSeconds, $maxAgeDays);
+        $googlePayload = [
+            'items' => [],
+            'fetched_at' => null,
+        ];
 
-        if ($apiKey === '') {
-            return $this->withPersistedItems($this->emptyFeed(false, $queries, $publisherSites, $maxAgeDays), $limit, $maxAgeDays);
+        if ($apiKey !== '') {
+            $cacheKey = 'truthguard.google_fact_check_feed.v4.'.md5(json_encode([
+                $queries,
+                $publisherSites,
+                $limit,
+                $maxAgeDays,
+                config('services.google_fact_check.language_code', 'en-US'),
+            ]));
+
+            $googlePayload = Cache::remember($cacheKey, now()->addSeconds($cacheSeconds), function () use ($apiKey, $queries, $publisherSites, $limit, $maxAgeDays): array {
+                return [
+                    'items' => $this->fetchItems($apiKey, $queries, $publisherSites, $limit, $maxAgeDays),
+                    'fetched_at' => now()->toIso8601String(),
+                ];
+            });
         }
 
-        $cacheSeconds = $this->feedCacheSeconds();
-        $cacheKey = 'truthguard.google_fact_check_feed.v4.'.md5(json_encode([
-            $queries,
-            $publisherSites,
-            $limit,
-            $maxAgeDays,
-            config('services.google_fact_check.language_code', 'en-US'),
-        ]));
-
-        $googlePayload = Cache::remember($cacheKey, now()->addSeconds($cacheSeconds), function () use ($apiKey, $queries, $publisherSites, $limit, $maxAgeDays): array {
-            return [
-                'items' => $this->fetchItems($apiKey, $queries, $publisherSites, $limit, $maxAgeDays),
-                'fetched_at' => now()->toIso8601String(),
-            ];
-        });
-        $directPayload = $this->directPublisherPayload($limit, $cacheSeconds, $maxAgeDays);
         $googleItems = is_array($googlePayload['items'] ?? null) ? $googlePayload['items'] : [];
         $directItems = is_array($directPayload['items'] ?? null) ? $directPayload['items'] : [];
         $items = $this->filterItemsByMaxAge($this->mergeFeedItems($directItems, $googleItems, $limit), $maxAgeDays);
         $this->persistItems($items);
         $items = $this->persistedItems($limit, $maxAgeDays) ?: $items;
-        $updatedAt = collect([
+        $sourceUpdatedAt = collect([
             $this->latestPersistedAt($maxAgeDays),
             $directPayload['fetched_at'] ?? null,
             $googlePayload['fetched_at'] ?? null,
@@ -63,12 +67,22 @@ class GoogleFactCheckFeedService
             ->filter()
             ->sortByDesc(fn (Carbon $date) => $date->timestamp)
             ->first();
+        $directSourceLabels = $this->directPublisherLabels();
+        $hasDirectSources = $directSourceLabels !== [];
+        $sourceLabel = match (true) {
+            $hasDirectSources && $apiKey !== '' => 'Publisher feeds + Google Fact Check API',
+            $hasDirectSources => 'Publisher feeds',
+            $apiKey !== '' => 'Google Fact Check API',
+            default => 'Saved public claim reviews',
+        };
+        $queryLabelParts = array_merge($directSourceLabels, $apiKey !== '' ? $publisherSites : [], $apiKey !== '' ? $queries : []);
 
         return [
-            'configured' => true,
-            'source_label' => 'Publisher feeds + Google Fact Check API',
-            'query_label' => implode(', ', array_merge($this->directPublisherLabels(), $publisherSites, $queries)),
-            'updated_at' => $updatedAt,
+            'configured' => $apiKey !== '' || $hasDirectSources,
+            'source_label' => $sourceLabel,
+            'query_label' => implode(', ', $queryLabelParts !== [] ? $queryLabelParts : array_merge($publisherSites, $queries)),
+            'updated_at' => $checkedAt,
+            'source_updated_at' => $sourceUpdatedAt,
             'cache_minutes' => (int) ceil($cacheSeconds / 60),
             'cache_seconds' => $cacheSeconds,
             'cache_label' => $this->secondsLabel($cacheSeconds),
@@ -245,14 +259,14 @@ class GoogleFactCheckFeedService
     }
 
     /**
-     * @return array{items: array<int, array<string, mixed>>, fetched_at: string}
+     * @return array{items: array<int, array<string, mixed>>, fetched_at: ?string}
      */
     private function directPublisherPayload(int $limit, int $cacheSeconds, int $maxAgeDays): array
     {
         if (! (bool) config('services.google_fact_check.feed_direct_sources_enabled', true)) {
             return [
                 'items' => [],
-                'fetched_at' => now()->toIso8601String(),
+                'fetched_at' => null,
             ];
         }
 
@@ -261,7 +275,7 @@ class GoogleFactCheckFeedService
         if ($sources === []) {
             return [
                 'items' => [],
-                'fetched_at' => now()->toIso8601String(),
+                'fetched_at' => null,
             ];
         }
 
@@ -1661,24 +1675,6 @@ class GoogleFactCheckFeedService
         return is_string($value) ? $this->parseDate($value) : null;
     }
 
-    /**
-     * @param  array{items: array<int, array<string, mixed>>}  $feed
-     * @return array<string, mixed>
-     */
-    private function withPersistedItems(array $feed, int $limit, int $maxAgeDays): array
-    {
-        $persistedItems = $this->persistedItems($limit, $maxAgeDays);
-
-        if ($persistedItems === []) {
-            return $feed;
-        }
-
-        $feed['items'] = $persistedItems;
-        $feed['updated_at'] = $this->latestPersistedAt($maxAgeDays);
-
-        return $feed;
-    }
-
     private function timestampToCarbon(int $timestamp): ?Carbon
     {
         return $timestamp > 0 ? Carbon::createFromTimestamp($timestamp) : null;
@@ -1693,26 +1689,4 @@ class GoogleFactCheckFeedService
         }
     }
 
-    /**
-     * @param  array<int, string>  $queries
-     * @param  array<int, string>  $publisherSites
-     * @return array{configured: bool, source_label: string, query_label: string, updated_at: null, cache_minutes: int, cache_seconds: int, cache_label: string, refresh_seconds: int, max_age_days: int, items: array<int, array<string, mixed>>}
-     */
-    private function emptyFeed(bool $configured, array $queries, array $publisherSites, int $maxAgeDays): array
-    {
-        $cacheSeconds = $this->feedCacheSeconds();
-
-        return [
-            'configured' => $configured,
-            'source_label' => 'Google Fact Check API',
-            'query_label' => implode(', ', array_merge($publisherSites, $queries)),
-            'updated_at' => null,
-            'cache_minutes' => (int) ceil($cacheSeconds / 60),
-            'cache_seconds' => $cacheSeconds,
-            'cache_label' => $this->secondsLabel($cacheSeconds),
-            'refresh_seconds' => $this->feedRefreshSeconds($cacheSeconds),
-            'max_age_days' => $maxAgeDays,
-            'items' => [],
-        ];
-    }
 }
