@@ -77,7 +77,7 @@ class ProfileTest extends TestCase
             ->assertOk()
             ->assertSee('Finish securing your TruthGuard account')
             ->assertSee('Set password')
-            ->assertSee('Notification settings');
+            ->assertDontSee('Notification settings');
     }
 
     public function test_profile_information_can_be_updated(): void

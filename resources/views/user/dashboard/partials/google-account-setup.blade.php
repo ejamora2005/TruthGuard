@@ -45,16 +45,9 @@
                     >
                 </div>
 
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    After saving, open notification settings from <strong>Settings modules → Notifications</strong> to enable browser push alerts on this device.
-                </div>
-
                 <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
                     <button type="button" @click="open = false" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-50">Later</button>
-                    <div class="flex flex-col gap-3 sm:flex-row">
-                        <a href="{{ route('profile', ['section' => 'notifications']) }}" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-5 text-sm font-bold text-blue-700 hover:bg-blue-100">Notification settings</a>
-                        <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Set password</button>
-                    </div>
+                    <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Set password</button>
                 </div>
             </form>
         </div>
