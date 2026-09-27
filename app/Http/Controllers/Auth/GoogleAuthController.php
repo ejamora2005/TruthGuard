@@ -194,6 +194,7 @@ class GoogleAuthController extends Controller
             [
                 'name' => $socialUser->getName() ?: Str::before($email, '@'),
                 'password' => Hash::make(Str::random(40)),
+                'password_set_at' => null,
                 'email_verified_at' => now(),
                 'is_admin' => false,
                 'subscription_tier' => 'free',
@@ -232,7 +233,7 @@ class GoogleAuthController extends Controller
         app(TruthGuardNotificationManager::class)->sendWelcomeOnce($user);
 
         if ($user->needsPasswordSetup()) {
-            request()->session()->flash('truthguard_google_setup_prompt', true);
+            request()->session()->flash('truthguard_social_setup_prompt', true);
         }
 
         return redirect()->to($this->postLoginPath($user));

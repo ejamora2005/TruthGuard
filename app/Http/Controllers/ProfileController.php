@@ -103,7 +103,10 @@ class ProfileController extends Controller
             'password_set_at' => now(),
         ])->save();
 
-        $request->session()->forget('truthguard_google_setup_prompt');
+        $request->session()->forget([
+            'truthguard_google_setup_prompt',
+            'truthguard_social_setup_prompt',
+        ]);
 
         return redirect()
             ->route('dashboard')

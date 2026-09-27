@@ -11,9 +11,9 @@
     >
         <div class="w-full max-w-xl overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.28)]">
             <div class="border-b border-blue-100 bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-6">
-                <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Google sign-in setup</p>
+                <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Social sign-in setup</p>
                 <h2 id="google-account-setup-title" class="mt-2 text-2xl font-black tracking-tight text-slate-950">Finish securing your TruthGuard account</h2>
-                <p class="mt-2 text-sm leading-6 text-slate-600">Create a TruthGuard password so you can also sign in with email, manage security settings, and recover access if Google sign-in is unavailable.</p>
+                <p class="mt-2 text-sm leading-6 text-slate-600">Create a TruthGuard password so you can also sign in with email, manage security settings, and recover access if social sign-in is unavailable.</p>
             </div>
 
             <form method="POST" action="{{ route('profile.password.setup') }}" class="space-y-4 p-6">

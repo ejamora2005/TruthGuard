@@ -58,7 +58,31 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertNotNull($user->email_verified_at);
         $this->assertNull($user->password_set_at);
         $this->assertTrue($user->needsPasswordSetup());
-        $response->assertSessionHas('truthguard_google_setup_prompt', true);
+        $response->assertSessionHas('truthguard_social_setup_prompt', true);
+
+        Notification::assertSentTo($user, WelcomeToTruthGuard::class);
+    }
+
+    public function test_facebook_created_user_gets_password_setup_prompt(): void
+    {
+        Notification::fake();
+
+        $this->mockFacebookUser([
+            'email' => 'facebook-user@example.com',
+            'name' => 'Facebook User',
+        ]);
+
+        $response = $this->get(route('facebook.callback'));
+
+        $user = User::where('email', 'facebook-user@example.com')->firstOrFail();
+
+        $response
+            ->assertRedirect(route('dashboard', absolute: false))
+            ->assertSessionHas('truthguard_social_setup_prompt', true);
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertNull($user->password_set_at);
+        $this->assertTrue($user->needsPasswordSetup());
 
         Notification::assertSentTo($user, WelcomeToTruthGuard::class);
     }
@@ -205,6 +229,34 @@ class GoogleAuthenticationTest extends TestCase
 
         Socialite::shouldReceive('driver')
             ->with('google')
+            ->andReturn($provider);
+    }
+
+    private function mockFacebookUser(array $overrides = []): void
+    {
+        $id = (string) ($overrides['id'] ?? 'facebook-test-123');
+        $email = (string) ($overrides['email'] ?? 'facebook-user@example.com');
+        $name = (string) ($overrides['name'] ?? 'Facebook User');
+
+        $socialUser = (new SocialiteUser)
+            ->setRaw([
+                'id' => $id,
+                'email' => $email,
+                'name' => $name,
+            ])
+            ->map([
+                'id' => $id,
+                'email' => $email,
+                'name' => $name,
+            ]);
+
+        $provider = Mockery::mock();
+        $provider->shouldReceive('redirectUrl')->andReturnSelf();
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $provider->shouldReceive('user')->andReturn($socialUser);
+
+        Socialite::shouldReceive('driver')
+            ->with('facebook')
             ->andReturn($provider);
     }
 

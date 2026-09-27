@@ -234,7 +234,7 @@ class User extends Authenticatable
 
     public function needsPasswordSetup(): bool
     {
-        return filled($this->google_id) && $this->password_set_at === null;
+        return $this->password_set_at === null;
     }
 
     public function completeCurrentOnboarding(): void
