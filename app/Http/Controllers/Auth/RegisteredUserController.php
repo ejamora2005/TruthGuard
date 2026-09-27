@@ -41,6 +41,7 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'password_set_at' => now(),
             'email_updates_enabled' => $request->boolean('email_updates_enabled'),
             'is_admin' => false,
             'subscription_tier' => 'free',

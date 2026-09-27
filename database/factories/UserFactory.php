@@ -30,6 +30,7 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'is_admin' => false,
             'password' => static::$password ??= Hash::make('password'),
+            'password_set_at' => now(),
             'remember_token' => Str::random(10),
             'subscription_tier' => 'free',
             'subscription_status' => 'active',

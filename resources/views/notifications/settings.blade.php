@@ -1,4 +1,10 @@
-<section id="notification-settings" data-push-settings class="mx-auto my-5 w-full max-w-[1380px] rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900" aria-labelledby="notification-settings-title">
+@php
+    $notificationSettingsClass = ($embedded ?? false)
+        ? 'rounded-[28px] border border-white/80 bg-white/85 p-5 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900'
+        : 'mx-auto my-5 w-full max-w-[1380px] rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900';
+@endphp
+
+<section id="notification-settings" data-push-settings class="{{ $notificationSettingsClass }}" aria-labelledby="notification-settings-title">
     <h2 id="notification-settings-title" class="text-lg font-semibold text-gray-900 dark:text-white">Notification Settings</h2>
     <h3 class="mt-3 font-medium text-gray-900 dark:text-white">Enable TruthGuard Notifications</h3>
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Receive alerts when your analysis is complete or when important fact-check updates are available.</p>

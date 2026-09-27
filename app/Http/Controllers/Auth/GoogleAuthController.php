@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Auth\PostLoginDestination;
 use App\Services\Auth\SessionTimeoutManager;
 use App\Services\Notifications\TruthGuardNotificationManager;
 use Illuminate\Support\Facades\Auth;
@@ -140,6 +141,7 @@ class GoogleAuthController extends Controller
                 'email' => $email,
                 'email_verified_at' => now(),
                 'password' => Hash::make(Str::random(48)),
+                'password_set_at' => null,
                 'is_admin' => false,
                 'subscription_tier' => 'free',
                 'subscription_status' => 'active',
@@ -166,7 +168,7 @@ class GoogleAuthController extends Controller
             'google_avatar_url' => $this->normalizeUrl($socialUser->getAvatar()),
         ];
 
-        if ($this->normalizeEmail($user->email) !== $email) {
+        if ((string) $user->email !== $email) {
             $updates['email'] = $email;
         }
 
@@ -228,6 +230,10 @@ class GoogleAuthController extends Controller
 
         $user->forceFill(['last_login_at' => now()])->save();
         app(TruthGuardNotificationManager::class)->sendWelcomeOnce($user);
+
+        if ($user->needsPasswordSetup()) {
+            request()->session()->flash('truthguard_google_setup_prompt', true);
+        }
 
         return redirect()->to($this->postLoginPath($user));
     }
@@ -303,6 +309,6 @@ class GoogleAuthController extends Controller
 
     private function postLoginPath(User $user): string
     {
-        return app(\App\Services\Auth\PostLoginDestination::class)->resolve(request(), $user);
+        return app(PostLoginDestination::class)->resolve(request(), $user);
     }
 }

@@ -118,7 +118,7 @@
 @endonce
 
 @section('content')
-    <a href="{{ route('profile') }}#notification-settings" class="mb-4 inline-block text-sm font-medium text-brand-500">Notification settings</a>
+    <a href="{{ route('profile', ['section' => 'notifications']) }}" class="mb-4 inline-block text-sm font-medium text-brand-500">Notification settings</a>
     <div
         class="truthguard-mobile-page truthguard-mobile-notifications mx-auto w-full max-w-[1280px] space-y-5"
         x-data="{

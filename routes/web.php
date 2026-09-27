@@ -113,6 +113,7 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('detections/{detection}/result', [DetectionController::class, 'result'])->name('detections.result');
         Route::post('detections', [DetectionController::class, 'store'])->name('detections.store');
         Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
+        Route::post('profile/password/setup', [ProfileController::class, 'setupPassword'])->name('profile.password.setup');
         Route::view('profile', 'profile')->name('profile');
     });
 });

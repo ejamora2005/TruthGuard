@@ -56,6 +56,9 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertSame('google-new-123', $user->google_id);
         $this->assertSame('https://lh3.googleusercontent.com/a/new-avatar.png', $user->google_avatar_url);
         $this->assertNotNull($user->email_verified_at);
+        $this->assertNull($user->password_set_at);
+        $this->assertTrue($user->needsPasswordSetup());
+        $response->assertSessionHas('truthguard_google_setup_prompt', true);
 
         Notification::assertSentTo($user, WelcomeToTruthGuard::class);
     }
@@ -85,6 +88,8 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertSame(1, User::count());
         $this->assertSame('google-existing-456', $existingUser->google_id);
         $this->assertNotNull($existingUser->email_verified_at);
+        $this->assertNotNull($existingUser->password_set_at);
+        $this->assertFalse($existingUser->needsPasswordSetup());
 
         Notification::assertSentTo($existingUser, WelcomeToTruthGuard::class);
     }

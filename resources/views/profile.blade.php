@@ -33,7 +33,7 @@
         ! (bool) ($user?->uses_starter_profile_avatar ?? true),
     ];
     $profileCompletion = (int) round((collect($completionItems)->filter()->count() / count($completionItems)) * 100);
-    $validSections = ['personal', 'photo', 'appearance', 'security', 'account'];
+    $validSections = ['personal', 'photo', 'appearance', 'security', 'notifications', 'account'];
     $requestedSection = (string) request()->query('section', 'personal');
     $initialSection = in_array($requestedSection, $validSections, true) ? $requestedSection : 'personal';
 
@@ -77,6 +77,13 @@
             'icon' => 'M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z',
         ],
         [
+            'id' => 'notifications',
+            'label' => 'Notifications',
+            'description' => 'Push and alert categories',
+            'status' => 'Alerts',
+            'icon' => 'M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022 23.848 23.848 0 0 0 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0',
+        ],
+        [
             'id' => 'account',
             'label' => 'Account & Privacy',
             'description' => 'Data and deletion',
@@ -93,7 +100,6 @@
 @section('page_subtitle', 'Account, security, and workspace preferences')
 
 @section('content')
-    @include('notifications.settings')
     <div
         class="truthguard-mobile-page truthguard-mobile-settings truthguard-settings-page mx-auto w-full max-w-[1380px] space-y-5 pb-2"
         x-data="{
@@ -1011,7 +1017,7 @@
                 </div>
                 <span class="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
                     <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    5 modules available
+                    {{ count($settingsSections) }} modules available
                 </span>
             </div>
 
@@ -1023,6 +1029,7 @@
                             'photo' => ['value' => (bool) ($user?->uses_starter_profile_avatar ?? true) ? 'Starter avatar' : 'Custom photo', 'meta' => 'Profile image and preview', 'tone' => 'bg-cyan-50 text-cyan-700 ring-cyan-100'],
                             'appearance' => ['value' => $themeLabels[$themeKey], 'meta' => 'Current interface theme', 'tone' => 'bg-violet-50 text-violet-700 ring-violet-100'],
                             'security' => ['value' => 'Password protected', 'meta' => 'Last access '.$lastLogin, 'tone' => 'bg-emerald-50 text-emerald-700 ring-emerald-100'],
+                            'notifications' => ['value' => 'Push alerts', 'meta' => 'Device and category controls', 'tone' => 'bg-sky-50 text-sky-700 ring-sky-100'],
                             default => ['value' => $statusLabel.' account', 'meta' => 'Member since '.$createdDate, 'tone' => 'bg-amber-50 text-amber-700 ring-amber-100'],
                         };
                     @endphp
@@ -1128,6 +1135,9 @@
                         <div class="truthguard-settings-panel">
                             <livewire:profile.update-profile-information-form />
                             <livewire:profile.update-password-form />
+                            <div x-show="activeSection === 'notifications'" x-transition.opacity>
+                                @include('notifications.settings', ['embedded' => true])
+                            </div>
                             <livewire:profile.delete-user-form />
                         </div>
                     </div>

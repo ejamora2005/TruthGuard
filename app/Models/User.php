@@ -18,7 +18,9 @@ use Illuminate\Support\Str;
     'name',
     'username',
     'email',
+    'email_verified_at',
     'password',
+    'password_set_at',
     'email_updates_enabled',
     'is_admin',
     'subscription_tier',
@@ -68,6 +70,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'email_updates_enabled' => 'boolean',
             'password' => 'hashed',
+            'password_set_at' => 'datetime',
             'is_admin' => 'boolean',
             'subscription_renews_at' => 'datetime',
             'last_login_at' => 'datetime',
@@ -227,6 +230,11 @@ class User extends Authenticatable
     {
         return $this->hasAcceptedCurrentPrivacyPolicy()
             && ! $this->hasCurrentOnboardingDecision();
+    }
+
+    public function needsPasswordSetup(): bool
+    {
+        return filled($this->google_id) && $this->password_set_at === null;
     }
 
     public function completeCurrentOnboarding(): void

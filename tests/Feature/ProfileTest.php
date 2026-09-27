@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
 use Tests\TestCase;
@@ -24,6 +25,59 @@ class ProfileTest extends TestCase
             ->assertSeeVolt('profile.update-profile-information-form')
             ->assertSeeVolt('profile.update-password-form')
             ->assertSeeVolt('profile.delete-user-form');
+    }
+
+    public function test_notification_settings_live_inside_settings_modules(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get('/profile?section=notifications');
+
+        $response
+            ->assertOk()
+            ->assertSee('Settings modules')
+            ->assertSee('Notifications')
+            ->assertSee('Enable TruthGuard Notifications')
+            ->assertDontSee('@include(\'notifications.settings\')', false);
+    }
+
+    public function test_google_user_can_set_local_password_without_current_password(): void
+    {
+        $user = User::factory()->create([
+            'google_id' => 'google-password-setup',
+            'password_set_at' => null,
+        ]);
+
+        $response = $this->actingAs($user)->from('/dashboard')->post(route('profile.password.setup'), [
+            'password' => 'SecurePassword123!',
+            'password_confirmation' => 'SecurePassword123!',
+        ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('dashboard', absolute: false));
+
+        $user->refresh();
+
+        $this->assertNotNull($user->password_set_at);
+        $this->assertFalse($user->needsPasswordSetup());
+        $this->assertTrue(Hash::check('SecurePassword123!', $user->password));
+    }
+
+    public function test_google_user_sees_dashboard_setup_prompt_until_password_is_set(): void
+    {
+        $user = User::factory()->create([
+            'google_id' => 'google-dashboard-setup',
+            'password_set_at' => null,
+        ]);
+
+        $response = $this->actingAs($user)->get('/dashboard');
+
+        $response
+            ->assertOk()
+            ->assertSee('Finish securing your TruthGuard account')
+            ->assertSee('Set password')
+            ->assertSee('Notification settings');
     }
 
     public function test_profile_information_can_be_updated(): void

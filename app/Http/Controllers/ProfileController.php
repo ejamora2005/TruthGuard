@@ -6,9 +6,11 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
@@ -81,6 +83,31 @@ class ProfileController extends Controller
         return redirect()
             ->route('profile', $routeParameters)
             ->with('status', 'profile-updated');
+    }
+
+    public function setupPassword(Request $request): RedirectResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if (! $user->needsPasswordSetup()) {
+            return redirect()->route('dashboard');
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $user->forceFill([
+            'password' => Hash::make($validated['password']),
+            'password_set_at' => now(),
+        ])->save();
+
+        $request->session()->forget('truthguard_google_setup_prompt');
+
+        return redirect()
+            ->route('dashboard')
+            ->with('status', 'password-setup-complete');
     }
 
     private function persistProfilePhoto(UploadedFile $uploadedFile): ?string
