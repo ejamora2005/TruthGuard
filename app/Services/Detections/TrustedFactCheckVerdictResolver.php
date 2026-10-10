@@ -27,7 +27,7 @@ class TrustedFactCheckVerdictResolver
         if ($decision === null) {
             $analysis['signals'] = $signals;
 
-            return $analysis;
+            return $this->applyNoOfficialConfirmationFallback($analysis, $verificationSources);
         }
 
         $publisher = $decision['publisher'];
@@ -75,6 +75,73 @@ class TrustedFactCheckVerdictResolver
         $analysis['recommendation'] = "Read the linked source review and compare the exact claim, date, and context before sharing or correcting the post.";
 
         return $analysis;
+    }
+
+    /**
+     * Keep an unsupported low-risk result from being presented as confirmed.
+     * Social posts and generic verification routes provide context, not proof.
+     *
+     * @param  array<string, mixed>  $analysis
+     * @param  array<int, array<string, mixed>>  $verificationSources
+     * @return array<string, mixed>
+     */
+    public function applyNoOfficialConfirmationFallback(array $analysis, array $verificationSources): array
+    {
+        if ((string) ($analysis['verdict'] ?? 'review') !== 'real') {
+            return $analysis;
+        }
+
+        $signals = is_array($analysis['signals'] ?? null) ? $analysis['signals'] : [];
+        $hasVerificationPipeline = ! empty($signals['verification_policy'])
+            || collect($verificationSources)
+                ->filter(fn ($source): bool => is_array($source))
+                ->contains(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context');
+        $hasAuthoritativeEvidence = collect($verificationSources)
+            ->filter(fn ($source): bool => is_array($source))
+            ->contains(fn (array $source): bool => in_array(
+                ($source['source_type'] ?? null),
+                ['official', 'weather', 'news'],
+                true,
+            ));
+
+        if (! $hasVerificationPipeline || $hasAuthoritativeEvidence || $this->hasExplicitFactCheckRating($analysis, $verificationSources)) {
+            return $analysis;
+        }
+
+        $analysis['verdict'] = 'review';
+        $analysis['fake_score'] = 50;
+        $analysis['analysis_summary'] = 'No official confirmation was found for the exact claim. Social or contextual references were not treated as proof.';
+        $analysis['verification_summary'] = 'No official source or trusted fact-check rating confirmed the exact claim. Available social context is supporting context only.';
+        $analysis['explanation_summary'] = 'TruthGuard could not confirm the exact claim from an authoritative source. The available references provide context, but they do not establish that the claim is true or false. Treat this result as unconfirmed until an official source or trusted fact-check verifies it.';
+        $analysis['recommendation'] = 'Do not treat this claim as verified. Check the relevant official agency, trusted fact-checkers, and the original source before sharing it.';
+        $signals['verification_status'] = [[
+            'label' => 'No official confirmation found for the exact claim.',
+            'rating' => FactCheckRatingNormalizer::NO_OFFICIAL_CONFIRMATION,
+            'weight' => 70,
+            'version' => self::POLICY_VERSION,
+        ]];
+        $analysis['signals'] = $signals;
+
+        return $analysis;
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @param  array<int, array<string, mixed>>  $verificationSources
+     */
+    private function hasExplicitFactCheckRating(array $analysis, array $verificationSources): bool
+    {
+        $hasSignalRating = collect(data_get($analysis, 'signals.trusted_fact_check', []))
+            ->filter(fn ($signal): bool => is_array($signal))
+            ->contains(fn (array $signal): bool => filled($signal['rating'] ?? null));
+
+        if ($hasSignalRating) {
+            return true;
+        }
+
+        return collect($verificationSources)
+            ->filter(fn ($source): bool => is_array($source) && ($source['source_type'] ?? null) === 'fact_check')
+            ->contains(fn (array $source): bool => filled($source['rating'] ?? null));
     }
 
     /**

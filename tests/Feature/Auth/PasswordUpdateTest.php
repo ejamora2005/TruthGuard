@@ -28,7 +28,14 @@ class PasswordUpdateTest extends TestCase
             ->assertHasNoErrors()
             ->assertNoRedirect();
 
-        $this->assertTrue(Hash::check('new-password', $user->refresh()->password));
+        $user->refresh();
+
+        $this->assertTrue(Hash::check('new-password', $user->password));
+        $this->assertNotNull($user->password_set_at);
+
+        $this->actingAs($user)
+            ->get('/dashboard')
+            ->assertDontSee('Finish securing your TruthGuard account');
     }
 
     public function test_correct_password_must_be_provided_to_update_password(): void

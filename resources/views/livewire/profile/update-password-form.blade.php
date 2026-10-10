@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
@@ -25,9 +26,15 @@ new class extends Component
             throw $e;
         }
 
-        Auth::user()->update([
+        $updates = [
             'password' => Hash::make($validated['password']),
-        ]);
+        ];
+
+        if (User::hasPasswordSetAtColumn()) {
+            $updates['password_set_at'] = now();
+        }
+
+        Auth::user()->update($updates);
 
         $this->reset('current_password', 'password', 'password_confirmation');
 

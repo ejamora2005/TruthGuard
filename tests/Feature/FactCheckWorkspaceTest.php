@@ -213,7 +213,14 @@ class FactCheckWorkspaceTest extends TestCase
         $this->assertStringContainsString('Submitted Evidence', $html);
         $this->assertStringContainsString('/storage/detections/report-evidence.jpg', $html);
         $this->assertStringContainsString('View full image', $html);
-        $this->assertTrue(strpos($html, 'Submitted Evidence') < strpos($html, 'TruthGuard intelligence'));
+        $this->assertStringContainsString('.tg-ai-report .tg-ai-hero { order: 1; }', $html);
+        $this->assertStringContainsString('.tg-ai-report .tg-report-evidence { order: 2; }', $html);
+        $this->assertStringContainsString('Claim being checked', $html);
+        $this->assertStringContainsString('A claim submitted for verification.', $html);
+        $this->assertStringContainsString('Source result', $html);
+        $this->assertStringContainsString('False', $html);
+        $this->assertStringContainsString('Risk score', $html);
+        $this->assertStringContainsString('Estimated misinformation or manipulation risk.', $html);
         $this->assertStringContainsString('Recommended action', $html);
         $this->assertStringContainsString('Decision factors', $html);
         $this->assertStringContainsString('Source verification', $html);
@@ -226,7 +233,72 @@ class FactCheckWorkspaceTest extends TestCase
         $this->assertStringContainsString('height: 160px', $html);
         $this->assertStringContainsString('<details', $html);
         $this->assertStringContainsString('How TruthGuard Reached This Result', $html);
+        $this->assertStringContainsString('How OpenAI helped', $html);
+        $this->assertStringContainsString('OpenAI explanation was unavailable.', $html);
         $this->assertStringContainsString('Original capture date could not be verified', $html);
+    }
+
+    public function test_result_report_handles_missing_claim_text_and_records_openai_used_state_safely(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $detection = $this->createDetection($user, [
+            'caption_text' => null,
+            'notes' => null,
+            'signals' => [
+                'openai_usage' => [
+                    'provider' => 'OpenAI',
+                    'model' => 'configured-model',
+                    'total_tokens' => 140,
+                ],
+            ],
+            'verification_sources' => [],
+        ]);
+
+        $html = view('detections.partials.advanced-result-card', [
+            'selectedDetection' => $detection,
+        ])->render();
+
+        $this->assertStringContainsString('No clear factual claim was detected.', $html);
+        $this->assertStringContainsString('Status: Used for this report', $html);
+        $this->assertStringContainsString('Model: configured-model', $html);
+        $this->assertStringContainsString('Token usage recorded for this report: 140', $html);
+        $this->assertStringNotContainsString('No source-backed rating was recorded', $html);
+    }
+
+    public function test_result_report_does_not_call_a_social_context_only_real_result_verified(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $detection = $this->createDetection($user, [
+            'verdict' => 'real',
+            'fake_score' => 18,
+            'analysis_summary' => 'The supplied verdict remains Likely Real.',
+            'verification_summary' => 'Related public discussion was found.',
+            'explanation_summary' => 'Likely Real because the image appears to reference a real controversy.',
+            'recommendation' => 'Treat this as lower risk.',
+            'signals' => [
+                'verification_policy' => [['version' => 'test']],
+            ],
+            'verification_sources' => [[
+                'name' => 'Facebook social context',
+                'source_type' => 'social_context',
+                'summary' => 'Related discussion only.',
+                'url' => 'https://facebook.com/search/posts?q=claim',
+            ]],
+        ]);
+
+        $html = view('detections.partials.advanced-result-card', [
+            'selectedDetection' => $detection,
+        ])->render();
+
+        $this->assertStringContainsString('No official confirmation found', $html);
+        $this->assertStringContainsString('No official or trusted source confirmed this claim.', $html);
+        $this->assertStringContainsString('No official confirmation was found for the exact claim.', $html);
+        $this->assertStringNotContainsString('Likely Real</h2>', $html);
+        $this->assertStringNotContainsString('The supplied verdict remains Likely Real.', $html);
     }
 
     /**
