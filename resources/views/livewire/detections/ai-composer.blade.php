@@ -153,9 +153,21 @@ new class extends Component
 
 @php
     $shortcutPrompts = [
-        ['label' => 'AI generated?', 'prompt' => 'Check whether this media is AI-generated or manipulated.'],
-        ['label' => 'Verify claim', 'prompt' => 'Verify this claim with trusted public sources.'],
-        ['label' => 'Source match', 'prompt' => 'Compare this upload with the original source context.'],
+        [
+            'label' => 'Check for AI-made media',
+            'prompt' => 'Check whether this image or video shows signs of AI generation or manipulation.',
+            'hint' => 'Analyze this upload for AI or editing signs.',
+        ],
+        [
+            'label' => 'Fact-check this claim',
+            'prompt' => 'Fact-check this claim against trusted public sources and explain the evidence.',
+            'hint' => 'Compare this claim with trusted sources.',
+        ],
+        [
+            'label' => 'Find matching fact-checks',
+            'prompt' => 'Find related fact-checks for this upload and show their source ratings.',
+            'hint' => 'Search related reviews and source ratings.',
+        ],
     ];
     $truthguardLogoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
     $truthguardLogoFile = public_path($truthguardLogoPath);
@@ -1405,9 +1417,15 @@ new class extends Component
             left: auto !important;
             z-index: 80;
             display: inline-flex;
-            height: 2.25rem;
-            width: 2.25rem;
-            flex: 0 0 2.25rem;
+            height: 2.25rem !important;
+            width: 2.25rem !important;
+            min-height: 2.25rem !important;
+            max-height: 2.25rem !important;
+            min-width: 2.25rem !important;
+            max-width: 2.25rem !important;
+            flex: 0 0 2.25rem !important;
+            align-self: center;
+            aspect-ratio: 1 / 1;
             align-items: center;
             justify-content: center;
             padding: 0;
@@ -1431,6 +1449,85 @@ new class extends Component
             color: #be123c;
             transform: none;
             box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.96);
+        }
+
+        /* Keep an uploaded attachment as a compact thumbnail card. */
+        .truthguard-preview-anchor {
+            display: block;
+            width: 5.75rem;
+            height: 5.75rem;
+            flex: 0 0 5.75rem;
+            margin: 0.65rem 0 0.35rem;
+            padding: 0.3rem;
+            border-radius: 1rem;
+        }
+
+        .truthguard-preview-thumb {
+            height: 100%;
+            width: 100%;
+            flex: 0 0 auto;
+        }
+
+        .truthguard-preview-meta {
+            display: none;
+        }
+
+        .truthguard-preview-remove {
+            position: absolute !important;
+            top: -0.28rem !important;
+            right: -0.28rem !important;
+            width: 1.45rem !important;
+            height: 1.45rem !important;
+            min-width: 1.45rem !important;
+            max-width: 1.45rem !important;
+            min-height: 1.45rem !important;
+            max-height: 1.45rem !important;
+            flex: 0 0 1.45rem !important;
+            border-radius: 9999px;
+            border: 0 !important;
+            background: rgba(255, 255, 255, 0.94);
+            box-shadow: 0 3px 9px rgba(15, 23, 42, 0.16);
+        }
+
+        .truthguard-preview-remove svg {
+            width: 0.7rem;
+            height: 0.7rem;
+        }
+
+        .truthguard-guided-prompt-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 0.45rem 1.25rem;
+        }
+
+        .truthguard-guided-prompt-card {
+            width: auto;
+            max-width: 15rem;
+        }
+
+        @media (min-width: 640px) {
+            .truthguard-guided-prompt-card:first-child,
+            .truthguard-guided-prompt-card:last-child {
+                transform: translateY(0.28rem);
+            }
+
+            .truthguard-guided-prompt-card:first-child:hover,
+            .truthguard-guided-prompt-card:last-child:hover {
+                transform: translateY(-0.05rem);
+            }
+        }
+
+        @media (min-width: 640px) {
+            .truthguard-preview-anchor {
+                width: 6.25rem;
+                height: 6.25rem;
+                flex-basis: 6.25rem;
+                margin-top: 0.75rem;
+                margin-bottom: 0.45rem;
+                padding: 0.35rem;
+            }
         }
 
         @keyframes truthguard-input-nudge {
@@ -4485,11 +4582,11 @@ new class extends Component
                             </div>
                         </div>
 
-                        <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div class="truthguard-guided-prompt-row mt-4">
                             @foreach ($shortcutPrompts as $shortcutPrompt)
                                 <button
                                     type="button"
-                                    class="truthguard-guided-prompt-card group relative flex min-h-0 items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white px-3 py-2 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
+                                    class="truthguard-guided-prompt-card group relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
                                     data-prompt="{{ $shortcutPrompt['prompt'] }}"
                                     @click="usePrompt($el.dataset.prompt)"
                                 >
@@ -4528,11 +4625,11 @@ new class extends Component
                                     <span class="hidden">
                                         {{ $shortcutPrompt['eyebrow'] ?? '' }}
                                     </span>
-                                    <span class="relative block whitespace-nowrap text-center text-xs font-black text-slate-950">
+                                    <span class="relative block text-center text-xs font-black leading-4 text-slate-950">
                                         {{ $shortcutPrompt['label'] }}
                                     </span>
-                                    <span class="hidden">
-                                        {{ $shortcutPrompt['description'] ?? '' }}
+                                    <span class="mt-0.5 block text-[10px] font-medium leading-4 text-slate-400">
+                                        {{ $shortcutPrompt['hint'] }}
                                     </span>
                                     <span class="hidden">
                                         Use template
@@ -4543,6 +4640,9 @@ new class extends Component
                                 </button>
                             @endforeach
                         </div>
+                        <p class="mt-2 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                            Prompt guide
+                        </p>
                     </section>
 
                     @if (false)
@@ -4710,7 +4810,7 @@ new class extends Component
                                 </button>
                             </div>
 
-                            <div class="min-w-0 flex-1 self-center">
+                            <div class="truthguard-preview-meta min-w-0 flex-1 self-center">
                                 <p class="truncate text-xs font-bold text-slate-800" x-text="previewName || 'Attached evidence'"></p>
                                 <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-500">
                                     <span class="capitalize" x-text="previewKind === 'pdf' ? 'Document' : previewKind"></span>

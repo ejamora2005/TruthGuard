@@ -70,6 +70,7 @@
         : ($sourceHost ? preg_replace('/^www\./', '', $sourceHost) : 'Direct submission');
     $contentType = \Illuminate\Support\Str::headline($selectedDetection->media_type ?: 'Unknown');
     $claimText = trim((string) ($selectedDetection->caption_text ?: $selectedDetection->notes ?: ''));
+    $isUnconfirmed = $verdictPresenter::isNoOfficialConfirmation($selectedDetection);
     $assessment = trim((string) (
         $selectedDetection->analysis_summary
         ?: $selectedDetection->explanation_summary
@@ -83,6 +84,13 @@
         default => 'This result is lower risk, but still check the original source before reuse.',
     }));
 
+    if ($isUnconfirmed) {
+        $assessment = 'No official confirmation was found for the exact claim. The available references provide context, but they do not establish that the claim is true or false.';
+        $reasoning = 'TruthGuard found no official source or trusted fact-check rating for the exact claim. Social posts and generic search routes are context only, so this result remains unconfirmed until an authoritative source verifies it.';
+        $verificationSummary = 'No official source or trusted fact-check rating confirmed the exact claim. Available social context is supporting context only.';
+        $recommendation = 'Do not treat this claim as verified. Check the relevant official agency, trusted fact-checkers, and the original source before sharing it.';
+    }
+
     $signalGroups = is_array($selectedDetection->signals ?? null) ? $selectedDetection->signals : [];
     $aiBasis = collect($signalGroups['ai_basis'] ?? [])
         ->filter(fn ($signal): bool => is_array($signal) && filled($signal['label'] ?? null))
@@ -92,10 +100,45 @@
         ->unique('label')->take(3)->values();
     $flatSignals = collect($signalGroups)
         ->except(['ai_basis', 'ai_limitations', 'openai_usage', 'verification_policy'])
-        ->flatten(1)
-        ->filter(fn ($signal): bool => is_array($signal) && filled($signal['label'] ?? null))
+        ->flatMap(fn ($signals, $group) => collect($signals)
+            ->filter(fn ($signal): bool => is_array($signal) && filled($signal['label'] ?? null))
+            ->map(fn (array $signal): array => $signal + ['_group' => (string) $group]))
         ->sortByDesc(fn (array $signal): int => (int) ($signal['weight'] ?? 0))
         ->unique('label')->take(5)->values();
+
+    $signalGroupLabel = function (array $signal): string {
+        return match ((string) ($signal['_group'] ?? '')) {
+            'trusted_fact_check' => 'Trusted evidence',
+            'ai_media_assessment' => 'AI interpretation',
+            'content_extraction' => 'OCR / extracted text',
+            'visual', 'media_analysis', 'deepfake_cnn' => 'Technical media analysis',
+            default => 'Claim or context signal',
+        };
+    };
+
+    $ocrText = collect($signalGroups['content_extraction'] ?? [])
+        ->filter(fn ($signal): bool => is_array($signal))
+        ->map(function (array $signal): ?string {
+            $label = trim((string) ($signal['label'] ?? ''));
+
+            if (preg_match('/^OpenAI read visible claim text from the image:\s*(.+)$/i', $label, $matches) === 1) {
+                return trim((string) ($matches[1] ?? ''));
+            }
+
+            foreach (['ocr_text', 'extracted_text', 'claim_text'] as $key) {
+                if (filled($signal[$key] ?? null)) {
+                    return trim((string) $signal[$key]);
+                }
+            }
+
+            return null;
+        })
+        ->filter()
+        ->first();
+
+    $openAiUsage = is_array($signalGroups['openai_usage'] ?? null) ? $signalGroups['openai_usage'] : [];
+    $openAiUsed = filled($openAiUsage['provider'] ?? null) || filled($ocrText);
+    $openAiModel = $openAiUsed ? trim((string) ($openAiUsage['model'] ?? config('services.openai.model', ''))) : '';
 
     $sources = collect($selectedDetection->verification_sources ?? [])
         ->filter(fn ($source): bool => is_array($source) && filled($source['url'] ?? null))
@@ -112,6 +155,20 @@
     $trustedSourceCount = $sources->filter(fn (array $source): bool => in_array(($source['source_type'] ?? null), ['fact_check', 'official', 'weather'], true))->count();
     $sourceCount = $sources->count();
     $topSource = $sources->first();
+    $topFactCheck = $sources->first(fn (array $source): bool => ($source['source_type'] ?? null) === 'fact_check');
+    $sourceResult = $presentation['source_rating']
+        ?: (($presentation['rating'] ?? null) === $ratingNormalizer::NO_OFFICIAL_CONFIRMATION
+            ? $ratingNormalizer::NO_OFFICIAL_CONFIRMATION
+            : null);
+    $matchedClaimText = is_array($topFactCheck)
+        ? trim((string) ($topFactCheck['claim'] ?? $topFactCheck['claim_text'] ?? $topFactCheck['text'] ?? ''))
+        : '';
+    $claimEvidenceItems = collect([
+        $selectedDetection->caption_text ? ['label' => 'User-provided caption', 'text' => trim((string) $selectedDetection->caption_text)] : null,
+        $selectedDetection->notes ? ['label' => 'User-provided notes', 'text' => trim((string) $selectedDetection->notes)] : null,
+        $ocrText ? ['label' => 'Extracted image text (OCR-style; may be imperfect)', 'text' => $ocrText] : null,
+        $matchedClaimText ? ['label' => 'Matched fact-check claim', 'text' => $matchedClaimText] : null,
+    ])->filter()->values();
 
     $sourceTypeLabel = function (array $source): string {
         return match ($source['source_type'] ?? 'reference') {
@@ -281,6 +338,8 @@
         .tg-report-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 1.25rem; border: 1px solid rgba(203, 213, 225, .86); border-radius: 22px; background: linear-gradient(135deg, #fff 0%, #f8fbff 58%, rgb(var(--tg-accent-rgb) / .05) 100%); box-shadow: 0 24px 70px rgba(15, 23, 42, .09); }
         .tg-report-evidence, .tg-ai-report .tg-ai-hero { border: 1px solid rgba(226, 232, 240, .96); border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.88) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.9); padding: 1rem; }
         .tg-ai-report .tg-ai-hero { align-self: stretch; display: flex; align-items: center; background: linear-gradient(135deg, #fff 0%, rgb(var(--tg-accent-rgb) / .045) 100%); }
+        .tg-ai-report .tg-report-evidence { order: 2; }
+        .tg-ai-report .tg-ai-hero { order: 1; }
         .tg-ai-report .tg-ai-hero::before { display: none; }
         .tg-ai-report .tg-ai-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.72), 0 8px 22px rgba(15,23,42,.06); }
         .tg-ai-report .tg-ai-media { min-height: 0; max-height: none; border-radius: 16px; background: linear-gradient(135deg, #f8fafc 0%, #eef4fb 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.85); }
@@ -443,12 +502,26 @@
                         <a href="{{ $mediaUrl }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-700 hover:underline">View full image</a>
                     @endif
                 </div>
-                @if (($selectedDetection->media_type === 'image' || $selectedDetection->media_type === 'video' || $selectedIsDocument) && $claimText !== '')
-                    <div class="mt-4 rounded-2xl bg-slate-50 p-4 sm:p-5">
-                        <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Claim or caption</p>
-                        <p class="mt-2 text-sm leading-7 text-slate-700">{{ $claimText }}</p>
+                <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Claim being checked</p>
+                            <p class="mt-1 text-xs text-slate-500">Only text recorded from the submission or a matched review is shown.</p>
+                        </div>
+                        @if ($ocrText)
+                            <span class="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">OCR may be imperfect</span>
+                        @endif
                     </div>
-                @endif
+                    @forelse ($claimEvidenceItems as $claimEvidence)
+                        <div class="mt-4 border-t border-slate-200 pt-3 first:mt-3 first:border-t-0 first:pt-0">
+                            <p class="text-xs font-black text-slate-500">{{ $claimEvidence['label'] }}</p>
+                            <p class="mt-1 text-sm leading-7 text-slate-800">{{ $claimEvidence['text'] }}</p>
+                        </div>
+                    @empty
+                        <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">No clear factual claim was detected.</p>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">TruthGuard cannot assess a specific claim without claim text or a matching source review.</p>
+                    @endforelse
+                </div>
 
                 @if ($selectedDetection->source_url)
                     <a href="{{ $selectedDetection->source_url }}" target="_blank" rel="noreferrer" class="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
@@ -480,12 +553,31 @@
                     @endif
                 </div>
 
-                <h2 class="mt-5 max-w-3xl text-2xl font-bold leading-tight text-slate-950 sm:text-3xl">
-                    {{ $tone['label'] }}
+                <p class="mt-5 text-xs font-black uppercase tracking-[0.14em] text-slate-500">TruthGuard verdict</p>
+                <h2 class="mt-1 max-w-3xl text-2xl font-black leading-tight text-slate-950 sm:text-3xl">
+                    {{ $presentation['verdict_label'] ?? 'Needs Review' }}
                 </h2>
-                <p class="mt-4 max-w-3xl text-base font-medium leading-7 text-slate-600 sm:text-lg sm:leading-8">
-                    {{ $tone['summary'] }}
+                <p class="mt-3 max-w-3xl text-base font-medium leading-7 text-slate-700 sm:text-lg sm:leading-8">
+                    {{ $presentation['verdict_meaning'] ?? $tone['summary'] }}
                 </p>
+
+                <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Source result</p>
+                        <p class="mt-1 text-lg font-black text-slate-950">
+                            {{ $sourceResult ?? 'No source-backed rating' }}
+                        </p>
+                        @if (is_array($topFactCheck))
+                            <p class="mt-1 text-xs leading-5 text-slate-500">{{ $topFactCheck['name'] ?? 'Matched fact-check source' }}</p>
+                        @else
+                            <p class="mt-1 text-xs leading-5 text-slate-500">{{ $isUnconfirmed ? 'No official or trusted source confirmed this claim.' : 'No authoritative fact-check rating was recorded.' }}</p>
+                        @endif
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                        <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Plain-language assessment</p>
+                        <p class="mt-1 text-sm font-semibold leading-6 text-slate-800">{{ $tone['summary'] }}</p>
+                    </div>
+                </div>
 
                 <div class="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-semibold text-slate-600">
                     <span class="inline-flex items-center gap-2">
@@ -498,7 +590,7 @@
                         <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5 19 6v5.2c0 4.3-2.8 7.5-7 9.3-4.2-1.8-7-5-7-9.3V6l7-2.5Z" />
                         </svg>
-                        {{ $trustedSourceCount }} trusted checks
+                        {{ $trustedSourceCount }} trusted sources
                     </span>
                 </div>
             </div>
@@ -513,6 +605,7 @@
                 <div class="text-left">
                     <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Risk score</p>
                     <p class="mt-1 text-2xl font-black text-slate-950">{{ $riskScore }}%</p>
+                    <p class="mt-1 max-w-[15rem] text-xs leading-5 text-slate-500">Estimated misinformation or manipulation risk.</p>
                 </div>
             </div>
         </div>
@@ -520,8 +613,13 @@
 
     </div>
     <dl class="tg-report-metrics">
-        @foreach (['AI confidence' => $confidenceScore.'%', 'Risk score' => $riskScore.'%', 'Sources reviewed' => $sourceCount, 'Trusted sources' => $trustedSourceCount] as $metric => $value)
-            <div><dt>{{ $metric }}</dt><dd>{{ $value }}</dd></div>
+        @foreach ([
+            ['label' => 'AI confidence', 'value' => $confidenceScore.'%', 'help' => 'How strongly the available evidence supports the displayed verdict. Not certainty.'],
+            ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
+            ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
+            ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
+        ] as $metric)
+            <div title="{{ $metric['help'] }}"><dt>{{ $metric['label'] }}</dt><dd>{{ $metric['value'] }}</dd><p class="mt-1 text-xs leading-5 text-slate-500">{{ $metric['help'] }}</p></div>
         @endforeach
     </dl>
     <div class="tg-report-body">
@@ -536,8 +634,8 @@
                             </svg>
                         </span>
                         <div>
-                            <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-700">TruthGuard intelligence</p>
-                            <h3 class="mt-0.5 text-xl font-black text-slate-950">AI assessment</h3>
+                            <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-700">Evidence interpretation</p>
+                            <h3 class="mt-0.5 text-xl font-black text-slate-950">Why this result?</h3>
                         </div>
                     </div>
                 </div>
@@ -550,7 +648,7 @@
 
                     @if ($reasoning !== $assessment)
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
-                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Why this result</p>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Evidence interpretation</p>
                             <p class="mt-2 text-sm leading-7 text-slate-700 sm:text-base">{{ $reasoning }}</p>
                         </div>
                     @endif
@@ -620,6 +718,7 @@
                                     <strong class="break-words text-sm font-black text-slate-950">{{ $name }}</strong>
                                     <span class="rounded-full px-2.5 py-1 text-[11px] font-black ring-1 {{ $sourceBadgeClass($source) }}">{{ \Illuminate\Support\Str::limit($sourceBadgeText($source), 30) }}</span>
                                 </span>
+                                <span class="mt-1 block text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">{{ $sourceTypeLabel($source) }} · {{ in_array(($source['source_type'] ?? null), ['fact_check', 'official', 'weather'], true) ? 'Trusted evidence' : 'Reference context' }}</span>
                                 <span class="mt-1 block break-words text-xs font-semibold text-slate-400">{{ preg_replace('/^www\./', '', (string) $linkHost) }}{{ $date !== '' ? ' · '.$date : '' }}</span>
                                 @if (filled($source['title'] ?? $source['headline'] ?? null))
                                     <span class="mt-2 block text-sm font-semibold text-slate-900">{{ $source['title'] ?? $source['headline'] }}</span>
@@ -697,7 +796,10 @@
                         @php $weight = max(0, min(100, (int) ($signal['weight'] ?? 0))); @endphp
                         <div>
                             <div class="flex items-start justify-between gap-3">
-                                <p class="text-sm font-semibold leading-5 text-slate-700">{{ $signal['label'] }}</p>
+                                <div>
+                                    <p class="text-[11px] font-black uppercase tracking-[0.08em] text-slate-400">{{ $signalGroupLabel($signal) }}</p>
+                                    <p class="mt-1 text-sm font-semibold leading-5 text-slate-700">{{ $signal['label'] }}</p>
+                                </div>
                                 <span class="shrink-0 text-xs font-black tabular-nums {{ $tone['text'] }}">{{ $weight }}</span>
                             </div>
                             <div class="tg-ai-signal-track mt-2">
@@ -775,6 +877,52 @@
                     </div>
                 </details>
             @endif
+
+            <details class="tg-ai-surface tg-report-method p-5">
+                <summary class="tg-report-method-summary cursor-pointer">
+                    <span class="flex min-w-0 items-center gap-3">
+                        <span class="tg-report-method-icon" aria-hidden="true">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Z" />
+                                <path stroke-linecap="round" d="M8.5 12h7M12 8.5v7" />
+                            </svg>
+                        </span>
+                        <span class="min-w-0">
+                            <span class="block text-xs font-black uppercase tracking-[0.14em] text-slate-400">AI assistance</span>
+                            <span class="mt-1 block text-base font-black text-slate-950">How OpenAI helped</span>
+                        </span>
+                    </span>
+                    <span class="tg-report-method-toggle">
+                        Details
+                        <span class="tg-report-method-chevron" aria-hidden="true">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
+                        </span>
+                    </span>
+                </summary>
+                <div class="tg-report-method-body space-y-4">
+                    @if ($openAiUsed)
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            <span class="font-black text-slate-950">AI assistance: OpenAI</span>
+                            @if ($openAiModel !== '')
+                                <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">Model: {{ $openAiModel }}</span>
+                            @endif
+                            <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Status: Used for this report</span>
+                        </div>
+                        <p class="text-sm leading-6 text-slate-700">OpenAI may help extract visible claim text, summarize supplied evidence, explain the result in plain language, find related public social context when enabled, and identify limitations or missing context.</p>
+                        <p class="text-sm leading-6 text-slate-600">OpenAI is not the final authority and does not replace trusted fact-checkers or official sources. It must not invent sources; the verdict and risk score remain based on TruthGuard's evidence pipeline and trusted-source reconciliation.</p>
+                        @if ((int) ($openAiUsage['total_tokens'] ?? 0) > 0)
+                            <p class="text-xs font-semibold text-slate-500">Token usage recorded for this report: {{ (int) $openAiUsage['total_tokens'] }}</p>
+                        @endif
+                    @else
+                        <div class="flex flex-wrap items-center gap-2 text-sm">
+                            <span class="font-black text-slate-950">AI assistance: OpenAI</span>
+                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">Status: Not used / unavailable</span>
+                        </div>
+                        <p class="text-sm leading-6 text-slate-700">OpenAI explanation was unavailable. This result is based on TruthGuard's local analysis and available verification sources.</p>
+                        <p class="text-sm leading-6 text-slate-600">When enabled, OpenAI may assist with visible claim text, evidence summaries, plain-language explanations, public social context, and missing-context notes. It is not the final authority and never replaces trusted fact-checkers or official sources.</p>
+                    @endif
+                </div>
+            </details>
 
             <div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 text-xs leading-5 text-blue-950">
                 <strong class="font-black">Important:</strong> AI-supported results can be incomplete. Check the original material and cited sources before making consequential decisions.

@@ -106,4 +106,32 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
         $this->assertSame(62, $resolved['fake_score']);
         $this->assertStringContainsString('needs more context', $resolved['explanation_summary']);
     }
+
+    public function test_low_risk_result_without_authoritative_confirmation_is_marked_unconfirmed(): void
+    {
+        $resolver = new TrustedFactCheckVerdictResolver();
+
+        $resolved = $resolver->apply([
+            'verdict' => 'real',
+            'fake_score' => 18,
+            'signals' => [
+                'verification_policy' => [['version' => TrustedFactCheckVerdictResolver::POLICY_VERSION]],
+            ],
+        ], [], [
+            [
+                'name' => 'Facebook social context',
+                'source_type' => 'social_context',
+                'url' => 'https://facebook.com/search/posts?q=claim',
+            ],
+        ]);
+
+        $this->assertSame('review', $resolved['verdict']);
+        $this->assertSame(50, $resolved['fake_score']);
+        $this->assertStringContainsString('No official confirmation', $resolved['analysis_summary']);
+        $this->assertStringContainsString('true or false', $resolved['explanation_summary']);
+        $this->assertSame(
+            'No official confirmation found',
+            $resolved['signals']['verification_status'][0]['rating'],
+        );
+    }
 }

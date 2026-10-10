@@ -17,6 +17,7 @@ class DetectionPipeline
         private readonly LiveVerificationEvidenceService $liveVerificationEvidenceService,
         private readonly DetectionRetentionService $retentionService,
         private readonly OpenAiDetectionReportService $openAiDetectionReportService,
+        private readonly TrustedFactCheckVerdictResolver $trustedFactCheckVerdictResolver,
         private readonly FilipinoNewsClassifier $filipinoNewsClassifier,
         private readonly DeepfakeCnnClassifier $deepfakeCnnClassifier,
     ) {}
@@ -102,6 +103,10 @@ class DetectionPipeline
             'platform' => $platform,
             'openai_extracted_claim' => $openAiExtractedClaim,
         ], $uploadedFile);
+        $analysis = $this->trustedFactCheckVerdictResolver->applyNoOfficialConfirmationFallback(
+            $analysis,
+            is_array($analysis['verification_sources'] ?? null) ? $analysis['verification_sources'] : [],
+        );
         $analysis = $this->markVerificationPolicyVersion($analysis);
 
         return Detection::create([

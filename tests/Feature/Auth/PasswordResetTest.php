@@ -82,7 +82,10 @@ class PasswordResetTest extends TestCase
                 ->assertSet('passwordResetComplete', true)
                 ->assertHasNoErrors();
 
-            $this->assertTrue(Hash::check('password', $user->fresh()->password));
+            $user->refresh();
+
+            $this->assertTrue(Hash::check('password', $user->password));
+            $this->assertNotNull($user->password_set_at);
 
             return true;
         });

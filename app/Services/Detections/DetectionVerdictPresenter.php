@@ -13,16 +13,31 @@ class DetectionVerdictPresenter
     public static function forDetection(Detection $detection): array
     {
         $rating = self::specificRating($detection);
+        $sourceRating = self::sourceRating($detection);
         $verdict = (string) ($detection->verdict ?: 'review');
+        $isUnconfirmed = self::shouldUseNoOfficialConfirmation($detection, $sourceRating);
+
+        if ($isUnconfirmed) {
+            $rating = FactCheckRatingNormalizer::NO_OFFICIAL_CONFIRMATION;
+            $verdict = 'review';
+        }
 
         return self::profileFor($rating, $verdict) + [
             'rating' => $rating,
+            'source_rating' => $sourceRating,
             'verdict' => $verdict,
+            'verdict_label' => self::verdictLabel($verdict),
+            'verdict_meaning' => self::verdictMeaning($sourceRating ?: $rating, $verdict),
+            'is_unconfirmed' => $isUnconfirmed,
         ];
     }
 
     public static function confidencePercent(Detection $detection): int
     {
+        if (self::isNoOfficialConfirmation($detection)) {
+            return 50;
+        }
+
         $fakeScore = (int) $detection->fake_score;
 
         return match ((string) $detection->verdict) {
@@ -33,11 +48,16 @@ class DetectionVerdictPresenter
         };
     }
 
+    public static function isNoOfficialConfirmation(Detection $detection): bool
+    {
+        return self::shouldUseNoOfficialConfirmation($detection, self::sourceRating($detection));
+    }
+
     private static function specificRating(Detection $detection): ?string
     {
         $signals = is_array($detection->signals ?? null) ? $detection->signals : [];
 
-        foreach (['ai_media_assessment', 'trusted_fact_check'] as $group) {
+        foreach (['ai_media_assessment', 'trusted_fact_check', 'verification_status'] as $group) {
             foreach ((array) ($signals[$group] ?? []) as $signal) {
                 if (! is_array($signal)) {
                     continue;
@@ -89,6 +109,94 @@ class DetectionVerdictPresenter
         }
 
         return null;
+    }
+
+    private static function shouldUseNoOfficialConfirmation(Detection $detection, ?string $sourceRating): bool
+    {
+        if ((string) ($detection->verdict ?: 'review') !== 'real' || $sourceRating !== null) {
+            return false;
+        }
+
+        $signals = is_array($detection->signals ?? null) ? $detection->signals : [];
+        $verificationSources = collect((array) ($detection->verification_sources ?? []))
+            ->filter(fn ($source): bool => is_array($source));
+
+        $hasVerificationPipeline = ! empty($signals['verification_policy'])
+            || $verificationSources->contains(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context');
+
+        if (! $hasVerificationPipeline) {
+            return false;
+        }
+
+        return ! $verificationSources->contains(fn (array $source): bool => in_array(
+            ($source['source_type'] ?? null),
+            ['official', 'weather', 'news'],
+            true,
+        ));
+    }
+
+    private static function sourceRating(Detection $detection): ?string
+    {
+        $signals = is_array($detection->signals ?? null) ? $detection->signals : [];
+
+        foreach ((array) ($signals['trusted_fact_check'] ?? []) as $signal) {
+            if (! is_array($signal)) {
+                continue;
+            }
+
+            $rawRating = trim((string) ($signal['rating'] ?? ''));
+            $rating = $rawRating !== ''
+                ? FactCheckRatingNormalizer::normalize($rawRating, (string) ($signal['label'] ?? ''))
+                : '';
+
+            if ($rating !== '' && $rating !== FactCheckRatingNormalizer::REVIEWED) {
+                return $rating;
+            }
+        }
+
+        foreach ((array) ($detection->verification_sources ?? []) as $source) {
+            if (! is_array($source) || ($source['source_type'] ?? null) !== 'fact_check') {
+                continue;
+            }
+
+            $rawRating = trim((string) ($source['rating'] ?? ''));
+            $rating = $rawRating !== '' ? FactCheckRatingNormalizer::normalize($rawRating) : '';
+
+            if ($rating !== '' && $rating !== FactCheckRatingNormalizer::REVIEWED) {
+                return $rating;
+            }
+        }
+
+        return null;
+    }
+
+    private static function verdictLabel(string $verdict): string
+    {
+        return match ($verdict) {
+            'real' => 'Likely Real',
+            'fake' => 'Likely Fake',
+            default => 'Needs Review',
+        };
+    }
+
+    private static function verdictMeaning(?string $rating, string $verdict): string
+    {
+        return match ($rating) {
+            FactCheckRatingNormalizer::CONFIRMED => 'The available trusted source supports this claim, but that is evidence—not absolute proof.',
+            FactCheckRatingNormalizer::FALSE => 'The available trusted source contradicts this claim. Compare its wording, date, and context before sharing.',
+            FactCheckRatingNormalizer::MISLEADING,
+            FactCheckRatingNormalizer::MISCAPTIONED,
+            FactCheckRatingNormalizer::MISSING_CONTEXT,
+            FactCheckRatingNormalizer::PARTLY_FALSE => 'The source-backed finding needs context. Read the linked review before treating the claim as complete or accurate.',
+            FactCheckRatingNormalizer::NO_OFFICIAL_CONFIRMATION => 'No trusted or official source has confirmed this claim yet; an unconfirmed claim is not proof of falsehood.',
+            FactCheckRatingNormalizer::AI_GENERATED_MISINFORMATION,
+            FactCheckRatingNormalizer::MANIPULATED_MEDIA => 'The media-authenticity finding is a warning about the uploaded content, not independent proof of every claim it contains.',
+            default => match ($verdict) {
+                'real' => 'Lower estimated risk based on the available evidence—not certainty or a guarantee that every detail is true.',
+                'fake' => 'Higher estimated risk based on the available evidence. Review the strongest sources before treating this claim as true.',
+                default => 'The available evidence is incomplete or mixed, so review the cited sources before sharing this claim.',
+            },
+        };
     }
 
     /**

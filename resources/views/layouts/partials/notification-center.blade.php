@@ -75,6 +75,7 @@
         toastTimer: null,
         pollTimer: null,
         csrfToken: @js(csrf_token()),
+        notificationStorageScope: @js((string) auth()->id()),
         peekUrl: @js(route('notifications.peek', absolute: false)),
         indexUrl: @js(route('notifications.index', absolute: false)),
         markAllUrl: @js(route('notifications.mark-all-read', absolute: false)),
@@ -117,11 +118,11 @@
         showToastOnce(item) {
             if (!item || !item.id) return;
 
-            const storageKey = `truthguard-notification-toast:${item.id}`;
+            const storageKey = `truthguard-notification-toast:${this.notificationStorageScope}:${item.id}`;
 
             try {
-                if (sessionStorage.getItem(storageKey)) return;
-                sessionStorage.setItem(storageKey, 'shown');
+                if (localStorage.getItem(storageKey)) return;
+                localStorage.setItem(storageKey, 'shown');
             } catch (error) {}
 
             this.toast = item;

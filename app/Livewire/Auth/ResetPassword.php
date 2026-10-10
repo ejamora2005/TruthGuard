@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -63,10 +64,16 @@ class ResetPassword extends Component
                 'password_confirmation' => $this->password_confirmation,
             ],
             function ($user): void {
-                $user->forceFill([
+                $updates = [
                     'password' => Hash::make($this->password),
                     'remember_token' => Str::random(60),
-                ])->save();
+                ];
+
+                if (User::hasPasswordSetAtColumn()) {
+                    $updates['password_set_at'] = now();
+                }
+
+                $user->forceFill($updates)->save();
 
                 event(new PasswordReset($user));
             }

@@ -75,6 +75,7 @@
             if (this.microphoneEnabled) await this.requestPermission('microphone');
             if (this.locationEnabled) await this.requestPermission('location');
             this.files = this.filesEnabled ? 'Ready when you upload' : 'Off';
+            this.finish();
         },
         finish() {
             window.localStorage.setItem('truthguard-device-permissions-complete', '1');
