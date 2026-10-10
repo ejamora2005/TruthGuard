@@ -2,6 +2,286 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Only the login/register partial renders these decorative layers. */
+.tg-auth-card-detailed {
+    position: relative;
+    isolation: isolate;
+    border-color: transparent;
+    background:
+        linear-gradient(180deg, rgba(224, 244, 255, .85), rgba(239, 234, 255, .45) 120px, transparent 210px) padding-box,
+        radial-gradient(ellipse at 100% 100%, #f5f1ff 0%, transparent 35%) padding-box,
+        linear-gradient(#fff, #fff) padding-box,
+        linear-gradient(140deg, #fff 0%, #b3d9ef 35%, #c5c6ec 70%, #fff 100%) border-box;
+    box-shadow: 0 28px 65px -25px rgba(41, 75, 139, .32),
+        0 8px 22px -12px rgba(87, 84, 166, .2), 0 0 0 4px rgba(255, 255, 255, .38),
+        inset 0 1px 0 #fff;
+}
+.tg-auth-card-detailed::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 12%;
+    right: 12%;
+    height: 3px;
+    border-radius: 0 0 100% 100%;
+    background: linear-gradient(90deg, transparent, #67d5ec, #9995ed, transparent);
+    pointer-events: none;
+}
+.tg-auth-card-detailed::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 48px;
+    height: 32px;
+    background: radial-gradient(circle, rgba(103, 132, 197, .22) 1px, transparent 1.5px) 0 0 / 8px 8px;
+    -webkit-mask-image: linear-gradient(225deg, #000, transparent);
+    mask-image: linear-gradient(225deg, #000, transparent);
+    pointer-events: none;
+}
+.tg-auth-card-detailed > a:first-child {
+    background: radial-gradient(ellipse 56px 40px at 50% 32px, rgba(69, 195, 235, .14), transparent);
+}
+.tg-auth-card-detailed > a:first-child img {
+    filter: drop-shadow(0 4px 7px rgba(51, 135, 177, .18));
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, .9), rgba(225, 239, 255, .6));
+    box-shadow: 0 0 0 5px rgba(255, 255, 255, .7), 0 0 0 6px rgba(125, 166, 224, .2),
+        0 8px 20px rgba(79, 127, 187, .16);
+}
+.tg-auth-card-detailed h1 {
+    color: #172c60;
+    text-shadow: 0 1px 0 #fff;
+}
+.tg-auth-card-detailed label {
+    color: #34466a;
+}
+.tg-auth-card-detailed input:not([type="checkbox"]):not([type="hidden"]) {
+    background: linear-gradient(180deg, #f5f8fd, #fff);
+    box-shadow: inset 0 2px 4px rgba(50, 78, 122, .04), 0 2px 5px rgba(77, 100, 148, .035);
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+.tg-auth-card-detailed input:not([type="checkbox"]):focus-visible {
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, .14), inset 0 1px 3px rgba(50, 78, 122, .025);
+}
+.tg-auth-card-detailed button[type="submit"] {
+    background-image: linear-gradient(115deg, #0891b2, #2563eb 55%, #7153de);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 6px 14px rgba(65, 85, 194, .24);
+}
+.tg-auth-card-detailed button[type="submit"]:hover {
+    background-image: linear-gradient(115deg, #0e7490, #1d4ed8 55%, #6543d0);
+}
+.tg-auth-card-detailed a[aria-label="Continue with Google"],
+.tg-auth-card-detailed a[aria-label="Continue with Facebook"] {
+    background: linear-gradient(145deg, #fff, #f0f5ff);
+    box-shadow: inset 0 1px 0 #fff, 0 4px 9px rgba(67, 96, 150, .09);
+}
+.tg-auth-card-detailed a[aria-label="Continue with Google"]:hover,
+.tg-auth-card-detailed a[aria-label="Continue with Facebook"]:hover {
+    background: #eaf2ff;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, .12);
+}
+.tg-auth-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+    background:
+        radial-gradient(ellipse at 50% 48%, #fff 0%, rgba(255, 255, 255, .8) 22%, transparent 62%),
+        linear-gradient(135deg, #dbeaff 0%, #effaff 42%, #e7e0ff 100%);
+}
+.tg-auth-backdrop__glow {
+    position: absolute;
+    inset: -6%;
+    background:
+        radial-gradient(ellipse at 5% 32%, rgba(56, 189, 248, .32), transparent 44%),
+        radial-gradient(ellipse at 96% 74%, rgba(139, 92, 246, .25), transparent 42%),
+        radial-gradient(ellipse at 72% 6%, rgba(34, 211, 238, .18), transparent 38%);
+    animation: tg-auth-glow-drift 32s ease-in-out infinite alternate;
+}
+.tg-auth-backdrop__grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(96, 139, 190, .07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(96, 139, 190, .07) 1px, transparent 1px);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(ellipse at center, transparent 24%, #000 100%);
+    mask-image: radial-gradient(ellipse at center, transparent 24%, #000 100%);
+}
+.tg-auth-backdrop__connections {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    stroke: rgba(87, 130, 211, .22);
+    stroke-width: 1;
+}
+.tg-auth-backdrop__connections circle { fill: #e5f6ff; stroke: rgba(71, 142, 209, .4); }
+.tg-auth-backdrop__connection-secondary { stroke: rgba(87, 130, 211, .09); }
+.tg-auth-backdrop__halo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(78vw, 68rem);
+    aspect-ratio: 1;
+    border: 1px solid rgba(255, 255, 255, .85);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 0 28px rgba(255, 255, 255, .12), 0 0 0 29px rgba(102, 147, 215, .1),
+        0 0 0 88px rgba(255, 255, 255, .1), 0 0 0 89px rgba(255, 255, 255, .45);
+}
+.tg-auth-backdrop__halo::before {
+    content: "";
+    position: absolute;
+    inset: -14px;
+    border-radius: inherit;
+    border: 1px dashed rgba(100, 146, 211, .16);
+}
+.tg-auth-backdrop__halo::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background:
+        radial-gradient(circle at 15% 15%, #fff 0 3px, rgba(119, 189, 241, .3) 4px 8px, transparent 9px),
+        radial-gradient(circle at 85% 85%, #fff 0 3px, rgba(171, 151, 228, .3) 4px 8px, transparent 9px);
+    animation: tg-auth-orbit-turn 100s linear infinite;
+}
+@keyframes tg-auth-orbit-turn {
+    to { transform: rotate(360deg); }
+}
+.tg-auth-backdrop__tile {
+    position: absolute;
+    width: clamp(76px, 8vw, 116px);
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    border: 1px solid rgba(255, 255, 255, .95);
+    border-radius: 26%;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .85), rgba(255, 255, 255, .24));
+    box-shadow: 0 20px 45px -18px rgba(63, 111, 184, .3), inset 0 0 0 5px rgba(255, 255, 255, .18);
+    color: #589dd2;
+    rotate: var(--tile-tilt, -10deg);
+    animation: tg-auth-decoration-drift 16s ease-in-out infinite alternate;
+}
+.tg-auth-backdrop__tile svg {
+    width: 43%;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.tg-auth-backdrop__tile::before {
+    content: "";
+    position: absolute;
+    inset: 7px;
+    border: 1px solid rgba(255, 255, 255, .6);
+    border-radius: 22%;
+}
+.tg-auth-backdrop__tile::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .4;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, .7);
+}
+.tg-auth-backdrop__tile-lines {
+    width: 40%;
+    height: 4px;
+    border-radius: 4px;
+    background: currentColor;
+    opacity: .25;
+    box-shadow: 0 7px 0 -1px currentColor;
+}
+.tg-auth-backdrop__tile--media { left: 9%; top: 23%; }
+.tg-auth-backdrop__tile--play { left: 20%; bottom: 20%; --tile-tilt: 12deg; color: #7b84d6; animation-delay: -8s; }
+.tg-auth-backdrop__tile--globe { right: 10%; top: 20%; --tile-tilt: 12deg; color: #6392d7; animation-delay: -5s; }
+.tg-auth-backdrop__tile--search { right: 18%; bottom: 18%; --tile-tilt: -12deg; color: #9880d4; animation-delay: -12s; }
+.tg-auth-backdrop__orbit {
+    position: absolute;
+    width: clamp(22rem, 48vw, 54rem);
+    aspect-ratio: 1;
+    border: 1px solid rgba(86, 148, 209, .12);
+    border-radius: 50%;
+    animation: tg-auth-decoration-drift 28s ease-in-out infinite alternate;
+}
+.tg-auth-backdrop__orbit::after {
+    content: "";
+    position: absolute;
+    inset: 2.5rem;
+    border: 1px solid rgba(115, 133, 205, .07);
+    border-radius: inherit;
+}
+.tg-auth-backdrop__orbit--one { left: -18%; top: -28%; }
+.tg-auth-backdrop__orbit--two { right: -18%; bottom: -32%; animation-delay: -14s; }
+.tg-auth-backdrop__symbol {
+    position: absolute;
+    width: clamp(2rem, 3.5vw, 3.5rem);
+    height: auto;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: rgba(72, 132, 184, .24);
+    animation: tg-auth-decoration-drift 22s ease-in-out infinite alternate;
+}
+.tg-auth-backdrop__symbol--shield { left: 24%; top: 12%; }
+.tg-auth-backdrop__symbol--check { right: 6%; bottom: 42%; color: rgba(124, 104, 191, .3); animation-delay: -11s; }
+.tg-auth-backdrop__particle {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(70, 157, 210, .25);
+    animation: tg-auth-decoration-drift 18s ease-in-out infinite alternate;
+}
+.tg-auth-backdrop__particle--one { left: 28%; bottom: 19%; }
+.tg-auth-backdrop__particle--two { right: 23%; top: 19%; animation-delay: -6s; }
+.tg-auth-backdrop__particle--three { left: 8%; top: 65%; animation-delay: -12s; }
+@keyframes tg-auth-glow-drift {
+    from { transform: translate3d(-1%, -1%, 0); }
+    to { transform: translate3d(1%, 1%, 0); }
+}
+@keyframes tg-auth-decoration-drift {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(8px, -16px, 0); }
+}
+@media (max-width: 640px) {
+    .tg-auth-backdrop__grid { background-size: 48px 48px; }
+    .tg-auth-backdrop__symbol--shield { left: 3%; top: 9%; }
+    .tg-auth-backdrop__symbol--check { right: 3%; bottom: 8%; }
+    .tg-auth-backdrop__particle--three { display: none; }
+    .tg-auth-backdrop__halo { width: 135vw; }
+    .tg-auth-backdrop__tile { width: 70px; gap: 7px; }
+    .tg-auth-backdrop__tile--media { left: -18px; top: 12%; }
+    .tg-auth-backdrop__tile--globe { right: -18px; top: 5%; }
+    .tg-auth-backdrop__tile--play { left: -15px; bottom: 6%; }
+    .tg-auth-backdrop__tile--search { right: -18px; bottom: 13%; }
+    .tg-auth-backdrop__connections { opacity: .5; }
+}
+@media (min-width: 641px) and (max-width: 1023px) {
+    .tg-auth-backdrop__tile--media { left: 3%; }
+    .tg-auth-backdrop__tile--play { left: 5%; }
+    .tg-auth-backdrop__tile--globe { right: 3%; }
+    .tg-auth-backdrop__tile--search { right: 5%; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tg-auth-backdrop *,
+    .tg-auth-backdrop *::after { animation: none !important; }
+    .tg-auth-card-detailed input { transition: none !important; }
+}
+
 .tg-welcome #pricing .tg-plan-price { font-size: 36px !important; line-height: 1.2 !important; letter-spacing: 0; color: #0f172a; }
 .tg-welcome #pricing .tg-plan-price-block { min-height: 90px; }
 .tg-welcome #pricing .tg-plan-description { min-height: 72px; line-height: 1.6; }
