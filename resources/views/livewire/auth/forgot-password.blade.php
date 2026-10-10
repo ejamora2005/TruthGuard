@@ -10,7 +10,7 @@
     <div class="pointer-events-none absolute left-1/2 top-1/2 h-[20rem] w-[20rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-200/35 [animation:spin_28s_linear_infinite_reverse]"></div>
 
     <div class="relative z-10 w-full max-w-md">
-        <div class="rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-6">
+        <div class="tg-auth-card-detailed rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-6">
             <a href="{{ route('home', absolute: false) }}" wire:navigate class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
                 @if ($logoUrl)
                     <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-16 w-16 object-contain">
