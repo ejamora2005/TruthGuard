@@ -314,18 +314,25 @@ const initLaunchSplash = () => {
         return;
     }
 
-    if (!shouldShowLaunchSplash()) {
+    const authCompleted = splash.dataset.authComplete === '1';
+
+    if (!shouldShowLaunchSplash() && !authCompleted) {
         splash.remove();
         document.documentElement.classList.remove('truthguard-splash-lock');
         return;
     }
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const minimumDuration = prefersReducedMotion ? 120 : Number(splash.dataset.minDuration || 900);
+    const minimumDuration = authCompleted
+        ? (prefersReducedMotion ? 120 : 780)
+        : (prefersReducedMotion ? 120 : Number(splash.dataset.minDuration || 900));
     const startedAt = performance.now();
     let dismissed = false;
 
     splash.classList.add('is-visible');
+    if (authCompleted) {
+        splash.classList.add('is-auth-complete');
+    }
     document.documentElement.classList.add('truthguard-splash-lock');
 
     const dismiss = () => {

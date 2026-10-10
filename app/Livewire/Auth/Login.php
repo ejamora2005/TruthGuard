@@ -51,6 +51,7 @@ class Login extends Component
             ? route('admin.dashboard', absolute: false)
             : route('dashboard', absolute: false);
 
+        request()->session()->flash('truthguard_auth_completed', true);
         $this->redirect($target, navigate: true);
     }
 

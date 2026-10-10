@@ -8,10 +8,13 @@
         : '';
 @endphp
 
+@php($truthguardAuthCompleted = session()->has('truthguard_auth_completed'))
+
 <div
     id="truthguard-app-splash"
     class="truthguard-app-splash"
     data-truthguard-splash
+    data-auth-complete="{{ $truthguardAuthCompleted ? '1' : '0' }}"
     data-min-duration="1050"
     role="status"
     aria-live="polite"
