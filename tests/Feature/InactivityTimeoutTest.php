@@ -110,7 +110,7 @@ class InactivityTimeoutTest extends TestCase
             ->assertSee('Session expiring')
             ->assertSee('Stay Signed In')
             ->assertSee('Log Out')
-            ->assertSee(route('auth.session.keep-alive', absolute: false), false)
+            ->assertSee(json_encode(route('auth.session.keep-alive', absolute: false)), false)
             ->assertSee(route('auth.session.expire', absolute: false), false);
     }
 

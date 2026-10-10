@@ -890,17 +890,15 @@
 
                 .truthguard-settings-modal {
                     align-items: end;
-                    padding: max(0.5rem, env(safe-area-inset-top, 0px)) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+                    padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(0.75rem, env(safe-area-inset-right, 0px)) max(0.75rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
                 }
 
                 .truthguard-settings-modal-dialog {
                     width: 100%;
                     height: 100%;
                     max-height: 100%;
-                    border-right: 0;
-                    border-bottom: 0;
-                    border-left: 0;
-                    border-radius: 1.25rem 1.25rem 0 0;
+                    border: 1px solid rgba(147, 197, 253, 0.65);
+                    border-radius: 1.25rem;
                 }
 
                 .truthguard-settings-modal-title {
@@ -931,8 +929,8 @@
                 .truthguard-settings-page {
                     max-width: 100%;
                     overflow-x: clip;
-                    padding-right: 0.25rem;
-                    padding-left: 0.25rem;
+                    padding-right: 0.75rem;
+                    padding-left: 0.75rem;
                 }
 
                 .truthguard-settings-hero,
@@ -1330,7 +1328,7 @@
                     <div class="min-w-0">
                         <div class="truthguard-settings-eyebrow">
                             <span aria-hidden="true"></span>
-                            <span>TruthGuard OS</span>
+                            <span>TruthGuard</span>
                             <span class="text-slate-500">/</span>
                             <span>System preferences</span>
                         </div>

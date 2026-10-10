@@ -4,10 +4,10 @@
         <main class="tg-public-container">
             <div class="tg-public-heading">
                 <p class="tg-public-eyebrow">The public record</p>
-                <h1>Claim Reviews</h1>
+                <div class="truthguard-search-heading"><h1>Claim Reviews</h1><span id="reviews-search-action"></span></div>
                 <p>Browse recent publisher reviews. Sign in to open a review and explore its evidence.</p>
             </div>
-            <form method="GET" action="{{ route('reviews.index') }}" class="tg-public-filters">
+            <form method="GET" action="{{ route('reviews.index') }}" class="tg-public-filters" data-compact-search="Search reviews" data-compact-search-target="reviews-search-action" data-search-active="{{ $source !== '' ? 'true' : 'false' }}">
                 <label><span>Search reviews</span><input type="search" name="search" value="{{ $search }}" placeholder="Search a claim or publisher" maxlength="150"></label>
                 <label><span>Publisher</span><select name="source" data-tg-select aria-label="Publisher"><option value="">All publishers</option>@foreach ($sources as $publisher)<option value="{{ $publisher }}" @selected($source === $publisher)>{{ $publisher }}</option>@endforeach</select></label>
                 <button type="submit" class="tg-public-submit">Search</button>

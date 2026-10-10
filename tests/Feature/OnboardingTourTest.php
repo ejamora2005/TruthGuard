@@ -38,9 +38,9 @@ class OnboardingTourTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('TruthGuard Tour')
-            ->assertSee('Start here to see the latest public claim reviews, recent activity, and your TruthGuard overview.')
+            ->assertSee('Your dashboard brings together recent activity and public claim reviews. Take a quick tour to find your way around.')
             ->assertSee('data-tour="dashboard"', false)
-            ->assertSee(route('onboarding.complete', absolute: false), false);
+            ->assertSee(\Illuminate\Support\Js::from(route('onboarding.complete', absolute: false))->toHtml(), false);
     }
 
     public function test_existing_user_without_current_onboarding_decision_sees_tour_once(): void
@@ -56,7 +56,7 @@ class OnboardingTourTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('TruthGuard Tour')
-            ->assertSee('Skip Tour');
+            ->assertSee('aria-label="Skip onboarding tour"', false);
     }
 
     public function test_user_with_completed_current_onboarding_does_not_see_tour(): void

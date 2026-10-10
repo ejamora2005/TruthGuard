@@ -1,4 +1,5 @@
 @extends('layouts.auth-modern')
+@section('body_class', 'truthguard-policy-page')
 
 @php
     $logoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
@@ -6,7 +7,7 @@
 @endphp
 
 @section('content')
-    <main class="relative min-h-dvh overflow-x-hidden bg-slate-100 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
+    <main class="truthguard-policy-main relative min-h-dvh overflow-x-hidden bg-slate-100 px-4 py-8 text-slate-900 sm:px-6 lg:px-8">
         <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_52%,#e8f1ff_100%)]"></div>
         <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(14,165,233,0.2)_0%,transparent_32%),radial-gradient(circle_at_88%_78%,rgba(37,99,235,0.16)_0%,transparent_38%)]"></div>
 
@@ -34,9 +35,11 @@
                 </div>
             </header>
 
-            <section class="rounded-[28px] border border-slate-200 bg-white/92 p-5 shadow-[0_22px_60px_rgba(15,23,42,0.08)] sm:p-8">
+            @include('privacy.partials.policy-navigation')
+            <section class="truthguard-policy-document rounded-[28px] border border-slate-200 bg-white/92 p-5 shadow-[0_22px_60px_rgba(15,23,42,0.08)] sm:p-8">
                 @include('privacy.partials.policy-content', ['policyVersion' => $policyVersion])
             </section>
+            <a href="{{ auth()->check() ? route('dashboard') : route('home') }}" class="truthguard-policy-back">Back to TruthGuard &rarr;</a>
         </div>
     </main>
 @endsection

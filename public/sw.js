@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'truthguard-static';
-const CACHE_VERSION = '2026-10-10.1';
+const CACHE_VERSION = '2026-10-10.3';
 const STATIC_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -47,7 +47,8 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(STATIC_CACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
+      // Optional branding failures must not discard the offline document.
+      .then((cache) => Promise.allSettled(PRECACHE_URLS.map((url) => cache.add(url))))
       .catch(() => undefined)
   );
 
@@ -98,7 +99,14 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isSafeStaticRequest(request, requestUrl)) {
-    event.respondWith(staleWhileRevalidate(request));
+    // Keep revalidation alive even when respondWith returns a cached file early.
+    const refresh = fetch(request).catch(() => undefined);
+    const update = caches.open(STATIC_CACHE).then(async (cache) => {
+      const response = await refresh;
+      if (response?.ok && response.type === 'basic') await cache.put(request, response.clone());
+    }).catch(() => undefined);
+    event.waitUntil(update);
+    event.respondWith(staleWhileRevalidate(request, refresh));
   }
 });
 
@@ -133,7 +141,7 @@ async function networkOnlyNavigation(request) {
     return await fetch(request);
   } catch (error) {
     return (
-      (await caches.match(OFFLINE_URL)) ||
+      (await caches.match(OFFLINE_URL).catch(() => undefined)) ||
       new Response('TruthGuard is offline. Reconnect and try again.', {
         status: 503,
         headers: { 'Content-Type': 'text/plain; charset=utf-8' }
@@ -142,19 +150,10 @@ async function networkOnlyNavigation(request) {
   }
 }
 
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(STATIC_CACHE);
-  const cachedResponse = await cache.match(request);
-
-  const networkResponsePromise = fetch(request)
-    .then((response) => {
-      if (response && response.ok && response.type === 'basic') {
-        cache.put(request, response.clone());
-      }
-
-      return response;
-    })
-    .catch(() => undefined);
+async function staleWhileRevalidate(request, networkResponsePromise) {
+  // A storage/quota failure should never block an otherwise working network.
+  const cachedResponse = await caches.open(STATIC_CACHE)
+    .then(cache => cache.match(request)).catch(() => undefined);
 
   return (
     cachedResponse ||
@@ -186,20 +185,23 @@ function safeNotificationUrl(value) {
 // This cookie-bound endpoint also works when no page/login session is active.
 async function authorizedNotification(id) {
   if (!/^[a-f0-9-]{36}$/i.test(id || '')) return null;
-  try {
-    const response = await fetch(`/push/deliveries/${id}`, {
-      credentials: 'include', cache: 'no-store', redirect: 'error',
-      headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000)
-    });
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
-    console.warn('TruthGuard push validation unavailable; notification remains in the in-app history.');
-    return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await fetch(`/push/deliveries/${id}`, {
+        credentials: 'include', cache: 'no-store', redirect: 'error',
+        headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000)
+      });
+      if (response.ok) return await response.json();
+      // Revocation, wrong account/device, and other permanent failures stay final.
+      if (response.status !== 408 && response.status < 500) return null;
+    } catch { /* A single retry handles brief connectivity/server interruptions. */ }
   }
+  console.warn('TruthGuard push validation unavailable; notification remains in the in-app history.');
+  return null;
 }
 
 let pushSequence = Promise.resolve();
+const shownThisWorker = new Set();
 self.addEventListener('push', (event) => {
   let payload;
   try { payload = event.data?.json(); } catch { return; }
@@ -209,9 +211,11 @@ self.addEventListener('push', (event) => {
   pushSequence = pushSequence.catch(() => {}).then(async () => {
     const data = await authorizedNotification(incoming.notification_id);
     if (!data || (incoming.subscription_id && incoming.subscription_id !== data.subscription_id)) return;
-    const receipts = await caches.open('truthguard-push-receipts-v1');
+    let receipts;
+    try { receipts = await caches.open('truthguard-push-receipts-v1'); } catch { /* Storage must not block an authorized alert. */ }
     const key = new URL(`/push/receipts/${data.notification_id}`, self.location.origin).href;
-    if (await receipts.match(key)) return;
+    if (shownThisWorker.has(key)) return;
+    try { if (receipts && await receipts.match(key)) return; } catch { /* Use the notification tag and in-memory receipt. */ }
     await self.registration.showNotification(data.title, {
       body: data.body, icon: '/pwa/icon-192.png', badge: '/pwa/icon-32.png',
       tag: `truthguard-${data.notification_id}`, renotify: false,
@@ -219,9 +223,15 @@ self.addEventListener('push', (event) => {
       data: { url: safeNotificationUrl(data.url), notificationId: data.notification_id },
     });
     // Store IDs only, never notification text or private URLs, across worker restarts.
-    await receipts.put(key, new Response('shown'));
-    const keys = await receipts.keys();
-    await Promise.all(keys.slice(0, Math.max(0, keys.length - 256)).map(key => receipts.delete(key)));
+    shownThisWorker.add(key);
+    if (shownThisWorker.size > 256) shownThisWorker.delete(shownThisWorker.values().next().value);
+    try {
+      if (receipts) {
+        await receipts.put(key, new Response('shown'));
+        const keys = await receipts.keys();
+        await Promise.all(keys.slice(0, Math.max(0, keys.length - 256)).map(key => receipts.delete(key)));
+      }
+    } catch { /* Quota/storage failures must not prevent open clients updating. */ }
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     windows.forEach(client => client.postMessage({ type: 'TRUTHGUARD_NOTIFICATION' }));
   });

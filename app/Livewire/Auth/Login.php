@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Auth;
 
+use App\Services\Auth\RememberedLogin;
 use App\Services\Auth\SessionTimeoutManager;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -15,6 +16,8 @@ class Login extends Component
     public string $email = '';
 
     public string $password = '';
+
+    public bool $remember = false;
 
     protected function rules(): array
     {
@@ -43,6 +46,7 @@ class Login extends Component
             return;
         }
 
+        app(RememberedLogin::class)->establish(Auth::user(), $this->remember);
         request()->session()->regenerate();
         app(SessionTimeoutManager::class)->touch(request());
         request()->session()->forget('url.intended');

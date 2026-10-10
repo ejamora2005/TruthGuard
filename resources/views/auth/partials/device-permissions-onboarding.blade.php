@@ -2,6 +2,7 @@
 <div
     x-data="{
         open: false,
+        completed: false,
         working: false,
         message: '',
         microphoneEnabled: true,
@@ -11,9 +12,9 @@
         location: 'Not requested',
         files: 'Ready when you upload',
         init() {
-            if (window.localStorage.getItem('truthguard-device-permissions-complete') !== '1') {
-                window.setTimeout(() => { this.open = true; }, 450);
-            }
+            this.completed = false;
+            try { this.completed = window.localStorage.getItem('truthguard-device-permissions-complete') === '1'; } catch (_) {}
+            if (!this.completed && !this.$el.dataset.waitForTour) this.open = true;
         },
         async togglePermission(type) {
             if (type === 'files') {
@@ -78,10 +79,13 @@
             this.finish();
         },
         finish() {
-            window.localStorage.setItem('truthguard-device-permissions-complete', '1');
+            this.completed = true;
+            try { window.localStorage.setItem('truthguard-device-permissions-complete', '1'); } catch (_) {}
             this.open = false;
         }
     }"
+    data-wait-for-tour="{{ ($showOnboardingTour ?? false) ? 'true' : '' }}"
+    @truthguard:tour-finished.window="if (!completed && !$event.detail?.skipped) open = true"
     x-show="open"
     x-cloak
     x-transition.opacity
@@ -95,13 +99,13 @@
         x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="translate-y-4 opacity-0 sm:scale-95"
         x-transition:enter-end="translate-y-0 opacity-100 sm:scale-100"
-        class="w-full max-w-lg overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-2xl shadow-slate-950/25"
+        class="w-full max-w-lg max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-[28px] border border-white/70 bg-white shadow-2xl shadow-slate-950/25"
         @click.outside="finish()"
     >
-        <div class="bg-gradient-to-br from-slate-950 via-blue-950 to-violet-950 px-5 py-5 text-white sm:px-7 sm:py-6">
-            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-200">One-time setup</p>
-            <h2 id="truthguard-permissions-title" class="mt-2 text-xl font-black sm:text-2xl">Set up your TruthGuard workspace</h2>
-            <p class="mt-2 text-sm leading-6 text-blue-100">Allow the tools you want to use for voice input, location-based checks, and evidence uploads.</p>
+        <div class="border-b border-slate-100 bg-slate-50 px-5 py-5 text-slate-900 sm:px-7 sm:py-6">
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">Optional setup</p>
+            <h2 id="truthguard-permissions-title" class="mt-2 text-xl font-black sm:text-2xl">Choose your tools</h2>
+            <p class="mt-2 text-sm leading-6 text-slate-600">Enable only what you need. You can also allow access later when using a tool.</p>
         </div>
 
         <div class="space-y-3 p-5 sm:p-7">
@@ -121,8 +125,8 @@
             <p x-show="message" x-text="message" class="pt-1 text-xs leading-5 text-slate-500"></p>
 
             <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-                <button type="button" @click="finish()" class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50">Do this later</button>
-                <button type="button" @click="allowAll()" :disabled="working" class="rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-500/20 disabled:opacity-60" x-text="working ? 'Requesting…' : 'Allow selected'"></button>
+                <button type="button" @click="finish()" class="min-h-11 rounded-full border border-slate-300 px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50">Do this later</button>
+                <button type="button" @click="allowAll()" :disabled="working" class="min-h-11 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-blue-500/20 disabled:opacity-60" x-text="working ? 'Requesting…' : 'Allow selected'"></button>
             </div>
         </div>
     </div>

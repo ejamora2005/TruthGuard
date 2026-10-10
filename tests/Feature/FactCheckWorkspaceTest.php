@@ -213,8 +213,8 @@ class FactCheckWorkspaceTest extends TestCase
         $this->assertStringContainsString('Submitted Evidence', $html);
         $this->assertStringContainsString('/storage/detections/report-evidence.jpg', $html);
         $this->assertStringContainsString('View full image', $html);
-        $this->assertStringContainsString('.tg-ai-report .tg-ai-hero { order: 1; }', $html);
-        $this->assertStringContainsString('.tg-ai-report .tg-report-evidence { order: 2; }', $html);
+        $this->assertStringContainsString('.tg-ai-report .tg-ai-hero { order: 2; }', $html);
+        $this->assertStringContainsString('.tg-ai-report .tg-report-evidence { order: 1; }', $html);
         $this->assertStringContainsString('Claim being checked', $html);
         $this->assertStringContainsString('A claim submitted for verification.', $html);
         $this->assertStringContainsString('Source result', $html);

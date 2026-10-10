@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Forms;
 
+use App\Services\Auth\RememberedLogin;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,6 +18,8 @@ class LoginForm extends Form
 
     #[Validate('required|string')]
     public string $password = '';
+
+    public bool $remember = false;
 
     /**
      * Attempt to authenticate the request's credentials.
@@ -35,6 +38,7 @@ class LoginForm extends Form
             ]);
         }
 
+        app(RememberedLogin::class)->establish(Auth::user(), $this->remember);
         RateLimiter::clear($this->throttleKey());
     }
 

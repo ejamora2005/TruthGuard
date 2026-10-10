@@ -9,16 +9,19 @@
     <h3 class="mt-3 font-medium text-gray-900 dark:text-white">Enable TruthGuard Notifications</h3>
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Receive alerts when your analysis is complete or when important fact-check updates are available.</p>
     <div class="truthguard-push-device-actions mt-4 flex flex-wrap gap-3">
-        <button type="button" data-push-enable disabled class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none">Enable Notifications</button>
-        <button type="button" data-push-later class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">Not Now</button>
-        <button type="button" data-push-disable class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">Disable on this device</button>
+        <button type="button" data-push-enable disabled class="truthguard-push-button truthguard-push-button-primary inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none">Enable Notifications</button>
+        <button type="button" data-push-later class="truthguard-push-button truthguard-push-button-secondary inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">Not Now</button>
+        <button type="button" data-push-disable class="truthguard-push-button truthguard-push-button-secondary inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">Disable on this device</button>
     </div>
     <p data-push-status role="status" aria-live="polite" class="truthguard-push-status mt-3 text-sm text-gray-600 dark:text-gray-300">Loading notification settings...</p>
     <div class="truthguard-push-preference-grid mt-4 grid gap-3 sm:grid-cols-2">
         @foreach (['push_enabled' => 'Push Notifications (all devices)', 'analysis_results' => 'Analysis Results', 'fact_check_updates' => 'Fact-Check Updates', 'new_fact_checks' => 'New Fact-Checks', 'system_notifications' => 'System Notifications'] as $key => $label)
             <label class="truthguard-push-preference-row flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700 dark:text-white">
-                <input type="checkbox" data-preference="{{ $key }}" class="truthguard-push-preference-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                <span>{{ $label }}</span>
+                <span class="truthguard-push-preference-label">{{ $label }}</span>
+                <span class="truthguard-push-toggle">
+                    <input type="checkbox" role="switch" data-preference="{{ $key }}" class="truthguard-push-preference-checkbox">
+                    <span class="truthguard-push-toggle-track" aria-hidden="true"></span>
+                </span>
             </label>
         @endforeach
     </div>
@@ -27,22 +30,9 @@
         <span class="truthguard-push-desktop-hint">Use Enable Notifications to subscribe this device.</span>
     </p>
     <div class="truthguard-push-actions mt-4 flex flex-wrap gap-3">
-        <button type="button" data-push-save class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-70">
+        <button type="button" data-push-save class="truthguard-push-button truthguard-push-button-primary inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-70">
             <span class="truthguard-push-save-label-desktop">Save notification preferences</span>
             <span class="truthguard-push-save-label-mobile hidden">Save Preferences</span>
         </button>
-        <button type="button" data-push-test hidden class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">Send Test Notification</button>
-    </div>
-    <p data-push-status data-push-test-feedback hidden role="status" aria-live="polite" aria-atomic="true" class="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm leading-6 text-blue-900"></p>
-    <label class="truthguard-push-delay-row mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-        <input type="checkbox" data-push-test-delay class="rounded border-gray-300 text-blue-600">
-        <span>Send the test after 15 seconds so I can close the app window.</span>
-    </label>
-    <div class="mt-5 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Still no alert?</h3>
-        <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Check whether this phone can display a notification. This device-only test does not use the server delivery service.</p>
-        <button type="button" data-push-device-test disabled class="mt-3 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 disabled:opacity-50">Test device alert</button>
-        <p data-push-device-status hidden role="status" aria-live="polite" class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"></p>
-        <noscript><p class="mt-2 text-sm">JavaScript must be enabled to test notifications.</p></noscript>
     </div>
 </section>

@@ -42,11 +42,7 @@ new class extends Component
     }
 }; ?>
 
-@php
-    $authUser = auth()->user();
-    $lastLogin = $authUser?->last_login_at?->format('M j, Y g:i A') ?? 'Not recorded';
-    $createdDate = $authUser?->created_at?->format('M j, Y') ?? 'Not recorded';
-@endphp
+
 
 <section
     x-show="activeSection === 'security'"
@@ -92,60 +88,8 @@ new class extends Component
     }"
     x-on:password-updated.window="saved = true; passwordValue = ''; clearTimeout(timer); timer = setTimeout(() => saved = false, 2600)"
 >
-    <div class="truthguard-security-layout grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
-        <aside class="truthguard-security-summary space-y-4">
-            <div class="overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 text-white shadow-[0_24px_70px_rgba(37,99,235,0.18)]">
-                <div class="px-5 py-5">
-                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-50/80">Security</p>
-                    <div class="mt-4 flex items-end justify-between gap-4">
-                        <div>
-                            <p class="text-4xl font-black tracking-tight">85%</p>
-                            <p class="mt-1 text-sm font-medium text-blue-50">Security score</p>
-                        </div>
-                        <span class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/20 text-white">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z"></path>
-                            </svg>
-                        </span>
-                    </div>
-                </div>
+    <div class="truthguard-security-layout grid gap-6">
 
-                <div class="border-t border-white/20 px-5 py-4">
-                    <div class="flex items-center justify-between gap-3 rounded-2xl border border-white/20 bg-white/15 px-4 py-3">
-                        <span class="text-sm font-medium text-blue-50">Password</span>
-                        <span class="rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/25">Protected</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-[22px] border border-white/80 bg-white/85 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-                <div class="flex items-start gap-3">
-                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l3.75 2.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"></path>
-                        </svg>
-                    </span>
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Last login</p>
-                        <p class="mt-2 text-sm font-semibold leading-6 text-slate-900">{{ $lastLogin }}</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="rounded-[22px] border border-white/80 bg-white/85 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-                <div class="flex items-start gap-3">
-                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3.75v2.5M17.25 3.75v2.5M3.75 9.75h16.5M5.25 5.25h13.5a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-12a1.5 1.5 0 0 1 1.5-1.5Z"></path>
-                        </svg>
-                    </span>
-                    <div>
-                        <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Account created</p>
-                        <p class="mt-2 text-sm font-semibold text-slate-900">{{ $createdDate }}</p>
-                    </div>
-                </div>
-            </div>
-        </aside>
 
         <form id="truthguard-password-form" wire:submit="updatePassword" class="truthguard-settings-primary-form overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
             <div class="flex items-center gap-3 border-b border-slate-200/70 bg-white/65 px-5 py-4">
@@ -155,8 +99,8 @@ new class extends Component
                     </svg>
                 </span>
                 <div>
-                    <h2 class="text-base font-black text-slate-950">Password and activity</h2>
-                    <p class="mt-1 text-sm leading-6 text-slate-500">Update credentials and review recent account security context.</p>
+                    <h2 class="text-base font-black text-slate-950">Update your password</h2>
+                    <p class="mt-1 text-sm leading-6 text-slate-500">Choose a strong password to keep your account secure.</p>
                 </div>
             </div>
 
@@ -297,7 +241,7 @@ new class extends Component
 
             <div class="truthguard-settings-action-footer flex flex-col gap-3 border-t border-slate-200/70 bg-white/65 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <p x-show="saved" x-cloak class="text-sm font-semibold text-emerald-600">Password updated.</p>
-                <p x-show="!saved" class="text-sm text-slate-500">Use a unique password for your TruthGuard account.</p>
+
 
                 <button
                     type="submit"

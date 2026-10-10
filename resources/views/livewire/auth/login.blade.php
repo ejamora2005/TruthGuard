@@ -8,7 +8,7 @@
 
     <div class="relative z-10 w-full max-w-md">
         <div
-            x-data="{ authLoading: null }"
+            x-data="{ authLoading: null, rememberDevice: @js((bool) old('remember', false)) }"
             class="truthguard-auth-card tg-auth-card-detailed rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-6"
         >
             <a href="{{ route('home') }}" class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
@@ -122,6 +122,11 @@
                     @enderror
                 </div>
 
+                <label class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">
+                    <input type="checkbox" name="remember" value="1" x-model="rememberDevice" @checked(old('remember')) class="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" style="width:20px;height:20px;min-height:20px;flex:none">
+                    <span>Keep me signed in for 30 days<span class="block text-xs text-slate-500">Use only on your personal device.</span></span>
+                </label>
+
                 <div class="flex items-center justify-end text-sm">
                     @if (Route::has('password.request'))
                         <a href="{{ route('password.request') }}" class="font-medium text-cyan-700 transition hover:text-cyan-600">Forgot password?</a>
@@ -158,6 +163,7 @@
             <div class="flex items-center justify-center gap-3">
                 <a
                     href="{{ route('google.redirect') }}"
+                    x-bind:href="@js(route('google.redirect')) + '?remember=' + (rememberDevice ? '1' : '0')"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
                     aria-label="Continue with Google"
                     x-on:click="if (authLoading) { $event.preventDefault(); return; } authLoading = 'google'"
@@ -181,6 +187,7 @@
 
                 <a
                     href="{{ route('facebook.redirect') }}"
+                    x-bind:href="@js(route('facebook.redirect')) + '?remember=' + (rememberDevice ? '1' : '0')"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
                     aria-label="Continue with Facebook"
                     x-on:click="if (authLoading) { $event.preventDefault(); return; } authLoading = 'facebook'"

@@ -2,6 +2,7 @@ import { getTruthGuardWorker } from './service-worker';
 
 // Runtime configuration only: server credentials never enter the frontend bundle.
 let settings, messaging, sdk, registrationPending, initializationPending;
+let lastInitialization = 0;
 const boundPanels = new WeakSet();
 const deviceDisabled = () => { try { return localStorage.getItem('truthguard:push-disabled') === '1'; } catch { return false; } };
 const setDeviceDisabled = (disabled) => { try { localStorage.setItem('truthguard:push-disabled', disabled ? '1' : '0'); } catch { /* Storage unavailable. */ } };
@@ -85,11 +86,13 @@ const render = () => panels().forEach(panel => {
     const enable = panel.querySelector('[data-push-enable]');
     enable.disabled = !settings.enabled || !supported() || Notification.permission === 'denied';
     enable.textContent = settings.subscribed && !settings.deviceDisabled && settings.preferences.push_enabled ? 'Refresh Notifications' : 'Enable Notifications';
-    panel.querySelector('[data-push-test]').hidden = !settings.canTest;
+    const testButton = panel.querySelector('[data-push-test]');
+    if (testButton) testButton.hidden = !settings.canTest;
 });
 const automaticRegistration = () => settings.enabled && supported() && Notification.permission === 'granted'
     && settings.preferences.push_enabled && !settings.deviceDisabled && !deviceDisabled();
 async function initialize() {
+    lastInitialization = Date.now();
     bindDeviceTests();
     if (!document.querySelector('meta[name="truthguard-push-settings"]')) return;
     try {
@@ -144,7 +147,7 @@ async function initialize() {
                 if (automaticRegistration()) await register();
                 status(preferences.push_enabled && !settings.subscribed ? 'Preferences saved. Click Enable Notifications to subscribe this device.' : 'Notification preferences saved for your account.');
             }));
-            panel.querySelector('[data-push-test]').addEventListener('click', () => run(async () => {
+            panel.querySelector('[data-push-test]')?.addEventListener('click', () => run(async () => {
                 const button = panel.querySelector('[data-push-test]');
                 const feedback = panel.querySelector('[data-push-test-feedback]');
                 if (feedback) feedback.hidden = false;
@@ -208,3 +211,15 @@ document.addEventListener('livewire:navigated', () => {
 navigator.serviceWorker?.addEventListener('message', event => {
     if (event.data?.type === 'TRUTHGUARD_NOTIFICATION') window.dispatchEvent(new Event('truthguard:notification'));
 });
+
+// Recover after reconnects and suspended/restored PWA windows without keeping a
+// page alive or asking for permission again. Background delivery uses /sw.js.
+const refreshSubscription = (force = false) => {
+    if (document.visibilityState === 'hidden' || navigator.onLine === false) return;
+    if (!force && Date.now() - lastInitialization < 60000) return;
+    initializeOnce();
+};
+window.addEventListener('online', () => refreshSubscription(true));
+window.addEventListener('pageshow', event => { if (event.persisted) refreshSubscription(true); });
+document.addEventListener('visibilitychange', () => refreshSubscription());
+window.addEventListener('focus', () => refreshSubscription());

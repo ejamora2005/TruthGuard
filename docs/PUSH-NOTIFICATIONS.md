@@ -1,5 +1,11 @@
 # TruthGuard push notifications
 
+The regular notification settings UI now shows only Enable, Not Now, Disable,
+and Save Preferences, with rounded action buttons. Both diagnostic test buttons
+and the delayed-test checkbox were removed at the owner's request after device
+delivery was confirmed. Diagnostic endpoints remain available; the button-based
+instructions below describe the earlier troubleshooting UI.
+
 ## Opening a notification
 
 The notification bell, notification list, and authorized push clicks open
@@ -336,3 +342,9 @@ For Windows and Android separately, record: foreground popup, minimized popup,
 15-second delayed popup after closing the window, notification click target, offline
 fallback, logout/account-switch suppression, and disabled-permission feedback.
 No code-only test substitutes for these device checks.
+
+### Automatic subscription recovery
+
+Once permission is granted and push is enabled, the shared frontend refreshes the device subscription on reconnect and back-forward-cache restoration. Returning to a visible/focused app also rechecks registration, at most once per minute. This works without opening notification settings and never prompts for permission automatically or overrides a disabled device. Background alerts use the root service worker; no open page or previous notification is required.
+
+The worker retries temporary delivery-authorization failures once. Receipt-cache failures no longer prevent an authorized notification from showing. Account ownership, revocation, and category preferences are still checked before display. Unavailable authorization still fails closed; the notification remains available in the in-app inbox. A running production queue worker and enabled Android/browser notifications remain required; these recovery checks do not guarantee OS banner display.

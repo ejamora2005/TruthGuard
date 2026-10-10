@@ -1,4 +1,5 @@
 @extends('layouts.auth-modern')
+@section('body_class', 'truthguard-policy-page')
 
 @php
     $logoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
@@ -8,7 +9,7 @@
 @endphp
 
 @section('content')
-    <main class="relative min-h-dvh overflow-x-hidden bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 lg:px-8">
+    <main class="truthguard-policy-main relative min-h-dvh overflow-x-hidden bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 lg:px-8">
         <style>
             [x-cloak] {
                 display: none !important;
@@ -158,7 +159,8 @@
                             </div>
                         </div>
 
-                        <div class="tg-consent-policy mt-5 max-h-[58dvh] overflow-y-auto rounded-[20px] border border-slate-200 bg-white p-5 sm:p-6">
+                        @include('privacy.partials.policy-navigation')
+                        <div class="truthguard-policy-document tg-consent-policy mt-5 max-h-[58dvh] overflow-y-auto rounded-[20px] border border-slate-200 bg-white p-5 sm:p-6">
                             @include('privacy.partials.policy-content', ['policyVersion' => $policyVersion])
                         </div>
                     </section>

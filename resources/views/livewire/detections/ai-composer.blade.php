@@ -957,8 +957,9 @@ new class extends Component
             display: block;
             width: min(34rem, calc(100vw - 2rem)) !important;
             max-height: min(40rem, calc(100svh - 2rem));
-            overflow: hidden !important;
-            border-radius: 1.75rem !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain;
+            border-radius: 1.5rem !important;
             border-color: rgba(147, 197, 253, 0.42) !important;
             background:
                 linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)),
@@ -1066,8 +1067,8 @@ new class extends Component
 
         .truthguard-uploader-close {
             display: inline-flex;
-            height: 2.5rem;
-            width: 2.5rem;
+            height: 2.75rem;
+            width: 2.75rem;
             flex: 0 0 auto;
             align-items: center;
             justify-content: center;
@@ -1106,12 +1107,13 @@ new class extends Component
         .truthguard-uploader-dropzone {
             position: relative;
             display: flex;
-            min-height: clamp(9.75rem, 18vw, 11.25rem);
+            min-height: 11rem;
+            padding: 1.25rem 1rem;
             width: 100%;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 0.72rem;
+            gap: 0.35rem;
             overflow: hidden;
             border-radius: 1.18rem;
             border: 1.5px dashed rgba(37, 99, 235, 0.38);
@@ -1149,8 +1151,10 @@ new class extends Component
             position: relative;
             z-index: 1;
             display: inline-flex;
-            height: 4.15rem;
-            width: 4.15rem;
+            height: 3rem;
+            width: 3rem;
+            flex-shrink: 0;
+            margin-bottom: 0.5rem;
             align-items: center;
             justify-content: center;
             border-radius: 9999px;
@@ -1158,7 +1162,7 @@ new class extends Component
                 radial-gradient(circle at 35% 24%, rgba(255, 255, 255, 0.94), transparent 34%),
                 linear-gradient(135deg, #60a5fa, #2563eb 56%, #7c3aed);
             color: #fff;
-            box-shadow: 0 20px 36px rgba(37, 99, 235, 0.24), 0 0 0 9px rgba(219, 234, 254, 0.72);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.18);
         }
 
         .truthguard-uploader-cloud svg,
@@ -1176,6 +1180,7 @@ new class extends Component
 
         .truthguard-upload-type-button {
             display: inline-flex;
+            min-height: 3rem;
             min-width: 0;
             align-items: center;
             justify-content: center;
@@ -1185,7 +1190,7 @@ new class extends Component
             background: rgba(255, 255, 255, 0.76);
             padding: 0.64rem 0.56rem;
             color: #475569;
-            font-size: 0.74rem;
+            font-size: 0.875rem;
             font-weight: 800;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
             transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
@@ -1202,6 +1207,42 @@ new class extends Component
             height: 0.88rem;
             width: 0.88rem;
             flex: 0 0 auto;
+        }
+
+        .truthguard-attachment-popover button:focus-visible {
+            outline: 3px solid #60a5fa;
+            outline-offset: 3px;
+        }
+
+        .truthguard-attachment-popover .truthguard-drive-status span {
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 640px) {
+            .truthguard-attachment-popover {
+                width: min(26rem, calc(100vw - 2rem)) !important;
+                max-height: calc(100dvh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+            }
+
+            .truthguard-uploader-head {
+                gap: 0.65rem;
+                padding: 0 0 1rem;
+            }
+
+            .truthguard-uploader-mark {
+                display: none;
+            }
+
+            .truthguard-uploader-head > div > p:first-child {
+                font-size: 1.125rem;
+                line-height: 1.4;
+            }
+
+            .truthguard-uploader-head > div > p:last-child {
+                font-size: 0.8125rem;
+                font-weight: 500;
+            }
         }
 
         .truthguard-upload-type-button-google svg {
@@ -1497,7 +1538,7 @@ new class extends Component
         .truthguard-guided-prompt-row {
             display: flex;
             flex-wrap: wrap;
-            align-items: flex-end;
+            align-items: center;
             justify-content: center;
             gap: 0.45rem 1.25rem;
         }
@@ -1505,18 +1546,6 @@ new class extends Component
         .truthguard-guided-prompt-card {
             width: auto;
             max-width: 15rem;
-        }
-
-        @media (min-width: 640px) {
-            .truthguard-guided-prompt-card:first-child,
-            .truthguard-guided-prompt-card:last-child {
-                transform: translateY(0.28rem);
-            }
-
-            .truthguard-guided-prompt-card:first-child:hover,
-            .truthguard-guided-prompt-card:last-child:hover {
-                transform: translateY(-0.05rem);
-            }
         }
 
         @media (min-width: 640px) {
@@ -3214,6 +3243,90 @@ new class extends Component
                 opacity: 0;
             }
         }
+
+        /* A centered progress card leaves the surrounding page visible and interactive. */
+        .truthguard-processing-blur {
+            position: fixed; inset: 0; z-index: 2147483619;
+            background: rgba(225, 235, 248, 0.32);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .truthguard-prompt-help {
+            min-height: 22px; text-align: center; padding: 2px 8px;
+            font-size: 12px; line-height: 18px; color: #64748b;
+        }
+        @media (hover: none) {
+            .truthguard-prompt-help:has(> span[style*="display: none"]) { min-height: 0; padding: 0; }
+        }
+        .truthguard-inline-progress {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            translate: -50% -50%;
+            z-index: 2147483620;
+            width: min(360px, calc(100vw - 32px));
+            max-height: calc(100dvh - 32px);
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+            border: 1px solid #dbeafe;
+            border-radius: 20px;
+            padding: 12px 16px 16px;
+            background: #f8fbff;
+        }
+        .truthguard-inline-progress .truthguard-verify-panel {
+            width: 100%;
+            min-height: 0;
+        }
+        .truthguard-inline-progress .truthguard-verify-loader { zoom: 0.5; }
+        .truthguard-inline-progress .truthguard-verify-panel .mt-5 {
+            margin-top: 0 !important;
+            gap: 6px;
+        }
+        .truthguard-inline-progress .truthguard-verify-title { font-size: 14px; }
+        .truthguard-inline-progress .truthguard-verify-copy { font-size: 12px; font-weight: 500; }
+        .truthguard-progress-header { display: flex; align-items: center; gap: 4px; }
+        .truthguard-progress-label { flex: 1; font-size: 13px; font-weight: 700; color: #334155; }
+        .truthguard-progress-control {
+            display: inline-flex; align-items: center; justify-content: center;
+            flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%;
+            color: #475569; background: white; font-size: 24px;
+        }
+        .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
+        .truthguard-progress-restore {
+            display: flex; align-items: center; justify-content: center;
+            width: fit-content; max-width: 100%; min-height: 44px;
+            margin: 0 auto; padding: 8px 14px; border-radius: 999px;
+            background: #eff6ff; color: #1d4ed8; font-size: 12px;
+        }
+        .truthguard-progress-control:focus-visible,
+        .truthguard-progress-restore:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+        /* Keep upload controls legible beside a selected attachment. */
+        .truthguard-detection-composer .truthguard-attachment-trigger {
+            flex-shrink: 0;
+            min-width: 44px !important; min-height: 44px !important;
+            color: #1d4ed8 !important;
+            border-color: #bfdbfe !important;
+        }
+        .truthguard-detection-composer .truthguard-mobile-inline-submit {
+            flex-shrink: 0;
+            min-width: 44px !important; min-height: 44px !important;
+        }
+        .truthguard-detection-composer .truthguard-analyze-button:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb, #4338ca) !important;
+            color: #fff !important;
+        }
+        .truthguard-detection-composer .truthguard-analyze-symbol { z-index: 1; }
+        .truthguard-detection-composer .truthguard-analyze-symbol::before { display: none; }
+        .truthguard-detection-composer .truthguard-analyze-symbol svg {
+            opacity: 1; filter: none; animation: none;
+        }
+        .truthguard-detection-composer .truthguard-analyze-button:not(:disabled) .truthguard-analyze-symbol path {
+            fill: #fff; opacity: 1; animation: none;
+        }
+        .truthguard-detection-composer .truthguard-composer-field { min-width: 0; }
+        .truthguard-detection-composer .truthguard-preview-anchor { margin-bottom: 10px; }
     </style>
 @endonce
 
@@ -3227,6 +3340,8 @@ new class extends Component
             menuOpen: false,
             dragActive: false,
             submitting: false,
+            progressHidden: false,
+            progressMinimized: false,
             previewUrl: null,
             previewName: null,
             previewKind: null,
@@ -3454,6 +3569,8 @@ new class extends Component
 
                 this.menuOpen = false;
                 this.previewExpanded = false;
+                this.progressHidden = false;
+                this.progressMinimized = false;
                 this.submitting = true;
                 this.submitAfterLoaderPaint(form);
             },
@@ -3476,7 +3593,7 @@ new class extends Component
                 this.$nextTick(() => {
                     window.requestAnimationFrame(() => {
                         window.requestAnimationFrame(() => {
-                            window.setTimeout(submit, 70);
+                            submit();
                         });
                     });
                 });
@@ -3576,6 +3693,7 @@ new class extends Component
             },
             async handleSubmit(event) {
                 event.preventDefault();
+                if (this.submitting) return;
                 this.menuOpen = false;
                 this.previewExpanded = false;
 
@@ -3587,6 +3705,8 @@ new class extends Component
                     return;
                 }
 
+                this.progressHidden = false;
+                this.progressMinimized = false;
                 this.submitting = true;
                 this.submitAfterLoaderPaint(form);
             },
@@ -4471,10 +4591,10 @@ new class extends Component
                             <h2 id="truthguard-recent-title" class="text-lg font-bold text-slate-950 sm:text-xl">Recent Fact Checks</h2>
                             <p class="truthguard-recent-subtitle mt-1 text-xs font-medium text-slate-500 sm:text-sm">Latest public claim reviews from trusted fact-check partners.</p>
                         </div>
-                        <a href="{{ route('dashboard') }}" class="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100 sm:text-sm">
+                        <a href="{{ route('dashboard') }}" class="truthguard-recent-view-all inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100 sm:text-sm">
                             View all
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-6-6 6 6-6 6"></path>
                             </svg>
                         </a>
                     </div>
@@ -4529,7 +4649,7 @@ new class extends Component
                             </a>
                         </div>
                     @else
-                        <div class="truthguard-recent-grid">
+                        <div class="truthguard-recent-grid" role="region" aria-label="Recent fact checks" tabindex="0">
                             @foreach ($recentFactChecks as $item)
                                 <x-detections.recent-fact-check-card :item="$item" wire:key="recent-fact-check-{{ $item['id'] }}" />
                             @endforeach
@@ -4550,6 +4670,118 @@ new class extends Component
                 @submit="handleSubmit($event)"
             >
                 @csrf
+        <template x-teleport="body">
+            <div x-show="submitting && !progressHidden && !progressMinimized" x-cloak x-transition.opacity.duration.200ms class="truthguard-processing-blur" aria-hidden="true"></div>
+        </template>
+        <template x-teleport="body">
+        <div
+            x-show="submitting && !progressHidden && !progressMinimized"
+            x-cloak
+            x-transition.opacity.duration.200ms
+            class="truthguard-inline-progress"
+        >
+            <div class="truthguard-progress-header">
+                <span class="truthguard-progress-label">Analysis</span>
+                <button type="button" class="truthguard-progress-control" aria-label="Minimize progress" title="Minimize progress" @click="progressMinimized = true; $nextTick(() => $refs.showProgress.focus())">
+                    <span aria-hidden="true">&minus;</span>
+                </button>
+                <button type="button" class="truthguard-progress-control" aria-label="Hide progress" title="Hide progress; analysis continues" @click="progressHidden = true; $nextTick(() => $refs.showProgress.focus())">&times;</button>
+            </div>
+            <div class="truthguard-verify-panel relative z-10 flex flex-col items-center justify-center" role="status" aria-live="polite" aria-busy="true">
+                <div class="truthguard-verify-loader mx-auto" aria-hidden="true">
+                    <div class="truthguard-scan-data">
+                        <span style="--dot-top: 0.2rem; --dot-y: -0.42rem; --dot-delay: -0.15s;"></span>
+                        <span style="--dot-top: 0.92rem; --dot-y: 0.1rem; --dot-delay: -0.72s; --dot-speed: 2.2s; --dot-size: 0.14rem;"></span>
+                        <span style="--dot-top: 1.58rem; --dot-y: 0.38rem; --dot-delay: -1.18s;"></span>
+                        <span style="--dot-top: 2.18rem; --dot-y: -0.18rem; --dot-delay: -1.62s; --dot-speed: 2s; --dot-size: 0.13rem;"></span>
+                    </div>
+                    <div class="truthguard-scan-document">
+                        <div class="truthguard-scan-blur-haze"></div>
+                        <svg class="truthguard-scan-neural-map" viewBox="0 0 220 150" aria-hidden="true">
+                            <path class="truthguard-scan-neural-link" d="M34 106 C66 76 98 118 132 82 C154 58 174 65 198 36"></path>
+                            <path class="truthguard-scan-neural-link" d="M28 42 C62 34 88 58 110 50 C142 38 164 94 202 82"></path>
+                            <path class="truthguard-scan-neural-link" d="M54 126 C78 102 98 96 120 110 C150 130 174 108 198 116"></path>
+                            <circle class="truthguard-scan-neural-node" cx="34" cy="106" r="3.6"></circle>
+                            <circle class="truthguard-scan-neural-node" cx="110" cy="50" r="3.2"></circle>
+                            <circle class="truthguard-scan-neural-node" cx="132" cy="82" r="3.8"></circle>
+                            <circle class="truthguard-scan-neural-node" cx="198" cy="36" r="3.4"></circle>
+                        </svg>
+                        <div class="truthguard-scan-ai-logo">
+                            <svg class="truthguard-ai-sparkle-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <defs>
+                                    <linearGradient id="truthguard-ai-loader-gradient" x1="3" x2="21" y1="21" y2="3" gradientUnits="userSpaceOnUse">
+                                        <stop stop-color="#67E8F9"/>
+                                        <stop offset="0.44" stop-color="#60A5FA"/>
+                                        <stop offset="1" stop-color="#C084FC"/>
+                                    </linearGradient>
+                                </defs>
+                                <path class="truthguard-ai-sparkle-main" d="M12 2.6c.78 5.16 4.24 8.62 9.4 9.4-5.16.78-8.62 4.24-9.4 9.4-.78-5.16-4.24-8.62-9.4-9.4 5.16-.78 8.62-4.24 9.4-9.4Z" fill="url(#truthguard-ai-loader-gradient)"></path>
+                                <path class="truthguard-ai-sparkle-small truthguard-ai-sparkle-small-b" d="M18.35 3.6c.26 1.7 1.39 2.83 3.09 3.09-1.7.26-2.83 1.39-3.09 3.09-.26-1.7-1.39-2.83-3.09-3.09 1.7-.26 2.83-1.39 3.09-3.09Z" fill="#E0F2FE"></path>
+                                <path class="truthguard-ai-sparkle-small truthguard-ai-sparkle-small-c" d="M5.55 14.98c.22 1.42 1.16 2.36 2.58 2.58-1.42.22-2.36 1.16-2.58 2.58-.22-1.42-1.16-2.36-2.58-2.58 1.42-.22 2.36-1.16 2.58-2.58Z" fill="#BAE6FD"></path>
+                            </svg>
+                        </div>
+                        <div class="truthguard-scan-doc-logo">
+                            <span class="truthguard-verify-source-logo" style="--source-bg: #1877f2; --source-color: #fff; --source-delay: 0s;">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M13.8 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5H17V4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.3V10H8v3h2.4v8h3.4Z"/>
+                                </svg>
+                            </span>
+                            <span class="truthguard-verify-source-logo" style="--source-bg: linear-gradient(135deg, #f58529, #dd2a7b 48%, #515bd4); --source-color: #fff; --source-delay: 1.4s;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                    <rect x="4.8" y="4.8" width="14.4" height="14.4" rx="4.3"></rect>
+                                    <circle cx="12" cy="12" r="3.15"></circle>
+                                    <circle cx="16.85" cy="7.15" r="0.95" fill="currentColor" stroke="none"></circle>
+                                </svg>
+                            </span>
+                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #0f6674; --source-color: #fff; --source-delay: 2.8s;">
+                                VERA
+                            </span>
+                            <span class="truthguard-verify-source-logo" style="--source-bg: #ff5c1b; --source-color: #fff; --source-delay: 4.2s;">
+                                R
+                            </span>
+                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #111827; --source-color: #fff; --source-delay: 5.6s;">
+                                RTRS
+                            </span>
+                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-brand" style="--source-bg: #fff; --source-color: #0f172a; --source-delay: 7s;">
+                                <img src="{{ $truthguardLogoUrl }}" alt="">
+                            </span>
+                        </div>
+                        <div class="truthguard-scan-doc-lines">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <div class="truthguard-scan-status">
+                            <span></span>
+                            <strong>Checking</strong>
+                        </div>
+                    </div>
+                    <div class="truthguard-scan-magnifier" aria-hidden="true">
+                        <svg viewBox="0 0 64 64" fill="none">
+                            <circle cx="27" cy="27" r="15" fill="rgba(255,255,255,0.54)" stroke="currentColor" stroke-width="5"></circle>
+                            <path d="M39 39 54 54" stroke="currentColor" stroke-width="6" stroke-linecap="round"></path>
+                            <path d="M18 22c2.2-4 6.1-6.1 10.5-5.8" stroke="rgba(14,165,233,0.54)" stroke-width="3" stroke-linecap="round"></path>
+                        </svg>
+                    </div>
+                    <div class="truthguard-scan-sparks" aria-hidden="true">
+                        <span style="--spark-x: -4.4rem; --spark-y: -1.25rem; --spark-delay: -0.2s; --spark-color: #67e8f9;"></span>
+                        <span style="--spark-x: -3.7rem; --spark-y: 0.35rem; --spark-delay: -1.05s; --spark-speed: 2.1s; --spark-size: 0.18rem; --spark-color: #38bdf8;"></span>
+                        <span style="--spark-x: 3.7rem; --spark-y: -2.2rem; --spark-delay: -1.6s; --spark-size: 0.2rem; --spark-color: #a5b4fc;"></span>
+                        <span style="--spark-x: 4.4rem; --spark-y: 1.75rem; --spark-delay: -2.3s; --spark-speed: 2.6s; --spark-size: 0.22rem; --spark-color: #bae6fd;"></span>
+                    </div>
+
+                </div>
+
+                <div class="mt-5 flex flex-col items-center gap-3">
+                    <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
+                    <p class="truthguard-verify-copy">You can hide this card. Your analysis will continue.</p>
+                    <div class="truthguard-verify-progress" aria-hidden="true"></div>
+                </div>
+            </div>
+        </div>
+        </template>
+                <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore" @click="progressHidden = false; progressMinimized = false">Analyzing &middot; View progress</button>
                 <input type="hidden" name="weather_consent" :value="locationStatus === 'granted' ? '1' : '0'">
                 <input type="hidden" name="weather_lat" :value="locationLat !== null ? locationLat : ''">
                 <input type="hidden" name="weather_lon" :value="locationLon !== null ? locationLon : ''">
@@ -4565,7 +4797,7 @@ new class extends Component
                 >
 
                 @if (! $activeDetection)
-                    <section class="truthguard-guided-prompts rounded-[30px] border border-blue-100/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5">
+                    <section x-data="{ hoveredHint: '', focusedHint: '', hintDismissed: false }" @keydown.escape.window="hintDismissed = true" :inert="submitting" class="truthguard-guided-prompts rounded-[30px] border border-blue-100/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div class="flex min-w-0 gap-3">
                                 <span class="hidden" aria-hidden="true">
@@ -4588,6 +4820,12 @@ new class extends Component
                                     type="button"
                                     class="truthguard-guided-prompt-card group relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
                                     data-prompt="{{ $shortcutPrompt['prompt'] }}"
+                                    data-hint="{{ $shortcutPrompt['hint'] }}"
+                                    aria-describedby="truthguard-prompt-hint-{{ $loop->index }}"
+                                    @mouseenter="hoveredHint = $el.dataset.hint; hintDismissed = false"
+                                    @mouseleave="hoveredHint = ''"
+                                    @focus="focusedHint = $el.dataset.hint; hintDismissed = false"
+                                    @blur="focusedHint = ''"
                                     @click="usePrompt($el.dataset.prompt)"
                                 >
                                     <span class="hidden" aria-hidden="true"></span>
@@ -4640,7 +4878,13 @@ new class extends Component
                                 </button>
                             @endforeach
                         </div>
-                        <p class="mt-2 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        @foreach ($shortcutPrompts as $shortcutPrompt)
+                            <span id="truthguard-prompt-hint-{{ $loop->index }}" class="sr-only">{{ $shortcutPrompt['hint'] }}</span>
+                        @endforeach
+                        <div class="truthguard-prompt-help" aria-hidden="true">
+                            <span x-show="!hintDismissed && (hoveredHint || focusedHint)" x-cloak x-text="hoveredHint || focusedHint"></span>
+                        </div>
+                        <p class="truthguard-prompt-guide-caption mt-2 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                             Prompt guide
                         </p>
                     </section>
@@ -4767,6 +5011,8 @@ new class extends Component
 
                 <div
                     class="truthguard-detection-composer relative rounded-[30px] p-2.5 sm:p-3"
+                    :inert="submitting"
+                    :aria-busy="submitting"
                         :class="[
                             previewUrl ? 'truthguard-preview-space' : '',
                             inputNudge ? 'truthguard-composer-hint' : ''
@@ -4889,6 +5135,8 @@ new class extends Component
                                         aria-labelledby="truthguard-uploader-title"
                                         x-transition.scale.origin.center
                                         @click.stop
+                                        @wheel.stop
+                                        @touchmove.stop
                                     >
                                     <div class="truthguard-uploader-head">
                                         <span class="truthguard-uploader-mark" aria-hidden="true">
@@ -4900,7 +5148,7 @@ new class extends Component
                                         </span>
                                         <div class="min-w-0">
                                             <p id="truthguard-uploader-title" class="text-base font-black text-slate-900">Upload evidence</p>
-                                            <p class="mt-0.5 text-xs font-semibold text-slate-500">Media and documents</p>
+                                            <p class="mt-0.5 text-xs font-semibold text-slate-500">Choose a file to review</p>
                                         </div>
                                         <button
                                             type="button"
@@ -4922,7 +5170,7 @@ new class extends Component
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M7 17.2h10.1a3.15 3.15 0 0 0 .48-6.25 5.1 5.1 0 0 0-10.08-.8A3.55 3.55 0 0 0 7 17.2Z"></path>
                                         </svg>
                                     </span>
-                                    <span class="relative z-10 text-base font-black text-slate-800">Browse file</span>
+                                    <span class="relative z-10 text-base font-black text-slate-800">Choose a file</span>
                                     <span class="relative z-10 mt-1 text-xs font-semibold text-slate-500">or paste a copied screenshot</span>
                                     <span class="relative z-10 mt-2 text-[11px] font-black uppercase tracking-[0.12em] text-blue-600">Max {{ $mediaUploadMaxMb }}MB</span>
                                 </button>
@@ -5015,7 +5263,7 @@ new class extends Component
                                 x-ref="composerInput"
                                 name="caption_text"
                                 rows="2"
-                                placeholder="Upload, paste a link, or describe a claim"
+                                placeholder="Ask or paste a link"
                                 class="truthguard-detection-textarea w-full px-1 py-2 text-[12px] leading-5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0 sm:text-[14px] sm:leading-5"
                                 aria-describedby="truthguard-composer-feedback truthguard-ai-disclaimer truthguard-ai-disclaimer-mobile"
                                 :aria-invalid="composerError ? 'true' : 'false'"
@@ -5195,6 +5443,11 @@ new class extends Component
                         </div>
                     </div>
 
+
+                </div>
+
+
+
                     @if (! $activeDetection)
                         <p id="truthguard-ai-disclaimer-mobile" class="truthguard-ai-disclaimer-copy truthguard-mobile-ai-disclaimer !mt-2 overflow-hidden px-1 text-center text-[10px] font-semibold leading-4 sm:hidden">
                             <span class="truthguard-ai-disclaimer">
@@ -5209,7 +5462,6 @@ new class extends Component
                             </span>
                         </p>
                     @endif
-                </div>
 
                 @if (! $activeDetection)
                     <p id="truthguard-ai-disclaimer" class="truthguard-ai-disclaimer-copy !mt-2 hidden overflow-hidden px-2 text-center text-[10px] font-semibold leading-4 sm:block sm:text-[11px]">
@@ -5227,6 +5479,8 @@ new class extends Component
                 @endif
 
             </form>
+
+
 
             <div
                 x-show="previewExpanded && previewUrl"
@@ -5359,144 +5613,5 @@ new class extends Component
 
         </div>
 
-        <div
-            x-show="submitting"
-            x-cloak
-            x-transition.opacity.duration.200ms
-            class="truthguard-verify-overlay fixed inset-0 flex items-center justify-center overflow-hidden px-4 py-6"
-            style="z-index: 2147483646;"
-        >
-            <div class="truthguard-verify-backdrop absolute inset-0"></div>
-            <div class="truthguard-verify-social-field" aria-hidden="true">
-                <span class="truthguard-verify-social-pop" style="--icon-color: #1877F2; --icon-size: 3rem; --icon-opacity: 0.2; --duration: 7.4s; --delay: -1.2s; --drift-x: 16px; --start-rotate: -6deg; --end-rotate: 5deg;">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M13.8 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5H17V4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.3V10H8v3h2.4v8h3.4Z"/>
-                    </svg>
-                </span>
-                <span class="truthguard-verify-social-pop" style="--icon-color: #111827; --icon-size: 3.15rem; --icon-opacity: 0.18; --duration: 8s; --delay: -3.8s; --drift-x: -18px; --start-rotate: 5deg; --end-rotate: -5deg;">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M18.9 3H22l-6.8 7.8L23.2 21h-6.3l-4.9-6.4L6.4 21H3.3l7.3-8.4L.8 3h6.4l4.4 5.8L18.9 3Zm-1.1 16h1.8L6.2 4.9H4.3L17.8 19Z"/>
-                    </svg>
-                </span>
-                <span class="truthguard-verify-social-pop" style="--icon-size: 3.05rem; --icon-opacity: 0.18; --duration: 7.8s; --delay: -5.5s; --drift-x: 20px; --start-rotate: -4deg; --end-rotate: 4deg;">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <defs>
-                            <linearGradient id="truthguard-instagram-gradient" x1="4" x2="20" y1="20" y2="4" gradientUnits="userSpaceOnUse">
-                                <stop stop-color="#FEDA75"/>
-                                <stop offset="0.34" stop-color="#FA7E1E"/>
-                                <stop offset="0.62" stop-color="#D62976"/>
-                                <stop offset="1" stop-color="#4F5BD5"/>
-                            </linearGradient>
-                        </defs>
-                        <rect x="4.25" y="4.25" width="15.5" height="15.5" rx="4.7" stroke="url(#truthguard-instagram-gradient)" stroke-width="1.9"></rect>
-                        <circle cx="12" cy="12" r="3.25" stroke="url(#truthguard-instagram-gradient)" stroke-width="1.9"></circle>
-                        <circle cx="17.15" cy="6.85" r="1.05" fill="#D62976"></circle>
-                    </svg>
-                </span>
-                <span class="truthguard-verify-social-pop" style="--icon-size: 3.05rem; --icon-opacity: 0.18; --duration: 7.2s; --delay: -4.6s; --drift-x: 18px; --start-rotate: -7deg; --end-rotate: 5deg;">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="M14.7 4.1c.5 2 1.8 3.4 3.9 3.7v2.25a6.8 6.8 0 0 1-3.9-1.15v7.16a4.93 4.93 0 1 1-4.06-4.84v2.43a2.51 2.51 0 1 0 1.61 2.34V4.1h2.45Z" fill="#111827"/>
-                        <path d="M13.62 4.1c.5 2 1.8 3.4 3.9 3.7v1.08a6.76 6.76 0 0 1-2.82-1.08v7.16a4.93 4.93 0 0 1-7.7 4.08 4.94 4.94 0 0 0 8.76-3.08V8.8a6.8 6.8 0 0 0 3.9 1.15V7.8c-2.1-.3-3.4-1.7-3.9-3.7h-2.14Z" fill="#25F4EE" opacity="0.88"/>
-                        <path d="M12.24 13.66a2.51 2.51 0 0 0-3.25 2.33 2.51 2.51 0 0 0 3.78 2.15 2.51 2.51 0 0 1-1.98.2 2.51 2.51 0 0 1 .37-4.78c.37 0 .73.08 1.08.24v-.14Zm3.52-9.56c.14.55.34 1.06.62 1.52a5.66 5.66 0 0 0 3.28 2.18v1.1a6.8 6.8 0 0 1-3.9-1.16V4.1Z" fill="#FE2C55" opacity="0.82"/>
-                    </svg>
-                </span>
-                <span class="truthguard-verify-social-pop" style="--icon-size: 3.2rem; --icon-opacity: 0.16; --duration: 8.6s; --delay: -2.9s; --drift-x: -16px; --start-rotate: 4deg; --end-rotate: -4deg;">
-                    <img src="{{ $truthguardLogoUrl }}" alt="">
-                </span>
-            </div>
-
-            <div class="truthguard-verify-panel relative z-10 flex flex-col items-center justify-center" role="status" aria-live="polite" aria-busy="true">
-                <div class="truthguard-verify-loader mx-auto" aria-hidden="true">
-                    <div class="truthguard-scan-data">
-                        <span style="--dot-top: 0.2rem; --dot-y: -0.42rem; --dot-delay: -0.15s;"></span>
-                        <span style="--dot-top: 0.92rem; --dot-y: 0.1rem; --dot-delay: -0.72s; --dot-speed: 2.2s; --dot-size: 0.14rem;"></span>
-                        <span style="--dot-top: 1.58rem; --dot-y: 0.38rem; --dot-delay: -1.18s;"></span>
-                        <span style="--dot-top: 2.18rem; --dot-y: -0.18rem; --dot-delay: -1.62s; --dot-speed: 2s; --dot-size: 0.13rem;"></span>
-                    </div>
-                    <div class="truthguard-scan-document">
-                        <div class="truthguard-scan-blur-haze"></div>
-                        <svg class="truthguard-scan-neural-map" viewBox="0 0 220 150" aria-hidden="true">
-                            <path class="truthguard-scan-neural-link" d="M34 106 C66 76 98 118 132 82 C154 58 174 65 198 36"></path>
-                            <path class="truthguard-scan-neural-link" d="M28 42 C62 34 88 58 110 50 C142 38 164 94 202 82"></path>
-                            <path class="truthguard-scan-neural-link" d="M54 126 C78 102 98 96 120 110 C150 130 174 108 198 116"></path>
-                            <circle class="truthguard-scan-neural-node" cx="34" cy="106" r="3.6"></circle>
-                            <circle class="truthguard-scan-neural-node" cx="110" cy="50" r="3.2"></circle>
-                            <circle class="truthguard-scan-neural-node" cx="132" cy="82" r="3.8"></circle>
-                            <circle class="truthguard-scan-neural-node" cx="198" cy="36" r="3.4"></circle>
-                        </svg>
-                        <div class="truthguard-scan-ai-logo">
-                            <svg class="truthguard-ai-sparkle-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <defs>
-                                    <linearGradient id="truthguard-ai-loader-gradient" x1="3" x2="21" y1="21" y2="3" gradientUnits="userSpaceOnUse">
-                                        <stop stop-color="#67E8F9"/>
-                                        <stop offset="0.44" stop-color="#60A5FA"/>
-                                        <stop offset="1" stop-color="#C084FC"/>
-                                    </linearGradient>
-                                </defs>
-                                <path class="truthguard-ai-sparkle-main" d="M12 2.6c.78 5.16 4.24 8.62 9.4 9.4-5.16.78-8.62 4.24-9.4 9.4-.78-5.16-4.24-8.62-9.4-9.4 5.16-.78 8.62-4.24 9.4-9.4Z" fill="url(#truthguard-ai-loader-gradient)"></path>
-                                <path class="truthguard-ai-sparkle-small truthguard-ai-sparkle-small-b" d="M18.35 3.6c.26 1.7 1.39 2.83 3.09 3.09-1.7.26-2.83 1.39-3.09 3.09-.26-1.7-1.39-2.83-3.09-3.09 1.7-.26 2.83-1.39 3.09-3.09Z" fill="#E0F2FE"></path>
-                                <path class="truthguard-ai-sparkle-small truthguard-ai-sparkle-small-c" d="M5.55 14.98c.22 1.42 1.16 2.36 2.58 2.58-1.42.22-2.36 1.16-2.58 2.58-.22-1.42-1.16-2.36-2.58-2.58 1.42-.22 2.36-1.16 2.58-2.58Z" fill="#BAE6FD"></path>
-                            </svg>
-                        </div>
-                        <div class="truthguard-scan-doc-logo">
-                            <span class="truthguard-verify-source-logo" style="--source-bg: #1877f2; --source-color: #fff; --source-delay: 0s;">
-                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                    <path d="M13.8 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5H17V4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.3V10H8v3h2.4v8h3.4Z"/>
-                                </svg>
-                            </span>
-                            <span class="truthguard-verify-source-logo" style="--source-bg: linear-gradient(135deg, #f58529, #dd2a7b 48%, #515bd4); --source-color: #fff; --source-delay: 1.4s;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                                    <rect x="4.8" y="4.8" width="14.4" height="14.4" rx="4.3"></rect>
-                                    <circle cx="12" cy="12" r="3.15"></circle>
-                                    <circle cx="16.85" cy="7.15" r="0.95" fill="currentColor" stroke="none"></circle>
-                                </svg>
-                            </span>
-                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #0f6674; --source-color: #fff; --source-delay: 2.8s;">
-                                VERA
-                            </span>
-                            <span class="truthguard-verify-source-logo" style="--source-bg: #ff5c1b; --source-color: #fff; --source-delay: 4.2s;">
-                                R
-                            </span>
-                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #111827; --source-color: #fff; --source-delay: 5.6s;">
-                                RTRS
-                            </span>
-                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-brand" style="--source-bg: #fff; --source-color: #0f172a; --source-delay: 7s;">
-                                <img src="{{ $truthguardLogoUrl }}" alt="">
-                            </span>
-                        </div>
-                        <div class="truthguard-scan-doc-lines">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </div>
-                        <div class="truthguard-scan-status">
-                            <span></span>
-                            <strong>Checking</strong>
-                        </div>
-                    </div>
-                    <div class="truthguard-scan-magnifier" aria-hidden="true">
-                        <svg viewBox="0 0 64 64" fill="none">
-                            <circle cx="27" cy="27" r="15" fill="rgba(255,255,255,0.54)" stroke="currentColor" stroke-width="5"></circle>
-                            <path d="M39 39 54 54" stroke="currentColor" stroke-width="6" stroke-linecap="round"></path>
-                            <path d="M18 22c2.2-4 6.1-6.1 10.5-5.8" stroke="rgba(14,165,233,0.54)" stroke-width="3" stroke-linecap="round"></path>
-                        </svg>
-                    </div>
-                    <div class="truthguard-scan-sparks" aria-hidden="true">
-                        <span style="--spark-x: -4.4rem; --spark-y: -1.25rem; --spark-delay: -0.2s; --spark-color: #67e8f9;"></span>
-                        <span style="--spark-x: -3.7rem; --spark-y: 0.35rem; --spark-delay: -1.05s; --spark-speed: 2.1s; --spark-size: 0.18rem; --spark-color: #38bdf8;"></span>
-                        <span style="--spark-x: 3.7rem; --spark-y: -2.2rem; --spark-delay: -1.6s; --spark-size: 0.2rem; --spark-color: #a5b4fc;"></span>
-                        <span style="--spark-x: 4.4rem; --spark-y: 1.75rem; --spark-delay: -2.3s; --spark-speed: 2.6s; --spark-size: 0.22rem; --spark-color: #bae6fd;"></span>
-                    </div>
-
-                </div>
-
-                <div class="mt-5 flex flex-col items-center gap-3">
-                    <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
-                    <p class="truthguard-verify-copy" x-text="analyzeCopy()"></p>
-                    <div class="truthguard-verify-progress" aria-hidden="true"></div>
-                </div>
-            </div>
-        </div>
     </section>
 </div>

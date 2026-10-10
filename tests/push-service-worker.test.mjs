@@ -17,7 +17,7 @@ function worker(windows = [], authorize = async () => data, receipts = new Map()
         keys: async () => [...receipts.keys()], delete: async key => receipts.delete(key),
     }) };
     const context = vm.createContext({ self, caches, URL, Date, Number, Response, AbortSignal, console,
-        fetch: async () => { const result = await authorize(); return { ok: !!result, json: async () => result }; } });
+        fetch: async () => { const result = await authorize(); return { ok: !!result, status: result ? 200 : 404, json: async () => result }; } });
     vm.runInContext(readFileSync('public/sw.js', 'utf8'), context);
     const push = async (incoming = data) => {
         let done;
@@ -74,4 +74,42 @@ test('offline caching handlers remain registered and push endpoints stay private
     for (const event of ['install', 'activate', 'fetch', 'message']) assert.equal(typeof w.listeners[event], 'function');
     assert.equal(vm.runInContext("isPrivatePath('/push/settings')", w.context), true);
     assert.equal(vm.runInContext("isPrivatePath('/push/deliveries/test')", w.context), true);
+});
+
+for (const failure of ['open', 'match', 'put']) {
+    test(`push displays and deduplicates when receipt ${failure} fails`, async () => {
+        const messages = [];
+        const w = worker([{ postMessage: message => messages.push(message) }]);
+        vm.runInContext(`caches.open = async () => {
+            if ('${failure}' === 'open') throw Error('Storage unavailable');
+            return { match: async () => { if ('${failure}' === 'match') throw Error('Read failed'); },
+                put: async () => { throw Error('Quota exceeded'); }, keys: async () => [] };
+        };`, w.context);
+        await w.push(); await w.push();
+        assert.equal(w.shown.length, 1);
+        assert.equal(messages.length, 1);
+    });
+}
+test('temporary authorization failure retries while revoked authorization remains final', async () => {
+    let attempts = 0;
+    const w = worker([], async () => { if (++attempts === 1) throw Error('Connection reset'); return data; });
+    await w.push();
+    assert.equal(attempts, 2);
+    assert.equal(w.shown.length, 1);
+    let revokedAttempts = 0;
+    const revoked = worker([], async () => { revokedAttempts++; return null; });
+    await revoked.push();
+    assert.equal(revokedAttempts, 1);
+    assert.equal(revoked.shown.length, 0);
+});
+
+test('a new alert displays after the previous alert is dismissed, with no open page', async () => {
+    let current = data;
+    const w = worker([], async () => current);
+    await w.push();
+    w.shown.length = 0; // No existing notification is required for the next push.
+    current = { ...data, notification_id: '87654321-1234-1234-1234-123456789abc' };
+    await w.push(current);
+    assert.equal(w.shown.length, 1);
+    assert.equal(w.shown[0][1].tag, `truthguard-${current.notification_id}`);
 });

@@ -52,7 +52,7 @@ class SessionTimeoutManager
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array<string, int|string|bool>
      */
     public function payload(Request $request): array
     {
@@ -60,7 +60,14 @@ class SessionTimeoutManager
         $timeoutSeconds = $this->timeoutSecondsFor($user);
         $lastActivityAt = $this->lastActivityAt($request) ?: time();
 
+        $deadline = app(RememberedLogin::class)->deadline($request);
+        if ($deadline !== null) {
+            $timeoutSeconds = RememberedLogin::MINUTES * 60;
+            $lastActivityAt = $deadline - $timeoutSeconds;
+        }
+
         return [
+            'remembered' => $deadline !== null,
             'lastActivityAt' => $lastActivityAt,
             'expiresAt' => $lastActivityAt + $timeoutSeconds,
             'timeoutSeconds' => $timeoutSeconds,

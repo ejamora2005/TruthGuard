@@ -934,10 +934,10 @@
                         @endforeach
                     </div>
                 </div>
-                <h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Latest public claim reviews</h3>
+                <div class="truthguard-search-heading"><h3 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">Latest public claim reviews</h3><span id="feed-search-action"></span></div>
                 </div>
                 <div class="tg-feed-controls">
-                    <form method="GET" action="{{ route($feedRoute) }}#news-watch" class="tg-feed-search" role="search">
+                    <form method="GET" action="{{ route($feedRoute) }}#news-watch" class="tg-feed-search" role="search" data-compact-search="Search and filters" data-compact-search-target="feed-search-action" data-search-active="{{ $feedCategory !== 'all' ? 'true' : 'false' }}">
                         @foreach (request()->except([$feedSearchParameter, $feedCategoryParameter, $feedPageName]) as $key => $value)
                             @if (is_scalar($value))
                                 <input type="hidden" name="{{ $key }}" value="{{ $value }}">

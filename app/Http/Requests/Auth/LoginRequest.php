@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Services\Auth\RememberedLogin;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,6 +31,7 @@ class LoginRequest extends FormRequest
         return [
             'email' => ['required', 'string'],
             'password' => ['required', 'string'],
+            'remember' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -56,6 +58,7 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        app(RememberedLogin::class)->establish(Auth::user(), $this->boolean('remember'));
         RateLimiter::clear($this->throttleKey());
     }
 

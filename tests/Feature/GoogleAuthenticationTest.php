@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Notifications\WelcomeToTruthGuard;
+use App\Services\Auth\RememberedLogin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Socialite\Facades\Socialite;
@@ -14,6 +15,16 @@ use Tests\TestCase;
 class GoogleAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_google_login_remembers_only_the_explicit_device_choice(): void
+    {
+        Notification::fake();
+        $this->mockGoogleUser();
+        $this->withSession(['oauth_remember' => true])->get(route('google.callback'))
+            ->assertRedirect()->assertCookie(RememberedLogin::KEY)
+            ->assertSessionMissing('oauth_remember');
+        $this->assertNotNull(session(RememberedLogin::KEY));
+    }
 
     protected function tearDown(): void
     {

@@ -3,7 +3,7 @@
 @endphp
 
 <div class="space-y-6 text-sm leading-7 text-slate-600">
-    <section>
+    <section id="privacy-overview">
         <h2 class="text-base font-black text-slate-950">Privacy Notice</h2>
         <p class="mt-2">
             TruthGuard processes your account information and submitted content to provide AI-assisted fact-checking,
@@ -34,7 +34,7 @@
         </div>
     </section>
 
-    <section>
+    <section id="ai-processing">
         <h2 class="text-base font-black text-slate-950">AI and Verification Services</h2>
         <p class="mt-2">
             TruthGuard may send claim text, source context, or limited evidence details to OpenAI to generate
@@ -63,7 +63,7 @@
         </div>
     </section>
 
-    <section>
+    <section id="privacy-choices">
         <h2 class="text-base font-black text-slate-950">Your Choices and Rights</h2>
         <p class="mt-2">
             You may request access to your data, correct profile information, delete your account, export data where

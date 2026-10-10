@@ -790,6 +790,9 @@
                     transition: none;
                 }
             }
+            @media (min-width: 1024px) {
+                .truthguard-topbar .truthguard-detection-mobile-logo { display: none !important; }
+            }
         </style>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -1062,22 +1065,32 @@
                 <header class="truthguard-topbar sticky top-0 z-[99997] w-full border-b border-[color:var(--tg-shell-border)] backdrop-blur-xl">
                     <div class="flex w-full items-center gap-2.5 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3 lg:px-6 lg:py-4">
                         @if ($pageBackUrl !== '')
-                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0" aria-label="Go back" title="Go back">
+                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0 {{ $hideMobileNav ? 'truthguard-detection-mobile-logo' : '' }}" aria-label="Go back" title="Go back">
+                                @if ($hideMobileNav)
+                                    @if ($logoUrl !== '')
+                                        <img src="{{ $logoUrl }}" alt="TruthGuard" class="h-8 w-8 object-contain" width="32" height="32">
+                                    @else
+                                        <span class="font-bold text-blue-600">TG</span>
+                                    @endif
+                                @else
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                                 </svg>
+                                @endif
                             </a>
                         @elseif ($hideMobileNav)
                             <button
                                 type="button"
-                                class="truthguard-shell-toggle shrink-0 lg:hidden"
-                                aria-label="Go back to the previous page"
+                                class="truthguard-shell-toggle truthguard-detection-mobile-logo shrink-0 lg:hidden"
+                                aria-label="TruthGuard - go back to the previous page"
                                 title="Go back"
                                 onclick="window.history.length > 1 ? window.history.back() : window.location.assign(@js(route('dashboard')))"
                             >
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                                </svg>
+                                @if ($logoUrl !== '')
+                                    <img src="{{ $logoUrl }}" alt="" class="h-8 w-8 object-contain" width="32" height="32">
+                                @else
+                                    <span class="font-bold text-blue-600">TG</span>
+                                @endif
                             </button>
                         @else
                             <a
@@ -1391,7 +1404,9 @@
         </form>
 
         @include('auth.partials.session-timeout-modal')
-        @include('auth.partials.device-permissions-onboarding')
+        @if (request()->routeIs('dashboard'))
+            @include('auth.partials.device-permissions-onboarding')
+        @endif
         @include('layouts.partials.logout-confirmation-modal', ['logoutScope' => 'user'])
         @include('layouts.partials.onboarding-tour', ['showOnboardingTour' => $showOnboardingTour])
 

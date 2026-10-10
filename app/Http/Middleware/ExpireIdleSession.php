@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\Auth\RememberedLogin;
 use App\Services\Auth\SessionTimeoutManager;
 use Closure;
 use Illuminate\Http\Request;
@@ -12,13 +13,17 @@ class ExpireIdleSession
 {
     public function __construct(
         private readonly SessionTimeoutManager $sessionTimeoutManager,
-    ) {
-    }
+    ) {}
 
     public function handle(Request $request, Closure $next): Response
     {
         if (! Auth::check() || ! $request->hasSession()) {
             return $next($request);
+        }
+
+        $deadline = app(RememberedLogin::class)->deadline($request);
+        if ($deadline !== null && now()->timestamp >= $deadline) {
+            return $this->sessionTimeoutManager->expiredResponse($request);
         }
 
         $lastActivityAt = $this->sessionTimeoutManager->lastActivityAt($request);
@@ -27,7 +32,7 @@ class ExpireIdleSession
             $lastActivityAt = $this->sessionTimeoutManager->touch($request);
         }
 
-        if ((time() - $lastActivityAt) >= $this->sessionTimeoutManager->timeoutSecondsFor($request->user())) {
+        if ($deadline === null && (time() - $lastActivityAt) >= $this->sessionTimeoutManager->timeoutSecondsFor($request->user())) {
             return $this->sessionTimeoutManager->expiredResponse($request);
         }
 

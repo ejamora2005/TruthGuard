@@ -130,6 +130,8 @@
             }
 
             let config = JSON.parse(configElement.textContent || '{}');
+            // Remembered users have a server-enforced absolute deadline, not an idle timer.
+            if (config.remembered) return;
             let expiresAtMs = Number(config.expiresAt || 0) * 1000;
             let warningMs = Number(config.warningSeconds || 60) * 1000;
             let expirationSubmitted = false;

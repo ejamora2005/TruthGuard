@@ -2,14 +2,14 @@
     $showOnboardingTour = (bool) ($showOnboardingTour ?? false);
     $tourSteps = [
         [
-            'title' => 'Dashboard',
-            'targets' => ['dashboard'],
-            'text' => 'Start here to see the latest public claim reviews, recent activity, and your TruthGuard overview.',
+            'title' => 'Welcome to TruthGuard',
+            'targets' => [],
+            'text' => 'Your dashboard brings together recent activity and public claim reviews. Take a quick tour to find your way around.',
         ],
         [
             'title' => 'Fact Check',
             'targets' => ['fact-check'],
-            'text' => 'Upload an image, video, PDF, or paste a source link to generate an AI-assisted fact-check report.',
+            'text' => 'Start a check with an image, video, PDF, or source link. Your report explains the result and the evidence behind it.',
         ],
         [
             'title' => 'History',
@@ -19,22 +19,12 @@
         [
             'title' => 'Notifications',
             'targets' => ['notifications-bell', 'notifications'],
-            'text' => 'Get updates when fact-check results are ready, when public claim reviews are added, and when important account alerts arrive.',
-        ],
-        [
-            'title' => 'Result Reports',
-            'targets' => ['result-reports'],
-            'text' => 'Each report includes an AI answer, risk score, basis used by AI, verification sources, and recommendations.',
+            'text' => 'Find completed results, new claim reviews, and account alerts in one place.',
         ],
         [
             'title' => 'Profile and Settings',
             'targets' => ['profile', 'settings'],
-            'text' => 'Manage your profile, security, appearance, notification preferences, and privacy settings here.',
-        ],
-        [
-            'title' => 'You are ready',
-            'targets' => [],
-            'text' => 'You are ready to use TruthGuard. Start by scanning a claim or reviewing the latest public fact checks.',
+            'text' => 'Make TruthGuard yours. Update your profile, appearance, privacy, and notifications here. You are ready to begin.',
         ],
     ];
 @endphp
@@ -78,11 +68,13 @@
             .truthguard-tour-card {
                 position: fixed;
                 z-index: 100002;
-                width: min(22.5rem, calc(100vw - 2rem));
-                overflow: hidden;
+                width: min(26rem, calc(100vw - 2rem));
+                max-height: calc(100dvh - 2rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+                overflow-y: auto;
+                overscroll-behavior: contain;
                 border: 1px solid #dbe4f0;
-                border-radius: 18px;
-                background: #ffffff;
+                border-radius: 26px;
+                background: linear-gradient(145deg, #eff6ff, #ffffff 45%);
                 box-shadow: 0 24px 70px rgba(15, 23, 42, 0.26);
                 outline: none;
                 color: #0f172a;
@@ -132,7 +124,7 @@
                 display: block;
                 height: 100%;
                 border-radius: inherit;
-                background: #2563eb;
+                background: linear-gradient(90deg, #2563eb, #06b6d4);
                 transition: width 220ms ease;
             }
 
@@ -171,12 +163,14 @@
 
             @media (max-width: 640px) {
                 .truthguard-tour-card {
-                    bottom: 1rem !important;
                     left: 1rem !important;
-                    top: auto !important;
                     width: calc(100vw - 2rem);
                 }
             }
+
+            .truthguard-tour-card button { min-height: 44px; }
+            .truthguard-tour-card button[aria-label] { min-width: 44px; }
+            .truthguard-tour-card > div:last-child { flex-wrap: wrap; }
 
             @media (prefers-reduced-motion: reduce) {
                 .truthguard-tour-scrim,
@@ -198,6 +192,8 @@
             window.truthguardOnboardingTour = function (config) {
                 return {
                     active: true,
+                    previousFocus: null,
+                    wasScrollLocked: false,
                     currentIndex: 0,
                     saving: false,
                     transitioning: false,
@@ -226,6 +222,8 @@
                         return `${((this.currentIndex + 1) / Math.max(this.steps.length, 1)) * 100}%`;
                     },
                     init() {
+                        this.previousFocus = document.activeElement;
+                        this.wasScrollLocked = document.documentElement.classList.contains('overflow-hidden');
                         document.documentElement.classList.add('overflow-hidden');
                         this.resizeHandler = () => this.positionTour();
                         this.scrollHandler = () => this.positionTour();
@@ -237,7 +235,7 @@
                         });
                     },
                     destroy() {
-                        document.documentElement.classList.remove('overflow-hidden');
+                        if (!this.wasScrollLocked) document.documentElement.classList.remove('overflow-hidden');
                         if (this.resizeHandler) window.removeEventListener('resize', this.resizeHandler);
                         if (this.scrollHandler) window.removeEventListener('scroll', this.scrollHandler, true);
                     },
@@ -315,6 +313,13 @@
                             top = 16;
                         }
 
+                        if (window.innerWidth <= 640) {
+                            left = 16;
+                            // Keep bottom navigation visible when that is the current target.
+                            top = rect.top > window.innerHeight / 2
+                                ? Math.max(16, highlight.top - panelHeight - gutter)
+                                : Math.min(window.innerHeight - panelHeight - 16, highlight.top + highlight.height + gutter);
+                        }
                         this.panelStyle = `left: ${Math.round(left)}px; top: ${Math.round(top)}px;`;
                     },
                     changeStep(callback) {
@@ -353,6 +358,7 @@
                         try {
                             const response = await fetch(url, {
                                 method: 'POST',
+                                signal: AbortSignal.timeout(15000),
                                 headers: {
                                     'Accept': 'application/json',
                                     'Content-Type': 'application/json',
@@ -368,6 +374,8 @@
 
                             this.active = false;
                             this.destroy();
+                            this.previousFocus?.focus?.();
+                            window.dispatchEvent(new CustomEvent('truthguard:tour-finished', { detail: { skipped: url === this.skipUrl } }));
                         } catch (error) {
                             this.error = 'TruthGuard could not save this yet. Please try again.';
                         } finally {
@@ -389,7 +397,7 @@
                         const first = focusable[0];
                         const last = focusable[focusable.length - 1];
 
-                        if (event.shiftKey && document.activeElement === first) {
+                        if (event.shiftKey && (document.activeElement === first || document.activeElement === this.$refs.panel)) {
                             event.preventDefault();
                             last.focus();
                         } else if (!event.shiftKey && document.activeElement === last) {
@@ -410,12 +418,11 @@
             skipUrl: @js(route('onboarding.skip', absolute: false)),
             version: @js(config('app.onboarding_version', '2026-07-28')),
         })"
-        x-init="init()"
         x-show="active"
         x-cloak
         class="truthguard-tour-layer"
         role="presentation"
-        @keydown.escape.window.prevent.stop="skip()"
+        @keydown.escape.window="if (active) { $event.preventDefault(); $event.stopPropagation(); skip(); }"
     >
         <div class="truthguard-tour-scrim" aria-hidden="true"></div>
 
@@ -467,7 +474,7 @@
                             </button>
                         </div>
 
-                        <p id="truthguard-tour-description" class="truthguard-tour-copy mt-3 text-sm font-medium leading-6" x-text="currentStep.text"></p>
+                        <p id="truthguard-tour-description" aria-live="polite" class="truthguard-tour-copy mt-3 text-sm font-medium leading-6" x-text="currentStep.text"></p>
                     </div>
                 </div>
 
@@ -476,16 +483,12 @@
                 </div>
 
                 <div class="mt-4 flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-1.5" aria-hidden="true">
-                        <template x-for="(step, index) in steps" :key="step.title">
-                            <span class="truthguard-tour-dot" :class="index === currentIndex ? 'is-active' : ''"></span>
-                        </template>
-                    </div>
+                    <span class="text-xs font-medium text-slate-500">Quick start</span>
 
                     <span class="text-xs font-bold text-slate-500" x-text="progressLabel"></span>
                 </div>
 
-                <p x-show="error" x-cloak class="mt-4 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" x-text="error"></p>
+                <p role="alert" x-show="error" x-cloak class="mt-4 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" x-text="error"></p>
             </div>
 
             <div class="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
@@ -503,7 +506,8 @@
                         type="button"
                         class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         @click="goBack()"
-                        :disabled="isFirst || saving"
+                        x-show="!isFirst"
+                        :disabled="saving || transitioning"
                     >
                         Back
                     </button>
@@ -512,9 +516,9 @@
                         type="button"
                         class="inline-flex min-w-[5.75rem] items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-70"
                         @click="goNext()"
-                        :disabled="saving"
+                        :disabled="saving || transitioning"
                     >
-                        <span x-show="!saving" x-text="isLast ? 'Finish' : 'Next'"></span>
+                        <span x-show="!saving" x-text="isLast ? 'Get started' : (isFirst ? 'Show me around' : 'Next')"></span>
                         <span x-show="saving" x-cloak>Saving...</span>
                     </button>
                 </div>

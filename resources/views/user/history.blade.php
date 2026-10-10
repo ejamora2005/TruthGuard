@@ -176,6 +176,7 @@
 @section('content')
     <div class="truthguard-mobile-page truthguard-mobile-history mx-auto w-full max-w-[1240px] space-y-4 py-1 md:space-y-2">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div class="truthguard-history-search-heading">
             <nav class="truthguard-history-tabs inline-flex w-full flex-wrap items-center gap-1 rounded-[18px] border border-blue-100/80 p-1.5 xl:w-auto" aria-label="History filters">
                 @foreach ($historyTabs as $tab)
                     @php
@@ -210,6 +211,8 @@
                     @endif
                 @endforeach
             </nav>
+            <span id="history-search-action"></span>
+            </div>
 
             <form method="GET" action="{{ route('history') }}" class="truthguard-history-date-filters flex flex-col gap-2 sm:flex-row sm:items-center">
                 @foreach ($datePreservedFields as $name => $value)
@@ -251,7 +254,7 @@
         </div>
 
         <section class="truthguard-history-panel overflow-hidden rounded-[24px] border border-blue-100/80 shadow-[0_22px_60px_rgba(15,23,42,0.08)]">
-            <form method="GET" action="{{ route('history') }}" class="truthguard-history-toolbar flex flex-col gap-3 border-b border-blue-100/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+            <form method="GET" action="{{ route('history') }}" data-compact-search="Search history" data-compact-search-target="history-search-action" data-search-active="{{ ($historyFilters['sort'] ?? 'newest') !== 'newest' ? 'true' : 'false' }}" class="truthguard-history-toolbar flex flex-col gap-3 border-b border-blue-100/80 p-4 lg:flex-row lg:items-center lg:justify-between">
                 @foreach ($searchPreservedFields as $name => $value)
                     @if (filled($value))
                         <input type="hidden" name="{{ $name }}" value="{{ $value }}">
@@ -267,6 +270,7 @@
                         name="search"
                         value="{{ $historyFilters['search'] ?? '' }}"
                         placeholder="Search by title or keyword..."
+                        aria-label="Search history"
                         class="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:ring-0"
                     >
                 </label>

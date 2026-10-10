@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Auth\PostLoginDestination;
+use App\Services\Auth\RememberedLogin;
 use App\Services\Auth\SessionTimeoutManager;
 use App\Services\Notifications\TruthGuardNotificationManager;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -26,6 +26,8 @@ class GoogleAuthController extends Controller
                 ->route('login')
                 ->with('auth_error', 'Google sign-in is not configured yet.');
         }
+
+        request()->session()->put('oauth_remember', request()->boolean('remember'));
 
         return $this->socialiteDriver('google')->redirect();
     }
@@ -55,6 +57,8 @@ class GoogleAuthController extends Controller
                 ->route('login')
                 ->with('auth_error', 'Facebook sign-in is not configured yet.');
         }
+
+        request()->session()->put('oauth_remember', request()->boolean('remember'));
 
         return $this->socialiteDriver('facebook')
             ->scopes(['email'])
@@ -235,7 +239,7 @@ class GoogleAuthController extends Controller
     {
         $this->ensureUserCanSignIn($user);
 
-        Auth::login($user, remember: false);
+        app(RememberedLogin::class)->establish($user, (bool) request()->session()->pull('oauth_remember', false));
         request()->session()->regenerate();
         app(SessionTimeoutManager::class)->touch(request());
 

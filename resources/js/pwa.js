@@ -2,6 +2,15 @@ import { getTruthGuardWorker } from './service-worker';
 const INSTALL_DISMISSED_KEY = 'truthguard:pwa-install-dismissed';
 const INSTALLED_KEY = 'truthguard:pwa-installed';
 let knownInstalled = false;
+let installDismissed = false;
+try { installDismissed = sessionStorage.getItem(INSTALL_DISMISSED_KEY) === '1'; } catch { /* Use memory when storage is blocked. */ }
+const setInstallDismissed = (dismissed) => {
+    installDismissed = dismissed;
+    try {
+        if (dismissed) sessionStorage.setItem(INSTALL_DISMISSED_KEY, '1');
+        else sessionStorage.removeItem(INSTALL_DISMISSED_KEY);
+    } catch { /* Installation still works without session storage. */ }
+};
 try {
     knownInstalled = localStorage.getItem(INSTALLED_KEY) === '1';
 } catch { /* Storage may be unavailable in private browsing. */ }
@@ -26,6 +35,7 @@ const rememberInstalled = (installed) => {
 };
 
 const syncInstallVisibility = () => {
+    document.documentElement.toggleAttribute('data-pwa-standalone', isStandalone());
     if (isStandalone()) rememberInstalled(true);
     const visible = canShowInstall();
     document.documentElement.toggleAttribute('data-pwa-install-available', visible);
@@ -238,7 +248,7 @@ const handleInstallClick = async (event) => {
                 help: 'Installation started. You can launch TruthGuard from your apps list after it finishes.'
             });
         } else {
-            sessionStorage.setItem(INSTALL_DISMISSED_KEY, '1');
+            setInstallDismissed(true);
             setInstallControls({
                 label: 'Install App',
                 disabled: false,
@@ -308,7 +318,7 @@ const updateOfflineState = (isOffline) => {
 };
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    onReady(() => {
         getTruthGuardWorker()
             .then((registration) => {
                 if (registration.waiting) {
@@ -346,7 +356,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
     deferredInstallPrompt = event;
 
     onReady(() => {
-        if (getInstallButtons().length === 0 && sessionStorage.getItem(INSTALL_DISMISSED_KEY) !== '1') {
+        if (getInstallButtons().length === 0 && !installDismissed) {
             createInstallButton().hidden = false;
         }
 
@@ -362,7 +372,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
 window.addEventListener('appinstalled', () => {
     rememberInstalled(true);
     deferredInstallPrompt = null;
-    sessionStorage.removeItem(INSTALL_DISMISSED_KEY);
+    setInstallDismissed(false);
     hideFloatingInstallButton();
     setInstallControls({ disabled: true });
 });

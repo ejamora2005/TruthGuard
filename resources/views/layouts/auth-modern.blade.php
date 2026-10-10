@@ -25,7 +25,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         @livewireStyles
     </head>
-    <body class="truthguard-auth-page min-h-dvh overflow-x-hidden bg-slate-950 font-[Poppins] text-slate-100 antialiased selection:bg-cyan-300/40 selection:text-white">
+    <body class="truthguard-auth-page @yield('body_class') min-h-dvh overflow-x-hidden bg-slate-950 font-[Poppins] text-slate-100 antialiased selection:bg-cyan-300/40 selection:text-white">
         @include('layouts.partials.app-splash')
 
         @isset($slot)

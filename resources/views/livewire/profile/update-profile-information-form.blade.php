@@ -236,56 +236,8 @@ new class extends Component
         role="tabpanel"
         class="p-4 sm:p-6"
     >
-        <div class="truthguard-personal-layout grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
-            <aside class="truthguard-profile-summary space-y-4">
-                <div class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.09)] backdrop-blur-xl">
-                    <div class="bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 px-5 py-5 text-white">
-                        <div class="flex items-start justify-between gap-4">
-                            <img
-                                src="{{ $currentAvatarUrl }}"
-                                x-bind:src="avatarPreviewUrl()"
-                                alt="Profile avatar"
-                                class="h-20 w-20 rounded-[24px] object-cover shadow-[0_18px_38px_rgba(15,23,42,0.2)] ring-4 ring-white/30"
-                            >
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/25">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-200"></span>
-                                Live
-                            </span>
-                        </div>
-                        <h2 class="mt-4 truncate text-xl font-black tracking-tight" x-text="profileName || 'TruthGuard User'">{{ $formName }}</h2>
-                        <p class="mt-1 truncate text-sm font-medium text-blue-50" x-text="profileEmail">{{ $formEmail }}</p>
-                    </div>
+        <div class="truthguard-personal-layout grid gap-6">
 
-                    <div class="grid gap-3 p-4">
-                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                            <span class="text-sm font-semibold text-slate-600">Role</span>
-                            <span class="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 ring-1 ring-blue-100">{{ $roleLabel }}</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                            <span class="text-sm font-semibold text-slate-600">Status</span>
-                            <span class="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">{{ $statusLabel }}</span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3">
-                            <span class="text-sm font-semibold text-slate-600">Email</span>
-                            <span @class([
-                                'rounded-full px-3 py-1.5 text-xs font-bold ring-1',
-                                $emailVerified ? 'bg-emerald-50 text-emerald-700 ring-emerald-100' : 'bg-amber-50 text-amber-700 ring-amber-100',
-                            ])>
-                                {{ $emailVerified ? 'Verified' : 'Pending' }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                @if (session('status') === 'profile-updated')
-                    <p class="flex items-center gap-2 rounded-[22px] border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-sm font-bold text-emerald-700 shadow-sm">
-                        <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.75 10.5 18 19 6"></path>
-                        </svg>
-                        Profile saved
-                    </p>
-                @endif
-            </aside>
 
             <form
                 id="truthguard-personal-form"
@@ -429,8 +381,8 @@ new class extends Component
                                         <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-600">Email permission</p>
                                         <h4 class="mt-1 text-sm font-black text-slate-950">Optional product and fact-check updates</h4>
                                         <p class="mt-1 text-sm leading-6 text-slate-600">
-                                            Turn this on only if you want TruthGuard to send public claim-review alerts, feature announcements, and non-critical system updates.
-                                            Password reset, verification, and security emails may still be sent when needed.
+                                            Receive claim reviews, product news, and system updates by email.
+                                            Essential account and security emails are always sent.
                                         </p>
                                     </div>
                                 </div>
@@ -441,9 +393,12 @@ new class extends Component
                                         type="checkbox"
                                         name="email_updates_enabled"
                                         value="1"
+                                        role="switch"
+                                        aria-label="Receive optional email updates"
                                         x-model="emailUpdatesEnabled"
                                         class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                     >
+                                    <span class="truthguard-email-switch-track" aria-hidden="true"></span>
                                     <span class="text-sm font-bold text-slate-800" x-text="emailUpdatesEnabled ? 'Allowed' : 'Not allowed'"></span>
                                 </label>
                             </div>
@@ -469,7 +424,9 @@ new class extends Component
                 @endif
 
                 <div class="truthguard-settings-action-footer flex flex-col gap-3 rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
-                    <p class="text-sm text-slate-500">Identity changes update your TruthGuard profile and workspace menus.</p>
+                    @if (session('status') === 'profile-updated')
+                        <p role="status" class="text-sm font-semibold text-emerald-600">Profile saved.</p>
+                    @endif
 
                     <button
                         type="submit"

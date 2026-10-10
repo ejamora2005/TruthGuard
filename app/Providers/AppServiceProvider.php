@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\ExpireIdleSession;
 use App\Models\Detection;
 use App\Models\PushSubscription;
 use App\Observers\DetectionNotificationObserver;
+use App\Services\Auth\RememberedLogin;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Http\Middleware\TrustProxies;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,7 +32,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Detection::observe(DetectionNotificationObserver::class);
+        Livewire::addPersistentMiddleware([ExpireIdleSession::class]);
         Event::listen(Logout::class, function ($event) {
+            Cookie::queue(Cookie::forget(RememberedLogin::KEY));
             if ($event->user && request()->cookie('truthguard_push')) {
                 PushSubscription::where('user_id', $event->user->id)
                     ->where('token_hash', request()->cookie('truthguard_push'))->delete();

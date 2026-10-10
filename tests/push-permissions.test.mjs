@@ -36,7 +36,8 @@ for (const permission of ['default', 'denied', 'unsupported']) {
                     const preferences = { push_enabled: false, analysis_results: true };
                     return route.fulfill({ json: path === '/push/settings' ? { enabled: true, firebase: {}, preferences, canTest: false } : { ok: true, preferences } });
                 }
-                return route.fulfill({ contentType: 'text/html', body: markup });
+                // Production settings no longer expose diagnostic test controls.
+                return route.fulfill({ contentType: 'text/html', body: markup.replace(/<button data-push-test[^>]*>.*?<\/button>/, '') });
             });
             await page.goto('http://localhost:9876/profile');
             await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.length > 0);
@@ -273,5 +274,49 @@ test('settings inserted from a template after initialization bind once and test 
         await page.waitForFunction(() => !document.querySelector('[data-push-test]').disabled);
         assert.equal(requests.filter(path => path === '/push/test').length, 2);
         assert.equal(requests.filter(path => path === '/push/settings').length, settingsCalls);
+    } finally { await browser.close(); }
+});
+
+test('dashboard reconnect recovers failed startup without settings UI or another permission prompt', async () => {
+    const browser = await chromium.launch({ channel: 'chrome', headless: true });
+    try {
+        const page = await browser.newPage();
+        let settingsCalls = 0, registrations = 0, disabled = false;
+        await page.addInitScript(() => {
+            Object.defineProperty(window, 'Notification', { value: { permission: 'granted', requestPermission: () => { throw Error('Unexpected permission prompt'); } } });
+            Object.defineProperty(navigator, 'serviceWorker', { value: { addEventListener() {}, register: async () => ({ scope: 'http://localhost:9876/', active: {} }) } });
+        });
+        await page.route('http://localhost:9876/**', route => {
+            const path = new URL(route.request().url()).pathname;
+            if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
+            if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
+            if (path === '/mock-app.js') return route.fulfill({ contentType: 'text/javascript', body: 'export const getApps=()=>[]; export const initializeApp=()=>({});' });
+            if (path === '/mock-messaging.js') return route.fulfill({ contentType: 'text/javascript', body: 'export const isSupported=async()=>true; export const getMessaging=()=>({}); export const getToken=async()=>"recovered-token";' });
+            if (path === '/push/settings') {
+                settingsCalls++;
+                if (settingsCalls === 1) return route.fulfill({ status: 503, json: { message: 'Temporarily unavailable' } });
+                return route.fulfill({ json: { enabled: true, firebase: {}, preferences: { push_enabled: true }, deviceDisabled: disabled } });
+            }
+            if (path === '/push/subscriptions') { registrations++; return route.fulfill({ json: { ok: true } }); }
+            return route.fulfill({ contentType: 'text/html', body: `<meta name="truthguard-push-settings" content="/push/settings"><script type="importmap">{"imports":{"firebase/app":"/mock-app.js","firebase/messaging":"/mock-messaging.js"}}</script><script type="module" src="/push-notifications.js"></script>` });
+        });
+        await page.goto('http://localhost:9876/dashboard');
+        await page.waitForResponse(() => false, { timeout: 100 }).catch(() => {});
+        assert.equal(registrations, 0);
+        await page.evaluate(() => window.dispatchEvent(new Event('online')));
+        await page.waitForFunction(() => true);
+        await assert.doesNotReject(async () => {
+            for (let i = 0; i < 40 && registrations < 1; i++) await page.waitForTimeout(50);
+            assert.equal(registrations, 1);
+        });
+        // Let the registration response settle before simulating a later BFCache restore.
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+        for (let i = 0; i < 40 && registrations < 2; i++) await page.waitForTimeout(50);
+        assert.equal(registrations, 2);
+        disabled = true;
+        await page.evaluate(() => window.dispatchEvent(new Event('online')));
+        await page.waitForTimeout(200);
+        assert.equal(registrations, 2);
     } finally { await browser.close(); }
 });

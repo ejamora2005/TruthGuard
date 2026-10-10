@@ -338,8 +338,8 @@
         .tg-report-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 1.25rem; border: 1px solid rgba(203, 213, 225, .86); border-radius: 22px; background: linear-gradient(135deg, #fff 0%, #f8fbff 58%, rgb(var(--tg-accent-rgb) / .05) 100%); box-shadow: 0 24px 70px rgba(15, 23, 42, .09); }
         .tg-report-evidence, .tg-ai-report .tg-ai-hero { border: 1px solid rgba(226, 232, 240, .96); border-radius: 18px; background: linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(248,250,252,.88) 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.9); padding: 1rem; }
         .tg-ai-report .tg-ai-hero { align-self: stretch; display: flex; align-items: center; background: linear-gradient(135deg, #fff 0%, rgb(var(--tg-accent-rgb) / .045) 100%); }
-        .tg-ai-report .tg-report-evidence { order: 2; }
-        .tg-ai-report .tg-ai-hero { order: 1; }
+        .tg-ai-report .tg-report-evidence { order: 1; }
+        .tg-ai-report .tg-ai-hero { order: 2; }
         .tg-ai-report .tg-ai-hero::before { display: none; }
         .tg-ai-report .tg-ai-icon { box-shadow: inset 0 0 0 1px rgba(255,255,255,.72), 0 8px 22px rgba(15,23,42,.06); }
         .tg-ai-report .tg-ai-media { min-height: 0; max-height: none; border-radius: 16px; background: linear-gradient(135deg, #f8fafc 0%, #eef4fb 100%); box-shadow: inset 0 1px 0 rgba(255,255,255,.85); }
@@ -354,8 +354,8 @@
         .tg-report-body { display: flex; flex-direction: column; gap: 1.25rem; }
         .tg-report-main, .tg-report-insights { display: contents; }
         .tg-report-assessment { order: 1; }
-        .tg-report-insights > article { order: 2; }
-        .tg-report-sources { order: 3; }
+        .tg-report-insights > article { order: 3; }
+        .tg-report-sources { order: 2; }
         .tg-report-method { order: 4; }
         .tg-report-insights > div { order: 5; }
         .tg-report-process { counter-reset: report-step; }
@@ -400,10 +400,52 @@
             .tg-report-action svg { width: .85rem; height: .85rem; }
         }
         @media (min-width: 768px) {
-            .tg-report-overview { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); padding: 1.5rem; gap: 2rem; }
+            .tg-report-overview { grid-template-columns: minmax(0, 1fr); padding: 0; gap: 1.5rem; border: 0; background: transparent; box-shadow: none; }
             .tg-report-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-            .tg-report-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .tg-report-body { display: flex; flex-direction: column; }
             .tg-report-assessment, .tg-report-sources, .tg-report-method, .tg-report-insights > div { grid-column: 1 / -1; }
+        }
+
+        .truthguard-mobile-result .tg-ai-report { max-width: 960px; margin-inline: auto; }
+        @media (min-width: 768px) {
+            .tg-ai-report .tg-report-evidence, .tg-ai-report .tg-ai-hero { padding: 1.5rem; }
+        }
+        /* Follow the submission-to-verdict reading order at every screen size. */
+        .tg-report-claim { order: 0; min-width: 0; grid-column: 1 / -1; }
+        .tg-report-overview > *, .tg-report-body > *, .tg-report-metrics > div { min-width: 0; }
+        .tg-ai-report .tg-ai-hero { align-items: flex-start; }
+        .tg-ai-report .tg-report-evidence { align-self: start; }
+        .tg-ai-report .tg-ai-media img, .tg-ai-report .tg-ai-media video { max-height: min(50vh, 26rem); }
+        @media (max-width: 640px) {
+            .tg-report-header { flex-wrap: wrap; gap: 12px; }
+            .tg-report-title { flex: 1 1 100%; }
+            .tg-report-kicker, .tg-report-date { max-width: none; white-space: normal; }
+            .tg-report-actions { width: 100%; }
+            .tg-report-actions a { flex: 1; min-height: 44px !important; font-size: 12px !important; }
+            .tg-report-overview { padding: 0; gap: 16px; border: 0; background: transparent; box-shadow: none; }
+            .tg-ai-report .tg-report-evidence, .tg-ai-report .tg-ai-hero { padding: 16px; }
+            .tg-ai-report h3 { font-size: 18px; line-height: 1.4; }
+            .tg-report-metrics > div { padding: 14px; }
+            .tg-report-body { gap: 16px; }
+        }
+        @media (min-width: 768px) {
+            .tg-ai-report .tg-report-evidence { padding: 1.25rem; }
+            .tg-ai-report .tg-report-evidence .tg-ai-media:has(> img),
+            .tg-ai-report .tg-report-evidence .tg-ai-media:has(> video) {
+                width: fit-content;
+                max-width: 100%;
+                margin-inline: auto;
+                overflow: hidden;
+                background: transparent;
+            }
+            .tg-ai-report .tg-report-evidence .tg-ai-media > img,
+            .tg-ai-report .tg-report-evidence .tg-ai-media > video {
+                width: auto;
+                max-width: 100%;
+                height: auto;
+                max-height: min(38vh, 18rem);
+                object-fit: contain;
+            }
         }
     </style>
 @endonce
@@ -502,39 +544,6 @@
                         <a href="{{ $mediaUrl }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-blue-700 hover:underline">View full image</a>
                     @endif
                 </div>
-                <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5">
-                    <div class="flex items-start justify-between gap-3">
-                        <div>
-                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Claim being checked</p>
-                            <p class="mt-1 text-xs text-slate-500">Only text recorded from the submission or a matched review is shown.</p>
-                        </div>
-                        @if ($ocrText)
-                            <span class="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">OCR may be imperfect</span>
-                        @endif
-                    </div>
-                    @forelse ($claimEvidenceItems as $claimEvidence)
-                        <div class="mt-4 border-t border-slate-200 pt-3 first:mt-3 first:border-t-0 first:pt-0">
-                            <p class="text-xs font-black text-slate-500">{{ $claimEvidence['label'] }}</p>
-                            <p class="mt-1 text-sm leading-7 text-slate-800">{{ $claimEvidence['text'] }}</p>
-                        </div>
-                    @empty
-                        <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">No clear factual claim was detected.</p>
-                        <p class="mt-1 text-xs leading-5 text-slate-500">TruthGuard cannot assess a specific claim without claim text or a matching source review.</p>
-                    @endforelse
-                </div>
-
-                @if ($selectedDetection->source_url)
-                    <a href="{{ $selectedDetection->source_url }}" target="_blank" rel="noreferrer" class="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
-                        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 14.5 5-5M8 16l-1.3 1.3a3.2 3.2 0 0 1-4.5-4.5L5 10a3.2 3.2 0 0 1 4.5 0M16 8l1.3-1.3a3.2 3.2 0 0 1 4.5 4.5L19 14a3.2 3.2 0 0 1-4.5 0" /></svg>
-                        </span>
-                        <span class="min-w-0 flex-1">
-                            <span class="block text-xs font-black uppercase tracking-[0.12em] text-slate-400">Original link</span>
-                            <span class="mt-1 block truncate text-sm font-bold text-blue-700">{{ $selectedDetection->source_url }}</span>
-                        </span>
-                        <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M8 7h9v9" /></svg>
-                    </a>
-                @endif
             </article>
 
     <article class="tg-ai-hero min-w-0">
@@ -595,35 +604,10 @@
                 </div>
             </div>
 
-            <div class="flex w-full flex-wrap items-center gap-5">
-                <div class="tg-score-ring" style="--tg-score: {{ $confidenceScore }}" aria-label="{{ $confidenceScore }} percent verdict confidence">
-                    <span class="text-center">
-                        <strong class="block text-3xl font-black tracking-tight {{ $tone['text'] }}">{{ $confidenceScore }}%</strong>
-                        <small class="mt-0.5 block text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Confidence</small>
-                    </span>
-                </div>
-                <div class="text-left">
-                    <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Risk score</p>
-                    <p class="mt-1 text-2xl font-black text-slate-950">{{ $riskScore }}%</p>
-                    <p class="mt-1 max-w-[15rem] text-xs leading-5 text-slate-500">Estimated misinformation or manipulation risk.</p>
-                </div>
-            </div>
         </div>
     </article>
 
     </div>
-    <dl class="tg-report-metrics">
-        @foreach ([
-            ['label' => 'AI confidence', 'value' => $confidenceScore.'%', 'help' => 'How strongly the available evidence supports the displayed verdict. Not certainty.'],
-            ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
-            ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
-            ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
-        ] as $metric)
-            <div title="{{ $metric['help'] }}"><dt>{{ $metric['label'] }}</dt><dd>{{ $metric['value'] }}</dd><p class="mt-1 text-xs leading-5 text-slate-500">{{ $metric['help'] }}</p></div>
-        @endforeach
-    </dl>
-    <div class="tg-report-body">
-        <div class="tg-report-main">
             <article class="tg-ai-surface tg-report-assessment overflow-hidden">
                 <div class="border-b border-slate-100 px-5 py-5 sm:px-7">
                     <div class="flex items-center gap-3">
@@ -677,6 +661,55 @@
                     </div>
                 </div>
             </article>
+
+    <dl class="tg-report-metrics">
+        @foreach ([
+            ['label' => 'AI confidence', 'value' => $confidenceScore.'%', 'help' => 'How strongly the available evidence supports the displayed verdict. Not certainty.'],
+            ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
+            ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
+            ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
+        ] as $metric)
+            <div title="{{ $metric['help'] }}"><dt>{{ $metric['label'] }}</dt><dd>{{ $metric['value'] }}</dd><p class="mt-1 text-xs leading-5 text-slate-500">{{ $metric['help'] }}</p></div>
+        @endforeach
+    </dl>
+    <div class="tg-report-body">
+        <div class="tg-report-main">
+            <article class="tg-report-claim">
+                <div class="tg-ai-surface p-5 sm:p-7">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Claim being checked</p>
+                            <p class="mt-1 text-xs text-slate-500">Only text recorded from the submission or a matched review is shown.</p>
+                        </div>
+                        @if ($ocrText)
+                            <span class="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">OCR may be imperfect</span>
+                        @endif
+                    </div>
+                    @forelse ($claimEvidenceItems as $claimEvidence)
+                        <div class="mt-4 border-t border-slate-200 pt-3 first:mt-3 first:border-t-0 first:pt-0">
+                            <p class="text-xs font-black text-slate-500">{{ $claimEvidence['label'] }}</p>
+                            <p class="mt-1 text-sm leading-7 text-slate-800">{{ $claimEvidence['text'] }}</p>
+                        </div>
+                    @empty
+                        <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">No clear factual claim was detected.</p>
+                        <p class="mt-1 text-xs leading-5 text-slate-500">TruthGuard cannot assess a specific claim without claim text or a matching source review.</p>
+                    @endforelse
+                </div>
+
+                @if ($selectedDetection->source_url)
+                    <a href="{{ $selectedDetection->source_url }}" target="_blank" rel="noreferrer" class="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200 p-4 transition hover:border-blue-300 hover:bg-blue-50/30">
+                        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9.5 14.5 5-5M8 16l-1.3 1.3a3.2 3.2 0 0 1-4.5-4.5L5 10a3.2 3.2 0 0 1 4.5 0M16 8l1.3-1.3a3.2 3.2 0 0 1 4.5 4.5L19 14a3.2 3.2 0 0 1-4.5 0" /></svg>
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-xs font-black uppercase tracking-[0.12em] text-slate-400">Original link</span>
+                            <span class="mt-1 block truncate text-sm font-bold text-blue-700">{{ $selectedDetection->source_url }}</span>
+                        </span>
+                        <svg class="h-4 w-4 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17 17 7M8 7h9v9" /></svg>
+                    </a>
+                @endif
+            </article>
+
 
 
             <article id="source-verification" class="tg-ai-surface tg-report-sources p-5 sm:p-7">
