@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'truthguard-static';
-const CACHE_VERSION = '2026-09-27.1';
+const CACHE_VERSION = '2026-10-10.1';
 const STATIC_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 
@@ -182,29 +182,57 @@ function safeNotificationUrl(value) {
   return `${self.location.origin}/notifications`;
 }
 
+// Do not trust a previously queued push after logout or an account switch.
+// This cookie-bound endpoint also works when no page/login session is active.
+async function authorizedNotification(id) {
+  if (!/^[a-f0-9-]{36}$/i.test(id || '')) return null;
+  try {
+    const response = await fetch(`/push/deliveries/${id}`, {
+      credentials: 'include', cache: 'no-store', redirect: 'error',
+      headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(10000)
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    console.warn('TruthGuard push validation unavailable; notification remains in the in-app history.');
+    return null;
+  }
+}
+
+let pushSequence = Promise.resolve();
 self.addEventListener('push', (event) => {
   let payload;
   try { payload = event.data?.json(); } catch { return; }
-  const data = payload?.data;
-  if (!data?.notification_id || !data?.title || !data?.body) return;
-  event.waitUntil((async () => {
+  const incoming = payload?.data;
+  if (!incoming?.notification_id) return;
+  // Serialize local deliveries; server retries cannot produce overlapping displays.
+  pushSequence = pushSequence.catch(() => {}).then(async () => {
+    const data = await authorizedNotification(incoming.notification_id);
+    if (!data || (incoming.subscription_id && incoming.subscription_id !== data.subscription_id)) return;
+    const receipts = await caches.open('truthguard-push-receipts-v1');
+    const key = new URL(`/push/receipts/${data.notification_id}`, self.location.origin).href;
+    if (await receipts.match(key)) return;
     await self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: '/pwa/icon-192.png',
-      badge: '/pwa/icon-32.png',
-      tag: `truthguard-${data.notification_id}`,
+      body: data.body, icon: '/pwa/icon-192.png', badge: '/pwa/icon-32.png',
+      tag: `truthguard-${data.notification_id}`, renotify: false,
       timestamp: Number(data.timestamp) || Date.now(),
       data: { url: safeNotificationUrl(data.url), notificationId: data.notification_id },
     });
+    // Store IDs only, never notification text or private URLs, across worker restarts.
+    await receipts.put(key, new Response('shown'));
+    const keys = await receipts.keys();
+    await Promise.all(keys.slice(0, Math.max(0, keys.length - 256)).map(key => receipts.delete(key)));
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    windows.forEach((client) => client.postMessage({ type: 'TRUTHGUARD_NOTIFICATION' }));
-  })());
+    windows.forEach(client => client.postMessage({ type: 'TRUTHGUARD_NOTIFICATION' }));
+  });
+  event.waitUntil(pushSequence);
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = safeNotificationUrl(event.notification.data?.url);
   event.waitUntil((async () => {
+    const authorized = await authorizedNotification(event.notification.data?.notificationId);
+    const url = safeNotificationUrl(authorized?.url);
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const existing = windows.find((client) => client.url === url)
       || windows.find((client) => new URL(client.url).origin === self.location.origin);

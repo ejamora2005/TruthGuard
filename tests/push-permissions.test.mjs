@@ -15,7 +15,7 @@ const markup = `<!doctype html><html><head><meta name="csrf-token" content="test
 
 for (const permission of ['default', 'denied', 'unsupported']) {
     test(`permission flow: ${permission}`, async () => {
-        const browser = await chromium.launch({ headless: true });
+        const browser = await chromium.launch({ channel: 'chrome', headless: true });
         try {
             const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
             const requests = [];
@@ -29,6 +29,7 @@ for (const permission of ['default', 'denied', 'unsupported']) {
             }, permission);
             await page.route('http://localhost:9876/**', async (route) => {
                 const path = new URL(route.request().url()).pathname;
+                if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
                 if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
                 if (path.startsWith('/push/')) {
                     requests.push({ path, method: route.request().method(), headers: route.request().headers(), body: route.request().postDataJSON() });
@@ -46,8 +47,7 @@ for (const permission of ['default', 'denied', 'unsupported']) {
                 await page.click('[data-push-enable]');
                 await page.waitForFunction(() => window.permissionRequests === 1);
                 assert.equal(requests.some((request) => request.path === '/push/subscriptions'), false);
-                await page.click('[data-push-save]');
-                await page.waitForResponse((response) => response.url().endsWith('/push/preferences'));
+                await Promise.all([page.waitForResponse(response => response.url().endsWith('/push/preferences')), page.click('[data-push-save]')]);
                 const save = requests.find((request) => request.path === '/push/preferences');
                 assert.equal(save.method, 'PATCH');
                 assert.equal(save.headers['x-csrf-token'], 'test-csrf');
@@ -58,7 +58,7 @@ for (const permission of ['default', 'denied', 'unsupported']) {
 }
 
 test('granted permission registers the existing root worker and device disable persists', async () => {
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({ channel: 'chrome', headless: true });
     try {
         const page = await browser.newPage();
         let deviceDisabled = false;
@@ -70,12 +70,13 @@ test('granted permission registers the existing root worker and device disable p
             Object.defineProperty(window, 'Notification', { value: { permission: 'granted', requestPermission: async () => { window.permissionRequests++; return 'granted'; } } });
             Object.defineProperty(navigator, 'serviceWorker', { value: {
                 ready: Promise.resolve(), addEventListener() {},
-                register: async (url, options) => { window.registeredWorkers.push([url, options.scope]); return { scope: 'http://localhost:9876/' }; },
+                register: async (url, options) => { window.registeredWorkers.push([url, options.scope]); return { scope: 'http://localhost:9876/', active: {} }; },
             } });
         });
         await page.route('http://localhost:9876/**', async (route) => {
             const path = new URL(route.request().url()).pathname;
-            if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
+            if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
+                if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
             if (path === '/mock-app.js') return route.fulfill({ contentType: 'text/javascript', body: 'export const getApps = () => []; export const initializeApp = () => ({});' });
             if (path === '/mock-messaging.js') return route.fulfill({ contentType: 'text/javascript', body: `export const isSupported = async () => true; export const getMessaging = () => ({}); export const deleteToken = async () => true; export const getToken = async (instance, options) => { if (options.serviceWorkerRegistration.scope !== 'http://localhost:9876/') throw Error('Wrong worker'); return 'example-token'; };` });
             if (path.startsWith('/push/')) {
@@ -95,5 +96,59 @@ test('granted permission registers the existing root worker and device disable p
         await page.reload();
         await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('when you are ready'));
         assert.equal(requests.filter(([path, method]) => path === '/push/subscriptions' && method === 'POST').length, 1);
+    } finally { await browser.close(); }
+});
+
+
+test('Enable reports installation failure, retries, saves subscription and exposes provider status', async () => {
+    const browser = await chromium.launch({ channel: 'chrome', headless: true });
+    try {
+        const page = await browser.newPage();
+        const requests = [];
+        let preferences = { push_enabled: false, analysis_results: true };
+        await page.addInitScript(() => {
+            window.permissionRequests = 0;
+            window.workerAttempts = 0;
+            const notification = { permission: 'default', requestPermission: async () => {
+                window.permissionRequests++;
+                notification.permission = 'granted';
+                return 'granted';
+            } };
+            Object.defineProperty(window, 'Notification', { value: notification });
+            Object.defineProperty(navigator, 'serviceWorker', { value: {
+                addEventListener() {},
+                register: async () => {
+                    if (++window.workerAttempts === 1) throw Error('Service worker installation failed.');
+                    return { scope: 'http://localhost:9876/', active: {} };
+                },
+            } });
+        });
+        await page.route('http://localhost:9876/**', async route => {
+            const path = new URL(route.request().url()).pathname;
+            if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
+            if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
+            if (path === '/mock-app.js') return route.fulfill({ contentType: 'text/javascript', body: 'export const getApps=()=>[]; export const initializeApp=()=>({});' });
+            if (path === '/mock-messaging.js') return route.fulfill({ contentType: 'text/javascript', body: "export const isSupported=async()=>true; export const getMessaging=()=>({}); export const getToken=async()=> 'example-token';" });
+            if (path.startsWith('/push/')) {
+                requests.push([path, route.request().method()]);
+                if (path === '/push/settings') return route.fulfill({ json: { enabled: true, firebase: {}, preferences, canTest: true } });
+                if (path === '/push/preferences') preferences = { ...preferences, ...route.request().postDataJSON() };
+                if (path === '/push/test') return route.fulfill({ status: 202, json: { message: 'Test queued.', statusUrl: '/push/test/example' } });
+                if (path === '/push/test/example') return route.fulfill({ json: { status: 'sent', message: 'Firebase accepted the test. This does not confirm display.' } });
+                return route.fulfill({ json: { ok: true, preferences } });
+            }
+            return route.fulfill({ contentType: 'text/html', body: markup.replace('<script type="module"', '<script type="importmap">{"imports":{"firebase/app":"/mock-app.js","firebase/messaging":"/mock-messaging.js"}}</script><script type="module"') });
+        });
+        await page.goto('http://localhost:9876/profile');
+        await page.click('[data-push-enable]');
+        await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('installation failed'));
+        assert.equal(await page.locator('[data-push-enable]').isEnabled(), true);
+        assert.equal(requests.some(([path]) => path === '/push/subscriptions'), false);
+        await page.click('[data-push-enable]');
+        await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('enabled on this device'));
+        assert.equal(requests.filter(([path]) => path === '/push/subscriptions').length, 1);
+        await page.click('[data-push-test]');
+        await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('does not confirm display'));
+        assert.equal(await page.locator('[data-push-test]').isEnabled(), true);
     } finally { await browser.close(); }
 });

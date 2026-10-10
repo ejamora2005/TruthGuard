@@ -35,19 +35,19 @@ class NotificationEventService
             route('detections.result', $detection, false));
     }
 
-    public function system(User $user, string $eventKey, string $message, string $url = '/notifications'): ?DatabaseNotification
+    public function system(User $user, string $eventKey, string $message, string $url = '/notifications', ?int $subscriptionId = null, int $delaySeconds = 0): ?DatabaseNotification
     {
-        return $this->send($user, 'system:'.$eventKey, 'system_notifications', 'TruthGuard', $message, $url);
+        return $this->send($user, 'system:'.$eventKey, 'system_notifications', 'TruthGuard', $message, $url, $subscriptionId, $delaySeconds);
     }
 
-    public function send(User $user, string $eventKey, string $preference, string $title, string $message, string $url): ?DatabaseNotification
+    public function send(User $user, string $eventKey, string $preference, string $title, string $message, string $url, ?int $subscriptionId = null, int $delaySeconds = 0): ?DatabaseNotification
     {
         $preferences = NotificationPreference::forUser($user);
         if (! ($preferences[$preference] ?? false) || $preference === 'push_enabled') {
             return null;
         }
 
-        return DB::transaction(function () use ($user, $eventKey, $preference, $title, $message, $url, $preferences) {
+        return DB::transaction(function () use ($user, $eventKey, $preference, $title, $message, $url, $preferences, $subscriptionId, $delaySeconds) {
             $notification = $user->notifications()->createOrFirst([
                 'event_key' => hash('sha256', $user->id.':'.$eventKey),
             ], [
@@ -68,8 +68,8 @@ class NotificationEventService
                 ],
             ]);
             if ($notification->wasRecentlyCreated && $preferences['push_enabled'] && config('firebase.enabled')) {
-                PushSubscription::where('user_id', $user->id)->each(function ($subscription) use ($notification) {
-                    SendPushNotification::dispatch($subscription->id, $notification->id)->afterCommit();
+                PushSubscription::where('user_id', $user->id)->when($subscriptionId, fn ($query) => $query->whereKey($subscriptionId))->each(function ($subscription) use ($notification, $delaySeconds) {
+                    SendPushNotification::dispatch($subscription->id, $notification->id)->delay(now()->addSeconds($delaySeconds))->afterCommit();
                 });
             }
 

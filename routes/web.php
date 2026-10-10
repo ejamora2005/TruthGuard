@@ -130,6 +130,10 @@ Route::post('automation/playwright/runs', [AutomationController::class, 'store']
     ->middleware(EnsureAutomationToken::class)
     ->name('automation.playwright.runs.store');
 
+// Cookie-bound background delivery validation must also work after session expiry.
+Route::get('push/deliveries/{notification}', [PushNotificationController::class, 'delivery'])
+    ->whereUuid('notification')->middleware('throttle:120,1')->name('push.delivery');
+
 // Web middleware retains session authentication and Laravel CSRF protection.
 Route::middleware(['auth', ExpireIdleSession::class, EnsurePrivacyPolicyAccepted::class])
     ->prefix('push')->name('push.')->controller(PushNotificationController::class)
@@ -139,4 +143,5 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsurePrivacyPolicyAccepted
         Route::delete('subscriptions', 'remove')->name('remove');
         Route::patch('preferences', 'preferences')->name('preferences');
         Route::post('test', 'test')->middleware('throttle:3,1')->name('test');
+        Route::get('test/{notification}', 'testStatus')->whereUuid('notification')->middleware('throttle:60,1')->name('test.status');
     });

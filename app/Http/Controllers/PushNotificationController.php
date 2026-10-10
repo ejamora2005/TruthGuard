@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\NotificationPreference;
+use App\Models\PushDelivery;
 use App\Models\PushSubscription;
+use App\Models\User;
 use App\Services\Notifications\NotificationEventService;
+use App\Services\Notifications\NotificationUrl;
+use App\Services\Notifications\PushConfiguration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -13,13 +17,17 @@ class PushNotificationController extends Controller
 {
     public function settings(Request $request)
     {
+        $ready = app(PushConfiguration::class)->problems() === [];
+
         return response()->json([
             'deviceDisabled' => $request->cookie('truthguard_push_disabled') === '1',
-            'enabled' => (bool) config('firebase.enabled'),
+            'enabled' => $ready,
+            'configurationReady' => $ready,
             'firebase' => config('firebase.web'),
             'vapidKey' => config('firebase.vapid_key'),
             'preferences' => NotificationPreference::forUser($request->user()),
-            'canTest' => app()->environment(['local', 'testing']) || $request->user()->isAdmin(),
+            'canTest' => true,
+            'subscribed' => PushSubscription::where('user_id', $request->user()->id)->where('token_hash', $request->cookie('truthguard_push'))->exists(),
         ])->header('Cache-Control', 'no-store');
     }
 
@@ -66,13 +74,54 @@ class PushNotificationController extends Controller
 
     public function test(Request $request, NotificationEventService $events)
     {
-        abort_unless(app()->environment(['local', 'testing']) || $request->user()->isAdmin(), 403);
+        $input = $request->validate(['delay_seconds' => ['sometimes', 'integer', 'in:0,15,30']]);
         abort_unless(config('firebase.enabled'), 503, 'Push notifications are not configured.');
+        $subscription = PushSubscription::where('user_id', $request->user()->id)
+            ->where('token_hash', $request->cookie('truthguard_push'))->first();
         $preferences = NotificationPreference::forUser($request->user());
         abort_unless($preferences['push_enabled'] && $preferences['system_notifications']
-            && PushSubscription::where('user_id', $request->user()->id)->exists(), 422, 'Enable push and system notifications on a device first.');
-        $events->system($request->user(), 'test:'.Str::uuid(), 'This is your TruthGuard test notification.');
+            && $subscription, 422, 'Enable push and system notifications on a device first.');
+        $notification = $events->system($request->user(), 'test:'.Str::uuid(), 'This is your TruthGuard test notification.', '/notifications', $subscription->id, (int) ($input['delay_seconds'] ?? 0));
 
-        return response()->json(['message' => 'Test queued. Delivery still depends on Firebase and device settings.'], 202);
+        return response()->json(['message' => 'Test queued for this device. Waiting for the worker...', 'statusUrl' => '/push/test/'.$notification->id], 202);
+    }
+
+    public function testStatus(Request $request, string $notification)
+    {
+        $record = $request->user()->notifications()->whereKey($notification)->firstOrFail();
+        $subscription = PushSubscription::where('user_id', $request->user()->id)
+            ->where('token_hash', $request->cookie('truthguard_push'))->first();
+        $delivery = $subscription ? PushDelivery::where('push_subscription_id', $subscription->id)
+            ->where('notification_id', $record->id)->first() : null;
+
+        return response()->json([
+            'status' => $subscription ? ($delivery?->status ?? 'queued') : 'unsubscribed',
+            'message' => ! $subscription ? 'This device is no longer subscribed. Enable notifications again.' : match ($delivery?->status) {
+                'sent' => 'Firebase accepted the test. This does not confirm display; check your device notifications.',
+                'failed', 'retrying' => $delivery->last_error ?: 'Delivery failed. Check the queue worker.',
+                default => 'Still queued. If this continues, check that the Dokploy worker is running.',
+            },
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    // A background worker may outlive the login session. The encrypted HttpOnly
+    // device cookie authorizes only this subscription, never an arbitrary user.
+    public function delivery(Request $request, string $notification)
+    {
+        $hash = $request->cookie('truthguard_push');
+        abort_unless($hash && config('firebase.enabled') && $request->cookie('truthguard_push_disabled') !== '1', 404);
+        $subscription = PushSubscription::where('token_hash', $hash)->firstOrFail();
+        abort_if($request->user() && $request->user()->id !== $subscription->user_id, 404);
+        $user = User::findOrFail($subscription->user_id);
+        $record = $user->notifications()->whereKey($notification)->whereNull('archived_at')->firstOrFail();
+        $preferences = NotificationPreference::forUser($user);
+        abort_unless($preferences['push_enabled'] && ($preferences[$record->data['preference'] ?? ''] ?? false), 404);
+
+        return response()->json([
+            'title' => $record->data['title'], 'body' => $record->data['message'],
+            'url' => NotificationUrl::safe($record->data['action_url'] ?? null),
+            'notification_id' => $record->id, 'subscription_id' => (string) $subscription->id,
+            'timestamp' => $record->created_at->timestamp * 1000,
+        ])->header('Cache-Control', 'private, no-store');
     }
 }

@@ -1,5 +1,81 @@
 # TruthGuard push notifications
 
+## Reliability repair (2026-10-10)
+
+The reported symptom was no popup after enabling/testing push. The production
+Firebase configuration, worker processes, and device permissions were not available
+for inspection; the precise live failure is not yet confirmed. The code audit found:
+
+- The production test endpoint/button excluded ordinary users.
+- Subscription waited on `navigator.serviceWorker.ready` without a deadline; a
+  stalled installation could leave controls unbound. PWA and push used separate
+  registration paths, and settings did not distinguish configuration readiness.
+- Saving the account push switch did not register the current device or explain
+  that browser permission/subscription was still needed.
+- There was no per-device provider delivery status or completed-job receipt.
+- Already queued FCM messages could display after logout/account switching.
+
+Repairs reuse FCM and `/sw.js`. `resources/js/service-worker.js` shares one root
+registration, bypasses stale script caches, and bounds activation waiting. Browser
+settings/token requests have deadlines and visible errors. The authenticated test
+is rate-limited and only targets the current device; the optional 15-second delay
+allows the PWA window to be closed before delivery. Status polling distinguishes
+queued, retrying, failed, unsubscribed, and provider-accepted outcomes.
+
+`push_deliveries` adds durable per-subscription/event receipts plus shared cache
+locks. Replayed successful jobs do not resend. Provider retries are still
+at-least-once: a crash after provider acceptance but before recording success can
+resend. The worker also stores up to 256 displayed IDs (no message text) to suppress
+repeated alerts across worker restarts.
+
+Before displaying or opening a notification, the worker checks
+`GET /push/deliveries/{uuid}`. This endpoint uses the encrypted HttpOnly device
+cookie and current subscription ownership, not a live page or active login session.
+It never accepts a recipient user ID. Logout removes the binding; a different
+account login revokes the previous account's browser binding. Removed/disabled
+subscriptions, mismatched logged-in accounts and archived messages fail closed.
+If the server cannot be reached during this check, the popup is suppressed and the
+notification remains in the in-app history. This security tradeoff means provider
+acceptance alone never proves a visible popup.
+
+Local diagnostic results: the available Firebase configuration was structurally
+valid and Google OAuth accepted its service-account credentials. No real FCM push
+was sent, and no Windows/Android OS popup or installed-PWA background delivery was
+verified. Production has not been changed or deployed.
+
+### Repair files
+
+- `app/Http/Controllers/PushNotificationController.php`: device-bound test/status and background authorization.
+- `app/Jobs/SendPushNotification.php`: shared lock, durable receipts, safe retry diagnostics.
+- `app/Services/Notifications/TruthGuardPushNotificationService.php`: provider result and OAuth diagnostic.
+- `app/Services/Notifications/NotificationEventService.php`: current-device targeting and delayed tests.
+- `app/Providers/AppServiceProvider.php`: logout cookie removal and account-switch revocation.
+- `app/Services/Notifications/PushConfiguration.php`, `app/Console/Commands/PushDoctor.php`: safe configuration checks.
+- `app/Models/PushDelivery.php`, `database/migrations/2026_10_10_190000_create_push_deliveries_table.php`: delivery receipts.
+- `resources/js/service-worker.js`, `resources/js/pwa.js`, `resources/js/push-notifications.js`: shared registration and settings feedback.
+- `public/sw.js`: background authorization, persistent duplicate suppression, safe clicks.
+- `resources/views/notifications/settings.blade.php`, `routes/web.php`: delayed test UI and secure endpoints.
+- `docker/apache.conf`: revalidate the root worker and declare its allowed scope.
+- `tests/Feature/PushReliabilityTest.php`, `tests/Feature/PushNotificationsTest.php`, `tests/push-permissions.test.mjs`, `tests/push-service-worker.test.mjs`, `tests/push-worker-registration.test.mjs`: regression coverage.
+- `docs/PUSH-NOTIFICATIONS.md`: setup and verification instructions.
+
+Existing edits to manifest background color and service-worker cache version were
+preserved; the manifest was not changed by this repair.
+
+### Repair verification
+
+- 38 focused Laravel tests / 150 assertions passed (push reliability, push,
+  notifications, announcements, production configuration).
+- 15 browser/service-worker/registration checks passed. Firebase/browser permission
+  responses are mocked; no installed-app OS notification delivery is claimed.
+- Production Vite build, Blade compilation and push route registration passed.
+- Local credential exchange with Google OAuth passed, without sending a notification.
+- The new delivery-table migration was tested on isolated SQLite databases, not
+  applied to the local application database or production. The diagnostic correctly
+  flags the missing `push_deliveries` table until deployment migration runs.
+- Existing Compose environment forwarding and worker timeout/retry settings were
+  inspected and retained. No production container build or Apache runtime was tested.
+
 ## Architecture and scope
 
 Laravel 13 / PHP 8.3+, Blade + Livewire, Vite, and the React admin UI are retained. Authentication uses existing Laravel sessions, CSRF middleware and account/privacy checks. Existing `notifications` records, the bell, polling, unread/read, mark-all-read and archive controls are retained. The new events create one database notification per user/event; queued push delivery references that same record.
@@ -47,11 +123,13 @@ Pre-existing edits to analysis models/pipeline, `config/services.php`, Python au
 
 ## Migration
 
-The new migration creates `push_subscriptions` and `notification_preferences`, both with cascading user foreign keys. It adds nullable unique `notifications.event_key` for atomic event deduplication. No existing notification rows are removed. Archive keeps event keys, preventing replay of dismissed events. Run the migration before serving the new application code or starting updated workers.
+The original migration creates `push_subscriptions` and `notification_preferences`, both with cascading user foreign keys. It adds nullable unique `notifications.event_key` for atomic event deduplication. No existing notification rows are removed. Archive keeps event keys, preventing replay of dismissed events. Run the migration before serving the new application code or starting updated workers.
+
+The repair migration `2026_10_10_190000_create_push_deliveries_table.php` must also run before the updated worker starts. It does not modify detection data.
 
 ## Routes
 
-All routes use the existing web/session authentication, CSRF and privacy middleware; mutation endpoints do not accept a recipient user ID.
+Settings and mutation routes use existing session authentication, CSRF and privacy middleware; mutation endpoints do not accept a recipient user ID. The background delivery-validation route instead requires the encrypted device cookie, allowing opted-in devices to receive alerts without an open page.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -59,7 +137,9 @@ All routes use the existing web/session authentication, CSRF and privacy middlew
 | POST | `/push/subscriptions` | Register/refresh own device; 30 requests/minute |
 | DELETE | `/push/subscriptions` | Remove own token/current device and persist device opt-out |
 | PATCH | `/push/preferences` | Update own validated boolean settings |
-| POST | `/push/test` | Queue an own-account system test; local/testing or admin only; 3/minute |
+| POST | `/push/test` | Queue a current-device test; optional `delay_seconds` of 0, 15 or 30; 3/minute |
+| GET | `/push/test/{uuid}` | Own notification/provider-delivery status; 60/minute |
+| GET | `/push/deliveries/{uuid}` | Cookie-bound background authorization and canonical message; no-store; 120/minute |
 
 Existing `/notifications`, peek, read, mark-all-read and delete/archive routes are unchanged. Analysis clicks use the existing protected `/detections/{id}/result` route, with existing ownership enforcement. New fact-check clicks use `/dashboard/fact-checks/{feed_item_id}`. An allowlist rejects external URLs, redirect query strings and unrelated app routes. The worker also validates URLs and focuses/navigates an existing same-origin window where possible.
 
@@ -108,11 +188,11 @@ Tests:
 
 ```sh
 php artisan test --filter='PushNotificationsTest|NotificationsTest|ProductionConfigurationTest|ProfileTest'
-node --test tests/push-service-worker.test.mjs tests/push-permissions.test.mjs
+node --test tests/push-service-worker.test.mjs tests/push-permissions.test.mjs tests/push-worker-registration.test.mjs
 npm run build
 ```
 
-The browser tests use mocked Firebase responses and real headless Chromium, not live Firebase. If Chromium is absent, run `npx playwright install chromium`.
+The browser tests use mocked Firebase responses and installed headless Google Chrome (`channel: chrome`), not live device delivery.
 
 On this Windows machine, the successful PHP test invocation enables SQLite for the process and points OpenSSL at the installed config:
 
@@ -155,11 +235,11 @@ Build the new image first when using `compose run` to migrate; in Dokploy use th
 
 1. Sign in and open `/profile#notification-settings` (admin React profile also links here).
 2. Click **Enable Notifications**, then accept the browser prompt. There is no automatic permission popup. A denial disables the Enable button and explains browser settings; Not Now makes no permission request.
-3. Keep Push Notifications and System Notifications enabled and save preferences. In local/development or an admin account, click **Send Test Notification**. It only targets the signed-in account. A queued response does not certify device delivery.
+3. Keep Push Notifications and System Notifications enabled and save preferences. Click **Send Test Notification** as any signed-in user. It targets only this device. Watch the delivery status. A queued or Firebase-accepted response does not certify OS display.
 4. Confirm the worker sends, the device displays the alert, and the bell represents the same event. Test mark-read/mark-all/archive. Disable one category and confirm its next event is suppressed. Disable push globally and confirm in-app events still appear for enabled categories.
 5. Submit an image/video/text analysis as an ordinary user. Confirm the alert arrives only after successful completion and opens that user's result. Repeat on another device and verify both can receive it. Disable one device and reload to confirm it stays disabled. Explicitly sign out to check token cleanup.
 
-Android checklist: open `https://truthguard.online` in supported Chrome, install the PWA, and enable notifications in its settings. Test while foregrounded, while another app is open, after returning to the home screen, and after closing the PWA window. To trigger a notification while the phone PWA is closed, use the same account from another device or queue a test while the worker is paused and then restart the worker. Tap the alert and verify the existing app window is reused, or a new window opens when none exists. Protected results still require authentication.
+Android checklist: open `https://truthguard.online` in supported Chrome, install the PWA, and enable notifications in its settings. Test while foregrounded, while another app is open, after returning to the home screen, and after closing the PWA window. To test with the window closed, select the 15-second test delay, send the test, then close the PWA window without logging out. Do not force-stop Chrome. Tap the alert and verify the existing app window is reused, or a new window opens when none exists. Protected results still require authentication.
 
 ## Limitations and manual work
 
@@ -167,12 +247,52 @@ Android checklist: open `https://truthguard.online` in supported Chrome, install
 - A visible notification already delivered to the OS cannot reliably be recalled on logout. Messages are intentionally generic; protected results require login. Tokens are removed on explicit application logout; automatic session expiration alone does not revoke an opted-in device until logout middleware runs or the user disables it.
 - FCM/queue delivery is at-least-once, not an exactly-once guarantee. Stable notification IDs/tags replace repeated visible alerts; event keys prevent duplicate in-app records. Retryable failures remain in the existing failed-jobs mechanism after retries are exhausted.
 - Existing uploaded-media storage and its access rules were not changed. Push payloads never include submission contents or media URLs.
-- Firebase project setup, credentials, production migration/deployment and real Android delivery verification remain manual. Firebase was not contacted with live credentials and production was not changed.
+- Firebase project setup, credentials, production migration/deployment and real Android delivery verification remain manual. The local Google OAuth credential check succeeded; no actual FCM device push was sent and production was not changed.
 
-## Verification report
+## Earlier implementation verification report (historical)
 
 **Verified:** 37 focused PHP tests / 155 assertions passed; eight browser/service-worker tests passed; the production Vite build passed (existing large ApexCharts chunk warning); Compose configuration validation and `git diff --check` passed. The full suite ran 132 tests / 599 assertions with nine errors and 15 failures; none of those were notification tests. The additional CSRF test was verified in the focused run after the full run started.
 
 Focused PHP tests cover token creation/multiple devices/deduplication/rotation/removal, authentication, ownership, CSRF, preferences, completion and evidence events, announcements, OAuth signing/cache, safe payloads/URLs, invalid-token cleanup, retryable failures, read state, logout and self-test access. Browser/worker tests cover default/denied/unsupported/granted permission, explicit consent, existing-worker registration, persisted disable, notification display, click focus and external-URL rejection. Production Vite build and Compose config validation passed.
 
 The complete legacy test suite is not green: failures include obsolete Livewire auth component names and verification routes, older UI text expectations, Google-auth assumptions, and a unit test using the Schema facade without an application container. These areas were not rewritten for the push feature. Test logs are in `storage/logs/push-regression-final.txt` and JUnit XML alongside it; do not interpret the focused checks as a clean full-suite result.
+
+## Production verification after approval
+
+Do not deploy until the owner approves. Keep the same `APP_KEY` on app, worker and
+scheduler: subscriptions and device cookies depend on it. Keep all Firebase values
+identical on those services using the existing Compose environment anchor.
+Use `QUEUE_CONNECTION=database`, `CACHE_STORE=database`, `SESSION_DRIVER=database`,
+`SESSION_SECURE_COOKIE=true`, `APP_URL=https://truthguard.online`, and configure
+`TRUSTED_PROXIES` for the actual Traefik proxy network. Do not expose the internal
+app port to untrusted traffic when trusting proxy headers. `DB_QUEUE_RETRY_AFTER`
+should remain greater than worker timeout (existing values: 360 and 300 seconds;
+push job timeout: 45 seconds). Outbound HTTPS to Google OAuth/FCM is required.
+
+Run the migration once against the shared database using the new image, then
+recreate the app/worker/scheduler services. Their entrypoint refreshes config,
+routes and views. In the Dokploy service terminal, run:
+
+```sh
+# Run in both app and worker containers; prints no key or token values.
+php artisan truthguard:push-doctor --check-provider
+php artisan queue:failed
+```
+
+If status remains queued, inspect worker logs and queue backlog. If status is
+retrying/failed, inspect its sanitized HTTP/provider code: 401/403 point to service
+credentials/project authorization; SENDER_ID_MISMATCH to a different Firebase
+project; THIRD_PARTY_AUTH_ERROR to Web Push credentials; 429/503 to transient
+quota/service failures. Invalid/expired registration tokens are removed; click
+Enable Notifications again on the affected device.
+
+A Firebase-accepted status without a visible alert requires checking Chrome site
+notification permission, Windows notification settings/Do Not Disturb or Android
+app notification permission/battery restrictions. Reopen the PWA once after the
+release to update `/sw.js`. Private `/push/*` responses must not be cached by a CDN.
+Do not configure a separate `firebase-messaging-sw.js`.
+
+For Windows and Android separately, record: foreground popup, minimized popup,
+15-second delayed popup after closing the window, notification click target, offline
+fallback, logout/account-switch suppression, and disabled-permission feedback.
+No code-only test substitutes for these device checks.

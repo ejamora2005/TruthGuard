@@ -12,7 +12,7 @@
     "browser"
   ],
   "orientation": "portrait-primary",
-  "background_color": "#f8fbff",
+  "background_color": "#000000",
   "theme_color": "#2563eb",
   "lang": "en",
   "dir": "ltr",

@@ -127,7 +127,10 @@ class PushNotificationsTest extends TestCase
             && $request['message']['data']['notification_id'] === $notification->id
             && ! isset($request['message']['notification']));
 
+        // Repeated jobs skip accepted deliveries; a distinct send can expire a token.
         (new SendPushNotification($subscription->id, $notification->id))->handle($push);
+        Http::assertSentCount(1);
+        $push->send($subscription, ['title' => 'TruthGuard']);
         $this->assertDatabaseCount('push_subscriptions', 0);
     }
 
@@ -181,15 +184,16 @@ class PushNotificationsTest extends TestCase
         $this->actingAs($user)->postJson('/push/test')->assertUnprocessable();
         NotificationPreference::create(['user_id' => $user->id, 'push_enabled' => true]);
         $this->postJson('/push/subscriptions', ['token' => str_repeat('x', 100)])->assertOk();
-        $this->postJson('/push/test', ['user_id' => User::factory()->create()->id])->assertStatus(202);
+        $this->withCredentials()->withCookie('truthguard_push', hash('sha256', str_repeat('x', 100)))
+            ->postJson('/push/test', ['user_id' => User::factory()->create()->id])->assertStatus(202);
         Queue::assertPushed(SendPushNotification::class, 1);
     }
 
-    public function test_normal_production_user_cannot_send_test_notifications(): void
+    public function test_normal_production_user_can_access_self_test_but_needs_subscription(): void
     {
         $this->app->detectEnvironment(fn () => 'production');
         $this->withoutMiddleware(PreventRequestForgery::class);
-        $this->actingAs(User::factory()->create())->postJson('/push/test')->assertForbidden();
+        $this->actingAs(User::factory()->create())->postJson('/push/test')->assertUnprocessable();
     }
 
     public function test_push_mutations_require_csrf_outside_testing_environment(): void

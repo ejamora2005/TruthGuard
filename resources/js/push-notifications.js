@@ -1,22 +1,23 @@
-// Configuration is fetched at runtime so Dokploy secrets are never bundled.
-let settings;
-let messaging;
-let sdk;
-let initialized = false;
+import { getTruthGuardWorker } from './service-worker';
+
+// Runtime configuration only: server credentials never enter the frontend bundle.
+let settings, messaging, sdk, registrationPending, initializationPending;
 const boundPanels = new WeakSet();
 const deviceDisabled = () => { try { return localStorage.getItem('truthguard:push-disabled') === '1'; } catch { return false; } };
-const setDeviceDisabled = (disabled) => { try { localStorage.setItem('truthguard:push-disabled', disabled ? '1' : '0'); } catch { /* Browser storage unavailable. */ } };
+const setDeviceDisabled = (disabled) => { try { localStorage.setItem('truthguard:push-disabled', disabled ? '1' : '0'); } catch { /* Storage unavailable. */ } };
 const panels = () => [...document.querySelectorAll('[data-push-settings]')];
-const status = (text) => panels().forEach((panel) => { panel.querySelector('[data-push-status]').textContent = text; });
-const supported = () => window.isSecureContext && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+const status = (text) => panels().forEach(panel => { panel.querySelector('[data-push-status]').textContent = text; });
+const supported = () => window.isSecureContext && typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 const request = async (path, method = 'GET', body) => {
     const response = await fetch(path, {
-        method, credentials: 'same-origin', cache: 'no-store',
+        method, credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(30000),
         headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
         ...(body ? { body: JSON.stringify(body) } : {}),
     });
     const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.message || 'Unable to save notifications. Reconnect or sign in again.');
+    if (!response.ok || !response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error(result.message || 'Unable to load notifications. Refresh the page or sign in again.');
+    }
     return result;
 };
 const getMessaging = async () => {
@@ -24,59 +25,64 @@ const getMessaging = async () => {
     const [{ initializeApp, getApps }, messagingSdk] = await Promise.all([import('firebase/app'), import('firebase/messaging')]);
     sdk = messagingSdk;
     if (!await sdk.isSupported()) throw new Error('Push notifications are not supported by this browser.');
-    const app = getApps().find((app) => app.name === 'truthguard-push') || initializeApp(settings.firebase, 'truthguard-push');
+    const app = getApps().find(app => app.name === 'truthguard-push') || initializeApp(settings.firebase, 'truthguard-push');
     messaging = sdk.getMessaging(app);
     return messaging;
 };
-const register = async () => {
-    if (!supported() || Notification.permission !== 'granted' || !settings.enabled) return;
+const subscribe = async () => {
+    if (!supported() || Notification.permission !== 'granted' || !settings.enabled) throw new Error('Enable browser notification permission and configure push first.');
     const instance = await getMessaging();
-    // Reuse the root PWA registration. Never register firebase-messaging-sw.js.
-    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    await navigator.serviceWorker.ready;
-    const token = await sdk.getToken(instance, { vapidKey: settings.vapidKey, serviceWorkerRegistration: registration });
+    const registration = await getTruthGuardWorker();
+    let timer;
+    const token = await Promise.race([
+        sdk.getToken(instance, { vapidKey: settings.vapidKey, serviceWorkerRegistration: registration }),
+        new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Push subscription timed out. Check connectivity and try again.')), 30000); }),
+    ]).finally(() => clearTimeout(timer));
     if (!token) throw new Error('Firebase did not provide a subscription. Please try again.');
     await request('/push/subscriptions', 'POST', { token });
+    settings.subscribed = true;
 };
-const render = () => {
-    panels().forEach((panel) => {
-        panel.querySelectorAll('[data-preference]').forEach((input) => { input.checked = !!settings.preferences[input.dataset.preference]; });
-        const enable = panel.querySelector('[data-push-enable]');
-        enable.disabled = !settings.enabled || !supported() || Notification.permission === 'denied';
-        panel.querySelector('[data-push-test]').hidden = !settings.canTest;
-    });
+const register = () => {
+    if (!registrationPending) registrationPending = subscribe().finally(() => { registrationPending = null; });
+    return registrationPending;
 };
+const render = () => panels().forEach(panel => {
+    panel.querySelectorAll('[data-preference]').forEach(input => { input.checked = !!settings.preferences[input.dataset.preference]; });
+    const enable = panel.querySelector('[data-push-enable]');
+    enable.disabled = !settings.enabled || !supported() || Notification.permission === 'denied';
+    enable.textContent = settings.subscribed && !settings.deviceDisabled && settings.preferences.push_enabled ? 'Refresh Notifications' : 'Enable Notifications';
+    panel.querySelector('[data-push-test]').hidden = !settings.canTest;
+});
+const automaticRegistration = () => settings.enabled && supported() && Notification.permission === 'granted'
+    && settings.preferences.push_enabled && !settings.deviceDisabled && !deviceDisabled();
 async function initialize() {
-    if (initialized || !document.querySelector('meta[name="truthguard-push-settings"]')) return;
-    initialized = true;
+    if (!document.querySelector('meta[name="truthguard-push-settings"]')) return;
     try {
         settings = await request('/push/settings');
         render();
-        if (!settings.enabled) status('Push notifications are awaiting Firebase configuration. In-app notifications remain available.');
+        if (!settings.enabled) status('Push notifications are not configured correctly on the server. In-app notifications remain available.');
         else if (!supported()) status('Push notifications require HTTPS and a supported browser/device.');
         else if (Notification.permission === 'denied') {
             status('Notifications are blocked. Change this site notification permission in your browser settings to enable them.');
             await request('/push/subscriptions', 'DELETE');
-        } else if (Notification.permission === 'granted' && settings.preferences.push_enabled && !settings.deviceDisabled && !deviceDisabled()) {
-            try {
-                await register();
-                status('Push notifications are enabled on this device.');
-            } catch (error) { status(error.message); }
+            settings.subscribed = false;
         } else status('Enable notifications when you are ready.');
-        panels().forEach((panel) => {
+        panels().forEach(panel => {
             if (boundPanels.has(panel)) return;
             boundPanels.add(panel);
             const run = async (action) => {
-                const buttons = panel.querySelectorAll('button, input');
-                buttons.forEach((button) => { button.disabled = true; });
+                const controls = panel.querySelectorAll('button, input');
+                controls.forEach(control => { control.disabled = true; });
                 try { await action(); } catch (error) { status(error.message); }
-                finally { buttons.forEach((button) => { button.disabled = false; }); render(); }
+                finally { controls.forEach(control => { control.disabled = false; }); render(); }
             };
             panel.querySelector('[data-push-enable]').addEventListener('click', () => {
-                // Request immediately in the user gesture, before network or SDK loading.
+                if (!supported() || !settings.enabled) return;
+                // Keep the permission prompt inside the explicit Enable gesture.
                 const permission = Notification.requestPermission();
                 run(async () => {
-                    if (await permission !== 'granted') { status('Notifications were not enabled. You can change permission in browser settings.'); return; }
+                    status('Enabling notifications on this device...');
+                    if (await permission !== 'granted') { status('Notifications were not enabled. Check browser site permissions.'); return; }
                     await register();
                     setDeviceDisabled(false);
                     settings.deviceDisabled = false;
@@ -84,30 +90,57 @@ async function initialize() {
                     status('Push notifications are enabled on this device.');
                 });
             });
-            panel.querySelector('[data-push-later]').addEventListener('click', () => { status('No problem. You can enable notifications here anytime.'); });
+            panel.querySelector('[data-push-later]').addEventListener('click', () => status('No problem. You can enable notifications here anytime.'));
             panel.querySelector('[data-push-disable]').addEventListener('click', () => run(async () => {
-                // Server removal first, even if Firebase/browser storage is unavailable.
+                // Wait for any in-flight registration before deleting it.
+                if (registrationPending) await registrationPending.catch(() => {});
                 await request('/push/subscriptions', 'DELETE');
                 setDeviceDisabled(true);
                 settings.deviceDisabled = true;
+                settings.subscribed = false;
                 if (supported() && settings.enabled && Notification.permission === 'granted') {
-                    const instance = await getMessaging();
-                    await sdk.deleteToken(instance);
+                    try { const instance = await getMessaging(); await sdk.deleteToken(instance); } catch { /* Server revocation is authoritative. */ }
                 }
                 status('Notifications are disabled on this device. Other devices keep their settings.');
             }));
             panel.querySelector('[data-push-save]').addEventListener('click', () => run(async () => {
-                const preferences = Object.fromEntries([...panel.querySelectorAll('[data-preference]')].map((input) => [input.dataset.preference, input.checked]));
+                const preferences = Object.fromEntries([...panel.querySelectorAll('[data-preference]')].map(input => [input.dataset.preference, input.checked]));
                 settings.preferences = (await request('/push/preferences', 'PATCH', preferences)).preferences;
-                status('Notification preferences saved for your account.');
+                if (automaticRegistration()) await register();
+                status(preferences.push_enabled && !settings.subscribed ? 'Preferences saved. Click Enable Notifications to subscribe this device.' : 'Notification preferences saved for your account.');
             }));
-            panel.querySelector('[data-push-test]').addEventListener('click', () => run(async () => { status((await request('/push/test', 'POST')).message); }));
+            panel.querySelector('[data-push-test]').addEventListener('click', () => run(async () => {
+                const delay = panel.querySelector('[data-push-test-delay]')?.checked ? 15 : 0;
+                const result = await request('/push/test', 'POST', { delay_seconds: delay });
+                status(delay ? 'Test scheduled for 15 seconds from now. You can close the PWA window to test background delivery.' : result.message);
+                if (!result.statusUrl) return;
+                for (let attempt = 0; attempt < 15 && panel.isConnected; attempt++) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    const delivery = await request(result.statusUrl);
+                    status(delivery.message);
+                    if (['sent', 'failed', 'unsubscribed'].includes(delivery.status)) break;
+                }
+            }));
         });
-    } catch (error) { status(error.message); initialized = false; }
+        // Bind controls first so slow/failed registration never leaves dead buttons.
+        if (automaticRegistration()) {
+            try { await register(); status('Push notifications are enabled on this device.'); }
+            catch (error) { status(error.message); }
+            render();
+        }
+    } catch (error) { status(error.message); }
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once: true });
-else initialize();
-document.addEventListener('livewire:navigated', () => { initialized = false; initialize(); });
-navigator.serviceWorker?.addEventListener('message', (event) => {
+const initializeOnce = () => {
+    if (!initializationPending) initializationPending = initialize().finally(() => { initializationPending = null; });
+    return initializationPending;
+};
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeOnce, { once: true });
+else initializeOnce();
+document.addEventListener('livewire:navigated', () => {
+    // A navigation may replace settings panels while token registration is pending.
+    if (initializationPending) initializationPending.finally(initializeOnce);
+    else initializeOnce();
+});
+navigator.serviceWorker?.addEventListener('message', event => {
     if (event.data?.type === 'TRUTHGUARD_NOTIFICATION') window.dispatchEvent(new Event('truthguard:notification'));
 });

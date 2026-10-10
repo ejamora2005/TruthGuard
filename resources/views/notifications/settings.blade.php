@@ -33,4 +33,8 @@
         </button>
         <button type="button" data-push-test hidden class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-white">Send Test Notification</button>
     </div>
+    <label class="mt-3 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+        <input type="checkbox" data-push-test-delay class="rounded border-gray-300 text-blue-600">
+        Send the test after 15 seconds so I can close the app window.
+    </label>
 </section>

@@ -10,10 +10,17 @@ use Throwable;
 
 class TruthGuardPushNotificationService
 {
-    public function send(PushSubscription $subscription, array $data): void
+    public function checkAuthentication(): void
+    {
+        // A diagnostic must exercise OAuth, not merely return a cached token.
+        Cache::forget($this->cacheKey());
+        $this->accessToken();
+    }
+
+    public function send(PushSubscription $subscription, array $data): bool
     {
         if (! config('firebase.enabled')) {
-            return;
+            return false;
         }
         $project = config('firebase.web.projectId');
         if (! is_string($project) || ! preg_match('/^[a-z0-9-]+$/', $project)) {
@@ -38,14 +45,16 @@ class TruthGuardPushNotificationService
             && preg_match('/registration token.*(?:invalid|not a valid)|(?:invalid|not a valid).*registration token/i', (string) $response->json('error.message', '')))) {
             $subscription->delete();
 
-            return;
+            return false;
         }
         if ($response->status() === 401) {
             Cache::forget($this->cacheKey());
         }
         if (! $response->successful()) {
-            throw new RuntimeException('FCM delivery failed (HTTP '.$response->status().').');
+            throw new RuntimeException('FCM delivery failed (HTTP '.$response->status().', '.(in_array($code, ['UNREGISTERED', 'INVALID_ARGUMENT', 'SENDER_ID_MISMATCH', 'QUOTA_EXCEEDED', 'UNAVAILABLE', 'INTERNAL', 'THIRD_PARTY_AUTH_ERROR'], true) ? $code : 'provider error').').');
         }
+
+        return true;
     }
 
     private function cacheKey(): string

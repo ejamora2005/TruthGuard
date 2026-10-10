@@ -1,3 +1,4 @@
+import { getTruthGuardWorker } from './service-worker';
 const INSTALL_DISMISSED_KEY = 'truthguard:pwa-install-dismissed';
 const INSTALLED_KEY = 'truthguard:pwa-installed';
 let knownInstalled = false;
@@ -308,8 +309,7 @@ const updateOfflineState = (isOffline) => {
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker
-            .register('/sw.js', { scope: '/' })
+        getTruthGuardWorker()
             .then((registration) => {
                 if (registration.waiting) {
                     registration.waiting.postMessage({ type: 'SKIP_WAITING' });
