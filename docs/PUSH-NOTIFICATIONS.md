@@ -11,6 +11,14 @@ The existing notification center remains available at `/notifications`.
 
 ## Android settings controls repair
 
+The profile dialog also lives inside an Alpine `x-teleport` template. When the
+dialog was inserted after push initialization completed, its controls never got
+click listeners. Notification setup now observes newly inserted settings panels
+and initializes them after any pending setup. Existing panels retain one binding;
+status updates do not trigger setup again. A browser regression check inserts the
+template after the first settings response and verifies test requests are sent
+exactly once per click, including after moving the existing panel.
+
 The mobile profile stylesheet hid `.truthguard-push-device-actions`, including
 the Enable Notifications button required to request permission and subscribe a
 new phone. Those controls and the subscription hint now remain visible on mobile.
@@ -19,6 +27,18 @@ feedback directly below the actions, where it remains visible while testing.
 A Chrome mobile-viewport regression check loads the profile CSS and verifies
 the Enable gesture, pending test feedback, and a rejected subscription request.
 This verifies the UI flow, not actual Android OS notification delivery.
+
+### Isolate phone display from server delivery
+
+Notification settings also provide **Test device alert**. With browser permission
+already granted, this directly calls the existing service worker's
+`showNotification()` without Firebase, Laravel jobs, or a subscription request.
+It binds before server settings load, so it works even if `/push/settings` fails.
+It never requests permission automatically or subscribes the device. A resolved
+API call only means Chrome accepted the display request; check the phone's tray
+and popup yourself. If this alert is visible but the server test is not, investigate
+the subscription, queue, provider, and background authorization endpoint. This
+diagnostic is not a substitute for background push delivery.
 
 ## Reliability repair (2026-10-10)
 

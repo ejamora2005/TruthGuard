@@ -199,3 +199,79 @@ test('mobile profile keeps permission controls visible and test feedback reports
         assert.equal(await page.locator('[data-push-test]').textContent(), 'Send Test Notification');
     } finally { await browser.close(); }
 });
+
+
+for (const permission of ['granted', 'denied', 'default']) {
+    test(`device alert bypasses failed server settings: ${permission}`, async () => {
+        const browser = await chromium.launch({ channel: 'chrome', headless: true });
+        try {
+            const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+            const requests = [];
+            await page.addInitScript(permission => {
+                window.deviceAlerts = [];
+                window.permissionRequests = 0;
+                Object.defineProperty(window, 'Notification', { value: { permission, requestPermission: async () => { window.permissionRequests++; return permission; } } });
+                Object.defineProperty(navigator, 'serviceWorker', { value: {
+                    addEventListener() {}, register: async () => ({ scope: 'http://localhost:9876/', active: {}, showNotification: async (title, options) => window.deviceAlerts.push({ title, options }) }),
+                } });
+            }, permission);
+            await page.route('http://localhost:9876/**', async route => {
+                const path = new URL(route.request().url()).pathname;
+                if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
+                if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
+                if (path.startsWith('/push/')) {
+                    requests.push(path);
+                    return route.fulfill({ status: 503, json: { message: 'Server unavailable.' } });
+                }
+                return route.fulfill({ contentType: 'text/html', body: markup.replace('</section>', '<button data-push-device-test disabled>Test device alert</button><p data-push-device-status hidden></p></section>') });
+            });
+            await page.goto('http://localhost:9876/profile');
+            await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent === 'Server unavailable.');
+            await page.click('[data-push-device-test]');
+            const expected = permission === 'granted' ? 'Chrome accepted' : permission === 'denied' ? 'blocked' : 'not been granted';
+            await page.waitForFunction(expected => document.querySelector('[data-push-device-status]').textContent.includes(expected), expected);
+            assert.equal(await page.evaluate(() => window.deviceAlerts.length), permission === 'granted' ? 1 : 0);
+            assert.equal(await page.evaluate(() => window.permissionRequests), 0);
+            assert.deepEqual(requests, ['/push/settings']);
+            assert.equal(await page.locator('[data-push-device-test]').isEnabled(), true);
+        } finally { await browser.close(); }
+    });
+}
+
+
+test('settings inserted from a template after initialization bind once and test clicks reach the server', async () => {
+    const browser = await chromium.launch({ channel: 'chrome', headless: true });
+    try {
+        const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+        const requests = [];
+        await page.addInitScript(() => {
+            Object.defineProperty(window, 'Notification', { value: { permission: 'default', requestPermission: async () => 'default' } });
+        });
+        const delayedMarkup = markup.replace('<section data-push-settings>', '<template id="dialog-template"><section data-push-settings>').replace('</section>', '</section></template>');
+        await page.route('http://localhost:9876/**', async route => {
+            const path = new URL(route.request().url()).pathname;
+            if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
+            if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
+            if (path.startsWith('/push/')) {
+                requests.push(path);
+                if (path === '/push/settings') return route.fulfill({ json: { enabled: true, firebase: {}, preferences: {}, canTest: true } });
+                return route.fulfill({ status: 422, json: { message: 'Enable push and system notifications on a device first.' } });
+            }
+            return route.fulfill({ contentType: 'text/html', body: delayedMarkup });
+        });
+        await Promise.all([page.waitForResponse(response => response.url().endsWith('/push/settings')), page.goto('http://localhost:9876/profile')]);
+        // Match Alpine teleport: clone the inert template into the body later.
+        await page.evaluate(() => document.body.append(document.querySelector('#dialog-template').content.cloneNode(true)));
+        await page.waitForFunction(() => !document.querySelector('[data-push-enable]').disabled);
+        await page.click('[data-push-test]');
+        await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('Enable push and system'));
+        assert.equal(requests.filter(path => path === '/push/test').length, 1);
+        const settingsCalls = requests.filter(path => path === '/push/settings').length;
+        // Moving an already initialized dialog must preserve its single binding.
+        await page.evaluate(() => document.body.append(document.querySelector('[data-push-settings]')));
+        await page.click('[data-push-test]');
+        await page.waitForFunction(() => !document.querySelector('[data-push-test]').disabled);
+        assert.equal(requests.filter(path => path === '/push/test').length, 2);
+        assert.equal(requests.filter(path => path === '/push/settings').length, settingsCalls);
+    } finally { await browser.close(); }
+});

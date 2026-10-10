@@ -10,6 +10,38 @@ const status = (text) => panels().forEach(panel => {
     panel.querySelectorAll('[data-push-status]').forEach(element => { element.textContent = text; });
 });
 const supported = () => window.isSecureContext && typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
+// This diagnostic must remain usable even if settings/Firebase/queue requests fail.
+const bindDeviceTests = () => panels().forEach(panel => {
+    const button = panel.querySelector('[data-push-device-test]');
+    const feedback = panel.querySelector('[data-push-device-status]');
+    if (!button || !feedback || button.dataset.bound) return;
+    button.dataset.bound = 'true';
+    button.disabled = false;
+    button.addEventListener('click', async () => {
+        feedback.hidden = false;
+        button.disabled = true;
+        button.textContent = 'Testing device...';
+        feedback.textContent = 'Checking notification permission on this device...';
+        try {
+            if (!supported()) throw new Error('Device alerts require HTTPS and a browser that supports notifications. Open TruthGuard in Chrome.');
+            if (Notification.permission === 'denied') throw new Error('Chrome has blocked notifications for TruthGuard. Allow them in Chrome site settings, then try again.');
+            if (Notification.permission !== 'granted') throw new Error('Notification permission has not been granted. Tap Enable Notifications above and choose Allow, then try this device test again.');
+            const worker = await getTruthGuardWorker();
+            await worker.showNotification('TruthGuard device test', {
+                body: 'This alert came directly from your device. Server push delivery still needs a separate test.',
+                icon: '/pwa/icon-192.png', badge: '/pwa/icon-32.png',
+                tag: 'truthguard-device-test', renotify: true,
+                data: { url: '/notifications' },
+            });
+            feedback.textContent = 'Chrome accepted the device alert. Check your notification tray as well as the popup. If it appears, test server delivery with Send Test Notification. If it is missing, check Android notification settings for TruthGuard/Chrome and Do Not Disturb. This does not verify background push delivery.';
+        } catch (error) {
+            feedback.textContent = error.message || 'The device alert failed. Reopen TruthGuard and try again.';
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Test device alert';
+        }
+    });
+});
 const request = async (path, method = 'GET', body) => {
     const response = await fetch(path, {
         method, credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(30000),
@@ -58,6 +90,7 @@ const render = () => panels().forEach(panel => {
 const automaticRegistration = () => settings.enabled && supported() && Notification.permission === 'granted'
     && settings.preferences.push_enabled && !settings.deviceDisabled && !deviceDisabled();
 async function initialize() {
+    bindDeviceTests();
     if (!document.querySelector('meta[name="truthguard-push-settings"]')) return;
     try {
         settings = await request('/push/settings');
@@ -146,6 +179,25 @@ const initializeOnce = () => {
     if (!initializationPending) initializationPending = initialize().finally(() => { initializationPending = null; });
     return initializationPending;
 };
+// Alpine x-teleport and Livewire can insert the dialog after initial page setup.
+// Observe panel insertions only; status text changes must never restart setup.
+let panelInitializationQueued = false;
+const initializeInsertedPanels = () => {
+    if (panelInitializationQueued || !panels().some(panel => !boundPanels.has(panel))) return;
+    panelInitializationQueued = true;
+    const pending = initializationPending || Promise.resolve();
+    pending.finally(() => {
+        panelInitializationQueued = false;
+        if (panels().some(panel => !boundPanels.has(panel))) initializeOnce();
+    });
+};
+new MutationObserver(records => {
+    if (records.some(record => [...record.addedNodes].some(node => node.nodeType === 1
+        && (node.matches('[data-push-settings]') || node.querySelector('[data-push-settings]'))))) {
+        bindDeviceTests();
+        initializeInsertedPanels();
+    }
+}).observe(document.documentElement, { childList: true, subtree: true });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeOnce, { once: true });
 else initializeOnce();
 document.addEventListener('livewire:navigated', () => {

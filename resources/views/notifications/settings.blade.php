@@ -38,4 +38,11 @@
         <input type="checkbox" data-push-test-delay class="rounded border-gray-300 text-blue-600">
         <span>Send the test after 15 seconds so I can close the app window.</span>
     </label>
+    <div class="mt-5 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Still no alert?</h3>
+        <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Check whether this phone can display a notification. This device-only test does not use the server delivery service.</p>
+        <button type="button" data-push-device-test disabled class="mt-3 inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-800 disabled:opacity-50">Test device alert</button>
+        <p data-push-device-status hidden role="status" aria-live="polite" class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300"></p>
+        <noscript><p class="mt-2 text-sm">JavaScript must be enabled to test notifications.</p></noscript>
+    </div>
 </section>
