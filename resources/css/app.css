@@ -5440,3 +5440,56 @@ body.truthguard-fact-check-route .truthguard-pwa-install-button {
         line-height: 0.9rem !important;
     }
 }
+
+/* Notification controls retain their shape inside profile panels and modals. */
+#notification-settings input[type="checkbox"] {
+    appearance: auto;
+    accent-color: #2563eb;
+    box-sizing: border-box;
+    display: inline-block;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    max-width: 20px !important;
+    min-height: 20px !important;
+    max-height: 20px !important;
+    flex: 0 0 20px !important;
+    padding: 0 !important;
+    margin: 0;
+    border-radius: 4px !important;
+    align-self: center;
+    cursor: pointer;
+}
+#notification-settings input[type="checkbox"]:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 3px;
+}
+#notification-settings .truthguard-push-preference-row,
+#notification-settings .truthguard-push-delay-row {
+    min-height: 44px;
+    cursor: pointer;
+}
+#notification-settings .truthguard-push-preference-row span,
+#notification-settings .truthguard-push-delay-row span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+}
+#notification-settings .truthguard-push-device-actions,
+#notification-settings .truthguard-push-actions {
+    align-items: stretch;
+}
+#notification-settings button {
+    box-sizing: border-box;
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    height: auto;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    border-radius: 12px;
+    text-align: center;
+}
+#notification-settings [hidden] { display: none !important; }

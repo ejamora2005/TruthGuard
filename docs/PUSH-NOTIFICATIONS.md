@@ -9,6 +9,17 @@ Announcements without a related destination can be read here without looping bac
 to the notification list. Another user's or an archived notification returns 404.
 The existing notification center remains available at `/notifications`.
 
+## Android settings controls repair
+
+The mobile profile stylesheet hid `.truthguard-push-device-actions`, including
+the Enable Notifications button required to request permission and subscribe a
+new phone. Those controls and the subscription hint now remain visible on mobile.
+The test button immediately shows a sending state and repeats delivery/error
+feedback directly below the actions, where it remains visible while testing.
+A Chrome mobile-viewport regression check loads the profile CSS and verifies
+the Enable gesture, pending test feedback, and a rejected subscription request.
+This verifies the UI flow, not actual Android OS notification delivery.
+
 ## Reliability repair (2026-10-10)
 
 The reported symptom was no popup after enabling/testing push. The production

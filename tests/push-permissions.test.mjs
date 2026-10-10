@@ -152,3 +152,50 @@ test('Enable reports installation failure, retries, saves subscription and expos
         assert.equal(await page.locator('[data-push-test]').isEnabled(), true);
     } finally { await browser.close(); }
 });
+
+
+test('mobile profile keeps permission controls visible and test feedback reports pending and failed requests', async () => {
+    const browser = await chromium.launch({ channel: 'chrome', headless: true });
+    try {
+        const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+        const profileStyles = [...readFileSync('resources/views/profile.blade.php', 'utf8').matchAll(/<style>([\s\S]*?)<\/style>/g)].map(match => match[1]).join('\n');
+        const mobileMarkup = markup
+            .replace('<head>', '<head><meta name="viewport" content="width=device-width, initial-scale=1"><style>' + profileStyles + '</style>')
+            .replace('<section data-push-settings>', '<section id="notification-settings" data-push-settings>')
+            .replace('<button data-push-enable', '<div class="truthguard-push-device-actions"><button data-push-enable')
+            .replace('<button data-push-save>', '</div><button data-push-save>')
+            .replace('</section>', '<p data-push-status data-push-test-feedback hidden role="status"></p></section>');
+        let releaseTest;
+        const pendingTest = new Promise(resolve => { releaseTest = resolve; });
+        await page.addInitScript(() => {
+            window.permissionRequests = 0;
+            Object.defineProperty(window, 'Notification', { value: {
+                permission: 'default', requestPermission: async () => { window.permissionRequests++; return 'default'; },
+            } });
+        });
+        await page.route('http://localhost:9876/**', async route => {
+            const path = new URL(route.request().url()).pathname;
+            if (path === '/service-worker') return route.fulfill({ contentType: 'text/javascript', body: readFileSync('resources/js/service-worker.js', 'utf8') });
+            if (path === '/push-notifications.js') return route.fulfill({ contentType: 'text/javascript', body: source });
+            if (path === '/push/settings') return route.fulfill({ json: { enabled: true, firebase: {}, preferences: { push_enabled: false }, canTest: true } });
+            if (path === '/push/test') {
+                await pendingTest;
+                return route.fulfill({ status: 422, json: { message: 'Enable push and system notifications on a device first.' } });
+            }
+            return route.fulfill({ contentType: 'text/html', body: mobileMarkup });
+        });
+        await page.goto('http://localhost:9876/profile');
+        await page.waitForFunction(() => !document.querySelector('[data-push-enable]').disabled);
+        assert.equal(await page.locator('[data-push-enable]').isVisible(), true);
+        await page.tap('[data-push-enable]');
+        await page.waitForFunction(() => window.permissionRequests === 1 && !document.querySelector('[data-push-enable]').disabled);
+        await page.tap('[data-push-test]');
+        assert.equal(await page.locator('[data-push-test]').textContent(), 'Sending test...');
+        assert.equal(await page.locator('[data-push-test-feedback]').isVisible(), true);
+        assert.match(await page.locator('[data-push-test-feedback]').textContent(), /Sending a test/);
+        releaseTest();
+        await page.waitForFunction(() => document.querySelector('[data-push-test-feedback]').textContent.includes('Enable push and system'));
+        assert.equal(await page.locator('[data-push-test]').isEnabled(), true);
+        assert.equal(await page.locator('[data-push-test]').textContent(), 'Send Test Notification');
+    } finally { await browser.close(); }
+});

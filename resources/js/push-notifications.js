@@ -6,7 +6,9 @@ const boundPanels = new WeakSet();
 const deviceDisabled = () => { try { return localStorage.getItem('truthguard:push-disabled') === '1'; } catch { return false; } };
 const setDeviceDisabled = (disabled) => { try { localStorage.setItem('truthguard:push-disabled', disabled ? '1' : '0'); } catch { /* Storage unavailable. */ } };
 const panels = () => [...document.querySelectorAll('[data-push-settings]')];
-const status = (text) => panels().forEach(panel => { panel.querySelector('[data-push-status]').textContent = text; });
+const status = (text) => panels().forEach(panel => {
+    panel.querySelectorAll('[data-push-status]').forEach(element => { element.textContent = text; });
+});
 const supported = () => window.isSecureContext && typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 const request = async (path, method = 'GET', body) => {
     const response = await fetch(path, {
@@ -110,15 +112,25 @@ async function initialize() {
                 status(preferences.push_enabled && !settings.subscribed ? 'Preferences saved. Click Enable Notifications to subscribe this device.' : 'Notification preferences saved for your account.');
             }));
             panel.querySelector('[data-push-test]').addEventListener('click', () => run(async () => {
-                const delay = panel.querySelector('[data-push-test-delay]')?.checked ? 15 : 0;
-                const result = await request('/push/test', 'POST', { delay_seconds: delay });
-                status(delay ? 'Test scheduled for 15 seconds from now. You can close the PWA window to test background delivery.' : result.message);
-                if (!result.statusUrl) return;
-                for (let attempt = 0; attempt < 15 && panel.isConnected; attempt++) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    const delivery = await request(result.statusUrl);
-                    status(delivery.message);
-                    if (['sent', 'failed', 'unsubscribed'].includes(delivery.status)) break;
+                const button = panel.querySelector('[data-push-test]');
+                const feedback = panel.querySelector('[data-push-test-feedback]');
+                if (feedback) feedback.hidden = false;
+                button.textContent = 'Sending test...';
+                status('Sending a test notification to this device...');
+                try {
+                    const delay = panel.querySelector('[data-push-test-delay]')?.checked ? 15 : 0;
+                    const result = await request('/push/test', 'POST', { delay_seconds: delay });
+                    status(delay ? 'Test scheduled for 15 seconds from now. You can close the PWA window to test background delivery.' : result.message);
+                    if (!result.statusUrl) return;
+                    button.textContent = 'Checking delivery...';
+                    for (let attempt = 0; attempt < 15 && panel.isConnected; attempt++) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        const delivery = await request(result.statusUrl);
+                        status(delivery.message);
+                        if (['sent', 'failed', 'unsubscribed'].includes(delivery.status)) break;
+                    }
+                } finally {
+                    button.textContent = 'Send Test Notification';
                 }
             }));
         });

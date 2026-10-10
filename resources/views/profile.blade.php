@@ -526,7 +526,7 @@
                 box-shadow: 0 16px 38px rgba(37, 99, 235, 0.055) !important;
             }
 
-            .truthguard-settings-panel input:not([type="hidden"]),
+            .truthguard-settings-panel input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]),
             .truthguard-settings-panel textarea,
             .truthguard-settings-panel .focus-within\:border-blue-400 {
                 border-radius: 0.9rem !important;
@@ -1225,7 +1225,23 @@
                 }
 
                 #notification-settings .truthguard-push-device-actions {
-                    display: none !important;
+                    display: grid !important;
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    width: min(100%, 24rem);
+                    margin: 1rem auto 0 !important;
+                    gap: 0.65rem;
+                }
+
+                #notification-settings .truthguard-push-device-actions button {
+                    width: 100%;
+                    min-width: 0;
+                    min-height: 2.85rem;
+                    padding: 0.7rem 0.75rem;
+                }
+
+                #notification-settings .truthguard-push-device-actions [data-push-enable] {
+                    grid-column: 1 / -1;
+                    width: 100%;
                 }
 
                 #notification-settings .truthguard-push-status {
@@ -1271,7 +1287,6 @@
                     color: #64748b;
                 }
 
-                #notification-settings .truthguard-push-desktop-hint,
                 #notification-settings .truthguard-push-save-label-desktop {
                     display: none !important;
                 }
