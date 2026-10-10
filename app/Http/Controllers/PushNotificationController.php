@@ -7,7 +7,6 @@ use App\Models\PushDelivery;
 use App\Models\PushSubscription;
 use App\Models\User;
 use App\Services\Notifications\NotificationEventService;
-use App\Services\Notifications\NotificationUrl;
 use App\Services\Notifications\PushConfiguration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -119,7 +118,7 @@ class PushNotificationController extends Controller
 
         return response()->json([
             'title' => $record->data['title'], 'body' => $record->data['message'],
-            'url' => NotificationUrl::safe($record->data['action_url'] ?? null),
+            'url' => route('notifications.show', $record->id, absolute: false),
             'notification_id' => $record->id, 'subscription_id' => (string) $subscription->id,
             'timestamp' => $record->created_at->timestamp * 1000,
         ])->header('Cache-Control', 'private, no-store');

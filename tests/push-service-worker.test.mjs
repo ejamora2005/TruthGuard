@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { test } from 'node:test';
 const id = '12345678-1234-1234-1234-123456789abc';
-const data = { notification_id: id, subscription_id: '1', title: 'TruthGuard', body: 'Analysis complete.', url: '/detections/42/result', timestamp: '12345' };
+const data = { notification_id: id, subscription_id: '1', title: 'TruthGuard', body: 'Analysis complete.', url: `/notifications/${id}`, timestamp: '12345' };
 function worker(windows = [], authorize = async () => data, receipts = new Map()) {
     const listeners = {}, shown = [], opened = [];
     const self = {
@@ -31,7 +31,7 @@ test('data-only push displays once and updates open clients', async () => {
     const w = worker([{ postMessage: message => messages.push(message) }]);
     await w.push();
     assert.equal(w.shown.length, 1);
-    assert.equal(w.shown[0][1].data.url, 'https://truthguard.online/detections/42/result');
+    assert.equal(w.shown[0][1].data.url, `https://truthguard.online/notifications/${id}`);
     assert.equal(messages.length, 1);
 });
 test('background push works without an open page and retries stay deduplicated across restarts', async () => {
@@ -56,7 +56,7 @@ test('click validates ownership again and focuses the correct page', async () =>
     const w = worker([client]);
     w.listeners.notificationclick({ notification: { close() {}, data: { notificationId: id } }, waitUntil: promise => { done = promise; } });
     await done;
-    assert.equal(navigated, 'https://truthguard.online/detections/42/result');
+    assert.equal(navigated, `https://truthguard.online/notifications/${id}`);
     assert.equal(focused, true);
     assert.equal(w.opened.length, 0);
 });

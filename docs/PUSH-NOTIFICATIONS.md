@@ -1,5 +1,14 @@
 # TruthGuard push notifications
 
+## Opening a notification
+
+The notification bell, notification list, and authorized push clicks open
+`/notifications/{uuid}`. This signed-in detail page displays the full message,
+marks it read, and offers a separate button for its related result or app page.
+Announcements without a related destination can be read here without looping back
+to the notification list. Another user's or an archived notification returns 404.
+The existing notification center remains available at `/notifications`.
+
 ## Reliability repair (2026-10-10)
 
 The reported symptom was no popup after enabling/testing push. The production

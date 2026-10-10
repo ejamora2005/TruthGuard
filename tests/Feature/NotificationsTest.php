@@ -49,6 +49,32 @@ class NotificationsTest extends TestCase
             ->assertSee('Welcome to TruthGuard');
     }
 
+    public function test_notification_details_show_full_message_and_related_link_and_mark_read(): void
+    {
+        $user = User::factory()->create();
+        $record = app(NotificationEventService::class)->system($user, 'detail-test', "First line\nSecond line <script>alert(1)</script>", '/profile');
+
+        $this->actingAs($user)->get(route('notifications.show', $record->id))
+            ->assertOk()->assertSee('First line')->assertSee('Second line <script>alert(1)</script>')
+            ->assertDontSee('<script>alert(1)</script>', false)->assertSee('href="/profile"', false);
+        $this->assertNotNull($record->fresh()->read_at);
+        $this->getJson(route('notifications.peek'))->assertJsonFragment([
+            'actionUrl' => route('notifications.show', $record->id, absolute: false),
+        ]);
+    }
+
+    public function test_notification_details_reject_other_accounts_archived_records_and_guests(): void
+    {
+        $owner = User::factory()->create();
+        $record = app(NotificationEventService::class)->system($owner, 'private-detail', 'Private account notice');
+        $url = route('notifications.show', $record->id);
+        $this->get($url)->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->create())->get($url)->assertNotFound();
+        $this->assertNull($record->fresh()->read_at);
+        $record->forceFill(['archived_at' => now()])->save();
+        $this->actingAs($owner)->get($url)->assertNotFound();
+    }
+
     public function test_user_can_mark_all_notifications_as_read(): void
     {
         $user = User::factory()->create();

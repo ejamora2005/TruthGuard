@@ -123,7 +123,7 @@ class PushNotificationsTest extends TestCase
             '@type' => 'type.googleapis.com/google.firebase.fcm.v1.FcmError', 'errorCode' => 'UNREGISTERED',
         ]]]], 404)]);
         (new SendPushNotification($subscription->id, $notification->id))->handle($push);
-        Http::assertSent(fn ($request) => $request['message']['data']['url'] === '/notifications'
+        Http::assertSent(fn ($request) => $request['message']['data']['url'] === '/notifications/'.$notification->id
             && $request['message']['data']['notification_id'] === $notification->id
             && ! isset($request['message']['notification']));
 

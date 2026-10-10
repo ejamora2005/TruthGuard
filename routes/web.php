@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\AdminAppController;
 use App\Http\Controllers\AdminAnnouncementController;
+use App\Http\Controllers\AdminAppController;
 use App\Http\Controllers\AdminDataController;
 use App\Http\Controllers\AdminFactCheckSourceController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -109,6 +109,7 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('history', [DashboardController::class, 'history'])->name('history');
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::get('notifications/peek', [NotificationController::class, 'peek'])->name('notifications.peek');
+        Route::get('notifications/{notification}', [NotificationController::class, 'show'])->whereUuid('notification')->name('notifications.show');
         Route::post('notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
         Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::delete('notifications/{notification}', [NotificationController::class, 'destroy'])->name('notifications.destroy');

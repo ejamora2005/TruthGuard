@@ -174,7 +174,7 @@ async function staleWhileRevalidate(request) {
 function safeNotificationUrl(value) {
   try {
     const url = new URL(value || '/notifications', self.location.origin);
-    const allowed = /^\/(?:notifications|profile|claim-reviews|detections\/[0-9]+\/result|dashboard\/fact-checks\/[A-Za-z0-9_-]+)$/;
+    const allowed = /^\/(?:notifications(?:\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?|profile|claim-reviews|detections\/[0-9]+\/result|dashboard\/fact-checks\/[A-Za-z0-9_-]+)$/;
     if (url.origin === self.location.origin && !url.search && !url.hash && allowed.test(url.pathname)) {
       return url.href;
     }

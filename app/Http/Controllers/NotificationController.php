@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Notifications\NotificationUrl;
 use App\Services\Notifications\TruthGuardNotificationManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,8 +15,7 @@ class NotificationController extends Controller
 {
     public function __construct(
         private readonly TruthGuardNotificationManager $notifications,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request): View
     {
@@ -36,6 +36,18 @@ class NotificationController extends Controller
                 'security' => $notifications->where('category', 'security')->count(),
                 'system' => $notifications->whereIn('category', ['system', 'welcome'])->count(),
             ],
+        ]);
+    }
+
+    public function show(Request $request, string $notification): View
+    {
+        $record = $this->visibleNotifications($request)->whereKey($notification)->firstOrFail();
+        $record->markAsRead();
+
+        return view('notifications.show', [
+            'notification' => $this->formatNotification($record),
+            'actionUrl' => NotificationUrl::safe($record->data['action_url'] ?? null),
+            'actionLabel' => $record->data['action_label'] ?? 'Open related page',
         ]);
     }
 
@@ -161,8 +173,8 @@ class NotificationController extends Controller
                 $data
             ),
             'category' => (string) data_get($data, 'category', 'system'),
-            'actionUrl' => (string) data_get($data, 'action_url', route('notifications.index', absolute: false)),
-            'actionLabel' => (string) data_get($data, 'action_label', 'Open'),
+            'actionUrl' => route('notifications.show', $notification->id, absolute: false),
+            'actionLabel' => 'Read notification',
             'icon' => (string) data_get($data, 'icon', 'bell'),
             'imageUrl' => (string) data_get($data, 'image_url', ''),
             'publisher' => (string) data_get($data, 'publisher', ''),

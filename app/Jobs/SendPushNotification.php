@@ -6,7 +6,6 @@ use App\Models\NotificationPreference;
 use App\Models\PushDelivery;
 use App\Models\PushSubscription;
 use App\Models\User;
-use App\Services\Notifications\NotificationUrl;
 use App\Services\Notifications\TruthGuardPushNotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -76,7 +75,7 @@ class SendPushNotification implements ShouldQueue
                 'subscription_id' => (string) $subscription->id,
                 'title' => $data['title'],
                 'body' => $data['message'],
-                'url' => NotificationUrl::safe($data['action_url'] ?? null),
+                'url' => route('notifications.show', $notification->id, absolute: false),
                 'notification_id' => $notification->id,
                 'timestamp' => (string) ($notification->created_at->timestamp * 1000),
             ]);

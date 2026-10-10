@@ -45,7 +45,7 @@
                         'title' => (string) data_get($data, 'title', 'TruthGuard notification'),
                         'message' => $message,
                         'category' => (string) data_get($data, 'category', 'system'),
-                        'actionUrl' => (string) data_get($data, 'action_url', route('notifications.index', absolute: false)),
+                        'actionUrl' => route('notifications.show', $notification->id, absolute: false),
                         'actionLabel' => (string) data_get($data, 'action_label', 'Open'),
                         'createdAt' => $notification->created_at?->diffForHumans() ?? '',
                         'unread' => $notification->read_at === null,
