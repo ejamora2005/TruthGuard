@@ -7,6 +7,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+        @include('layouts.partials.global-loader-assets')
     <meta name="color-scheme" content="light dark">
     <meta name="robots" content="noindex">
     <title>{{ $code }} · {{ $title }} · TruthGuard</title>
@@ -15,6 +16,7 @@
     <style>@include('errors.partials.styles')</style>
 </head>
 <body>
+    @include('layouts.partials.app-splash')
     <div class="error-page">
         <div class="background" aria-hidden="true">
             <svg viewBox="0 0 1440 900" preserveAspectRatio="none"><path class="wave-blue" d="M0 460C160 380 120 720 370 740S660 900 680 900H0Z"/><path class="wave-mint" d="M1440 130c-250 50-100 430-320 470s-140 240-50 300h370Z"/></svg>

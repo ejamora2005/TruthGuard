@@ -6,22 +6,28 @@ export function useAdminQuery(endpoint, initialData) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const load = useCallback(async () => {
+    const load = useCallback(async (completion = null) => {
+        const done = typeof completion === 'function' ? completion : null;
+        let succeeded = false;
         setLoading(true);
         setError('');
 
         try {
             const payload = await fetchAdminJson(endpoint);
             setData(payload);
+            succeeded = true;
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Something went wrong while loading this page.');
         } finally {
             setLoading(false);
+            done?.(succeeded);
         }
     }, [endpoint]);
 
     useEffect(() => {
-        load();
+        const done = window.TruthGuardLoader?.begin();
+        load(done);
+        return () => done?.(false);
     }, [load]);
 
     return { data, loading, error, load };

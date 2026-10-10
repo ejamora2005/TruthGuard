@@ -742,17 +742,17 @@
         <section id="home" class="tg-hero-section overflow-hidden pb-14 pt-10 md:pb-16 md:pt-14">
             <div class="tg-hero-grid mx-auto grid min-w-0 w-full max-w-7xl gap-10 px-4 sm:px-6 lg:items-center lg:gap-12 lg:px-8">
                 <div class="min-w-0">
-                    <div class="mb-4 inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-700 sm:text-sm">
+                    <div class="mb-6 inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-700 sm:text-sm">
                         AI-assisted evidence review
                     </div>
-                    <h1 class="truthguard-welcome-title bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
+                    <h1 class="truthguard-welcome-title bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight tracking-[0.015em] text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
                         TruthGuard
                     </h1>
-                    <p class="mt-4 max-w-xl text-base text-slate-600 sm:mt-6 sm:text-lg">
+                    <p class="mt-6 max-w-xl text-base leading-[1.9] tracking-[0.01em] text-slate-600 sm:mt-8 sm:text-lg sm:leading-[1.9]">
                         Check images, videos, and online claims with one clear workflow. Inspect the evidence, compare public sources, and understand what the result means before you share.
                     </p>
 
-                    <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row">
+                    <div class="mt-8 flex flex-col gap-4 sm:mt-10 sm:flex-row">
                         @auth
                             <a href="{{ route('detections.create') }}" class="inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-blue-200 transition hover:from-blue-700 hover:to-violet-700">
                                 Start Verification
@@ -768,7 +768,7 @@
                         </button>
                     </div>
 
-                    <p class="mt-4 max-w-xl text-sm leading-6 text-slate-500">TruthGuard helps you investigate—not replace your judgment. AI-assisted results can be wrong, so review the sources before sharing.</p>
+                    <p class="mt-6 max-w-xl text-sm leading-7 tracking-[0.01em] text-slate-500">TruthGuard helps you investigate—not replace your judgment. AI-assisted results can be wrong, so review the sources before sharing.</p>
                 </div>
 
                 <div class="relative min-w-0 reveal">
@@ -787,7 +787,7 @@
                         </video>
                     </div>
 
-                    <p class="mt-3 text-center text-sm leading-6 text-slate-500">
+                    <p class="mt-5 text-center text-sm leading-7 tracking-[0.01em] text-slate-500">
                         Watch the workflow: submit evidence, compare sources, and understand the result.
                     </p>
                 </div>

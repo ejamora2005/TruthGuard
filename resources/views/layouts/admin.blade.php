@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        @include('layouts.partials.global-loader-assets')
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         @php
@@ -236,6 +237,7 @@
             submitLogout() {
                 if (this.logoutSubmitting) return;
                 this.logoutSubmitting = true;
+                window.TruthGuardLoader?.startNavigation();
                 this.$refs.logoutForm?.submit();
             }
         }"

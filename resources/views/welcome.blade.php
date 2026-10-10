@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+        @include('layouts.partials.global-loader-assets')
     <meta name="description" content="TruthGuard Agent AI 1.0 - detect fake media and misinformation with AI automation.">
 
     <title>TruthGuard Agent AI 1.0</title>

@@ -1,0 +1,74 @@
+/* Critical styles: first paint does not depend on the application bundle. */
+.tg-loader { display: none; }
+html.tg-loading { background: #f8fbff; }
+.tg-loading .tg-loader {
+    display: grid; position: fixed; inset: 0; z-index: 2147483646;
+    place-items: center; color: #0f172a;
+    padding: max(1.25rem, env(safe-area-inset-top, 0px)) max(1.25rem, env(safe-area-inset-right, 0px))
+        max(1.25rem, env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left, 0px));
+    background:
+        linear-gradient(90deg, #2563eb0e 1px, transparent 1px),
+        linear-gradient(#2563eb0e 1px, transparent 1px), #f8fbff;
+    background-size: 34px 34px, 34px 34px, auto;
+    opacity: 1; transition: opacity 250ms ease; touch-action: none;
+}
+.tg-loader-panel {
+    display: grid; justify-items: center; width: min(100%, 18rem);
+    text-align: center; font-family: 'Poppins', system-ui, sans-serif;
+}
+.tg-loader-logo {
+    position: relative; z-index: 1; display: block; width: 78%; height: auto;
+    filter: drop-shadow(0 12px 20px #2563eb25);
+    animation: tg-loader-float 1850ms ease-in-out infinite;
+}
+.tg-loader-mark {
+    position: relative; display: grid; place-items: center;
+    width: clamp(160px, 40vw, 192px); aspect-ratio: 1; margin: 12px 0 22px;
+}
+.tg-loader-ring, .tg-loader-ring::before, .tg-loader-ring::after {
+    position: absolute; inset: 0; border-radius: 50%;
+}
+.tg-loader-ring {
+    border: 1px solid #bfdbebeb;
+    background: conic-gradient(from 0deg, #2563eb00, #2563ebfa, #06b6d4eb, #22d3ee94, #2563eb00), #eff6ffe0;
+    box-shadow: 0 26px 70px #2563eb2e, 0 0 0 12px #ffffffa3, inset 0 1px 0 #ffffffeb;
+    animation: tg-loader-circulate 1450ms linear infinite;
+}
+.tg-loader-ring::before { content: ''; inset: 5px; background: #f8fbff; }
+.tg-loader-ring::after {
+    content: ''; inset: 13px; border: 1px solid #93c5fdbd; background: #ffffffb3;
+}
+.tg-loader-mark::before {
+    content: ''; position: absolute; inset: 15%; border-radius: 50%;
+    background: radial-gradient(circle, #38bdf830, transparent 70%);
+    animation: tg-loader-pulse 1600ms ease-in-out infinite;
+}
+.tg-loader-panel p { margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -.025em; }
+.tg-loader-status { display: block; margin-top: 6px; font-size: 12px; color: #64748b; }
+.tg-loader-progress {
+    overflow: hidden; width: min(12rem, 64vw); height: 5px; margin-top: 20px;
+    border-radius: 999px; background: #dbeafe; box-shadow: inset 0 1px 2px #0f172a14;
+}
+.tg-loader-progress span {
+    display: block; width: 45%; height: 100%; border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb, #14b8a6);
+    animation: tg-loader-progress 1400ms ease-in-out infinite;
+}
+.tg-blinking .tg-loader-ring, .tg-blinking .tg-loader-logo, .tg-blinking .tg-loader-progress span,
+.tg-fading .tg-loader-ring, .tg-fading .tg-loader-logo, .tg-fading .tg-loader-progress span {
+    animation-play-state: paused;
+}
+.tg-blinking .tg-loader-mark::before, .tg-fading .tg-loader-mark::before { animation: none; opacity: 0; }
+.tg-loader-eye { transform-origin: 560px 485px; }
+.tg-blinking .tg-loader-eye { animation: tg-loader-blink 500ms cubic-bezier(.4, 0, .2, 1) both; }
+.tg-loading.tg-fading .tg-loader { opacity: 0; pointer-events: none; }
+@keyframes tg-loader-pulse { 0%, 100% { opacity: .35; transform: scale(.95); } 50% { opacity: 1; transform: scale(1.12); } }
+@keyframes tg-loader-circulate { to { transform: rotate(360deg); } }
+@keyframes tg-loader-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes tg-loader-progress { from { transform: translateX(-110%); } to { transform: translateX(325%); } }
+@keyframes tg-loader-blink { 0%, 100% { transform: scaleY(1); } 42%, 55% { transform: scaleY(.025); } }
+@media (prefers-reduced-motion: reduce) {
+    .tg-loader, .tg-loader-eye, .tg-loader-mark::before, .tg-loader-ring, .tg-loader-logo,
+    .tg-loader-progress span { animation: none !important; transition: none !important; }
+    .tg-loader-progress span { margin: auto; }
+}

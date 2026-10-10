@@ -79,7 +79,7 @@ export async function sendAdminJson(endpoint, { method = 'POST', body = {} } = {
 export async function postLogout() {
     const config = getAdminConfig();
 
-    await fetch(config.logoutUrl, {
+    const response = await fetch(config.logoutUrl, {
         method: 'POST',
         credentials: 'same-origin',
         headers: {
@@ -90,6 +90,8 @@ export async function postLogout() {
         },
         body: JSON.stringify({}),
     });
+
+    if (!response.ok) throw new Error('Unable to log out right now.');
 
     window.location.assign(config.loginUrl);
 }

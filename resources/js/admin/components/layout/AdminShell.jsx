@@ -59,6 +59,7 @@ function AdminMobileTabBar() {
 }
 
 export function AdminShell() {
+    useEffect(() => { window.TruthGuardLoader?.ready(); }, []);
     const location = useLocation();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [sidebarExpanded, setSidebarExpanded] = useState(true);

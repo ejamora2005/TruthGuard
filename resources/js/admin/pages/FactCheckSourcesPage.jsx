@@ -64,21 +64,27 @@ export default function FactCheckSourcesPage() {
     const isEditing = form.id !== null;
     const allSources = useMemo(() => [...data.customSources, ...data.builtInSources], [data.customSources, data.builtInSources]);
 
-    const load = async () => {
+    const load = async (completion = null) => {
+        const done = typeof completion === 'function' ? completion : null;
+        let succeeded = false;
         setLoading(true);
         setError('');
 
         try {
             setData(await fetchAdminJson('/fact-check-sources'));
+            succeeded = true;
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unable to load sources right now.');
         } finally {
             setLoading(false);
+            done?.(succeeded);
         }
     };
 
     useEffect(() => {
-        load();
+        const done = window.TruthGuardLoader?.begin();
+        load(done);
+        return () => done?.(false);
     }, []);
 
     const updateField = (field, value) => {

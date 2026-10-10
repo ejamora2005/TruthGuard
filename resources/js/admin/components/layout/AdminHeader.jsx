@@ -155,11 +155,13 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
 
         setLogoutSubmitting(true);
         setLogoutError('');
+        const done = window.TruthGuardLoader?.begin();
 
         try {
             await postLogout();
         } catch (error) {
             setLogoutSubmitting(false);
+            done?.(false);
             setLogoutError('Unable to log out right now. Please try again.');
         }
     };
