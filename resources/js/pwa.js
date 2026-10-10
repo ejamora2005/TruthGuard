@@ -306,66 +306,6 @@ const updateOfflineState = (isOffline) => {
     });
 };
 
-<<<<<<< HEAD
-=======
-const initLaunchSplash = () => {
-    const splash = document.querySelector('[data-truthguard-splash]');
-
-    if (!splash) {
-        return;
-    }
-
-    const authCompleted = splash.dataset.authComplete === '1';
-
-    if (!shouldShowLaunchSplash() && !authCompleted) {
-        splash.remove();
-        document.documentElement.classList.remove('truthguard-splash-lock');
-        return;
-    }
-
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const minimumDuration = authCompleted
-        ? (prefersReducedMotion ? 120 : 780)
-        : (prefersReducedMotion ? 120 : Number(splash.dataset.minDuration || 900));
-    const startedAt = performance.now();
-    let dismissed = false;
-
-    splash.classList.add('is-visible');
-    if (authCompleted) {
-        splash.classList.add('is-auth-complete');
-    }
-    document.documentElement.classList.add('truthguard-splash-lock');
-
-    const dismiss = () => {
-        if (dismissed) {
-            return;
-        }
-
-        dismissed = true;
-        const remaining = Math.max(0, minimumDuration - (performance.now() - startedAt));
-
-        window.setTimeout(() => {
-            splash.classList.add('is-leaving');
-            splash.setAttribute('aria-hidden', 'true');
-            document.documentElement.classList.remove('truthguard-splash-lock');
-
-            window.setTimeout(() => {
-                splash.remove();
-            }, prefersReducedMotion ? 0 : 380);
-        }, remaining);
-    };
-
-    if (document.readyState === 'complete') {
-        dismiss();
-    } else {
-        window.addEventListener('load', dismiss, { once: true });
-        window.setTimeout(dismiss, 2600);
-    }
-};
-
-onReady(initLaunchSplash);
-
->>>>>>> 2c237fa7aebfa114f1b8f82483965b293c91e8e7
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker
