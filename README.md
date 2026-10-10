@@ -9,7 +9,7 @@
 
 ## Production deployment
 
-TruthGuard includes a production Docker image and Compose services for the app, MySQL, queue worker, and scheduler. See [the deployment guide](docs/DEPLOYMENT.md) for environment setup, HTTPS, migrations, backups, and updates. Start from `.env.production.example`; do not use development credentials in production.
+TruthGuard includes a production Docker image and Compose services for the app, MySQL, queue worker, and scheduler. See [the deployment guide](docs/DEPLOYMENT.md) for environment setup, HTTPS, migrations, backups, and updates, and [the load-balancing preparation](docs/LOAD-BALANCING.md) for Dokploy scaling. Start from `.env.production.example`; do not use development credentials in production.
 
 ## About Laravel
 

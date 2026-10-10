@@ -20,6 +20,9 @@ RUN apt-get update \
 
 COPY automation/nlp ./automation/nlp
 COPY automation/models/filipino-transformer/best_model ./automation/models/filipino-transformer/best_model
+# Git LFS pointer files are only a few hundred bytes. Fail before deployment
+# if the transformer artifact was not fetched by the build environment.
+RUN test "$(wc -c < /app/automation/models/filipino-transformer/best_model/model.safetensors)" -gt 100000000
 
 WORKDIR /app/automation/nlp
 

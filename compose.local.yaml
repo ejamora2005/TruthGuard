@@ -1,0 +1,7 @@
+# Optional local-only override. Dokploy should deploy compose.yaml directly.
+# It restores the previous loopback binding for local browser smoke tests
+# without making the production service impossible to scale.
+services:
+  app:
+    ports:
+      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"

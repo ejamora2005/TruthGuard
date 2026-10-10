@@ -161,7 +161,8 @@ x-app-environment: &app-environment
   DEEPFAKE_CNN_VIDEO_FRAME_STRIDE: ${DEEPFAKE_CNN_VIDEO_FRAME_STRIDE:-12}
   DEEPFAKE_CNN_REAL_LABEL: ${DEEPFAKE_CNN_REAL_LABEL:-real}
   DEEPFAKE_CNN_FAKE_LABEL: ${DEEPFAKE_CNN_FAKE_LABEL:-fake}
-  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-*}
+  # Set this to the Dokploy/Traefik network or proxy CIDR(s); do not use '*'.
+  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
   FIREBASE_ENABLED: ${FIREBASE_ENABLED:-false}
   FIREBASE_API_KEY: ${FIREBASE_API_KEY:-}
   FIREBASE_AUTH_DOMAIN: ${FIREBASE_AUTH_DOMAIN:-}
@@ -219,6 +220,9 @@ services:
       timeout: 10s
       start_period: 120s
       retries: 3
+    cpus: "${NLP_CPU_LIMIT:-1.0}"
+    mem_limit: "${NLP_MEMORY_LIMIT:-1536m}"
+    mem_reservation: "${NLP_MEMORY_RESERVATION:-1g}"
     logging:
       driver: json-file
       options:
@@ -230,8 +234,15 @@ services:
     networks:
       - truthguard-internal
       - dokploy-network
-    ports:
-      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
+    # Dokploy/Traefik routes to the container port. Do not publish a fixed
+    # host port here: Docker Compose cannot bind the same host port twice
+    # when this service is scaled to two replicas.
+    expose:
+      - "80"
+    cpus: "${APP_CPU_LIMIT:-1.0}"
+    mem_limit: "${APP_MEMORY_LIMIT:-1g}"
+    mem_reservation: "${APP_MEMORY_RESERVATION:-512m}"
+    stop_grace_period: 330s
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/up') === false ? 1 : 0);"]
       interval: 30s
@@ -244,6 +255,9 @@ services:
     networks:
       - truthguard-internal
     user: www-data
+    cpus: "${WORKER_CPU_LIMIT:-1.0}"
+    mem_limit: "${WORKER_MEMORY_LIMIT:-1g}"
+    mem_reservation: "${WORKER_MEMORY_RESERVATION:-512m}"
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=300", "--max-time=3600"]
     stop_grace_period: 330s
 
@@ -252,6 +266,9 @@ services:
     networks:
       - truthguard-internal
     user: www-data
+    cpus: "${SCHEDULER_CPU_LIMIT:-0.25}"
+    mem_limit: "${SCHEDULER_MEMORY_LIMIT:-256m}"
+    mem_reservation: "${SCHEDULER_MEMORY_RESERVATION:-128m}"
     command: ["php", "artisan", "schedule:work"]
     stop_grace_period: 330s
 
@@ -275,6 +292,9 @@ services:
       timeout: 5s
       retries: 30
       start_period: 90s
+    cpus: "${DB_CPU_LIMIT:-1.0}"
+    mem_limit: "${DB_MEMORY_LIMIT:-1g}"
+    mem_reservation: "${DB_MEMORY_RESERVATION:-512m}"
 
   adminer:
     image: adminer:latest

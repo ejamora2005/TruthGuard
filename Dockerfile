@@ -32,6 +32,12 @@ RUN node node_modules/playwright/cli.js install --with-deps chromium \
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 COPY . .
+# Fail the image build if Git LFS objects were not present in the checkout.
+# The model contents are unchanged; this prevents a misleading healthy image
+# with tiny LFS pointer files in place of the trained artifacts.
+RUN test "$(wc -c < automation/models/truthguard_image_model.keras)" -gt 1000000 \
+    && test "$(wc -c < automation/models/truthguard_video_face_model.keras)" -gt 1000000 \
+    && test "$(wc -c < automation/models/filipino-transformer/best_model/model.safetensors)" -gt 100000000
 COPY --from=frontend /app/public/build ./public/build
 RUN mkdir -p bootstrap/cache/views storage/app/public storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/framework/views-runtime storage/logs \
     && composer dump-autoload --no-dev --classmap-authoritative --no-interaction \
