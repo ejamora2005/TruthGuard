@@ -51,7 +51,9 @@ class AuthenticatedSessionController extends Controller
             $notifications->sendWelcomeOnce($user);
         }
 
-        return redirect()->to(app(\App\Services\Auth\PostLoginDestination::class)->resolve($request, $user));
+        return redirect()
+            ->to(app(\App\Services\Auth\PostLoginDestination::class)->resolve($request, $user))
+            ->with('truthguard_auth_completed', true);
     }
 
     /**

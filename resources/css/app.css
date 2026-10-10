@@ -6,7 +6,34 @@
 .tg-welcome #pricing .tg-plan-price-block { min-height: 90px; }
 .tg-welcome #pricing .tg-plan-description { min-height: 72px; line-height: 1.6; }
 .tg-welcome #pricing .tg-plan-card h3 { font-size: 22px !important; }
-.tg-welcome #pricing .tg-plan-card a { border-radius: 8px !important; min-height: 44px; }
+.tg-welcome #pricing .tg-plan-card {
+    border-radius: 1.5rem;
+    background: #ffffff;
+    box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+.tg-welcome #pricing .tg-plan-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 55px rgba(15, 23, 42, 0.12);
+}
+.tg-welcome #pricing .tg-plan-card-highlighted {
+    box-shadow: 0 22px 55px rgba(37, 99, 235, 0.2);
+}
+.tg-welcome #pricing .tg-plan-card-highlighted:hover {
+    box-shadow: 0 28px 65px rgba(37, 99, 235, 0.25);
+}
+.tg-welcome #pricing .tg-pricing-kicker {
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+.tg-welcome #pricing .tg-pricing-toggle {
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+.tg-welcome #pricing .tg-plan-status {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.tg-welcome #pricing .tg-plan-card a { border-radius: 0.9rem !important; min-height: 46px; }
 
 .tg-public-reviews-page { min-height: 100dvh; background: #fff; }
 .tg-public-container { width: min(1200px, 100%); margin-inline: auto; padding-inline: 24px; }
@@ -59,6 +86,146 @@
     .tg-public-filters { display: grid; grid-template-columns: minmax(0, 1fr); }
     .tg-public-preview { padding-block: 32px; }
     .tg-public-pagination { font-size: 12px; gap: 8px; }
+}
+
+/* The public header switches to its mobile menu below xl (1280px), so the
+   menu must be styled for tablets and narrow desktop viewports too. */
+@media (max-width: 1279px) {
+    .truthguard-public-mobile-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        left: 0;
+        z-index: 60;
+        max-height: calc(100dvh - 4.5rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border: 0;
+        border-bottom: 1px solid rgba(191, 219, 254, 0.8);
+        border-radius: 0 0 1.5rem 1.5rem;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .truthguard-public-menu-inner {
+        display: grid;
+        gap: 0.9rem;
+        padding: 1rem max(1rem, calc((100% - 80rem) / 2));
+    }
+
+    .truthguard-public-menu-heading {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0 0.15rem;
+    }
+
+    .truthguard-public-menu-heading span:first-child {
+        color: #0f172a;
+        font-size: 0.92rem;
+        font-weight: 900;
+        letter-spacing: -0.015em;
+    }
+
+    .truthguard-public-menu-heading span:last-child {
+        color: #64748b;
+        font-size: 0.62rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .truthguard-public-menu-links {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+    }
+
+    .truthguard-public-menu-link {
+        display: flex;
+        min-width: 0;
+        min-height: 3rem;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.4rem;
+        border: 1px solid rgba(191, 219, 254, 0.72);
+        border-radius: 0.95rem;
+        background: rgba(255, 255, 255, 0.82);
+        padding: 0.65rem 0.75rem;
+        color: #334155;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-decoration: none;
+        box-shadow: 0 7px 16px rgba(37, 99, 235, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+        transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .truthguard-public-menu-link span:first-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .truthguard-public-menu-link span:last-child {
+        flex: 0 0 auto;
+        color: #3b82f6;
+        font-size: 0.9rem;
+    }
+
+    .truthguard-public-menu-link:hover,
+    .truthguard-public-menu-link:focus-visible {
+        border-color: #93c5fd;
+        background: #ffffff;
+        color: #1d4ed8;
+        transform: translateY(-1px);
+    }
+
+    .truthguard-public-menu-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
+        border-top: 1px solid rgba(191, 219, 254, 0.72);
+        padding-top: 0.9rem;
+    }
+
+    .truthguard-public-menu-secondary,
+    .truthguard-public-menu-primary {
+        display: inline-flex;
+        min-height: 2.85rem;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        border-radius: 0.9rem;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.78rem;
+        font-weight: 900;
+        text-decoration: none;
+    }
+
+    .truthguard-public-menu-secondary {
+        border: 1px solid #cbd5e1;
+        background: rgba(255, 255, 255, 0.82);
+        color: #334155;
+    }
+
+    .truthguard-public-menu-primary {
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #ffffff;
+        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    }
+
+    .truthguard-public-menu-secondary:hover,
+    .truthguard-public-menu-secondary:focus-visible {
+        border-color: #93c5fd;
+        color: #1d4ed8;
+    }
+
+    .truthguard-public-menu-primary:hover,
+    .truthguard-public-menu-primary:focus-visible {
+        background: linear-gradient(135deg, #1d4ed8, #6d28d9);
+    }
 }
 
 /* Final mobile overrides: these must remain after the component-specific
@@ -944,6 +1111,26 @@ select[data-tg-select][hidden], .tg-select-menu[hidden] { display: none !importa
 .tg-welcome .tg-carousel-dot { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: 50%; background: transparent; }
 .tg-carousel-dot::after { content: ''; width: 0.5rem; height: 0.5rem; border-radius: 50%; background: #cbd5e1; transition: background 150ms ease, width 150ms ease; }
 .tg-carousel-dot[aria-current="true"]::after { width: 1.25rem; border-radius: 4px; background: #2563eb; }
+.tg-welcome .tg-testimonial-stage { display: grid; }
+.tg-welcome .tg-testimonial-card {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(0.65rem);
+    transition: opacity 420ms ease, transform 420ms ease, visibility 0s linear 420ms;
+    will-change: opacity, transform;
+}
+.tg-welcome .tg-testimonial-card.is-active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition-delay: 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+    .tg-welcome .tg-testimonial-card { transform: none; transition: opacity 120ms ease; }
+}
 .tg-welcome .tg-pricing-switch { width: 3.25rem; height: 2.75rem; padding: 0; background: transparent; }
 .tg-pricing-switch::before { content: ''; position: absolute; inset: 0.625rem 0; border-radius: 999px; background: #cbd5e1; transition: background 150ms ease; }
 .tg-pricing-switch[aria-checked="true"]::before { background: #2563eb; }
@@ -4663,6 +4850,10 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     animation: truthguard-splash-logo-float 1.85s ease-in-out infinite;
 }
 
+.truthguard-app-splash.is-auth-complete .truthguard-app-splash-shield {
+    animation: truthguard-splash-auth-blink 780ms ease-in-out 1 both;
+}
+
 .truthguard-app-splash-shield img {
     height: 5.65rem;
     width: 5.65rem;
@@ -4739,6 +4930,27 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
 
     50% {
         transform: translateY(-0.22rem);
+    }
+}
+
+@keyframes truthguard-splash-auth-blink {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        filter: drop-shadow(0 18px 30px rgba(37, 99, 235, 0.2));
+    }
+
+    38% {
+        opacity: 0.28;
+        transform: scale(0.97);
+        filter: drop-shadow(0 8px 16px rgba(37, 99, 235, 0.08));
+    }
+
+    58% {
+        opacity: 1;
+        transform: scale(1.045);
+        filter: drop-shadow(0 22px 34px rgba(37, 99, 235, 0.28));
     }
 }
 

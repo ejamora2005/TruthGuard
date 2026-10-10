@@ -246,7 +246,9 @@ class GoogleAuthController extends Controller
             request()->session()->flash('truthguard_social_setup_prompt', true);
         }
 
-        return redirect()->to($this->postLoginPath($user));
+        return redirect()
+            ->to($this->postLoginPath($user))
+            ->with('truthguard_auth_completed', true);
     }
 
     private function ensureUserCanSignIn(User $user): void

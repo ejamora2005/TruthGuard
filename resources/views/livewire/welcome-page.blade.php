@@ -248,6 +248,11 @@
             transition: opacity 0.7s ease, transform 0.7s ease;
         }
 
+        .tg-welcome {
+            min-width: 0;
+            overflow-x: clip;
+        }
+
         .reveal[data-reveal-ready="true"] {
             opacity: 0;
             transform: translateY(28px);
@@ -256,6 +261,27 @@
         .reveal.show {
             opacity: 1;
             transform: translateY(0);
+        }
+
+        .tg-hero-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .tg-hero-section {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+            border-bottom: 1px solid rgb(226 232 240 / .9);
+        }
+
+        @media (min-width: 1024px) {
+            .tg-hero-grid {
+                grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+            }
+
+            .tg-hero-section {
+                min-height: calc(100svh - 5.75rem);
+                display: flex;
+                align-items: center;
+            }
         }
 
         .float-slow {
@@ -713,14 +739,17 @@
     @include('layouts.partials.public-header')
 
     <main>
-        <section id="home" class="overflow-hidden pb-12 pt-6 md:pb-24 md:pt-12">
-            <div class="mx-auto grid min-w-0 w-full max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-12 lg:px-8">
+        <section id="home" class="tg-hero-section overflow-hidden pb-14 pt-10 md:pb-16 md:pt-14">
+            <div class="tg-hero-grid mx-auto grid min-w-0 w-full max-w-7xl gap-10 px-4 sm:px-6 lg:items-center lg:gap-12 lg:px-8">
                 <div class="min-w-0">
+                    <div class="mb-4 inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-700 sm:text-sm">
+                        AI-assisted evidence review
+                    </div>
                     <h1 class="truthguard-welcome-title bg-gradient-to-r from-slate-900 via-blue-800 to-violet-900 bg-clip-text text-[2.15rem] font-bold leading-tight text-transparent sm:text-4xl md:text-5xl lg:text-6xl">
                         TruthGuard
                     </h1>
                     <p class="mt-4 max-w-xl text-base text-slate-600 sm:mt-6 sm:text-lg">
-                        Check images, videos, and online claims. Explore independent fact checks, review the evidence, and keep your own results in one place.
+                        Check images, videos, and online claims with one clear workflow. Inspect the evidence, compare public sources, and understand what the result means before you share.
                     </p>
 
                     <div class="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row">
@@ -739,94 +768,43 @@
                         </button>
                     </div>
 
-                    <p class="mt-4 text-sm text-slate-500">AI-assisted results can be wrong. Review sources before sharing.</p>
+                    <p class="mt-4 max-w-xl text-sm leading-6 text-slate-500">TruthGuard helps you investigate—not replace your judgment. AI-assisted results can be wrong, so review the sources before sharing.</p>
                 </div>
 
                 <div class="relative min-w-0 reveal">
-                    <div class="truthguard-presentation-shell">
-                        <div class="truthguard-presentation-topbar">
-                            <div class="flex min-w-0 items-center gap-3">
-                                <span class="truthguard-window-dots" aria-hidden="true">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                </span>
-                                <p class="truncate text-xs font-bold text-slate-600 sm:text-sm">
-                                    <span class="sm:hidden">Overview</span>
-                                    <span class="hidden sm:inline">TruthGuard overview</span>
-                                </p>
-                            </div>
-
-                            <span class="truthguard-video-pill">Presentation</span>
-                        </div>
-
-                        <div class="truthguard-presentation-frame" aria-label="TruthGuard video presentation">
-                            @foreach ($presentationChapters as $chapter)
-                                <section class="truthguard-presentation-scene" style="--scene-delay: {{ $loop->index * 6 }}s;">
-                                    <div class="min-w-0">
-                                        <span class="truthguard-presentation-time">{{ $chapter['time'] }}</span>
-                                        <h2 class="truthguard-presentation-title">{{ $chapter['title'] }}</h2>
-                                        <p class="truthguard-presentation-copy">{{ $chapter['description'] }}</p>
-
-                                        <div class="truthguard-presentation-status">
-                                            <span>{{ $chapter['status'] }}</span>
-                                            <span>{{ $chapter['verdict'] }}</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="truthguard-presentation-visual">
-                                        <div class="truthguard-presentation-logo">
-                                            @if ($logoUrl !== '')
-                                                <img src="{{ $logoUrl }}" alt="TruthGuard logo">
-                                            @else
-                                                <span class="text-2xl font-black text-blue-600">TG</span>
-                                            @endif
-                                        </div>
-
-                                        <div class="truthguard-signal-list" aria-hidden="true">
-                                            <span>Media integrity</span>
-                                            <span>Source context</span>
-                                            <span>Claim consistency</span>
-                                        </div>
-
-                                        <div class="truthguard-verdict-strip" aria-hidden="true">
-                                            <span>Real</span>
-                                            <span>False</span>
-                                            <span>Review</span>
-                                        </div>
-                                    </div>
-                                </section>
-                            @endforeach
-                        </div>
-
-                        <div class="truthguard-presentation-progress" aria-hidden="true">
-                            <span></span>
-                        </div>
-
-                        <div class="truthguard-presentation-controls">
-                            <span class="truthguard-play-control" aria-hidden="true"></span>
-                            <div class="truthguard-presentation-caption">
-                                <p>How TruthGuard checks content</p>
-                                <span>Evidence, sources, risk signals, and verdicts in one workflow.</span>
-                            </div>
-                            <span class="truthguard-presentation-duration">01:18</span>
-                        </div>
+                    <div class="overflow-hidden rounded-3xl border border-blue-100 bg-white p-2 shadow-xl shadow-blue-100/60">
+                        <video
+                            class="aspect-video w-full rounded-2xl bg-slate-950 object-cover"
+                            controls
+                            preload="metadata"
+                            playsinline
+                            aria-label="TruthGuard product demonstration"
+                        >
+                            <source src="{{ asset('videos/truthguard-demo.mp4') }}" type="video/mp4">
+                            <p class="p-8 text-center text-sm text-white">
+                                Your browser does not support video playback.
+                            </p>
+                        </video>
                     </div>
+
+                    <p class="mt-3 text-center text-sm leading-6 text-slate-500">
+                        Watch the workflow: submit evidence, compare sources, and understand the result.
+                    </p>
                 </div>
             </div>
         </section>
 
-        <section id="features" class="reveal bg-slate-50 py-20">
+        <section id="features" class="reveal border-b border-slate-200 bg-slate-50 py-16 md:py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
                     <h2 class="text-3xl font-bold md:text-4xl">What You Can Do With TruthGuard</h2>
-                    <p class="mt-4 text-lg text-slate-600">From a suspicious post to a saved review, keep the evidence within reach.</p>
+                    <p class="mt-4 text-lg leading-8 text-slate-600">From the first upload to the final review, keep the claim, evidence, sources, and next step together.</p>
                 </div>
 
                 <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     @foreach ($featureCards as $feature)
                         <article class="reveal rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                            <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                            <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600 shadow-sm shadow-blue-100/70">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6">
                                     @foreach (explode(' M', $feature['icon']) as $i => $path)
                                         <path stroke-linecap="round" stroke-linejoin="round" d="{{ $i === 0 ? $path : 'M'.$path }}" />
@@ -841,11 +819,11 @@
             </div>
         </section>
 
-        <section id="use-cases" class="reveal py-20">
+        <section id="use-cases" class="reveal border-b border-slate-200 bg-white py-16 md:py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
                     <h2 class="text-3xl font-bold md:text-4xl">TruthGuard Use Cases</h2>
-                    <p class="mt-4 text-lg text-slate-600">Verification for the claims your team encounters every day.</p>
+                    <p class="mt-4 text-lg leading-8 text-slate-600">Choose a workflow that fits your work, whether you are reviewing public claims, newsroom content, or community reports.</p>
                 </div>
 
                 <div class="tg-welcome-tabs mb-10 flex flex-wrap justify-center gap-2">
@@ -863,7 +841,7 @@
                 </div>
 
                 @foreach ($useCases as $key => $case)
-                    <div x-show="activeUseCase === '{{ $key }}'" x-cloak x-transition class="reveal rounded-xl border border-slate-200 bg-white shadow-lg">
+                    <div x-show="activeUseCase === '{{ $key }}'" x-cloak x-transition class="reveal overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
                         <div class="flex flex-col lg:flex-row">
                             <div class="p-8 lg:w-1/2 lg:p-12">
                                 <h3 class="mb-4 text-2xl font-bold">{{ $case['title'] }}</h3>
@@ -879,10 +857,13 @@
                                     @endforeach
                                 </ul>
 
-                                <a href="{{ route('reviews.index') }}" class="inline-flex min-h-11 items-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700">Explore claim reviews</a>
+                                <a href="{{ route('reviews.index') }}" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-blue-200 transition duration-200 hover:-translate-y-0.5 hover:from-blue-700 hover:to-indigo-700 hover:shadow-lg hover:shadow-blue-200">
+                                    <span>Explore claim reviews</span>
+                                    <span aria-hidden="true" class="text-base leading-none">→</span>
+                                </a>
                             </div>
-                            <div class="flex items-center justify-center bg-slate-100 p-8 lg:w-1/2">
-                                <img src="{{ asset($case['image']) }}" alt="{{ $case['title'] }}" class="h-auto max-w-full rounded-lg shadow-md">
+                            <div class="flex items-center justify-center bg-slate-100 p-6 sm:p-8 lg:w-1/2">
+                                <img src="{{ asset($case['image']) }}" alt="{{ $case['title'] }}" class="h-auto max-w-full rounded-2xl shadow-md">
                             </div>
                         </div>
                     </div>
@@ -890,19 +871,23 @@
             </div>
         </section>
 
-        <section id="testimonials" class="reveal bg-gradient-to-b from-white to-slate-50 py-20">
+        <section id="testimonials" class="reveal border-b border-slate-200 bg-gradient-to-b from-white to-slate-50 py-16 md:py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
                     <h2 class="text-3xl font-bold md:text-4xl">Before You Share</h2>
-                    <p class="mt-4 text-lg text-slate-600">Three habits for a more careful review.</p>
+                    <p class="mt-4 text-lg leading-8 text-slate-600">Use the explanation and source context together. A lower risk score is not the same as official confirmation.</p>
                 </div>
 
-                <div class="relative mx-auto max-w-4xl">
+                <div class="tg-testimonial-stage relative mx-auto max-w-4xl">
                     @foreach ($testimonials as $i => $testimonial)
-                        <article x-show="currentTestimonial === {{ $i }}" x-cloak x-transition class="rounded-2xl border border-slate-200 bg-white p-8 shadow-lg md:p-12">
+                        <article
+                            :class="currentTestimonial === {{ $i }} ? 'is-active' : 'is-hidden'"
+                            :aria-hidden="currentTestimonial !== {{ $i }}"
+                            class="tg-testimonial-card rounded-2xl border border-slate-200 bg-white p-8 shadow-lg md:p-12"
+                        >
                             <p class="mb-8 text-lg leading-relaxed text-slate-800 md:text-xl">{{ $testimonial['quote'] }}</p>
                             <div class="flex items-center">
-                                <span class="mr-4 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 font-bold text-blue-700">{{ $i + 1 }}</span>
+                                <span class="mr-4 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 font-bold text-blue-700 shadow-sm shadow-blue-100/60">{{ $i + 1 }}</span>
                                 <div>
                                     <h4 class="text-lg font-bold">{{ $testimonial['author'] }}</h4>
                                     <p class="text-slate-600">{{ $testimonial['title'] }}</p>
@@ -934,18 +919,19 @@
             </div>
         </section>
 
-        <section id="pricing" class="reveal py-20">
+        <section id="pricing" class="reveal border-b border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 py-16 md:py-24">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="mx-auto mb-14 max-w-3xl text-center">
-                    <h2 class="text-3xl font-bold md:text-4xl">Start Free. Keep It Affordable.</h2>
-                    <p class="mt-4 text-lg text-slate-600">Prices in Philippine pesos. Paid plans are planned and are not yet available for purchase.</p>
+                <div class="mx-auto mb-14 max-w-4xl text-center">
+                    <span class="tg-pricing-kicker inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">Simple plans, clear value</span>
+                    <h2 class="mt-4 bg-gradient-to-r from-slate-950 via-blue-800 to-violet-800 bg-clip-text text-3xl font-black tracking-tight text-transparent md:text-5xl">Start Free. Keep It Affordable.</h2>
+                    <p class="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-600">Start with the public review tools and personal workspace. Choose a plan that keeps trusted verification within reach as your workflow grows.</p>
 
-                    <div class="mb-12 mt-8 flex items-center justify-center">
-                        <span class="mr-3" :class="isAnnual ? 'text-slate-600' : 'font-medium text-slate-900'">Monthly</span>
+                    <div class="tg-pricing-toggle mb-12 mt-8 inline-flex max-w-full flex-wrap items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 p-2">
+                        <span class="rounded-xl px-3 py-2 text-sm" :class="isAnnual ? 'text-slate-500' : 'font-bold text-slate-950'">Monthly</span>
                         <button type="button" @click="isAnnual = !isAnnual" role="switch" :aria-checked="isAnnual" class="tg-pricing-switch relative inline-flex items-center rounded-full" aria-label="Annual billing">
                             <span :class="isAnnual ? 'translate-x-7' : 'translate-x-1'" class="inline-block h-4 w-4 transform rounded-full bg-white transition"></span>
                         </button>
-                        <span class="ml-3" :class="isAnnual ? 'font-medium text-slate-900' : 'text-slate-600'">Annual <span class="text-sm font-medium text-green-600">Save about 20%</span></span>
+                        <span class="rounded-xl px-3 py-2 text-sm" :class="isAnnual ? 'font-bold text-slate-950' : 'text-slate-500'">Annual <span class="ml-1 text-xs font-black text-emerald-600">Save about 20%</span></span>
                     </div>
                 </div>
 
@@ -958,12 +944,18 @@
 
                         <article
                             @class([
-                                'tg-plan-card reveal flex flex-col overflow-hidden rounded-lg',
+                                'tg-plan-card reveal flex flex-col overflow-hidden',
+                                'tg-plan-card-highlighted' => $isHighlighted,
                                 'border-2 border-blue-600 shadow-lg shadow-blue-100' => $isHighlighted,
                                 'border border-slate-200 shadow-sm' => ! $isHighlighted,
                             ])
                         >
-                            <div @class(['px-4 py-2 text-center text-sm font-medium', 'bg-blue-600 text-white' => $isHighlighted, 'bg-blue-50 text-blue-700' => ! $isHighlighted])>{{ $plan['status'] }}</div>
+                            <div @class(['tg-plan-status flex items-center justify-between gap-3 px-5 py-3 text-xs font-black', 'bg-blue-600 text-white' => $isHighlighted, 'bg-blue-50 text-blue-700' => ! $isHighlighted])>
+                                <span>{{ $plan['status'] }}</span>
+                                @if ($isHighlighted)
+                                    <span class="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black tracking-[0.08em] text-white">RECOMMENDED</span>
+                                @endif
+                            </div>
 
                             <div class="bg-white p-6 md:p-8">
                                 <h3 class="text-2xl font-bold">{{ $plan['name'] }}</h3>
@@ -990,7 +982,7 @@
                                 </a>
                             </div>
 
-                            <div class="flex-1 border-t border-slate-200 bg-slate-50 p-6 md:p-8">
+                            <div class="flex-1 border-t border-slate-200 bg-slate-50/80 p-6 md:p-8">
                                 <p class="mb-4 font-semibold">{{ $plan['status'] === 'Planned' ? 'Plan status' : 'Available features' }}</p>
                                 <ul class="space-y-3">
                                     @foreach ($plan['features'] as $includedFeature)
@@ -1007,7 +999,7 @@
             </div>
         </section>
 
-        <section id="install" class="reveal py-20">
+        <section id="install" class="reveal border-b border-slate-200 bg-slate-50 py-16 md:py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 to-violet-600">
                     <div class="relative px-6 py-14 md:p-16">
