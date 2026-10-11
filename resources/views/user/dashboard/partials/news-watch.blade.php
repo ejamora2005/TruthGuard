@@ -1031,7 +1031,7 @@
                     >
                         @if (! empty($item['image_url']))
                             <img
-                                src="{{ $item['image_url'] }}"
+                                src="{{ $item['image_url'] }}" onerror="this.onerror=null;this.src='{{ asset('images/fact-check-preview.svg') }}';this.alt='Article preview unavailable';"
                                 alt=""
                                 loading="lazy"
                                 referrerpolicy="no-referrer"

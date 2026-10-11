@@ -61,6 +61,28 @@ class RememberedLoginTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_app_launch_restores_login_after_session_loss_and_logout_blocks_reuse(): void
+    {
+        $user = User::factory()->create();
+        $response = $this->post('/login', ['email' => $user->email, 'password' => 'password', 'remember' => '1']);
+        $recaller = Auth::guard()->getRecallerName();
+        $cookies = [$recaller => $response->getCookie($recaller)->getValue(), RememberedLogin::KEY => $response->getCookie(RememberedLogin::KEY)->getValue()];
+
+        $this->travel(29)->days();
+        session()->flush();
+        Auth::forgetGuards();
+        // Login redirects a restored user to dashboard instead of asking for credentials.
+        $this->withCredentials()->withCookies($cookies)->get('/login')->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($user);
+        $this->postJson(route('auth.session.keep-alive'))->assertOk()->assertJsonPath('remembered', true);
+
+        $this->post('/logout')->assertRedirect('/login');
+        session()->flush();
+        Auth::forgetGuards();
+        $this->withCookies($cookies)->get('/dashboard?source=pwa')->assertRedirect('/login');
+        $this->assertGuest();
+    }
+
     public function test_admin_cannot_opt_out_of_idle_timeout_by_remembering(): void
     {
         $user = User::factory()->create(['is_admin' => true]);

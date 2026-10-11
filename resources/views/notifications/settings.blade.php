@@ -17,6 +17,8 @@
     <div class="truthguard-push-preference-grid mt-4 grid gap-3 sm:grid-cols-2">
         @foreach (['push_enabled' => 'Push Notifications (all devices)', 'analysis_results' => 'Analysis Results', 'fact_check_updates' => 'Fact-Check Updates', 'new_fact_checks' => 'New Fact-Checks', 'system_notifications' => 'System Notifications'] as $key => $label)
             <label class="truthguard-push-preference-row flex items-center gap-3 rounded-lg border border-gray-200 p-3 text-sm dark:border-gray-700 dark:text-white">
+                @php($iconCategory = ['push_enabled' => 'system', 'analysis_results' => 'fact-check', 'fact_check_updates' => 'news', 'new_fact_checks' => 'welcome', 'system_notifications' => 'system'][$key])
+                <span class="tg-preference-icon" data-notice-category="{{ $iconCategory }}"><x-notification-icon :category="$iconCategory" /></span>
                 <span class="truthguard-push-preference-label">{{ $label }}</span>
                 <span class="truthguard-push-toggle">
                     <input type="checkbox" role="switch" data-preference="{{ $key }}" class="truthguard-push-preference-checkbox">
@@ -31,6 +33,7 @@
     </p>
     <div class="truthguard-push-actions mt-4 flex flex-wrap gap-3">
         <button type="button" data-push-save class="truthguard-push-button truthguard-push-button-primary inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-70">
+            <x-notification-icon category="check" />
             <span class="truthguard-push-save-label-desktop">Save notification preferences</span>
             <span class="truthguard-push-save-label-mobile hidden">Save Preferences</span>
         </button>

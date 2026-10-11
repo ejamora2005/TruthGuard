@@ -58,6 +58,14 @@ class GoogleFactCheckFeedService
         $items = $this->filterItemsByMaxAge($this->mergeFeedItems($directItems, $googleItems, $limit), $maxAgeDays);
         $this->persistItems($items);
         $items = $this->persistedItems($limit, $maxAgeDays) ?: $items;
+        if (config('services.google_fact_check.feed_images_enabled', true)) {
+            foreach ($items as $item) {
+                $url = $this->string($item['url'] ?? null);
+                if (empty($item['image_url']) && $url && (! Cache::has($this->previewImageCacheKey($url)) || Cache::get($this->previewImageCacheKey($url)))) {
+                    \App\Jobs\FetchFactCheckPreview::dispatch((string) $item['id']);
+                }
+            }
+        }
         $sourceUpdatedAt = collect([
             $this->latestPersistedAt($maxAgeDays),
             $directPayload['fetched_at'] ?? null,
@@ -787,7 +795,7 @@ class GoogleFactCheckFeedService
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
-    private function attachPreviewImages(array $items): array
+    private function attachPreviewImages(array $items, bool $background = false): array
     {
         if (! (bool) config('services.google_fact_check.feed_images_enabled', true)) {
             return $items;
@@ -797,6 +805,9 @@ class GoogleFactCheckFeedService
         $pending = [];
 
         for ($index = 0; $index < $limit; $index++) {
+            if (! empty($items[$index]['image_url'])) {
+                continue;
+            }
             $url = $this->string($items[$index]['url'] ?? null);
 
             if ($url === null) {
@@ -820,6 +831,9 @@ class GoogleFactCheckFeedService
         }
 
         $timeout = max(1, min((int) config('services.google_fact_check.feed_image_timeout', 1), 3));
+        if ($background) {
+            $timeout = 10;
+        }
 
         try {
             $responses = Http::pool(function (Pool $pool) use ($pending, $timeout): array {
@@ -828,7 +842,7 @@ class GoogleFactCheckFeedService
                         'image_'.$index => $pool
                             ->as('image_'.$index)
                             ->withHeaders($this->previewImageHeaders())
-                            ->connectTimeout(1)
+                            ->connectTimeout(min(3, $timeout))
                             ->timeout($timeout)
                             ->get($url),
                     ])
@@ -882,7 +896,20 @@ class GoogleFactCheckFeedService
 
     private function previewImageCacheKey(string $url): string
     {
-        return 'truthguard.fact_check_preview_image.v4.'.md5($url);
+        return 'truthguard.fact_check_preview_image.v5.'.md5($url);
+    }
+
+    public function refreshSavedPreview(string $id): void
+    {
+        $review = PublicClaimReview::where('feed_item_id', $id)->first();
+        if (! $review || $review->image_url || ! $review->url) {
+            return;
+        }
+        $items = $this->attachPreviewImages([$review->toFeedItem()], background: true);
+        if (! empty($items[0]['image_url'])) {
+            PublicClaimReview::whereKey($review->id)->whereNull('image_url')
+                ->update(['image_url' => $items[0]['image_url']]);
+        }
     }
 
     private function cachePreviewImage(string $url, ?string $image): void
@@ -1097,11 +1124,11 @@ class GoogleFactCheckFeedService
                 continue;
             }
 
-            $image = $this->string($nodes->item(0)?->nodeValue);
-            $image = $image ? $this->normalizeCandidateImage($image, $pageUrl) : null;
-
-            if ($image) {
-                return $image;
+            foreach ($nodes as $node) {
+                $image = $this->normalizeCandidateImage($node->nodeValue, $pageUrl);
+                if ($image) {
+                    return $image;
+                }
             }
         }
 
@@ -1224,13 +1251,15 @@ class GoogleFactCheckFeedService
     private function extractHtmlImage(\DOMXPath $xpath, string $pageUrl): ?string
     {
         $queries = [
+            '//article//picture/source',
             '//article//img',
+            '//main//picture/source',
             '//main//img',
             '//*[contains(translate(@class, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "article")]//img',
             '//*[contains(translate(@class, "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "post")]//img',
             '//img',
         ];
-        $attributes = ['src', 'data-src', 'data-lazy-src', 'data-original', 'data-url', 'data-image', 'data-orig-file'];
+        $attributes = ['data-src', 'data-lazy-src', 'data-original', 'data-url', 'data-image', 'data-orig-file', 'src'];
         $srcsetAttributes = ['srcset', 'data-srcset', 'data-lazy-srcset'];
 
         foreach ($queries as $query) {
@@ -1598,7 +1627,7 @@ class GoogleFactCheckFeedService
                         'tone' => Str::limit((string) ($item['tone'] ?? ''), 24, '') ?: null,
                         'source_domain' => Str::limit((string) ($item['source_domain'] ?? ($item['host'] ?? '')), 120, '') ?: null,
                         'url' => Str::limit((string) ($item['url'] ?? ''), 2048, '') ?: null,
-                        'image_url' => Str::limit((string) ($item['image_url'] ?? ''), 2048, '') ?: null,
+                        'image_url' => Str::limit((string) ($item['image_url'] ?? ''), 2048, '') ?: PublicClaimReview::where('feed_item_id', $feedItemId)->value('image_url'),
                         'logo_url' => Str::limit((string) ($item['logo_url'] ?? ''), 2048, '') ?: null,
                         'query' => Str::limit((string) ($item['query'] ?? ''), 255, '') ?: null,
                         'feed_source_type' => Str::limit((string) ($item['feed_source_type'] ?? ''), 80, '') ?: null,

@@ -58,8 +58,8 @@
             <div class="tg-notice-accent" aria-hidden="true"></div>
             <header class="tg-notice-heading">
                 <div class="tg-notice-meta">
-                    <span class="tg-notice-icon" aria-hidden="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></svg></span>
-                    <span class="tg-notice-category">{{ str_replace('-', ' ', $notification['category']) }}</span>
+                    <span class="tg-notice-icon" data-notice-category="{{ $notification['category'] }}"><x-notification-icon :category="$notification['category']" /></span>
+                    <span class="tg-notice-category" data-notice-category="{{ $notification['category'] }}">{{ str_replace('-', ' ', $notification['category']) }}</span>
                     <span class="tg-notice-date">{{ $notification['createdAt'] }}</span>
                 </div>
                 <h1 id="notification-title" class="tg-notice-title">{{ $notification['title'] }}</h1>

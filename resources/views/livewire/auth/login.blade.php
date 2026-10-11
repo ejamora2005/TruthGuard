@@ -8,7 +8,7 @@
 
     <div class="relative z-10 w-full max-w-md">
         <div
-            x-data="{ authLoading: null, rememberDevice: @js((bool) old('remember', false)) }"
+            x-data="{ authLoading: null, rememberDevice: window.truthguardStandalone === true || @js((bool) old('remember', false)) }"
             class="truthguard-auth-card tg-auth-card-detailed rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-6"
         >
             <a href="{{ route('home') }}" class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">

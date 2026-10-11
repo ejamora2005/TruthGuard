@@ -3,7 +3,7 @@
   "name": "TruthGuard",
   "short_name": "TruthGuard",
   "description": "A secure fact-checking workspace for claim reviews, evidence checks, and verified source monitoring.",
-  "start_url": "/?source=pwa",
+  "start_url": "/dashboard?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": [

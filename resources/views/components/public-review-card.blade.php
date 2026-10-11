@@ -11,11 +11,11 @@
 <article class="tg-public-review">
     <div class="tg-public-review-media">
         @if (!empty($item['image_url']))
-            <img src="{{ $item['image_url'] }}" alt="Claim reviewed by {{ $publisher }}" loading="lazy" width="640" height="400">
+            <img src="{{ $item['image_url'] }}" onerror="this.onerror=null;this.src='{{ asset('images/fact-check-preview.svg') }}';this.alt='Article preview unavailable';" alt="Claim reviewed by {{ $publisher }}" loading="lazy" width="640" height="400">
         @elseif (!empty($item['logo_url']))
             <img src="{{ $item['logo_url'] }}" alt="{{ $publisher }}" loading="lazy" class="tg-public-review-placeholder" width="96" height="96">
         @else
-            <span class="tg-public-review-placeholder">{{ $publisher }}</span>
+            <img src="{{ asset('images/fact-check-preview.svg') }}" alt="Article preview unavailable" loading="lazy" width="640" height="400">
         @endif
     </div>
     <div class="tg-public-review-copy">

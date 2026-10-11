@@ -318,15 +318,9 @@
                         <span
                             x-show="!notification.imageUrl"
                             class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1"
-                            :class="tone(notification.category)"
+                            :class="tone(notification.category)" :data-notice-category="notification.category"
                         >
-                            <svg x-show="notification.category === 'news'" class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.75 18.75h12.5a1.5 1.5 0 0 0 1.5-1.5V7.5a1.25 1.25 0 0 0-1.25-1.25H8.75v11a1.5 1.5 0 0 1-3 0V6.75h-1.5v10.5a1.5 1.5 0 0 0 1.5 1.5Z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 9.25h5.5M11.25 12.25h5.5M11.25 15.25h3"></path>
-                            </svg>
-                            <svg x-show="notification.category !== 'news'" class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z"></path>
-                            </svg>
+                            <x-notification-icon expression="notification.category" />
                         </span>
 
                         <span class="min-w-0 flex-1">

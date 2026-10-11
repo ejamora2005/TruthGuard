@@ -152,7 +152,7 @@ return [
             ],
         ],
         'feed_images_enabled' => env('GOOGLE_FACT_CHECK_FEED_IMAGES_ENABLED', true),
-        'feed_image_timeout' => env('GOOGLE_FACT_CHECK_FEED_IMAGE_TIMEOUT', 1),
+        'feed_image_timeout' => env('GOOGLE_FACT_CHECK_FEED_IMAGE_TIMEOUT', 3),
         'feed_image_limit' => env('GOOGLE_FACT_CHECK_FEED_IMAGE_LIMIT', 15),
         'feed_image_miss_cache_minutes' => env('GOOGLE_FACT_CHECK_FEED_IMAGE_MISS_CACHE_MINUTES', 10),
         'feed_news_notifications_enabled' => env('GOOGLE_FACT_CHECK_FEED_NEWS_NOTIFICATIONS_ENABLED', true),

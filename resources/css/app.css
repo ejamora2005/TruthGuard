@@ -5868,3 +5868,45 @@ body.truthguard-fact-check-create-route .truthguard-recent-card:focus-visible > 
         grid-template-columns: 48px minmax(0, 1fr) 30px !important;
     }
 }
+
+/* Shared notification presentation: inbox, details, quick menu and preferences. */
+.tg-notification-icon { display: inline-block; width: 20px; height: 20px; flex: 0 0 20px; vertical-align: middle; }
+[data-notice-category] { --notice-color: #1d4ed8; --notice-bg: #eff6ff; --notice-border: #bfdbfe; color: var(--notice-color) !important; background: var(--notice-bg) !important; border-color: var(--notice-border) !important; }
+[data-notice-category="news"] { --notice-color: #0e7490; --notice-bg: #ecfeff; --notice-border: #a5f3fc; }
+[data-notice-category="fact-check"] { --notice-color: #6d28d9; --notice-bg: #f5f3ff; --notice-border: #ddd6fe; }
+[data-notice-category="security"] { --notice-color: #b45309; --notice-bg: #fffbeb; --notice-border: #fde68a; }
+.dark [data-notice-category] { --notice-bg: #1c3048; --notice-color: #93c5fd; --notice-border: #35516d; }
+.dark [data-notice-category="news"] { --notice-color: #67e8f9; }
+.dark [data-notice-category="fact-check"] { --notice-color: #c4b5fd; }
+.dark [data-notice-category="security"] { --notice-color: #fcd34d; }
+.tg-inbox-emblem { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: 12px; border-radius: 15px; color: #fff; background: linear-gradient(135deg, #2563eb, #0891b2); box-shadow: 0 6px 16px #2563eb20; }
+.truthguard-notifications-shell .truthguard-notifications-hero::after { display: none; }
+.truthguard-notifications-shell::before { background: linear-gradient(140deg, #eff6ff80, #ecfeff50) !important; }
+.truthguard-notifications-shell .truthguard-notifications-tab { min-height: 44px; border-radius: 999px !important; box-shadow: none; }
+.truthguard-notifications-shell .truthguard-notifications-tab.is-active { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.tg-inbox-settings { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border: 1px solid #cbd5e1; border-radius: 999px; font-size: 13px; font-weight: 600; color: #334155; background: #fff; }
+.truthguard-notifications-shell .truthguard-notification-card-actions > * { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; border-radius: 999px !important; white-space: normal; }
+.truthguard-notifications-shell .truthguard-notification-card-actions > a, .tg-notice .tg-notice-primary { background: linear-gradient(115deg, #2563eb, #0e7490); color: #fff; }
+.truthguard-notifications-shell .truthguard-notification-card-actions > button:first-child { color: #64748b; border-color: #e2e8f0; }
+.truthguard-notification-page-card h2, .truthguard-notification-page-card p { overflow-wrap: anywhere; }
+.truthguard-notifications-shell .truthguard-notification-page-card.is-unread::before { background: linear-gradient(#2563eb, #06b6d4); }
+.truthguard-notifications-shell .truthguard-notifications-actions > button { gap: 7px; min-height: 44px; }
+.truthguard-notifications-shell .truthguard-notification-card-actions .tg-notification-icon { width: 16px; height: 16px; flex-basis: 16px; }
+.tg-notice .tg-notice-accent { background: linear-gradient(90deg, #2563eb, #06b6d4); }
+.tg-notice .tg-notice-button { border-radius: 999px; }
+#notification-settings .tg-preference-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid; border-radius: 12px; }
+#notification-settings label.truthguard-push-preference-row { gap: 12px !important; }
+#notification-settings .truthguard-push-button { gap: 8px; }
+.tg-inbox-settings:focus-visible { outline: 3px solid #38bdf8; outline-offset: 3px; }
+.dark .tg-inbox-settings { background: #1e293b; color: #e2e8f0; border-color: #475569; }
+@media (max-width: 767px) {
+    .truthguard-notifications-shell .tg-inbox-emblem { display: none; }
+    .truthguard-notifications-shell .truthguard-notifications-actions { display: grid !important; grid-template-columns: 1fr 1fr !important; }
+    .truthguard-notifications-shell .truthguard-notifications-stats { grid-column: 1 / -1; }
+    .truthguard-notifications-shell .truthguard-notifications-actions > button { grid-column: 1 !important; width: 100%; border-radius: 999px !important; }
+    .truthguard-notifications-shell .tg-inbox-settings { grid-column: 2; }
+    .truthguard-notifications-shell .truthguard-notification-card-actions { grid-template-columns: repeat(auto-fit, minmax(85px, 1fr)); }
+    #notification-settings label.truthguard-push-preference-row { padding: 12px !important; gap: 9px !important; }
+    #notification-settings .tg-preference-icon { width: 30px; height: 30px; flex-basis: 30px; border-radius: 10px; }
+    #notification-settings .truthguard-push-preference-label { font-size: 13px; }
+}

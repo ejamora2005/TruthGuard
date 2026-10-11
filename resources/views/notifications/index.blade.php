@@ -118,7 +118,6 @@
 @endonce
 
 @section('content')
-    <a href="{{ route('profile', ['section' => 'notifications']) }}" class="mb-4 inline-block text-sm font-medium text-brand-500">Notification settings</a>
     <div
         class="truthguard-mobile-page truthguard-mobile-notifications mx-auto w-full max-w-[1280px] space-y-5"
         x-data="{
@@ -215,6 +214,7 @@
             <div class="truthguard-notifications-hero border-b border-slate-200/80 px-5 py-5 sm:px-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div>
+                        <span class="tg-inbox-emblem"><x-notification-icon /></span>
                         <h1 class="text-2xl font-bold tracking-tight text-slate-950">Activity inbox</h1>
                         <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Fact checks, news, security, and account updates.</p>
                     </div>
@@ -240,8 +240,9 @@
                             @click="markAllAsRead()"
                             class="inline-flex w-fit items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:shadow-[0_14px_28px_rgba(37,99,235,0.12)] focus:outline-none focus:ring-4 focus:ring-blue-100"
                         >
-                            Mark all as read
+                            <x-notification-icon category="check" /> Mark all as read
                         </button>
+                        <a href="{{ route('profile', ['section' => 'notifications']) }}" class="tg-inbox-settings"><x-notification-icon category="settings" /> Settings</a>
                     </div>
                 </div>
 
@@ -250,10 +251,11 @@
                         <button
                             type="button"
                             @click="activeTab = '{{ $tab['id'] }}'"
+                            :aria-pressed="activeTab === '{{ $tab['id'] }}'"
                             class="truthguard-notifications-tab inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-blue-100"
                             :class="activeTab === '{{ $tab['id'] }}' ? 'is-active' : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-blue-200 hover:text-slate-950'"
                         >
-                            {{ $tab['label'] }}
+                            <x-notification-icon :category="$tab['id']" /> {{ $tab['label'] }}
                             <span class="rounded-full bg-white px-2 py-0.5 text-xs ring-1 ring-slate-200" x-text="countFor('{{ $tab['id'] }}')">{{ $tab['count'] }}</span>
                         </button>
                     @endforeach
@@ -294,15 +296,9 @@
                                     <span
                                         x-show="!notification.imageUrl"
                                         class="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1"
-                                        :class="tone(notification.category)"
+                                        :class="tone(notification.category)" :data-notice-category="notification.category"
                                     >
-                                        <svg x-show="notification.category === 'news'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5.75 18.75h12.5a1.5 1.5 0 0 0 1.5-1.5V7.5a1.25 1.25 0 0 0-1.25-1.25H8.75v11a1.5 1.5 0 0 1-3 0V6.75h-1.5v10.5a1.5 1.5 0 0 0 1.5 1.5Z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 9.25h5.5M11.25 12.25h5.5M11.25 15.25h3"></path>
-                                        </svg>
-                                        <svg x-show="notification.category !== 'news'" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z"></path>
-                                        </svg>
+                                        <x-notification-icon expression="notification.category" />
                                     </span>
 
                                     <div class="min-w-0">
@@ -312,7 +308,7 @@
                                         </div>
                                         <p class="mt-1 text-sm leading-6 text-slate-500" x-text="notification.message"></p>
                                         <div class="mt-3 flex flex-wrap items-center gap-2">
-                                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1" :class="tone(notification.category)" x-text="notification.category.replace('-', ' ')"></span>
+                                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1" :class="tone(notification.category)" :data-notice-category="notification.category" x-text="notification.category.replace('-', ' ')"></span>
                                             <span class="text-xs font-medium text-slate-400" x-text="notification.createdAt"></span>
                                         </div>
                                     </div>
@@ -338,15 +334,14 @@
                                         @click="markAsRead(notification.id)"
                                         class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
                                     >
-                                        Mark read
+                                        <x-notification-icon category="check" /> Mark read
                                     </button>
 
                                     <a
                                         :href="notification.actionUrl"
                                         @click="markAsRead(notification.id)"
                                         class="rounded-full bg-slate-950 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_rgba(37,99,235,0.18)]"
-                                        x-text="notification.actionLabel"
-                                    ></a>
+                                    ><span x-text="notification.actionLabel"></span><x-notification-icon category="arrow" /></a>
                                 </div>
                             </div>
                         </article>

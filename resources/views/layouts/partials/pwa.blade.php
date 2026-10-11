@@ -2,6 +2,18 @@
     $pwaThemeColor = $pwaThemeColor ?? '#2563eb';
 @endphp
 
+<script>
+    // Detect this window, not whether an app was installed in another browser tab.
+    window.truthguardStandalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.matchMedia('(display-mode: minimal-ui)').matches
+        || window.navigator.standalone === true;
+    // Existing installations may still launch the original manifest's homepage URL.
+    // Protected routes restore the remembered session or redirect safely to login.
+    if (window.truthguardStandalone && window.location.pathname === '/') {
+        window.location.replace('/dashboard?source=pwa');
+    }
+</script>
+
 <meta name="theme-color" content="{{ $pwaThemeColor }}">
 <meta name="color-scheme" content="light">
 <meta name="application-name" content="TruthGuard">
