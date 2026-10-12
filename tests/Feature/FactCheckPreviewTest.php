@@ -7,6 +7,7 @@ use App\Services\Detections\GoogleFactCheckFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class FactCheckPreviewTest extends TestCase
@@ -33,6 +34,29 @@ class FactCheckPreviewTest extends TestCase
         foreach (range(1, 6) as $i) $this->review('review-'.$i);
         app(GoogleFactCheckFeedService::class)->latest(6);
         Queue::assertPushed(FetchFactCheckPreview::class, 6);
+    }
+
+    public function test_foreground_miss_does_not_block_background_collection_even_with_inline_lookup_disabled(): void
+    {
+        Queue::fake();
+        config(['services.google_fact_check.feed_image_limit' => 0]);
+        $review = $this->review('slow-afp');
+        Cache::put('truthguard.fact_check_preview_image.v5.'.md5($review->url), '', 600);
+        Http::fake([$review->url => Http::response('<meta property="og:image" content="/article-photo.jpg">')]);
+        $feed = app(GoogleFactCheckFeedService::class);
+        $feed->latest(5);
+        Queue::assertPushed(FetchFactCheckPreview::class, 1);
+        (new FetchFactCheckPreview($review->feed_item_id))->handle($feed);
+        $this->assertSame('https://factcheck.afp.com/article-photo.jpg', $review->fresh()->image_url);
+    }
+
+    public function test_repair_command_collects_images_without_a_queue_worker(): void
+    {
+        $review = $this->review('repair');
+        Http::fake([$review->url => Http::response('<meta property="og:image" content="/repair.jpg">')]);
+        $this->artisan('truthguard:refresh-review-images', ['--limit' => 10])
+            ->expectsOutput('Images collected: 1; still unavailable: 0.')->assertExitCode(0);
+        $this->assertSame('https://factcheck.afp.com/repair.jpg', $review->fresh()->image_url);
     }
 
     public function test_afp_metadata_skips_generic_logo_and_saves_article_image(): void

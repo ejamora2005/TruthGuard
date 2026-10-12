@@ -126,4 +126,40 @@ Artisan::command('truthguard:models:health {--load : Load each configured model 
 })->purpose('Check trained model deployment readiness without exposing model internals publicly.');
 
 Schedule::command('truthguard:archive-detections')->daily()->withoutOverlapping();
+Artisan::command('truthguard:refresh-review-images {--limit=50} {--queue}', function () {
+    if (! config('services.google_fact_check.feed_images_enabled', true)) {
+        $this->error('Preview collection is disabled. Enable GOOGLE_FACT_CHECK_FEED_IMAGES_ENABLED and refresh config cache.');
+        return 1;
+    }
+    $reviews = \App\Models\PublicClaimReview::query()
+        ->where(fn ($query) => $query->whereNull('image_url')->orWhere('image_url', ''))
+        ->whereNotNull('url')->where('url', '!=', '')
+        ->orderBy('updated_at')->orderBy('id')
+        ->limit(max(1, min(500, (int) $this->option('limit'))))->get();
+    $collected = 0;
+    foreach ($reviews as $review) {
+        if ($this->option('queue')) {
+            \App\Jobs\FetchFactCheckPreview::dispatch($review->feed_item_id);
+        } else {
+            try {
+                $collected += (int) app(\App\Services\Detections\GoogleFactCheckFeedService::class)
+                    ->refreshSavedPreview($review->feed_item_id);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+        // Rotate unavailable articles so they cannot starve the rest of the backfill.
+        $review->touch();
+    }
+    if ($this->option('queue')) {
+        $this->info('Submitted '.$reviews->count().' missing previews to the queue; delivery requires a running worker.');
+        return 0;
+    }
+    $remaining = $reviews->count() - $collected;
+    $this->info("Images collected: {$collected}; still unavailable: {$remaining}.");
+    if ($remaining) $this->warn('Check Laravel logs for publisher HTTP errors, timeouts, or missing image metadata.');
+    return $remaining ? 1 : 0;
+})->purpose('Repair missing saved fact-check previews without recollecting reviews or sending notifications.');
+
+Schedule::command('truthguard:refresh-review-images --queue --limit=100')->everyThirtyMinutes()->withoutOverlapping();
 Schedule::command('truthguard:notify-public-claim-reviews')->everyThirtyMinutes()->withoutOverlapping();

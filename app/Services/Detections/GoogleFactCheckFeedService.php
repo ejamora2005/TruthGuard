@@ -61,7 +61,8 @@ class GoogleFactCheckFeedService
         if (config('services.google_fact_check.feed_images_enabled', true)) {
             foreach ($items as $item) {
                 $url = $this->string($item['url'] ?? null);
-                if (empty($item['image_url']) && $url && (! Cache::has($this->previewImageCacheKey($url)) || Cache::get($this->previewImageCacheKey($url)))) {
+                // A short foreground timeout must not suppress the longer worker lookup.
+                if (empty($item['image_url']) && $url && ! Cache::has($this->previewAttemptCacheKey($url))) {
                     \App\Jobs\FetchFactCheckPreview::dispatch((string) $item['id']);
                 }
             }
@@ -801,7 +802,7 @@ class GoogleFactCheckFeedService
             return $items;
         }
 
-        $limit = max(0, min((int) config('services.google_fact_check.feed_image_limit', 8), count($items)));
+        $limit = $background ? count($items) : max(0, min((int) config('services.google_fact_check.feed_image_limit', 8), count($items)));
         $pending = [];
 
         for ($index = 0; $index < $limit; $index++) {
@@ -816,7 +817,7 @@ class GoogleFactCheckFeedService
 
             $cacheKey = $this->previewImageCacheKey($url);
 
-            if (Cache::has($cacheKey)) {
+            if (Cache::has($cacheKey) && (! $background || Cache::get($cacheKey))) {
                 $cachedImage = Cache::get($cacheKey);
                 $items[$index]['image_url'] = is_string($cachedImage) && $cachedImage !== '' ? $cachedImage : null;
 
@@ -867,6 +868,15 @@ class GoogleFactCheckFeedService
             }
 
             if (! $image) {
+                if ($background) {
+                    Log::notice('Fact-check article preview not found.', [
+                        'publisher_host' => parse_url($url, PHP_URL_HOST),
+                        'http_status' => $response instanceof \Illuminate\Http\Client\Response ? $response->status() : null,
+                        'reason' => $response instanceof \Illuminate\Http\Client\Response
+                            ? ($response->successful() ? 'No usable image in returned HTML' : 'Publisher HTTP error')
+                            : 'Request failed or timed out',
+                    ]);
+                }
                 $fallbackUrl = $this->publisherPreviewApiUrl($url);
 
                 if ($fallbackUrl) {
@@ -899,17 +909,27 @@ class GoogleFactCheckFeedService
         return 'truthguard.fact_check_preview_image.v5.'.md5($url);
     }
 
-    public function refreshSavedPreview(string $id): void
+    private function previewAttemptCacheKey(string $url): string
+    {
+        return 'truthguard.fact_check_preview_attempt.v1.'.md5($url);
+    }
+
+    public function refreshSavedPreview(string $id): bool
     {
         $review = PublicClaimReview::where('feed_item_id', $id)->first();
         if (! $review || $review->image_url || ! $review->url) {
-            return;
+            return (bool) $review?->image_url;
         }
         $items = $this->attachPreviewImages([$review->toFeedItem()], background: true);
+        Cache::put($this->previewAttemptCacheKey($review->url), true, now()->addMinutes(10));
         if (! empty($items[0]['image_url'])) {
-            PublicClaimReview::whereKey($review->id)->whereNull('image_url')
+            PublicClaimReview::whereKey($review->id)->where(fn ($query) => $query->whereNull('image_url')->orWhere('image_url', ''))
                 ->update(['image_url' => $items[0]['image_url']]);
+
+            return true;
         }
+
+        return false;
     }
 
     private function cachePreviewImage(string $url, ?string $image): void

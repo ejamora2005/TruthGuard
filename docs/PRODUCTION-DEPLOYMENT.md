@@ -79,3 +79,24 @@ submit one text article, one image upload and one video upload, then confirm the
 same database notification is visible in the bell and queued push delivery is
 accepted by Firebase. Do not claim device display until the device notification
 is actually observed.
+
+### Repair missing fact-check previews
+
+After deploying preview changes, restart the worker and repair existing reviews:
+
+```sh
+php artisan queue:restart
+php artisan truthguard:refresh-review-images --limit=50
+```
+
+The repair command runs immediately without relying on a queue worker. It prints
+the number of image URLs collected and reviews still missing a preview, returning
+exit code 1 if any remain unavailable. Repeat to process the next batch; failed
+articles rotate behind other pending reviews. It does not send notifications.
+Publisher HTTP failures, timeouts, and missing metadata are recorded in Laravel logs.
+It does not bypass TLS validation or publisher access restrictions.
+
+The scheduler submits up to 100 missing previews every 30 minutes using `--queue`.
+Keep both the scheduler and default queue worker running. Ensure
+`GOOGLE_FACT_CHECK_FEED_IMAGES_ENABLED=true`; the foreground image limit does not
+limit background repair. Reload the feed after the repair finishes.
