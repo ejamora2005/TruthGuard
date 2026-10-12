@@ -773,18 +773,15 @@
 
                 <div class="relative min-w-0 reveal">
                     <div class="overflow-hidden rounded-3xl border border-blue-100 bg-white p-2 shadow-xl shadow-blue-100/60">
-                        <video
-                            class="aspect-video w-full rounded-2xl bg-slate-950 object-cover"
-                            controls
-                            preload="metadata"
-                            playsinline
-                            aria-label="TruthGuard product demonstration"
-                        >
-                            <source src="{{ asset('videos/truthguard-demo.mp4') }}" type="video/mp4">
-                            <p class="p-8 text-center text-sm text-white">
-                                Your browser does not support video playback.
-                            </p>
-                        </video>
+                        <iframe
+                            class="aspect-video w-full rounded-2xl bg-slate-950"
+                            src="https://www.youtube.com/embed/D8rITxX03ZQ"
+                            title="TruthGuard product demonstration"
+                            loading="lazy"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowfullscreen
+                        ></iframe>
                     </div>
 
                     <p class="mt-5 text-center text-sm leading-7 tracking-[0.01em] text-slate-500">
