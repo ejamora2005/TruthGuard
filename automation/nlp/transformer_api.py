@@ -16,7 +16,7 @@ classifier: TruthGuardFilipinoClassifier | None = None
 
 
 class PredictRequest(BaseModel):
-    article: str = Field(..., min_length=1)
+    article: str = Field(..., min_length=1, max_length=100000)
     uncertain_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     min_words: int = Field(default=40, ge=1)
     max_length: int = Field(default=256, ge=32, le=512)

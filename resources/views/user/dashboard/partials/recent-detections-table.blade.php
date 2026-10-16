@@ -3,7 +3,7 @@
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recent Detections</p>
             <h3 class="mt-2 text-xl font-semibold text-slate-900">Recent detections table</h3>
-            <p class="mt-2 text-sm text-slate-500">Thumbnail previews, verdict badges, confidence scores, and timestamps for your latest checks.</p>
+            <p class="mt-2 text-sm text-slate-500">Thumbnail previews, verdict badges, assessment scores, and timestamps for your latest checks.</p>
         </div>
 
         @if (collect($recentDetectionRows)->contains('demo', true))
@@ -18,7 +18,7 @@
                     <tr>
                         <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Detection</th>
                         <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Result</th>
-                        <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Confidence</th>
+                        <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Assessment score</th>
                         <th class="px-5 py-4 text-left text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Date</th>
                     </tr>
                 </thead>
@@ -60,14 +60,16 @@
                             <td class="px-5 py-4">
                                 <div class="max-w-[160px]">
                                     <div class="flex items-center justify-between text-sm font-semibold text-slate-900">
-                                        <span>{{ $row['confidence'] }}%</span>
+                                        <span>{{ $row['confidence_display'] ?? $row['confidence'].'%' }}</span>
                                     </div>
+                                    @if($row['confidence'] !== null)
                                     <div class="mt-2 h-2 rounded-full bg-slate-100">
                                         <div
                                             class="{{ $row['verdict'] === 'fake' ? 'bg-red-500' : ($row['verdict'] === 'review' ? 'bg-amber-500' : 'bg-green-500') }} h-2 rounded-full"
                                             style="width: {{ max(8, min(100, $row['confidence'])) }}%;"
                                         ></div>
                                     </div>
+                                    @endif
                                 </div>
                             </td>
                             <td class="px-5 py-4 text-sm text-slate-600">

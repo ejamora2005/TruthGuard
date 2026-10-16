@@ -154,19 +154,25 @@ new class extends Component
 @php
     $shortcutPrompts = [
         [
+            'id' => 'media',
             'label' => 'Check for AI-made media',
-            'prompt' => 'Check whether this image or video shows signs of AI generation or manipulation.',
+            'task' => 'media',
             'hint' => 'Analyze this upload for AI or editing signs.',
+            'prompt' => 'Is this image or video AI-generated or manipulated?',
         ],
         [
+            'id' => 'claim',
             'label' => 'Fact-check this claim',
-            'prompt' => 'Fact-check this claim against trusted public sources and explain the evidence.',
+            'task' => 'claim',
             'hint' => 'Compare this claim with trusted sources.',
+            'prompt' => 'Is the claim in this post true?',
         ],
         [
+            'id' => 'sources',
             'label' => 'Find matching fact-checks',
-            'prompt' => 'Find related fact-checks for this upload and show their source ratings.',
+            'task' => 'claim',
             'hint' => 'Search related reviews and source ratings.',
+            'prompt' => 'Has this claim already been fact-checked, and what ratings did trusted sources give it?',
         ],
     ];
     $truthguardLogoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
@@ -233,15 +239,15 @@ new class extends Component
         }
 
         .truthguard-pre-result-form .truthguard-composer-footer {
-            margin-top: 1.45rem !important;
+            margin-top: 0.65rem !important;
         }
 
         .truthguard-pre-result-form .truthguard-ai-disclaimer-copy {
-            margin-top: 1.05rem !important;
+            margin-top: 0.4rem !important;
         }
 
         .truthguard-pre-result-form .truthguard-mobile-ai-disclaimer {
-            margin-top: 1rem !important;
+            margin-top: 0.4rem !important;
         }
 
         .truthguard-recent-section {
@@ -495,6 +501,7 @@ new class extends Component
             z-index: 3;
             display: grid;
             place-items: center;
+            place-content: center;
             border-radius: 9999px;
             background:
                 radial-gradient(circle at 35% 26%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.46) 34%, rgba(219, 234, 254, 0.34) 100%);
@@ -1492,14 +1499,14 @@ new class extends Component
             box-shadow: 0 8px 18px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.96);
         }
 
-        /* Keep an uploaded attachment as a compact thumbnail card. */
+        /* Replace the attach button with its preview; never add a row above the input. */
         .truthguard-preview-anchor {
             display: block;
-            width: 5.75rem;
-            height: 5.75rem;
-            flex: 0 0 5.75rem;
-            margin: 0.65rem 0 0.35rem;
-            padding: 0.3rem;
+            width: 3rem;
+            height: 3rem;
+            flex: 0 0 3rem;
+            margin: 0;
+            padding: 0.15rem;
             border-radius: 1rem;
         }
 
@@ -1550,12 +1557,11 @@ new class extends Component
 
         @media (min-width: 640px) {
             .truthguard-preview-anchor {
-                width: 6.25rem;
-                height: 6.25rem;
-                flex-basis: 6.25rem;
-                margin-top: 0.75rem;
-                margin-bottom: 0.45rem;
-                padding: 0.35rem;
+                width: 3.5rem;
+                height: 3.5rem;
+                flex-basis: 3.5rem;
+                margin: 0;
+                padding: 0.2rem;
             }
         }
 
@@ -3252,11 +3258,12 @@ new class extends Component
             -webkit-backdrop-filter: blur(8px);
         }
         .truthguard-prompt-help {
-            min-height: 22px; text-align: center; padding: 2px 8px;
-            font-size: 12px; line-height: 18px; color: #64748b;
-        }
-        @media (hover: none) {
-            .truthguard-prompt-help:has(> span[style*="display: none"]) { min-height: 0; padding: 0; }
+            position: absolute; bottom: calc(100% + 6px); left: 50%; z-index: 10;
+            transform: translateX(-50%); width: max-content; max-width: 100%;
+            padding: 6px 10px; border: 1px solid #dbe7f6; border-radius: 8px;
+            background: #fff; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+            text-align: center; font-size: 12px; line-height: 18px; color: #64748b;
+            pointer-events: none;
         }
         .truthguard-inline-progress {
             position: fixed;
@@ -3326,7 +3333,39 @@ new class extends Component
             fill: #fff; opacity: 1; animation: none;
         }
         .truthguard-detection-composer .truthguard-composer-field { min-width: 0; }
-        .truthguard-detection-composer .truthguard-preview-anchor { margin-bottom: 10px; }
+        .truthguard-detection-composer .truthguard-preview-anchor { margin: 0; }
+        .truthguard-composer-toolbar { min-width: 0; min-height: 48px; }
+        body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-toolbar .truthguard-guided-prompts { margin: 0 !important; }
+        .truthguard-composer-toolbar .truthguard-progress-restore { min-height: 48px; }
+        /* Bound long drafts inside the input rather than growing the upload card. */
+        body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-textarea {
+            height: 3.5rem !important;
+            min-height: 3.5rem !important;
+            max-height: 3.5rem !important;
+            overflow-y: auto !important;
+        }
+        @media (max-width: 640px) {
+            /* A transformed ancestor makes a fixed composer move with page focus/scroll. */
+            body.truthguard-fact-check-create-route .truthguard-mobile-check {
+                animation: none !important;
+                transform: none !important;
+            }
+            body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-pre-result-workspace .truthguard-pre-result-form {
+                bottom: 0 !important;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-textarea {
+                height: 3rem !important;
+                min-height: 3rem !important;
+                max-height: 3rem !important;
+            }
+        }
+        @media (min-width: 641px) and (max-height: 740px) {
+            /* Evidence types already appear in the composer toolbar on desktop. */
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-orb {
+                width: 6.5rem !important;
+                height: 6.5rem !important;
+            }
+        }
     </style>
 @endonce
 
@@ -3356,6 +3395,9 @@ new class extends Component
             composerValue: @js($composerDraft),
             composerMaxCharacters: @js($claimMaxCharacters),
             composerError: @js($initialComposerError ?: null),
+            analysisTask: @js(old('analysis_task', 'auto')),
+            promptGuides: @js($shortcutPrompts),
+            selectedGuide: @js(in_array(old('analysis_task'), ['media', 'claim'], true) ? old('analysis_task') : null),
             selectedInputType: @js($oldSourceUrl !== '' ? 'link' : null),
             hasFile: false,
             inputNudge: false,
@@ -3376,6 +3418,7 @@ new class extends Component
             voiceError: null,
             voiceRecognition: null,
             voiceTranscriptBuffer: '',
+            voiceLastTranscriptAt: 0,
             hasResult: @js((bool) $activeDetection),
             updateViewportOffset() {
                 const header = document.querySelector('header');
@@ -3441,7 +3484,7 @@ new class extends Component
                 }, 700);
             },
             canAnalyze() {
-                const hasEvidence = !!this.hasFile || ((this.composerValue || '').trim().length > 0);
+                const hasEvidence = !!this.hasFile || this.composerEvidenceText().length > 0;
 
                 return hasEvidence
                     && ! this.isComposerOverLimit()
@@ -3531,7 +3574,7 @@ new class extends Component
                 });
             },
             validateComposer() {
-                if (! this.hasFile && ! (this.composerValue || '').trim()) {
+                if (! this.hasFile && ! this.composerEvidenceText()) {
                     this.composerError = 'Enter a claim or attach evidence.';
                     return false;
                 }
@@ -3748,6 +3791,7 @@ new class extends Component
             },
             triggerPicker(type) {
                 const acceptMap = {
+                    media: '.jpg,.jpeg,.png,.webp,.mp4,.mov,.webm,.m4v,image/*,video/*',
                     image: '.jpg,.jpeg,.png,.webp,image/*',
                     video: '.mp4,.mov,.webm,.m4v,video/*',
                     pdf: '.pdf,application/pdf',
@@ -4189,44 +4233,48 @@ new class extends Component
                 this.menuOpen = false;
                 this.$nextTick(() => this.$refs.composerInput?.focus());
             },
-            usePrompt(prompt) {
+            selectedPromptGuide() {
+                return this.promptGuides.find(guide => guide.id === this.selectedGuide) || null;
+            },
+            composerEvidenceText() {
+                const value = (this.composerValue || '').trim();
+                const guide = this.promptGuides.find(guide => value === guide.prompt || value.startsWith(guide.prompt + '\n\n'));
+                return guide ? value.slice(guide.prompt.length).trim() : value;
+            },
+            usePrompt(task = 'auto', guideId = null) {
+                if (this.submitting) return;
+                const draft = this.composerEvidenceText();
+                this.analysisTask = ['auto', 'media', 'claim'].includes(task) ? task : 'auto';
+                this.selectedGuide = this.analysisTask === 'auto' ? null
+                    : (this.promptGuides.find(guide => guide.id === guideId && guide.task === this.analysisTask)?.id
+                        || this.promptGuides.find(guide => guide.task === this.analysisTask)?.id || null);
+                if (this.$refs.analysisTask) this.$refs.analysisTask.value = this.analysisTask;
                 this.menuOpen = false;
+                const prompt = this.selectedPromptGuide()?.prompt || '';
+                this.composerValue = [prompt, draft].filter(Boolean).join('\n\n');
                 this.composerError = null;
-                this.selectedInputType = null;
-
                 if (this.$refs.composerInput) {
-                    this.$refs.composerInput.value = prompt;
-                    this.composerValue = prompt;
+                    this.$refs.composerInput.value = this.composerValue;
+                    this.$refs.composerInput.dispatchEvent(new Event('input', { bubbles: true }));
                 }
-
-                if (this.composerUrl()) {
-                    this.selectedInputType = 'link';
-                }
-
                 this.$nextTick(() => {
                     this.resizeComposer();
                     this.$refs.composerInput?.focus();
-
-                    const input = this.$refs.composerInput;
-
-                    if (input && typeof input.setSelectionRange === 'function') {
-                        input.setSelectionRange(input.value.length, input.value.length);
-                    }
                 });
             },
             setupVoiceInput() {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 this.voiceSupported = !!SpeechRecognition;
 
-                if (! this.voiceSupported) {
+                if (! this.voiceSupported || this.voiceRecognition) {
                     return;
                 }
 
                 const recognition = new SpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = true;
-                const pageLanguage = document.documentElement.lang || navigator.language || 'en-US';
-                recognition.lang = pageLanguage === 'en' ? 'en-US' : (pageLanguage === 'fil' ? 'fil-PH' : pageLanguage);
+                recognition.lang = this.voiceRecognitionLanguage();
+                this.configureVoicePhrases(recognition);
 
                 recognition.onstart = () => {
                     this.voiceListening = true;
@@ -4239,11 +4287,18 @@ new class extends Component
 
                 recognition.onerror = (event) => {
                     this.voiceListening = false;
-                    this.voiceError = event?.error === 'not-allowed'
-                        ? 'Microphone access was denied. Allow it in the browser address bar.'
-                        : event?.error === 'no-speech'
-                            ? 'No speech was detected. Speak closer to the microphone and try again.'
-                            : 'Voice input stopped. Try again.';
+                    const messages = {
+                        'not-allowed': 'Microphone access was denied. Allow it in the browser site settings, then tap the microphone again.',
+                        'service-not-allowed': 'This browser has blocked its speech recognition service. Check browser settings or try another browser.',
+                        'audio-capture': 'No working microphone was found. Check your microphone connection and device settings, then try again.',
+                        'network': 'Could not connect to the speech recognition service. Check your internet connection, then tap the microphone again.',
+                        'no-speech': 'No speech was detected. Speak closer to the microphone and try again.',
+                        'language-not-supported': 'The speech recognition service does not support the selected language. You can type or paste your claim instead.',
+                        'phrases-not-supported': 'The speech recognition service rejected the voice hints. Reload the page and try again.',
+                    };
+                    this.voiceError = event?.error === 'aborted'
+                        ? null
+                        : (messages[event?.error] || 'Speech recognition is unavailable. Tap the microphone to retry, or type your claim.');
                 };
 
                 recognition.onresult = (event) => {
@@ -4253,12 +4308,17 @@ new class extends Component
                         const transcript = event.results[index]?.[0]?.transcript || '';
 
                         if (event.results[index].isFinal) {
-                            finalTranscript += transcript;
+                            finalTranscript += `${finalTranscript ? ' ' : ''}${transcript}`;
                         }
                     }
 
                     if (finalTranscript.trim()) {
-                        this.insertVoiceText(finalTranscript);
+                        const transcript = this.cleanVoiceTranscript(finalTranscript);
+
+                        if (transcript) {
+                            this.rememberVoiceTranscript(transcript);
+                            this.insertVoiceText(transcript);
+                        }
                     }
                 };
 
@@ -4278,10 +4338,125 @@ new class extends Component
                 try {
                     this.voiceError = null;
                     this.voiceTranscriptBuffer = '';
+                    this.voiceLastTranscriptAt = 0;
                     this.voiceRecognition.start();
                 } catch (error) {
                     this.voiceError = 'Voice input is already starting. Try again.';
                 }
+            },
+            voiceRecognitionLanguage() {
+                const pageLanguage = (document.documentElement.lang || navigator.language || 'en-PH').toLowerCase();
+
+                if (pageLanguage === 'fil' || pageLanguage === 'tl' || pageLanguage.startsWith('fil-') || pageLanguage.startsWith('tl-')) {
+                    return 'fil-PH';
+                }
+
+                // Philippine English is the best available Web Speech locale for
+                // mixed English/Filipino (Taglish) fact-checking questions.
+                return 'en-PH';
+            },
+            configureVoicePhrases(recognition) {
+                const SpeechRecognitionPhrase = window.SpeechRecognitionPhrase || window.webkitSpeechRecognitionPhrase;
+
+                // Chrome exposes phrase hints even when its remote recognition
+                // service rejects them asynchronously with phrases-not-supported.
+                if (recognition.processLocally !== true
+                    || typeof SpeechRecognitionPhrase !== 'function'
+                    || ! ('phrases' in recognition)) {
+                    return;
+                }
+
+                const terms = [
+                    'TruthGuard', 'PAGASA', 'Official Gazette', 'Philippine Statistics Authority', 'PSA',
+                    'Department of Health', 'DOH', 'DOST', 'NDRRMC', 'COMELEC', 'Vera Files', 'Reuters',
+                    'AFP', 'fact check', 'misinformation', 'disinformation', 'claim', 'source', 'verification',
+                ];
+
+                try {
+                    recognition.phrases = terms.map((term) => new SpeechRecognitionPhrase(term, 5.0));
+                } catch (error) {
+                    // Phrase hints are an optional browser feature. Recognition
+                    // continues normally when the browser does not support them.
+                }
+            },
+            cleanVoiceTranscript(text) {
+                const normalized = (text || '').replace(/\s+/g, ' ').trim();
+
+                if (! normalized) {
+                    return '';
+                }
+
+                const withoutOverlap = this.removeVoiceChunkOverlap(normalized);
+
+                return this.removeImmediateVoiceDuplicates(withoutOverlap);
+            },
+            removeVoiceChunkOverlap(transcript) {
+                const previous = (this.voiceTranscriptBuffer || '').trim();
+                const isStreamingOverlap = Date.now() - this.voiceLastTranscriptAt < 2500;
+
+                if (! previous || ! isStreamingOverlap) {
+                    return transcript;
+                }
+
+                const previousWords = previous.split(/\s+/);
+                const words = transcript.split(/\s+/);
+                const maxOverlap = Math.min(12, previousWords.length, words.length);
+
+                for (let count = maxOverlap; count >= 2; count -= 1) {
+                    const previousTail = previousWords.slice(-count).map((word) => this.voiceComparableWord(word));
+                    const transcriptHead = words.slice(0, count).map((word) => this.voiceComparableWord(word));
+
+                    if (previousTail.every((word, index) => word === transcriptHead[index])) {
+                        return words.slice(count).join(' ');
+                    }
+                }
+
+                return transcript;
+            },
+            removeImmediateVoiceDuplicates(transcript) {
+                const words = transcript.split(/\s+/).filter(Boolean);
+                const emphasisWords = new Set(['very', 'really', 'so', 'no', 'yes', 'please']);
+                const cleaned = [];
+
+                for (const word of words) {
+                    const previous = cleaned[cleaned.length - 1];
+                    const comparableWord = this.voiceComparableWord(word);
+                    const comparablePrevious = this.voiceComparableWord(previous || '');
+                    const hasMeaningfulPunctuation = /[!?'\x22“”]/.test(word) || /[!?'\x22“”]/.test(previous || '');
+
+                    if (comparableWord !== ''
+                        && comparableWord === comparablePrevious
+                        && ! emphasisWords.has(comparableWord)
+                        && ! hasMeaningfulPunctuation) {
+                        continue;
+                    }
+
+                    cleaned.push(word);
+                }
+
+                for (let phraseLength = Math.min(8, Math.floor(cleaned.length / 2)); phraseLength >= 2; phraseLength -= 1) {
+                    for (let start = 0; start + (phraseLength * 2) <= cleaned.length; start += 1) {
+                        const firstPhrase = cleaned.slice(start, start + phraseLength).map((word) => this.voiceComparableWord(word));
+                        const secondPhrase = cleaned.slice(start + phraseLength, start + (phraseLength * 2)).map((word) => this.voiceComparableWord(word));
+                        const hasMeaningfulPunctuation = cleaned
+                            .slice(start, start + (phraseLength * 2))
+                            .some((word) => /[!?'\x22“”]/.test(word));
+
+                        if (! hasMeaningfulPunctuation && firstPhrase.every((word, index) => word === secondPhrase[index])) {
+                            return [...cleaned.slice(0, start), ...cleaned.slice(start + phraseLength)].join(' ');
+                        }
+                    }
+                }
+
+                return cleaned.join(' ');
+            },
+            voiceComparableWord(word) {
+                return (word || '').toLocaleLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+            },
+            rememberVoiceTranscript(transcript) {
+                const nextBuffer = `${this.voiceTranscriptBuffer || ''} ${transcript}`.trim();
+                this.voiceTranscriptBuffer = nextBuffer.split(/\s+/).slice(-80).join(' ');
+                this.voiceLastTranscriptAt = Date.now();
             },
             insertVoiceText(text) {
                 const transcript = (text || '').trim();
@@ -4781,12 +4956,12 @@ new class extends Component
             </div>
         </div>
         </template>
-                <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore" @click="progressHidden = false; progressMinimized = false">Analyzing &middot; View progress</button>
                 <input type="hidden" name="weather_consent" :value="locationStatus === 'granted' ? '1' : '0'">
                 <input type="hidden" name="weather_lat" :value="locationLat !== null ? locationLat : ''">
                 <input type="hidden" name="weather_lon" :value="locationLon !== null ? locationLon : ''">
                 <input type="hidden" name="weather_label" :value="locationStatus === 'granted' ? locationLabel : ''">
                 <input type="hidden" name="return_context" value="{{ $submitContext }}">
+                <input type="hidden" name="analysis_task" x-ref="analysisTask" value="{{ old('analysis_task', 'auto') }}" :value="analysisTask">
                 <input
                     x-ref="fileInput"
                     type="file"
@@ -4796,8 +4971,10 @@ new class extends Component
                     @change="syncPreviewFromInput($event)"
                 >
 
+                <div class="truthguard-composer-toolbar" x-show="!hasResult || (submitting && (progressHidden || progressMinimized))">
+                <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore" @click="progressHidden = false; progressMinimized = false">Analyzing &middot; View progress</button>
                 @if (! $activeDetection)
-                    <section x-data="{ hoveredHint: '', focusedHint: '', hintDismissed: false }" @keydown.escape.window="hintDismissed = true" :inert="submitting" class="truthguard-guided-prompts rounded-[30px] border border-blue-100/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5">
+                    <section x-show.important="!submitting || (!progressHidden && !progressMinimized)" x-data="{ hoveredHint: '', focusedHint: '', hintDismissed: false }" @keydown.escape.window="hintDismissed = true" :inert="submitting" class="truthguard-guided-prompts rounded-[30px] border border-blue-100/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                             <div class="flex min-w-0 gap-3">
                                 <span class="hidden" aria-hidden="true">
@@ -4819,14 +4996,18 @@ new class extends Component
                                 <button
                                     type="button"
                                     class="truthguard-guided-prompt-card group relative flex min-h-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-200/80 bg-white px-3 py-2.5 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100"
-                                    data-prompt="{{ $shortcutPrompt['prompt'] }}"
+                                    data-task="{{ $shortcutPrompt['task'] }}"
+                                    data-guide="{{ $shortcutPrompt['id'] }}"
                                     data-hint="{{ $shortcutPrompt['hint'] }}"
+                                    :aria-pressed="selectedGuide === $el.dataset.guide ? 'true' : 'false'"
+                                    :class="{ 'truthguard-guided-prompt-active': selectedGuide === $el.dataset.guide }"
+                                    :disabled="submitting"
                                     aria-describedby="truthguard-prompt-hint-{{ $loop->index }}"
                                     @mouseenter="hoveredHint = $el.dataset.hint; hintDismissed = false"
                                     @mouseleave="hoveredHint = ''"
                                     @focus="focusedHint = $el.dataset.hint; hintDismissed = false"
                                     @blur="focusedHint = ''"
-                                    @click="usePrompt($el.dataset.prompt)"
+                                    @click="usePrompt($el.dataset.task, $el.dataset.guide)"
                                 >
                                     <span class="hidden" aria-hidden="true"></span>
                                     <span class="hidden">
@@ -4881,8 +5062,9 @@ new class extends Component
                         @foreach ($shortcutPrompts as $shortcutPrompt)
                             <span id="truthguard-prompt-hint-{{ $loop->index }}" class="sr-only">{{ $shortcutPrompt['hint'] }}</span>
                         @endforeach
-                        <div class="truthguard-prompt-help" aria-hidden="true">
-                            <span x-show="!hintDismissed && (hoveredHint || focusedHint)" x-cloak x-text="hoveredHint || focusedHint"></span>
+                        <p class="sr-only" role="status" x-text="selectedGuide ? 'Question added to the text box. You can edit it before sending.' : ''"></p>
+                        <div class="truthguard-prompt-help" x-show="!hintDismissed && (hoveredHint || focusedHint)" x-cloak aria-hidden="true">
+                            <span x-text="hoveredHint || focusedHint"></span>
                         </div>
                         <p class="truthguard-prompt-guide-caption mt-2 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                             Prompt guide
@@ -5009,6 +5191,8 @@ new class extends Component
                     @endif
                 @endif
 
+                </div>
+
                 <div
                     class="truthguard-detection-composer relative rounded-[30px] p-2.5 sm:p-3"
                     :inert="submitting"
@@ -5018,66 +5202,6 @@ new class extends Component
                             inputNudge ? 'truthguard-composer-hint' : ''
                         ]"
                     >
-                        <div
-                            x-show="previewUrl"
-                            x-cloak
-                            x-transition.opacity
-                            class="truthguard-preview-anchor"
-                        >
-                            <div class="truthguard-preview-thumb">
-                                <button
-                                    type="button"
-                                    class="truthguard-preview-trigger group relative transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-                                    @click="openPreview()"
-                                    aria-label="Open larger preview"
-                                >
-                                    <template x-if="previewKind === 'image'">
-                                        <img :src="previewUrl" alt="Preview of uploaded image" class="h-full w-full object-cover">
-                                    </template>
-
-                                    <template x-if="previewKind === 'video'">
-                                        <div class="relative h-full w-full">
-                                            <video :src="previewUrl" preload="metadata" muted playsinline class="h-full w-full object-cover"></video>
-                                            <span class="absolute inset-x-0 bottom-0 bg-slate-900/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">Video</span>
-                                        </div>
-                                    </template>
-
-                                    <template x-if="previewKind === 'pdf'">
-                                        <div class="flex h-full w-full items-center justify-center rounded-[22px] border border-slate-200 bg-white text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
-                                            PDF
-                                        </div>
-                                    </template>
-
-                                    <template x-if="previewKind === 'file'">
-                                        <div class="flex h-full w-full items-center justify-center rounded-[22px] border border-slate-200 bg-white text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
-                                            File
-                                        </div>
-                                    </template>
-                                </button>
-                            </div>
-
-                            <div class="truthguard-preview-meta min-w-0 flex-1 self-center">
-                                <p class="truncate text-xs font-bold text-slate-800" x-text="previewName || 'Attached evidence'"></p>
-                                <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-500">
-                                    <span class="capitalize" x-text="previewKind === 'pdf' ? 'Document' : previewKind"></span>
-                                    <span aria-hidden="true">&bull;</span>
-                                    <span x-text="previewSizeLabel || 'Selected file'"></span>
-                                </p>
-                            </div>
-
-                            <button
-                                type="button"
-                                class="truthguard-preview-remove"
-                                @click.stop="clearPreview()"
-                                aria-label="Remove attached file"
-                                title="Remove attachment"
-                            >
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.8" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
-                                </svg>
-                            </button>
-                        </div>
-
                         <div
                             x-show="selectedInputType === 'link' && composerUrl()"
                             x-cloak
@@ -5104,7 +5228,69 @@ new class extends Component
                         class="truthguard-composer-field flex items-start gap-3 p-2.5 sm:gap-3 sm:p-3"
                     >
                         <div class="relative shrink-0">
+                            <div
+                                x-show="previewUrl"
+                                x-cloak
+                                x-transition.opacity
+                                class="truthguard-preview-anchor"
+                            >
+                                <div class="truthguard-preview-thumb">
+                                    <button
+                                        type="button"
+                                        class="truthguard-preview-trigger group relative transition hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+                                        @click="openPreview()"
+                                        aria-label="Open larger preview"
+                                        :title="previewName || 'Attached evidence'"
+                                    >
+                                        <template x-if="previewKind === 'image'">
+                                            <img :src="previewUrl" alt="Preview of uploaded image" class="h-full w-full object-cover">
+                                        </template>
+
+                                        <template x-if="previewKind === 'video'">
+                                            <div class="relative h-full w-full">
+                                                <video :src="previewUrl" preload="metadata" muted playsinline class="h-full w-full object-cover"></video>
+                                                <span class="absolute inset-x-0 bottom-0 bg-slate-900/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">Video</span>
+                                            </div>
+                                        </template>
+
+                                        <template x-if="previewKind === 'pdf'">
+                                            <div class="flex h-full w-full items-center justify-center rounded-[22px] border border-slate-200 bg-white text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
+                                                PDF
+                                            </div>
+                                        </template>
+
+                                        <template x-if="previewKind === 'file'">
+                                            <div class="flex h-full w-full items-center justify-center rounded-[22px] border border-slate-200 bg-white text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+                                                File
+                                            </div>
+                                        </template>
+                                    </button>
+                                </div>
+
+                                <div class="truthguard-preview-meta min-w-0 flex-1 self-center">
+                                    <p class="truncate text-xs font-bold text-slate-800" x-text="previewName || 'Attached evidence'"></p>
+                                    <p class="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+                                        <span class="capitalize" x-text="previewKind === 'pdf' ? 'Document' : previewKind"></span>
+                                        <span aria-hidden="true">&bull;</span>
+                                        <span x-text="previewSizeLabel || 'Selected file'"></span>
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    class="truthguard-preview-remove"
+                                    @click.stop="clearPreview()"
+                                    aria-label="Remove attached file"
+                                    title="Remove attachment"
+                                >
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.8" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+
                             <button
+                                x-show="!previewUrl"
                                 type="button"
                                 class="truthguard-attachment-trigger inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 hover:shadow-md sm:h-12 sm:w-12"
                                 :class="inputNudge ? 'truthguard-input-nudge truthguard-attachment-hint' : ''"

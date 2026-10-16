@@ -1,0 +1,8 @@
+{
+  "fixture_note": "User-submitted post used to test extraction and routing, not an independently verified truth label. Simulated sources in tests are software fixtures, not evidence about this event.",
+  "question": "is this real?",
+  "ocr": "BIG ONE IN LEYTE?\nPHIVOLCS warns of a possible\nMagnitude 7 earthquake in the\nprovince due to an active faultline\nwhich is already ripe for\nmovement.",
+  "paragraphs": "BIG ONE IN LEYTE?\n\nPHIVOLCS warns of a possible Magnitude 7 earthquake in the province due to an active faultline which is already ripe for movement.",
+  "claim": "PHIVOLCS warns of a possible Magnitude 7 earthquake in the province due to an active faultline which is already ripe for movement.",
+  "reference": { "phrase": "the province", "referent": "Leyte", "context_quote": "BIG ONE IN LEYTE?" }
+}

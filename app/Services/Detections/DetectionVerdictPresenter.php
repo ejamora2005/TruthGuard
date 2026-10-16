@@ -48,6 +48,12 @@ class DetectionVerdictPresenter
         };
     }
 
+    public static function scoreDisplay(Detection $detection): string
+    {
+        return AssessmentScore::display(is_array($detection->fact_check_result)
+            ? ReportAnswer::forPresentation($detection->fact_check_result)['score'] : null);
+    }
+
     public static function isNoOfficialConfirmation(Detection $detection): bool
     {
         return self::shouldUseNoOfficialConfirmation($detection, self::sourceRating($detection));

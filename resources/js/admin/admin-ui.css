@@ -1290,6 +1290,7 @@
     }
 
     .truthguard-admin-topbar > div {
+        width: calc(100% - 1.5rem);
         margin: 0.5rem 0.75rem 0;
         border: 1px solid rgba(191, 219, 254, 0.78);
         border-radius: 1.25rem;

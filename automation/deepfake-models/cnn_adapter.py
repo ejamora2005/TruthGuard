@@ -241,20 +241,14 @@ def strip_null_quantization_config(value: Any) -> None:
             strip_null_quantization_config(child)
 
 
-def sigmoid(value: float) -> float:
-    if value >= 0:
-        exponent = math.exp(-value)
-        return 1.0 / (1.0 + exponent)
-
-    exponent = math.exp(value)
-    return exponent / (1.0 + exponent)
-
-
 def extract_fake_probability(prediction: Any, np) -> float:
     values = np.asarray(prediction, dtype="float32").reshape(-1)
 
     if values.size == 0:
         raise ValueError("CNN model returned an empty prediction.")
+
+    if not np.isfinite(values).all():
+        raise ValueError("CNN model returned a non-finite prediction.")
 
     if values.size == 1:
         raw_value = float(values[0])
@@ -262,17 +256,19 @@ def extract_fake_probability(prediction: Any, np) -> float:
         if 0.0 <= raw_value <= 1.0:
             return raw_value
 
-        return sigmoid(raw_value)
+        raise ValueError("The configured sigmoid model returned a score outside [0, 1].")
 
-    shifted = values - float(values.max())
-    exponents = np.exp(shifted)
-    denominator = float(exponents.sum())
+    raise ValueError("The configured binary sigmoid model must return exactly one score.")
 
-    if denominator <= 0:
-        raise ValueError("CNN model returned invalid logits.")
 
-    probabilities = exponents / denominator
-    return float(probabilities[-1])
+def valid_model_contract(model, config, image_size, input_range):
+    mapping = config.get("label_mapping", config.get("label_map"))
+    activation = getattr(getattr(model.layers[-1], "activation", None), "__name__", None)
+    configured_range = (config.get("preprocessing") or {}).get("input_range")
+    return (mapping == {"0": "real", "1": "fake"} and config.get("positive_class") == "fake"
+            and tuple(model.output_shape[1:]) == (1,) and activation == "sigmoid"
+            and tuple(model.input_shape[1:]) == (image_size, image_size, 3)
+            and (not configured_range or input_range == configured_range))
 
 
 def configured_input_range(model_config: dict[str, Any]) -> str:
@@ -298,7 +294,10 @@ def uses_zero_to_one_input(input_range: str) -> bool:
 
 
 def preprocess_pil_image(image, image_size: int, input_range: str, np):
-    resized = image.convert("RGB").resize((image_size, image_size))
+    from PIL import Image, ImageOps
+    # Decode the original file, honor display orientation, and retain the deployed
+    # adapter's bicubic square resize. No OCR or preview bytes enter the CNN.
+    resized = ImageOps.exif_transpose(image).convert("RGB").resize((image_size, image_size), Image.Resampling.BICUBIC)
     pixels = np.asarray(resized, dtype="float32")
 
     if uses_zero_to_one_input(input_range):
@@ -450,7 +449,7 @@ def predict_video_probability(
     try:
         import cv2
     except Exception as exc:  # pragma: no cover - import guard
-        return None, f"OpenCV is required for CNN video inference: {exc}"
+        return None, 0, f"OpenCV is required for CNN video inference: {exc}"
 
     capture = cv2.VideoCapture(str(media_path))
 
@@ -510,39 +509,6 @@ def predict_video_probability(
         probabilities.append(extract_fake_probability(prediction, np))
 
     return aggregate_probabilities(probabilities, aggregation_method), len(probabilities), None
-
-
-def build_signals(fake_probability: float) -> list[dict[str, int | str]]:
-    if fake_probability >= 0.85:
-        return [
-            {
-                "label": "CNN model found very strong synthetic-media artifacts",
-                "weight": 30,
-            }
-        ]
-
-    if fake_probability >= 0.7:
-        return [
-            {
-                "label": "CNN model found strong synthetic-media artifacts",
-                "weight": 22,
-            }
-        ]
-
-    if fake_probability >= 0.55:
-        return [
-            {
-                "label": "CNN model found moderate synthetic-media artifacts",
-                "weight": 14,
-            }
-        ]
-
-    return [
-        {
-            "label": "CNN model found limited synthetic-media artifacts",
-            "weight": 6,
-        }
-    ]
 
 
 def main() -> int:
@@ -682,6 +648,13 @@ def main() -> int:
     face_margin = env_float("DEEPFAKE_CNN_VIDEO_FACE_MARGIN", DEFAULT_VIDEO_FACE_MARGIN, 0.0, 2.0)
     frames_used: int | None = None
 
+    mapping = model_config.get("label_mapping", model_config.get("label_map"))
+    # The deployed weights are binary sigmoid models. Never guess an output
+    # index or apply a second sigmoid/softmax to an incompatible replacement.
+    if not valid_model_contract(model, model_config, image_size, input_range):
+        print(json.dumps({"status": "configuration-error", "summary": "Model class mapping, tensor shape, activation or normalization does not match its configuration."}))
+        return 0
+
     try:
         if media_type == "image":
             fake_probability = predict_image_probability(model, media_path, image_size, input_range, np, Image)
@@ -728,25 +701,25 @@ def main() -> int:
         return 0
 
     screening_score = round(fake_probability * 100)
-    fake_label = nullable_string(os.getenv("DEEPFAKE_CNN_FAKE_LABEL")) or "fake"
-    real_label = nullable_string(os.getenv("DEEPFAKE_CNN_REAL_LABEL")) or "real"
+    fake_label = mapping["1"]
+    real_label = mapping["0"]
     label = fake_label if fake_probability >= threshold else real_label
-    signals = build_signals(fake_probability)
+    signals = []  # A class score does not identify particular visual defects.
     summary = (
-        f"CNN inference completed with {screening_score}% synthetic-media probability. "
-        f"The current threshold labels this upload as {label}."
+        f"CNN inference completed. The raw synthetic-class score is {fake_probability:.6f}; "
+        f"the configured threshold is {threshold:g}. This is an uncalibrated model output."
     )
 
     if media_type == "video":
         summary = (
-            f"CNN video inference completed with {screening_score}% synthetic-media probability "
+            f"CNN video inference completed with raw synthetic-class score {fake_probability:.6f} "
             f"using {aggregation_method} aggregation across {frames_used or 0} sampled frame(s). "
             f"The current threshold labels this upload as {label}."
         )
 
     print(
         json.dumps(
-            build_response(
+            dict(build_response(
                 status="completed",
                 screening_score=screening_score,
                 signals=signals,
@@ -758,7 +731,14 @@ def main() -> int:
                 media_type=media_type,
                 frames_used=frames_used,
                 aggregation_method=aggregation_method if media_type == "video" else None,
-            )
+            ), model_name=model_config.get("model_name", model_config.get("model_type", "Trained media CNN")),
+                label_mapping=mapping,
+                output_contract={"activation": "sigmoid", "positive_class": "fake", "binary_exclusive": True,
+                                 "validated_at_inference": True, "output_shape": [1]},
+                threshold_source="model_config" if math.isclose(threshold, config_threshold) else "deployment_override",
+                preprocessing={"color_mode": "RGB", "tensor_shape": [1, image_size, image_size, 3],
+                    "dtype": "float32", "input_range": input_range, "resize": "bicubic_square",
+                    "exif_orientation": "transpose", "training_resize_documented": False})
         )
     )
     return 0

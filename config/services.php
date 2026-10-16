@@ -77,6 +77,19 @@ return [
         'max_length' => env('TRUTHGUARD_NLP_MAX_LENGTH', 256),
     ],
 
+    'media_calibration' => [
+        'enabled' => env('MEDIA_CALIBRATION_ENABLED', false),
+        'path' => env('MEDIA_CALIBRATION_PATH', 'automation/models/ai-origin-broad/calibration.json'),
+        'sha256' => env('MEDIA_CALIBRATION_SHA256', ''),
+    ],
+
+    'ai_origin' => [
+        'enabled' => env('AI_ORIGIN_ENABLED', false),
+        'model_path' => env('AI_ORIGIN_MODEL_PATH', 'automation/models/ai-origin-broad'),
+        'python_binary' => env('AI_ORIGIN_PYTHON_BINARY', PHP_OS_FAMILY === 'Windows' ? '.venv-ai-origin/Scripts/python.exe' : '.venv-ai-origin/bin/python'),
+        'timeout' => (int) env('AI_ORIGIN_TIMEOUT', 240),
+    ],
+
     'deepfake_cnn' => [
         'enabled' => env('DEEPFAKE_MODEL_ENABLED', false),
         'python_binary' => env('DEEPFAKE_MODEL_PYTHON_BINARY', 'python'),
@@ -109,14 +122,11 @@ return [
         'max_completion_tokens' => env('OPENAI_MAX_COMPLETION_TOKENS', 1400),
         'image_context_enabled' => env('OPENAI_IMAGE_CONTEXT_ENABLED', true),
         'image_max_bytes' => env('OPENAI_IMAGE_MAX_BYTES', 4194304),
-        'social_search_enabled' => env('OPENAI_SOCIAL_SEARCH_ENABLED', true),
-        'social_search_context_size' => env('OPENAI_SOCIAL_SEARCH_CONTEXT_SIZE', 'medium'),
-        'social_search_max_results' => env('OPENAI_SOCIAL_SEARCH_MAX_RESULTS', 4),
-        'social_search_domains' => array_values(array_filter(array_map(
-            static fn (string $domain): string => trim($domain),
-            explode(',', env('OPENAI_SOCIAL_SEARCH_DOMAINS', 'facebook.com,instagram.com,tiktok.com,x.com,twitter.com,youtube.com,reddit.com,threads.net'))
-        ))),
         'monthly_token_budget' => env('OPENAI_MONTHLY_TOKEN_BUDGET', 0),
+        'monthly_dollar_budget' => env('OPENAI_MONTHLY_DOLLAR_BUDGET', 0),
+        'admin_key' => env('OPENAI_ADMIN_API_KEY'),
+        'usage_project_id' => env('OPENAI_USAGE_PROJECT_ID'),
+        'usage_api_key_id' => env('OPENAI_USAGE_API_KEY_ID'),
         'estimated_input_tokens_per_request' => env('OPENAI_ESTIMATED_INPUT_TOKENS_PER_REQUEST', 1800),
         'estimated_output_tokens_per_request' => env('OPENAI_ESTIMATED_OUTPUT_TOKENS_PER_REQUEST', env('OPENAI_MAX_COMPLETION_TOKENS', 1400)),
         'token_warning_threshold' => env('OPENAI_TOKEN_WARNING_THRESHOLD', 80),

@@ -137,6 +137,37 @@ class FactCheckWorkspaceTest extends TestCase
             ->assertSee('Try again');
     }
 
+    public function test_workspace_keeps_the_composer_script_inside_its_html_attribute(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $service = Mockery::mock(GoogleFactCheckFeedService::class);
+        $service->shouldReceive('latest')->once()->with(3)->andReturn(['items' => []]);
+        $this->app->instance(GoogleFactCheckFeedService::class, $service);
+
+        $html = Volt::test('detections.ai-composer')->html();
+        $document = new \DOMDocument;
+        $previous = libxml_use_internal_errors(true);
+
+        try {
+            $document->loadHTML('<?xml encoding="UTF-8">'.$html);
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+
+        $xpath = new \DOMXPath($document);
+        $shell = $xpath->query('//section[contains(@class, "truthguard-detection-shell")]')->item(0);
+
+        $this->assertNotNull($shell);
+        $this->assertTrue(
+            str_contains($shell->getAttribute('x-data'), 'resizeComposer() {'),
+            'The browser must receive the complete composer script in the x-data attribute.',
+        );
+        $this->assertSame('init(); $nextTick(() => resizeComposer())', $shell->getAttribute('x-init'));
+        $this->assertStringNotContainsString('phraseLength', $shell->textContent);
+        $this->assertStringNotContainsString('voiceComparableWord', $shell->textContent);
+    }
+
     public function test_claim_limit_is_shared_with_server_validation(): void
     {
         config()->set('truthguard.claims.max_characters', 12);
@@ -208,11 +239,11 @@ class FactCheckWorkspaceTest extends TestCase
             ]],
         ])->render();
 
-        $this->assertStringContainsString('AI verification report', $html);
+        $this->assertStringContainsString('Media analysis report', $html);
         $this->assertStringContainsString('Assessment', $html);
         $this->assertStringContainsString('Submitted Evidence', $html);
         $this->assertStringContainsString('/storage/detections/report-evidence.jpg', $html);
-        $this->assertStringContainsString('View full image', $html);
+        $this->assertStringContainsString('Enlarge submitted image', $html);
         $this->assertStringContainsString('.tg-ai-report .tg-ai-hero { order: 2; }', $html);
         $this->assertStringContainsString('.tg-ai-report .tg-report-evidence { order: 1; }', $html);
         $this->assertStringContainsString('Claim being checked', $html);
@@ -234,7 +265,7 @@ class FactCheckWorkspaceTest extends TestCase
         $this->assertStringContainsString('<details', $html);
         $this->assertStringContainsString('How TruthGuard Reached This Result', $html);
         $this->assertStringContainsString('How OpenAI helped', $html);
-        $this->assertStringContainsString('OpenAI explanation was unavailable.', $html);
+        $this->assertStringContainsString('No OpenAI assistance was recorded for this saved report.', $html);
         $this->assertStringContainsString('Original capture date could not be verified', $html);
     }
 

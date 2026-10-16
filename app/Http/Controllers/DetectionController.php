@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\AnalyzeDetectionEvidence;
 use App\Models\Detection;
 use App\Services\Automation\RelatedPostScraper;
 use App\Services\Detections\DetectionPipeline;
 use App\Services\Detections\DetectionRetentionService;
+use App\Services\Detections\EvidenceVerificationService;
+use App\Services\Detections\FactCheckResultService;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\LiveVerificationEvidenceService;
 use App\Services\Detections\OpenAiDetectionReportService;
+use App\Services\Detections\ReportAnswer;
 use App\Services\Detections\TrustedFactCheckVerdictResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -54,7 +60,7 @@ class DetectionController extends Controller
         LiveVerificationEvidenceService $liveVerificationEvidenceService,
         OpenAiDetectionReportService $openAiDetectionReportService,
         GoogleFactCheckFeedService $factCheckFeedService,
-    ): View {
+    ): View|JsonResponse {
         if (! $request->user()->isAdmin()) {
             $retentionService->archiveExpired($request->user()->id);
         }
@@ -71,18 +77,39 @@ class DetectionController extends Controller
             ])
             ->firstOrFail();
 
-        $weatherContext = $request->session()->pull('weather_context', []);
+        // Include archived submissions so retention does not renumber the owner's reports.
+        $userReportNumber = $request->expectsJson() ? null : Detection::query()
+            ->where('user_id', $selectedDetection->user_id)
+            ->where('id', '<=', $selectedDetection->id)
+            ->count();
 
-        if (
-            $weatherContext !== []
-            || (bool) config('services.live_verification.refresh_on_view', false)
-            || $this->needsSourceReconciliationRefresh($selectedDetection)
-        ) {
-            $this->refreshDetectionEvidence($selectedDetection, $liveVerificationEvidenceService, $openAiDetectionReportService, $weatherContext);
+        if (in_array($selectedDetection->processing_status, ['queued', 'processing', 'failed'], true)) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'processing_status' => $selectedDetection->processing_status,
+                    'stage' => data_get($selectedDetection->signals, 'analysis_progress.0.label'),
+                    'source_domains' => data_get($selectedDetection->signals, 'analysis_progress.0.source_domains', []),
+                ]);
+            }
+
+            return view('detections.result', [
+                'selectedDetection' => $selectedDetection,
+                'userReportNumber' => $userReportNumber,
+                'latestFactChecks' => [],
+            ]);
+        }
+
+        // Keep JSON clients compatible without projecting or rewriting the saved
+        // explanation/verdict/source fields used by the committed HTML report.
+        if ($request->expectsJson()) {
+            return response()->json(is_array($selectedDetection->fact_check_result)
+                ? ReportAnswer::forPresentation($selectedDetection->fact_check_result)
+                : ReportAnswer::forLegacyDetection($selectedDetection));
         }
 
         return view('detections.result', [
             'selectedDetection' => $selectedDetection,
+            'userReportNumber' => $userReportNumber,
             'latestFactChecks' => $factCheckFeedService->latest(6),
         ]);
     }
@@ -107,6 +134,7 @@ class DetectionController extends Controller
             'media_file' => ['nullable', 'file', "max:{$mediaMaxKb}", 'mimes:jpg,jpeg,png,webp,mp4,mov,webm,m4v,pdf'],
             'source_platform' => ['nullable', 'string', 'in:auto,facebook,instagram,tiktok,x,youtube,web,other'],
             'caption_text' => ['nullable', 'string', "max:{$claimMaxCharacters}"],
+            'analysis_task' => ['nullable', 'in:auto,media,claim,context,manipulation'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'return_context' => ['nullable', 'string', 'in:dashboard,detection-center'],
             'weather_consent' => ['nullable', 'boolean'],
@@ -131,6 +159,19 @@ class DetectionController extends Controller
                 ->withInput();
         }
 
+        if (config('fact_check.enhanced_enabled') && config('fact_check.queue_enabled')) {
+            $detection = Detection::create([
+                'user_id' => $request->user()->id, 'source_kind' => $uploadedFile ? 'upload' : 'link',
+                'source_url' => $validated['source_url'] ?? null, 'caption_text' => $validated['caption_text'] ?? null,
+                'notes' => $validated['notes'] ?? null, 'media_path' => $uploadedFile?->store('detections', 'public'),
+                'media_type' => $uploadedFile ? (str_starts_with((string) $uploadedFile->getMimeType(), 'video/') ? 'video' : ($uploadedFile->getMimeType() === 'application/pdf' ? 'document' : 'image')) : 'text',
+                'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0,
+            ]);
+            AnalyzeDetectionEvidence::dispatch($detection->id, $validated);
+
+            return redirect()->route('detections.result', $detection);
+        }
+
         $detection = $pipeline->run($request->user(), $validated, $uploadedFile);
 
         if ((bool) config('playwright.related_posts_inline', false)) {
@@ -146,11 +187,41 @@ class DetectionController extends Controller
             ]);
         }
 
-        $status = "Detection complete: {$detection->verdict} ({$detection->fake_score}% risk score).";
+        $status = 'Assessment complete: '.($detection->fact_check_result['assessment_label'] ?? $detection->fact_check_result['verdict'] ?? $detection->verdict).'.';
 
         return redirect()
             ->route('detections.result', $detection)
             ->with('status', $status);
+    }
+
+    public function retryMedia(Request $request, Detection $detection, DetectionPipeline $pipeline): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin() || $detection->user_id === $request->user()->id, 404);
+        abort_unless(in_array($detection->media_type, ['image', 'video'], true), 422);
+        $validated = $request->validate(['analysis_task' => ['nullable', 'in:media,claim,context,manipulation']]);
+        $file = $this->uploadedImageForRefresh($detection);
+        if (! $file) {
+            return redirect()->route('detections.result', $detection)->withErrors(['media_file' => 'The original upload is no longer available. Upload the file again.']);
+        }
+        $lock = Cache::lock('media-retry:'.$detection->id, 360);
+        if (! $lock->get()) {
+            return redirect()->route('detections.result', $detection)->with('status', 'Analysis is already running for this report.');
+        }
+        try {
+            $selectedMode = $detection->fact_check_result['request']['selected_mode'] ?? 'auto';
+            if (! in_array($selectedMode, ['auto', 'media', 'claim', 'context', 'manipulation'], true)) {
+                $selectedMode = 'auto';
+            }
+            $pipeline->run($detection->user, [
+                'analysis_task' => $validated['analysis_task'] ?? $selectedMode,
+                'caption_text' => $detection->caption_text, 'notes' => $detection->notes,
+                'source_url' => $detection->source_url, 'source_platform' => $detection->platform,
+            ], $file, $detection);
+        } finally {
+            $lock->release();
+        }
+
+        return redirect()->route('detections.result', $detection)->with('status', 'Media analysis retry finished. Review the recorded detector status below.');
     }
 
     /**
@@ -251,11 +322,17 @@ class DetectionController extends Controller
         OpenAiDetectionReportService $openAiDetectionReportService,
         array $extraContext = [],
     ): void {
+        // A saved media report is immutable on GET. A CSRF-protected POST retries
+        // inference against the original file instead of reusing an old signal.
+        if (isset($detection->fact_check_result['request']) || ($detection->fact_check_result['primary_task'] ?? '') === 'media') {
+            return;
+        }
         $uploadedImage = $this->uploadedImageForRefresh($detection);
-        $openAiExtractedClaim = $this->extractClaimTextForRefresh($detection, $openAiDetectionReportService, $uploadedImage);
+        $openAiExtractedClaim = config('fact_check.enhanced_enabled') ? null : $this->extractClaimTextForRefresh($detection, $openAiDetectionReportService, $uploadedImage);
         $analysis = [
             'platform' => $detection->platform,
             'media_type' => $detection->media_type,
+            'media_assessment' => $detection->fact_check_result['media_assessment'] ?? null,
             'fake_score' => (int) $detection->fake_score,
             'processing_status' => (string) $detection->processing_status,
             'preprocessing_summary' => (string) $detection->preprocessing_summary,
@@ -281,8 +358,12 @@ class DetectionController extends Controller
             'openai_extracted_claim' => $openAiExtractedClaim,
         ] + $extraContext;
 
-        $refreshed = $liveVerificationEvidenceService->enrich($analysis, $context);
-        $refreshed = $openAiDetectionReportService->enhance($refreshed, $context, $uploadedImage);
+        if ((bool) config('fact_check.enhanced_enabled', true)) {
+            $refreshed = app(EvidenceVerificationService::class)->apply($analysis, $context, $uploadedImage);
+        } else {
+            $refreshed = $liveVerificationEvidenceService->enrich($analysis, $context);
+            $refreshed = app(FactCheckResultService::class)->apply($refreshed, $context);
+        }
 
         $updates = [
             'fake_score' => (int) ($refreshed['fake_score'] ?? $detection->fake_score),
@@ -293,6 +374,7 @@ class DetectionController extends Controller
             'recommendation' => (string) ($refreshed['recommendation'] ?? $detection->recommendation),
             'signals' => $refreshed['signals'] ?? ($detection->signals ?? []),
             'verification_sources' => $refreshed['verification_sources'] ?? ($detection->verification_sources ?? []),
+            'fact_check_result' => $refreshed['fact_check_result'],
         ];
 
         $hasChanges = false;
@@ -311,6 +393,10 @@ class DetectionController extends Controller
 
     private function needsSourceReconciliationRefresh(Detection $detection): bool
     {
+        if ($detection->fact_check_result !== null) {
+            return false;
+        }
+
         $signals = $detection->signals ?? [];
 
         if (! is_array($signals)) {
@@ -371,7 +457,7 @@ class DetectionController extends Controller
 
     private function uploadedImageForRefresh(Detection $detection): ?UploadedFile
     {
-        if ($detection->media_type !== 'image' || blank($detection->media_path)) {
+        if ((! config('fact_check.enhanced_enabled') && $detection->media_type !== 'image') || blank($detection->media_path)) {
             return null;
         }
 

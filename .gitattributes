@@ -4,6 +4,7 @@
 *.html diff=html
 *.md diff=markdown
 *.php diff=php
+/tests/Fixtures/**/*.pdf binary
 /automation/models/*.keras filter=lfs diff=lfs merge=lfs -text
 /automation/models/filipino-transformer/best_model/*.safetensors filter=lfs diff=lfs merge=lfs -text
 /automation/models/filipino-transformer/best_model/*.bin filter=lfs diff=lfs merge=lfs -text

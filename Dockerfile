@@ -16,7 +16,7 @@ COPY --from=node:24-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git unzip libzip-dev libicu-dev libonig-dev libpng-dev libjpeg62-turbo-dev libfreetype6-dev \
-    python3 python3-venv python3-pip libgomp1 libglib2.0-0 libgl1 ffmpeg \
+    python3 python3-venv python3-pip libgomp1 libglib2.0-0 libgl1 ffmpeg poppler-utils \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) pdo_mysql mbstring zip intl gd bcmath pcntl opcache \
     && a2enmod rewrite headers remoteip \

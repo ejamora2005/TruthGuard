@@ -314,7 +314,7 @@
                             <tr class="border-b border-blue-100/80 bg-white/70 text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
                                 <th class="px-7 py-4">Detection</th>
                                 <th class="px-7 py-4">Result</th>
-                                <th class="px-7 py-4">Confidence</th>
+                                <th class="px-7 py-4">Assessment score</th>
                                 <th class="px-7 py-4">Date</th>
                                 <th class="px-7 py-4 text-center">Action</th>
                             </tr>
@@ -328,7 +328,8 @@
                                     $badgeClasses = match ($categoryKey) {
                                         'ai_generated' => 'bg-violet-50 text-violet-700 ring-1 ring-violet-100',
                                         'manipulated' => 'bg-orange-50 text-orange-700 ring-1 ring-orange-100',
-                                        'miscaptioned', 'missing_context', 'misleading', 'partly_false', 'no_confirmation', 'needs_review' => 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
+                                        'satire_parody', 'opinion' => 'bg-slate-50 text-slate-700 ring-1 ring-slate-100',
+                                        'miscaptioned', 'missing_context', 'misleading', 'partly_true', 'partly_false', 'outdated', 'conflicting_evidence', 'no_confirmation', 'needs_review' => 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
                                         'confirmed', 'low_risk' => 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
                                         default => $isFake
                                             ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'
@@ -337,7 +338,8 @@
                                     $barClasses = match ($categoryKey) {
                                         'ai_generated' => 'bg-violet-500',
                                         'manipulated' => 'bg-orange-500',
-                                        'miscaptioned', 'missing_context', 'misleading', 'partly_false', 'no_confirmation', 'needs_review' => 'bg-amber-400',
+                                        'satire_parody', 'opinion' => 'bg-slate-400',
+                                        'miscaptioned', 'missing_context', 'misleading', 'partly_true', 'partly_false', 'outdated', 'conflicting_evidence', 'no_confirmation', 'needs_review' => 'bg-amber-400',
                                         'confirmed', 'low_risk' => 'bg-emerald-500',
                                         default => $isFake ? 'bg-rose-500' : ($isReview ? 'bg-amber-400' : 'bg-emerald-500'),
                                     };
@@ -377,10 +379,12 @@
                                     </td>
                                     <td class="px-7 py-4">
                                         <div class="w-40">
-                                            <p class="text-base font-bold text-slate-900">{{ $row['confidence'] }}%</p>
+                                            <p class="text-base font-bold text-slate-900">{{ $row['confidence_display'] ?? $row['confidence'].'%' }}</p>
+                                            @if($row['confidence'] !== null)
                                             <div class="mt-3 h-2 rounded-full bg-slate-100">
                                                 <div class="h-2 rounded-full {{ $barClasses }}" style="width: {{ max(8, min(100, $row['confidence'])) }}%;"></div>
                                             </div>
+                                            @endif
                                         </div>
                                     </td>
                                     <td class="px-7 py-4">
@@ -411,7 +415,8 @@
                             $badgeClasses = match ($categoryKey) {
                                 'ai_generated' => 'bg-violet-50 text-violet-700 ring-1 ring-violet-100',
                                 'manipulated' => 'bg-orange-50 text-orange-700 ring-1 ring-orange-100',
-                                'miscaptioned', 'missing_context', 'misleading', 'partly_false', 'no_confirmation', 'needs_review' => 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
+                                'satire_parody', 'opinion' => 'bg-slate-50 text-slate-700 ring-1 ring-slate-100',
+                                'miscaptioned', 'missing_context', 'misleading', 'partly_true', 'partly_false', 'outdated', 'conflicting_evidence', 'no_confirmation', 'needs_review' => 'bg-amber-50 text-amber-700 ring-1 ring-amber-100',
                                 'confirmed', 'low_risk' => 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
                                 default => $isFake
                                     ? 'bg-rose-50 text-rose-600 ring-1 ring-rose-100'
@@ -420,7 +425,8 @@
                             $barClasses = match ($categoryKey) {
                                 'ai_generated' => 'bg-violet-500',
                                 'manipulated' => 'bg-orange-500',
-                                'miscaptioned', 'missing_context', 'misleading', 'partly_false', 'no_confirmation', 'needs_review' => 'bg-amber-400',
+                                'satire_parody', 'opinion' => 'bg-slate-400',
+                                'miscaptioned', 'missing_context', 'misleading', 'partly_true', 'partly_false', 'outdated', 'conflicting_evidence', 'no_confirmation', 'needs_review' => 'bg-amber-400',
                                 'confirmed', 'low_risk' => 'bg-emerald-500',
                                 default => $isFake ? 'bg-rose-500' : ($isReview ? 'bg-amber-400' : 'bg-emerald-500'),
                             };
@@ -454,12 +460,14 @@
                                     <p class="mt-1 line-clamp-2 text-sm leading-6 text-slate-500">{{ $row['summary'] }}</p>
                                     <div class="mt-3 grid gap-3 sm:grid-cols-2">
                                         <div>
-                                            <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Confidence</p>
+                                            <p class="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Assessment score</p>
                                             <div class="mt-1 flex items-center gap-3">
-                                                <span class="text-sm font-bold text-slate-900">{{ $row['confidence'] }}%</span>
+                                                <span class="text-sm font-bold text-slate-900">{{ $row['confidence_display'] ?? $row['confidence'].'%' }}</span>
+                                                @if($row['confidence'] !== null)
                                                 <div class="h-2 flex-1 rounded-full bg-slate-100">
                                                     <div class="h-2 rounded-full {{ $barClasses }}" style="width: {{ max(8, min(100, $row['confidence'])) }}%;"></div>
                                                 </div>
+                                                @endif
                                             </div>
                                         </div>
                                         <div>

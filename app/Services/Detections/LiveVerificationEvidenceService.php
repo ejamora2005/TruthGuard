@@ -1008,7 +1008,6 @@ class LiveVerificationEvidenceService
                         $rating = $this->specificFactCheckRating(
                             trim((string) ($review['textualRating'] ?? 'Reviewed')),
                             $title,
-                            (string) ($claim['text'] ?? ''),
                             $claimText,
                         );
 
@@ -1020,6 +1019,7 @@ class LiveVerificationEvidenceService
                             'name' => $publisher,
                             'status' => 'Fact-check match',
                             'purpose' => $title !== '' ? $title : 'Open the public fact-check review tied to this claim.',
+                            'title' => $title,
                             'url' => $url,
                             'summary' => $claimText !== ''
                                 ? "Google Fact Check found a related claim review rated {$rating}."
@@ -1027,7 +1027,11 @@ class LiveVerificationEvidenceService
                             'source_type' => 'fact_check',
                             'label' => 'Fact-check',
                             'rating' => $rating,
-                            'published_at' => $this->formatDate($claim['claimDate'] ?? null),
+                            'published_at' => $review['reviewDate'] ?? null,
+                            'claim_text' => $claimText,
+                            'evidence_rating' => trim((string) ($review['textualRating'] ?? '')),
+                            'evidence_verified' => true,
+                            'evidence_text' => json_encode(['claim' => $claimText, 'review_title' => $title, 'rating' => $review['textualRating'] ?? ''], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                         ];
                     })
                     ->filter()
@@ -1056,6 +1060,7 @@ class LiveVerificationEvidenceService
                     'name' => $publisher,
                     'status' => 'Fact-check match',
                     'purpose' => $headline,
+                    'title' => trim((string) ($item['headline'] ?? '')),
                     'url' => (string) $item['url'],
                     'summary' => $claim !== ''
                         ? "A matched fact-check source reviewed a matching claim: {$claim}"
@@ -1064,6 +1069,10 @@ class LiveVerificationEvidenceService
                     'label' => 'Fact-check',
                     'rating' => $rating,
                     'published_at' => trim((string) ($item['date_label'] ?? '')),
+                    'claim_text' => $claim,
+                    'evidence_rating' => trim((string) ($item['rating'] ?? '')),
+                    'evidence_verified' => true,
+                    'evidence_text' => json_encode(['claim' => $claim, 'review_title' => $headline, 'rating' => $rating], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 ];
             })
             ->take(2)
@@ -1339,6 +1348,8 @@ class LiveVerificationEvidenceService
                     'source_type' => 'news',
                     'label' => 'News',
                     'published_at' => $this->formatDate($article['publishedAt'] ?? null),
+                    'evidence_verified' => $description !== '',
+                    'evidence_text' => $description,
                 ];
             })
             ->filter()

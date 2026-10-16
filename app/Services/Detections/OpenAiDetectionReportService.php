@@ -2,6 +2,9 @@
 
 namespace App\Services\Detections;
 
+use App\Services\Detections\Evidence\MediaEvidencePreparer;
+use App\Services\Detections\Evidence\ResponsesTransport;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
@@ -11,6 +14,15 @@ use Symfony\Component\Process\Process;
 
 class OpenAiDetectionReportService
 {
+    private array $extractionRecord = [];
+
+    private array $mediaPreparation = [];
+
+    public function extractionDetails(): array
+    {
+        return $this->extractionRecord;
+    }
+
     private const SYNTHETIC_MEDIA_RISK_SCORE = 94;
 
     /**
@@ -34,7 +46,7 @@ class OpenAiDetectionReportService
             if (! $response->successful()) {
                 Log::warning('OpenAI detection report request failed; using existing TruthGuard report.', [
                     'status' => $response->status(),
-                    'message' => (string) data_get($response->json(), 'error.message', 'OpenAI returned an unsuccessful response.'),
+                    'stage' => 'report',
                 ]);
 
                 return $analysis;
@@ -52,7 +64,7 @@ class OpenAiDetectionReportService
             return $this->mergeReport($analysis, $report, is_array($data) ? $data : []);
         } catch (\Throwable $exception) {
             Log::warning('OpenAI detection report request failed; using existing TruthGuard report.', [
-                'message' => $exception->getMessage(),
+                'error_type' => $exception::class,
             ]);
 
             return $analysis;
@@ -64,13 +76,30 @@ class OpenAiDetectionReportService
      */
     public function extractClaimText(array $context, ?UploadedFile $uploadedFile = null): ?string
     {
+        $this->extractionRecord = ['status' => 'unavailable', 'failure_reason' => null, 'http_status' => null,
+            'configured_model' => (string) config('services.openai.model', 'gpt-5.4'),
+            'visible_text' => '', 'inferred_claim' => '', 'media_note' => ''];
+        $this->mediaPreparation = [];
         if (! $this->isEnabled() || ! (bool) config('services.openai.claim_extraction_enabled', true)) {
+            $this->extractionRecord['failure_reason'] = 'not_configured';
+
             return null;
         }
 
-        $mediaInputs = $this->buildMediaInputs($uploadedFile);
+        try {
+            $mediaInputs = $this->buildMediaInputs($uploadedFile);
+        } catch (\Throwable) {
+            $this->extractionRecord['status'] = 'media_extraction_failed';
+            $this->extractionRecord['failure_reason'] = 'media_preparation_failed';
 
+            return null;
+        }
+
+        $this->extractionRecord['media_preparation'] = $this->mediaPreparation;
         if ($mediaInputs === []) {
+            $this->extractionRecord['status'] = $this->mediaPreparation['status'] ?? 'unsupported_or_missing_media';
+            $this->extractionRecord['failure_reason'] = 'unsupported_or_missing_media';
+
             return null;
         }
 
@@ -82,9 +111,18 @@ class OpenAiDetectionReportService
                 ->post('https://api.openai.com/v1/responses', $this->claimExtractionPayload($context, $mediaInputs));
 
             if (! $response->successful()) {
+                $reason = match (true) {
+                    in_array($response->status(), [401, 403], true) => 'authentication_failed',
+                    ResponsesTransport::quotaExhausted($response) => 'quota_exhausted',
+                    $response->status() === 429 => 'rate_limited',
+                    $response->status() >= 500 => 'provider_unavailable',
+                    default => 'http_error',
+                };
+                $this->extractionRecord['failure_reason'] = $reason;
+                $this->extractionRecord['http_status'] = $response->status();
                 Log::warning('OpenAI claim extraction request failed; continuing without image text.', [
-                    'status' => $response->status(),
-                    'message' => (string) data_get($response->json(), 'error.message', 'OpenAI returned an unsuccessful response.'),
+                    'analysis_id' => $context['analysis_id'] ?? null,
+                    'status' => $response->status(), 'reason' => $reason, 'stage' => 'extraction',
                 ]);
 
                 return null;
@@ -93,17 +131,53 @@ class OpenAiDetectionReportService
             $data = $response->json();
             $report = $this->extractStructuredReport(is_array($data) ? $data : []);
 
-            if ($report === null) {
+            if ($report === null || ! is_string($report['visible_text'] ?? null)
+                || ! is_string($report['claim_text'] ?? null)) {
+                $this->extractionRecord['failure_reason'] = 'unexpected_response_format';
+                $this->extractionRecord['http_status'] = $response->status();
+                Log::warning('OpenAI claim extraction returned an unusable response.', [
+                    'analysis_id' => $context['analysis_id'] ?? null,
+                    'status' => $response->status(), 'stage' => 'extraction',
+                ]);
+
                 return null;
             }
 
             $claimText = trim((string) ($report['claim_text'] ?? ''));
             $visibleText = trim((string) ($report['visible_text'] ?? ''));
+            $this->extractionRecord = [
+                'status' => $visibleText === '' ? 'missing_text'
+                    : ((($data['status'] ?? 'completed') === 'completed' && ($this->mediaPreparation['status'] ?? '') !== 'partial') ? 'completed' : 'incomplete'),
+                'failure_reason' => null, 'http_status' => $response->status(),
+                'configured_model' => (string) config('services.openai.model', 'gpt-5.4'),
+                'response_model' => is_string($data['model'] ?? null) ? $data['model'] : null,
+                'visible_text' => $visibleText, 'inferred_claim' => $claimText,
+                'media_note' => (string) ($report['synthetic_media_note'] ?? ''),
+                'ocr_confidence_raw' => $report['confidence'] ?? null,
+                'sampled_frames' => count($mediaInputs),
+                'media_preparation' => $this->mediaPreparation,
+                'usage' => $data['usage'] ?? [],
+            ];
+            Log::debug('OpenAI claim extraction finished.', [
+                'analysis_id' => $context['analysis_id'] ?? null, 'status' => $this->extractionRecord['status'],
+                'http_status' => $response->status(), 'visible_characters' => mb_strlen($visibleText),
+            ]);
 
             return $this->limitText($claimText !== '' ? $claimText : $visibleText, 500) ?: null;
-        } catch (\Throwable $exception) {
+        } catch (ConnectionException $exception) {
+            $reason = str_contains(strtolower($exception->getMessage()), 'timed out') ? 'timeout' : 'network_failure';
+            $this->extractionRecord['failure_reason'] = $reason;
             Log::warning('OpenAI claim extraction request failed; continuing without image text.', [
-                'message' => $exception->getMessage(),
+                'analysis_id' => $context['analysis_id'] ?? null, 'reason' => $reason,
+                'error_type' => $exception::class,
+            ]);
+
+            return null;
+        } catch (\Throwable $exception) {
+            $this->extractionRecord['failure_reason'] = 'request_exception';
+            Log::warning('OpenAI claim extraction request failed; continuing without image text.', [
+                'analysis_id' => $context['analysis_id'] ?? null, 'reason' => 'request_exception',
+                'error_type' => $exception::class,
             ]);
 
             return null;
@@ -162,18 +236,6 @@ class OpenAiDetectionReportService
             'max_output_tokens' => max(400, (int) config('services.openai.max_completion_tokens', 1400)),
         ];
 
-        if ($this->shouldSearchSocialWeb($context)) {
-            $payload['tools'] = [[
-                'type' => 'web_search',
-                'filters' => [
-                    'allowed_domains' => $this->socialSearchDomains(),
-                ],
-                'search_context_size' => (string) config('services.openai.social_search_context_size', 'medium'),
-            ]];
-            $payload['tool_choice'] = 'required';
-            $payload['include'] = ['web_search_call.action.sources'];
-        }
-
         return $payload;
     }
 
@@ -194,7 +256,9 @@ class OpenAiDetectionReportService
                             'type' => 'input_text',
                             'text' => implode("\n", [
                                 'You extract claim text from uploaded evidence for a fact-checking workflow.',
-                                'Read visible text, names, dates, places, and the main factual claim from the image.',
+                                'Transcribe all readable visible text verbatim in its original language into visible_text. Keep uncertain characters as [unclear]. Never silently correct dates, quantities or names.',
+                                'Preserve visual text regions with blank lines. Keep isolated logos, publisher marks and watermarks separate from headline or body text while still transcribing them.',
+                                'Keep any inferred interpretation in claim_text separately. A rhetorical headline or question does not assert that an event occurred: do not convert it into a factual assertion.',
                                 'Do not decide whether the claim is true. Do not invent missing text.',
                                 'If the image appears synthetic, AI-generated, or edited, record that only as a short note.',
                                 'Return only valid JSON matching the schema.',
@@ -221,24 +285,22 @@ class OpenAiDetectionReportService
                     'schema' => $this->claimExtractionSchema(),
                 ],
             ],
-            'max_output_tokens' => 500,
+            'store' => false,
+            'max_output_tokens' => max(1, min(2000, (int) config('services.openai.max_completion_tokens', 1400))),
         ];
     }
 
     private function systemPrompt(): string
     {
         return implode("\n", [
-            'You are TruthGuard, an AI fact-checking assistant for a cybersecurity and misinformation review platform.',
-            'Write a careful user-facing report using only the provided basis: computed risk score, signals, claim text, source URL, and verification sources.',
-            'Do not invent sources, dates, people, locations, quotes, or certainty that is not present in the provided basis.',
-            'Preserve the supplied verdict and risk score because trusted-source reconciliation has already been applied upstream. If evidence is limited, say that clearly.',
-            'Use social-context sources to discuss where else the uploaded image, video, text, or link appears, including reposts, comments, corrections, or conflicting captions. Do not treat social posts as authoritative proof unless a trusted fact-check or official source also supports that conclusion.',
-            'For uploaded videos, inspect the representative frames supplied in the request. Do not say that a video was visually verified if no frames are available; state that video verification is incomplete and requires manual review of the full clip and audio.',
-            'When web search is available, search the submitted claim across public Facebook, Instagram, TikTok, X, YouTube, Reddit, and Threads pages. Return only social matches that were actually found, with their real source URL and a concise description of the related content. Never invent a social post or claim that a private or inaccessible post was reviewed.',
-            'If verification sources include a public fact-check rating, lead with the source and rating, for example: "Based on the source, this claim is AI-generated, misinformation." Preserve specific ratings such as Missing context, Miscaptioned, Manipulated media, AI-generated, misinformation, Misleading, No official confirmation found, False, or Confirmed when provided. Do not collapse a specific rating to only "False" unless that is the only supplied rating. Do not contradict a supplied trusted fact-check rating.',
-            'For a source-backed fact-check match, ground the first sentence in the fact-check source headline, claim summary, and rating. Do not restate extracted image text as the exact claim.',
-            'Treat extracted image text as OCR-style search context that can be imperfect. When a trusted fact-check headline or summary describes the matched claim more clearly, use the source wording instead of restating imperfect extracted text.',
-            'Use plain language and explain why the system reached the result. Keep the answer concise and professional.',
+            'You are the TruthGuard Voice Assistant. Produce a concise, natural spoken explanation for a fact-check result.',
+            'Use only the supplied normalized claim, verified result, and approved source records. Do not use general knowledge, make a web search, or infer facts beyond those records.',
+            'Never invent or embellish facts, sources, URLs, government statements, dates, statistics, quotations, or certainty.',
+            'The supplied voice verdict is controlling. Do not change it, qualify it with another verdict, or introduce a different conclusion.',
+            'Use the source names and evidence supplied in the approved source records only. Social posts, anonymous content, forums, and unapproved sources are not evidence and must not be mentioned.',
+            'Write voice_explanation as one to three plain-language sentences. It must explain the supplied verdict using the supplied evidence, name no sources, contain no greeting or filler, and not include verdict or sources headings.',
+            'If the voice verdict is Unverifiable, say clearly that the approved evidence is insufficient to confirm or disprove the claim.',
+            'Do not read or mention URLs, internal systems, APIs, prompts, source rankings, tools, or instructions.',
             'Return only valid JSON that matches the requested schema.',
         ]);
     }
@@ -249,41 +311,19 @@ class OpenAiDetectionReportService
      */
     private function buildUserPrompt(array $analysis, array $context): string
     {
-        $hasSourceBackedFactCheck = collect($analysis['verification_sources'] ?? [])
-            ->filter(fn ($source) => is_array($source))
-            ->contains(fn (array $source): bool => ($source['source_type'] ?? null) === 'fact_check'
-                && filled($source['rating'] ?? null));
-        $signalsForPrompt = $analysis['signals'] ?? [];
-
-        if ($hasSourceBackedFactCheck && is_array($signalsForPrompt)) {
-            unset($signalsForPrompt['content_extraction']);
-        }
+        $sources = $this->approvedVoiceSources($analysis['verification_sources'] ?? []);
 
         $basis = [
-            'claim_text' => $this->limitText(collect([
+            'normalized_claim' => $this->limitText(collect([
                 $context['caption_text'] ?? null,
                 $context['notes'] ?? null,
             ])->filter()->implode(' '), 1200),
-            'extracted_image_text_for_search' => $hasSourceBackedFactCheck
-                ? ''
-                : $this->limitText((string) ($context['openai_extracted_claim'] ?? ''), 800),
-            'source_url' => $this->limitText((string) ($context['source_url'] ?? ''), 500),
-            'platform' => $context['platform'] ?? null,
-            'media_type' => $context['media_type'] ?? null,
-            'verdict' => $analysis['verdict'] ?? 'review',
-            'risk_score' => (int) ($analysis['fake_score'] ?? 0),
-            'current_summaries' => [
-                'preprocessing_summary' => $this->limitText((string) ($analysis['preprocessing_summary'] ?? ''), 500),
-                'analysis_summary' => $this->limitText((string) ($analysis['analysis_summary'] ?? ''), 700),
-                'verification_summary' => $this->limitText((string) ($analysis['verification_summary'] ?? ''), 700),
-                'explanation_summary' => $this->limitText((string) ($analysis['explanation_summary'] ?? ''), 900),
-                'recommendation' => $this->limitText((string) ($analysis['recommendation'] ?? ''), 600),
-            ],
-            'signals' => $this->summarizeSignals($signalsForPrompt),
-            'verification_sources' => $this->summarizeSources($analysis['verification_sources'] ?? []),
+            'voice_verdict' => $this->voiceVerdict($analysis, $sources),
+            'verified_result' => $this->verifiedResultForVoice($analysis, $sources),
+            'approved_sources' => $sources,
         ];
 
-        return "Search for public social-media posts related to the submitted claim, then create the final TruthGuard AI report from this basis. Keep social matches as context rather than authoritative proof:\n"
+        return "Create the voice explanation from this verified fact-check basis:\n"
             .json_encode($basis, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
@@ -366,6 +406,10 @@ class OpenAiDetectionReportService
                     'type' => 'string',
                     'description' => 'Actionable guidance for the user before sharing or trusting the claim.',
                 ],
+                'voice_explanation' => [
+                    'type' => 'string',
+                    'description' => 'One to three spoken sentences grounded only in the verified result and approved source records. Do not include source names, a verdict, headings, or URLs.',
+                ],
                 'basis' => [
                     'type' => 'array',
                     'description' => 'Short bullet points grounded only in supplied signals or sources.',
@@ -376,30 +420,15 @@ class OpenAiDetectionReportService
                     'description' => 'Short bullet points for missing context or uncertainty.',
                     'items' => ['type' => 'string'],
                 ],
-                'social_matches' => [
-                    'type' => 'array',
-                    'description' => 'Public social-media pages actually found by web search that contain related posts, reposts, corrections, comments, videos, or conflicting captions.',
-                    'items' => [
-                        'type' => 'object',
-                        'additionalProperties' => false,
-                        'properties' => [
-                            'title' => ['type' => 'string'],
-                            'platform' => ['type' => 'string'],
-                            'url' => ['type' => 'string'],
-                            'summary' => ['type' => 'string'],
-                        ],
-                        'required' => ['title', 'platform', 'url', 'summary'],
-                    ],
-                ],
             ],
             'required' => [
                 'analysis_summary',
                 'verification_summary',
                 'explanation_summary',
                 'recommendation',
+                'voice_explanation',
                 'basis',
                 'limitations',
-                'social_matches',
             ],
         ];
     }
@@ -414,7 +443,22 @@ class OpenAiDetectionReportService
         $mime = (string) $uploadedFile->getMimeType();
 
         if (Str::startsWith($mime, 'video/')) {
-            return $this->extractVideoFrameInputs($uploadedFile);
+            $prepared = app(MediaEvidencePreparer::class)->prepare($uploadedFile, 'video');
+            $this->mediaPreparation = Arr::except($prepared, ['inputs']) + ['backend' => 'opencv'];
+            if ($prepared['inputs'] !== []) {
+                return $prepared['inputs'];
+            }
+            // Retain compatibility on hosts that have FFmpeg but not OpenCV.
+            try {
+                $frames = $this->extractVideoFrameInputs($uploadedFile);
+                if ($frames !== []) {
+                    $this->mediaPreparation = ['status' => 'completed', 'backend' => 'ffmpeg'];
+                }
+
+                return $frames;
+            } catch (\Throwable) {
+                return [];
+            }
         }
 
         if (! Str::startsWith($mime, 'image/')) {
@@ -424,7 +468,10 @@ class OpenAiDetectionReportService
         $maxBytes = max(0, (int) config('services.openai.image_max_bytes', 4194304));
 
         if ($maxBytes > 0 && $uploadedFile->getSize() > $maxBytes) {
-            return [];
+            $prepared = app(MediaEvidencePreparer::class)->prepare($uploadedFile, 'image');
+            $this->mediaPreparation = Arr::except($prepared, ['inputs']) + ['backend' => 'pillow'];
+
+            return $prepared['inputs'];
         }
 
         $path = $uploadedFile->getRealPath() ?: $uploadedFile->getPathname();
@@ -569,150 +616,18 @@ class OpenAiDetectionReportService
 
         $signals['openai_usage'] = $this->usageTelemetry($responseData);
 
-        $socialSources = $this->extractSocialWebSources($responseData, $report['social_matches'] ?? []);
-
-        if ($socialSources !== []) {
-            $existingSources = collect(is_array($analysis['verification_sources'] ?? null) ? $analysis['verification_sources'] : [])
-                ->reject(fn ($source): bool => is_array($source)
-                    && ($source['source_type'] ?? null) === 'social_context'
-                    && in_array(($source['status'] ?? null), ['ready-for-social-context', 'Cross-platform social search'], true));
-
-            $analysis['verification_sources'] = $existingSources
-                ->merge($socialSources)
-                ->filter(fn ($source): bool => is_array($source) && filled($source['url'] ?? null))
-                ->unique(fn (array $source): string => Str::lower((string) $source['url']))
-                ->values()
-                ->all();
-        }
-
         if ($this->hasSyntheticMediaFinding($analysis, $report, $basis) && ! $this->hasSourceBackedFactCheckRating($analysis)) {
             $analysis = $this->applySyntheticMediaVerdict($analysis, $signals);
             $signals = $analysis['signals'];
         }
 
         $analysis['signals'] = $signals;
+        $analysis['explanation_summary'] = $this->formatVoiceResponse(
+            $analysis,
+            (string) ($report['voice_explanation'] ?? $analysis['explanation_summary'] ?? ''),
+        );
 
         return $analysis;
-    }
-
-    /**
-     * @param  array<string, mixed>  $context
-     */
-    private function shouldSearchSocialWeb(array $context): bool
-    {
-        if (! (bool) config('services.openai.social_search_enabled', true)) {
-            return false;
-        }
-
-        return collect([
-            $context['caption_text'] ?? null,
-            $context['notes'] ?? null,
-            $context['openai_extracted_claim'] ?? null,
-            $context['source_url'] ?? null,
-        ])->contains(fn ($value): bool => filled($value));
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function socialSearchDomains(): array
-    {
-        return collect(config('services.openai.social_search_domains', []))
-            ->map(fn ($domain): string => Str::lower(trim((string) $domain)))
-            ->filter()
-            ->unique()
-            ->take(100)
-            ->values()
-            ->all();
-    }
-
-    /**
-     * @param  array<string, mixed>  $responseData
-     * @param  mixed  $reportedMatches
-     * @return array<int, array<string, string>>
-     */
-    private function extractSocialWebSources(array $responseData, mixed $reportedMatches): array
-    {
-        $matches = collect(is_array($reportedMatches) ? $reportedMatches : [])
-            ->filter(fn ($match): bool => is_array($match) && filled($match['url'] ?? null))
-            ->keyBy(fn (array $match): string => $this->comparableUrl((string) $match['url']));
-
-        return collect($responseData['output'] ?? [])
-            ->filter(fn ($item): bool => is_array($item) && ($item['type'] ?? null) === 'web_search_call')
-            ->flatMap(fn (array $item): array => (array) data_get($item, 'action.sources', []))
-            ->filter(fn ($source): bool => is_array($source) && $this->isAllowedSocialUrl((string) ($source['url'] ?? '')))
-            ->map(function (array $source) use ($matches): array {
-                $url = trim((string) $source['url']);
-                $match = $matches->get($this->comparableUrl($url), []);
-                $platform = trim((string) ($match['platform'] ?? '')) ?: $this->socialPlatformForUrl($url);
-                $title = trim((string) ($match['title'] ?? $source['title'] ?? 'Related public post'));
-                $summary = trim((string) ($match['summary'] ?? ''));
-
-                if ($summary === '') {
-                    $summary = $title !== ''
-                        ? "Open this public {$platform} result to review the related content and its original context."
-                        : "A related public result was found on {$platform}.";
-                }
-
-                return [
-                    'name' => $platform,
-                    'title' => Str::limit($title ?: "Related {$platform} content", 180, ''),
-                    'status' => 'OpenAI web-search match',
-                    'purpose' => Str::limit($summary, 320, ''),
-                    'url' => $url,
-                    'summary' => Str::limit($summary, 420, ''),
-                    'source_type' => 'social_context',
-                    'label' => 'Social match',
-                ];
-            })
-            ->unique('url')
-            ->take(max(1, (int) config('services.openai.social_search_max_results', 4)))
-            ->values()
-            ->all();
-    }
-
-    private function isAllowedSocialUrl(string $url): bool
-    {
-        $host = Str::lower((string) parse_url($url, PHP_URL_HOST));
-
-        if (Str::contains($host, ['shop.tiktok.com', 'seller-us.tiktok.com', 'ads.tiktok.com'])
-            || Str::contains(Str::lower((string) parse_url($url, PHP_URL_PATH)), ['/shop/', '/product/'])) {
-            return false;
-        }
-
-        if ($host === '') {
-            return false;
-        }
-
-        return collect($this->socialSearchDomains())
-            ->contains(fn (string $domain): bool => $host === $domain || Str::endsWith($host, '.'.$domain));
-    }
-
-    private function socialPlatformForUrl(string $url): string
-    {
-        $host = Str::lower((string) parse_url($url, PHP_URL_HOST));
-
-        return match (true) {
-            Str::contains($host, ['facebook.com', 'fb.com']) => 'Facebook',
-            Str::contains($host, 'instagram.com') => 'Instagram',
-            Str::contains($host, 'tiktok.com') => 'TikTok',
-            Str::contains($host, ['twitter.com', 'x.com']) => 'X',
-            Str::contains($host, 'youtube.com') => 'YouTube',
-            Str::contains($host, 'reddit.com') => 'Reddit',
-            Str::contains($host, 'threads.net') => 'Threads',
-            default => 'Social media',
-        };
-    }
-
-    private function comparableUrl(string $url): string
-    {
-        $parts = parse_url(trim($url));
-
-        if (! is_array($parts)) {
-            return Str::lower(trim($url));
-        }
-
-        return Str::lower(trim(($parts['host'] ?? '').($parts['path'] ?? ''), '/'));
     }
 
     /**
@@ -818,7 +733,6 @@ class OpenAiDetectionReportService
     }
 
     /**
-     * @param  mixed  $signals
      * @return array<int, array{group: string, label: string, weight: int}>
      */
     private function summarizeSignals(mixed $signals): array
@@ -855,7 +769,6 @@ class OpenAiDetectionReportService
     }
 
     /**
-     * @param  mixed  $sources
      * @return array<int, array<string, string>>
      */
     private function summarizeSources(mixed $sources): array
@@ -878,6 +791,152 @@ class OpenAiDetectionReportService
             ->take(10)
             ->values()
             ->all();
+    }
+
+    /**
+     * Select only source records that the application has classified as usable
+     * evidence for a spoken fact-check response. Social context and source
+     * traces are intentionally excluded.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function approvedVoiceSources(mixed $sources): array
+    {
+        if (! is_array($sources)) {
+            return [];
+        }
+
+        return collect($sources)
+            ->filter(fn ($source): bool => is_array($source) && $this->isApprovedVoiceSource($source))
+            ->sortBy(fn (array $source): int => $this->voiceSourcePriority((string) ($source['source_type'] ?? '')))
+            ->map(fn (array $source): array => [
+                'name' => $this->limitText((string) ($source['name'] ?? 'Source'), 120),
+                'rating' => $this->limitText((string) ($source['rating'] ?? ''), 120),
+                'summary' => $this->limitText((string) ($source['summary'] ?? $source['purpose'] ?? ''), 420),
+                'source_type' => $this->limitText((string) ($source['source_type'] ?? ''), 80),
+            ])
+            ->filter(fn (array $source): bool => $source['name'] !== '' && $source['name'] !== 'Source')
+            ->unique(fn (array $source): string => Str::lower($source['name']))
+            ->take(3)
+            ->values()
+            ->all();
+    }
+
+    /** @param array<string, mixed> $source */
+    private function isApprovedVoiceSource(array $source): bool
+    {
+        return in_array((string) ($source['source_type'] ?? ''), [
+            'official',
+            'official_record',
+            'institution',
+            'court',
+            'research',
+            'weather',
+            'fact_check',
+            'news',
+        ], true);
+    }
+
+    private function voiceSourcePriority(string $sourceType): int
+    {
+        return match ($sourceType) {
+            'official', 'official_record', 'institution', 'court', 'research', 'weather' => 1,
+            'fact_check' => 3,
+            'news' => 4,
+            default => 99,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @param  array<int, array<string, string>>  $sources
+     */
+    private function voiceVerdict(array $analysis, array $sources): string
+    {
+        $hasPrimaryEvidence = collect($sources)->contains(fn (array $source): bool => in_array(
+            $source['source_type'],
+            ['official', 'official_record', 'institution', 'court', 'research', 'weather', 'fact_check'],
+            true,
+        ));
+
+        if (! $hasPrimaryEvidence) {
+            return 'Unverifiable';
+        }
+
+        $rating = collect($sources)
+            ->pluck('rating')
+            ->filter()
+            ->map(fn (string $value): string => FactCheckRatingNormalizer::normalize($value))
+            ->first(fn (string $value): bool => $value !== FactCheckRatingNormalizer::REVIEWED);
+
+        $hasOutdatedRating = collect($sources)
+            ->pluck('rating')
+            ->contains(fn (string $value): bool => Str::contains(Str::lower($value), 'outdated'));
+
+        if ($hasOutdatedRating) {
+            return 'Outdated';
+        }
+
+        return match ($rating) {
+            FactCheckRatingNormalizer::CONFIRMED => 'True',
+            FactCheckRatingNormalizer::MISLEADING,
+            FactCheckRatingNormalizer::MISCAPTIONED,
+            FactCheckRatingNormalizer::MISSING_CONTEXT => 'Misleading',
+            FactCheckRatingNormalizer::PARTLY_FALSE => 'Partly True',
+            FactCheckRatingNormalizer::NO_OFFICIAL_CONFIRMATION,
+            FactCheckRatingNormalizer::REVIEWED => 'Unverifiable',
+            FactCheckRatingNormalizer::FALSE,
+            FactCheckRatingNormalizer::AI_GENERATED_MISINFORMATION,
+            FactCheckRatingNormalizer::MANIPULATED_MEDIA => 'False',
+            default => match ((string) ($analysis['verdict'] ?? 'review')) {
+                'real' => 'True',
+                'fake' => 'False',
+                default => 'Unverifiable',
+            },
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     * @param  array<int, array<string, string>>  $sources
+     * @return array<string, mixed>
+     */
+    private function verifiedResultForVoice(array $analysis, array $sources): array
+    {
+        return [
+            'application_verdict' => $this->voiceVerdict($analysis, $sources),
+            'fact_check_ratings' => collect($sources)
+                ->pluck('rating')
+                ->filter()
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /** @param array<string, mixed> $analysis */
+    private function formatVoiceResponse(array $analysis, string $explanation): string
+    {
+        $sources = $this->approvedVoiceSources($analysis['verification_sources'] ?? []);
+        $verdict = $this->voiceVerdict($analysis, $sources);
+        $explanation = trim(preg_replace('/\s+/', ' ', $explanation) ?? '');
+        $explanation = preg_replace('/\b(?:Verdict|Sources)\s*:\s*[^.]*\.?/i', '', $explanation) ?? $explanation;
+        $explanation = trim($explanation);
+
+        $sentences = preg_split('/(?<=[.!?])\s+/u', $explanation) ?: [];
+        $explanation = collect($sentences)->filter()->take(3)->implode(' ');
+
+        if ($explanation === '' || $verdict === 'Unverifiable') {
+            $explanation = $verdict === 'Unverifiable'
+                ? 'The approved evidence supplied for this claim is not enough to confirm or disprove it.'
+                : 'The verified result and approved evidence support this conclusion.';
+        }
+
+        $sourceNames = collect($sources)
+            ->pluck('name')
+            ->filter()
+            ->implode(', ');
+
+        return "Verdict: {$verdict}\n\n{$explanation}\n\nSources: ".($sourceNames !== '' ? $sourceNames.'.' : 'No approved sources supplied.');
     }
 
     /**

@@ -9,6 +9,9 @@
 auth.json
 vendor
 node_modules
+.venv-ai-origin
+output
+~
 **/node_modules
 admin-frontend
 storage

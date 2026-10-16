@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Detection;
-use App\Services\Detections\DetectionVerdictPresenter;
 use App\Services\Detections\DetectionRetentionService;
+use App\Services\Detections\DetectionVerdictPresenter;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -334,14 +335,14 @@ class DashboardController extends Controller
         return [
             'newest' => 'Newest first',
             'oldest' => 'Oldest first',
-            'confidence_desc' => 'Confidence high',
-            'confidence_asc' => 'Confidence low',
+            'confidence_desc' => 'Legacy risk score high',
+            'confidence_asc' => 'Legacy risk score low',
         ];
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, Detection>  $recentDetections
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     * @param  Collection<int, Detection>  $recentDetections
+     * @return Collection<int, array<string, mixed>>
      */
     private function buildRecentDetectionRows($recentDetections, bool $includeDemoFallback = true)
     {
@@ -357,6 +358,7 @@ class DashboardController extends Controller
                 'category_key' => $presentation['category_key'],
                 'verdict' => $detection->verdict,
                 'confidence' => $confidence,
+                'confidence_display' => DetectionVerdictPresenter::scoreDisplay($detection),
                 'url' => route('detections.result', $detection),
                 'date' => $detection->analyzed_at?->format('M d, Y') ?? 'Pending',
                 'time' => $detection->analyzed_at?->format('h:i A') ?? '--',

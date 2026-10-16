@@ -50,7 +50,8 @@
             $themeAvatarPlainClasses = collect($themePresets)->mapWithKeys(fn (array $preset, string $key) => [$key => $preset['avatar_plain']])->all();
             $themeBadgeClasses = collect($themePresets)->mapWithKeys(fn (array $preset, string $key) => [$key => $preset['badge']])->all();
             $hideUserFooter = request()->routeIs('detections.create');
-            $hideMobileNav = request()->routeIs('detections.*');
+            $isDetectionPage = request()->routeIs('detections.*');
+            $hideMobileNav = request()->routeIs('detections.create');
             $mobileNavActiveIndex = match (true) {
                 request()->routeIs('dashboard') || request()->routeIs('dashboard.*') => 0,
                 request()->routeIs('history') => 1,
@@ -801,7 +802,8 @@
     <body
         @class([
             'truthguard-user-app truthguard-animated-icons overflow-x-hidden bg-[var(--tg-body-bg)] text-gray-900',
-            'truthguard-fact-check-route' => $hideMobileNav,
+            'truthguard-fact-check-route' => $isDetectionPage,
+            'truthguard-result-route' => request()->routeIs('detections.result'),
             'truthguard-fact-check-create-route' => $hideUserFooter,
         ])
         x-data="{
@@ -1065,8 +1067,8 @@
                 <header class="truthguard-topbar sticky top-0 z-[99997] w-full border-b border-[color:var(--tg-shell-border)] backdrop-blur-xl">
                     <div class="flex w-full items-center gap-2.5 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3 lg:px-6 lg:py-4">
                         @if ($pageBackUrl !== '')
-                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0 {{ $hideMobileNav ? 'truthguard-detection-mobile-logo' : '' }}" aria-label="Go back" title="Go back">
-                                @if ($hideMobileNav)
+                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0 {{ $isDetectionPage ? 'truthguard-detection-mobile-logo' : '' }}" aria-label="Go back" title="Go back">
+                                @if ($isDetectionPage)
                                     @if ($logoUrl !== '')
                                         <img src="{{ $logoUrl }}" alt="TruthGuard" class="h-8 w-8 object-contain" width="32" height="32">
                                     @else
@@ -1078,7 +1080,7 @@
                                 </svg>
                                 @endif
                             </a>
-                        @elseif ($hideMobileNav)
+                        @elseif ($isDetectionPage)
                             <button
                                 type="button"
                                 class="truthguard-shell-toggle truthguard-detection-mobile-logo shrink-0 lg:hidden"
@@ -1097,7 +1099,7 @@
                                 href="{{ route('dashboard') }}"
                                 @class([
                                     'truthguard-mobile-top-logo shrink-0 lg:hidden',
-                                    '!hidden' => $hideMobileNav,
+                                    '!hidden' => $isDetectionPage,
                                 ])
                                 aria-label="TruthGuard home"
                             >

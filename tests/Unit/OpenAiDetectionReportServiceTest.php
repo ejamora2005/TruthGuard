@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 class OpenAiDetectionReportServiceTest extends TestCase
 {
-    public function test_ai_generated_media_finding_overrides_low_risk_verdict(): void
+    public function test_voice_response_is_unverifiable_without_an_approved_source(): void
     {
         $resolved = $this->mergeReport([
             'verdict' => 'real',
@@ -43,9 +43,9 @@ class OpenAiDetectionReportServiceTest extends TestCase
 
         $this->assertSame('fake', $resolved['verdict']);
         $this->assertSame(94, $resolved['fake_score']);
-        $this->assertStringContainsString('not be treated as a real photograph', $resolved['explanation_summary']);
-        $this->assertStringContainsString('AI-generated media', $resolved['explanation_summary']);
-        $this->assertStringNotContainsString('Likely Fake', $resolved['explanation_summary']);
+        $this->assertStringStartsWith('Verdict: Unverifiable', $resolved['explanation_summary']);
+        $this->assertStringContainsString('not enough to confirm or disprove', $resolved['explanation_summary']);
+        $this->assertStringContainsString('Sources: No approved sources supplied.', $resolved['explanation_summary']);
         $this->assertSame(
             FactCheckRatingNormalizer::AI_GENERATED_MISINFORMATION,
             $resolved['signals']['ai_media_assessment'][0]['rating'],
@@ -90,12 +90,49 @@ class OpenAiDetectionReportServiceTest extends TestCase
         $this->assertArrayNotHasKey('ai_media_assessment', $resolved['signals']);
     }
 
-    public function test_report_payload_requires_grounded_social_web_search(): void
+    public function test_voice_response_uses_the_required_format_and_only_approved_sources(): void
     {
-        config()->set('services.openai.social_search_enabled', true);
-        config()->set('services.openai.social_search_context_size', 'medium');
-        config()->set('services.openai.social_search_domains', ['facebook.com', 'x.com', 'tiktok.com']);
+        $resolved = $this->mergeReport([
+            'verdict' => 'real',
+            'fake_score' => 8,
+            'signals' => [],
+            'verification_sources' => [
+                [
+                    'name' => 'PAGASA',
+                    'source_type' => 'weather',
+                    'url' => 'https://bagong.pagasa.dost.gov.ph/',
+                ],
+                [
+                    'name' => 'AFP Fact Check',
+                    'source_type' => 'fact_check',
+                    'rating' => 'Confirmed',
+                    'url' => 'https://factcheck.afp.com/example',
+                ],
+                [
+                    'name' => 'Unverified post',
+                    'source_type' => 'social_context',
+                    'url' => 'https://example.com/post',
+                ],
+            ],
+        ], [
+            'analysis_summary' => 'Analysis completed.',
+            'verification_summary' => 'Approved sources were supplied.',
+            'explanation_summary' => 'Fallback explanation.',
+            'recommendation' => 'Review the sources.',
+            'voice_explanation' => 'The approved records support the claim. This is the relevant evidence. A third sentence is included. This fourth sentence must be removed.',
+            'basis' => [],
+            'limitations' => [],
+        ]);
 
+        $this->assertSame(
+            "Verdict: True\n\nThe approved records support the claim. This is the relevant evidence. A third sentence is included.\n\nSources: PAGASA, AFP Fact Check.",
+            $resolved['explanation_summary'],
+        );
+        $this->assertStringNotContainsString('Unverified post', $resolved['explanation_summary']);
+    }
+
+    public function test_report_payload_uses_only_the_application_verification_snapshot(): void
+    {
         $service = new OpenAiDetectionReportService();
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('payload');
@@ -112,17 +149,14 @@ class OpenAiDetectionReportServiceTest extends TestCase
             'platform' => 'web',
         ], null);
 
-        $this->assertSame('web_search', $payload['tools'][0]['type']);
-        $this->assertSame(['facebook.com', 'x.com', 'tiktok.com'], $payload['tools'][0]['filters']['allowed_domains']);
-        $this->assertSame('required', $payload['tool_choice']);
-        $this->assertSame(['web_search_call.action.sources'], $payload['include']);
-        $this->assertArrayHasKey('social_matches', $payload['text']['format']['schema']['properties']);
+        $this->assertArrayNotHasKey('tools', $payload);
+        $this->assertArrayNotHasKey('tool_choice', $payload);
+        $this->assertArrayHasKey('voice_explanation', $payload['text']['format']['schema']['properties']);
+        $this->assertArrayNotHasKey('social_matches', $payload['text']['format']['schema']['properties']);
     }
 
-    public function test_grounded_social_search_sources_are_added_to_the_report(): void
+    public function test_report_does_not_add_social_search_sources(): void
     {
-        config()->set('services.openai.social_search_domains', ['facebook.com', 'x.com']);
-
         $resolved = $this->mergeReport([
             'verdict' => 'review',
             'fake_score' => 50,
@@ -173,9 +207,9 @@ class OpenAiDetectionReportServiceTest extends TestCase
         $socialSources = collect($resolved['verification_sources'])->where('source_type', 'social_context')->values();
 
         $this->assertCount(1, $socialSources);
-        $this->assertSame('Facebook', $socialSources[0]['name']);
-        $this->assertSame('OpenAI web-search match', $socialSources[0]['status']);
-        $this->assertStringContainsString('later correction', $socialSources[0]['summary']);
+        $this->assertSame('Facebook social context', $socialSources[0]['name']);
+        $this->assertSame('Cross-platform social search', $socialSources[0]['status']);
+        $this->assertStringNotContainsString('OpenAI web-search match', json_encode($resolved['verification_sources']));
     }
 
     /**

@@ -1,0 +1,25 @@
+{
+  "retrieved_at": "2026-10-13",
+  "purpose": "Small integration smoke set, not an accuracy benchmark or a threshold-tuning set.",
+  "samples": [
+    {
+      "file": "stable-diffusion-astronaut.png",
+      "origin": "AI-generated",
+      "publisher": "Hugging Face",
+      "source_page": "https://huggingface.co/blog/stable_diffusion",
+      "asset_url": "https://raw.githubusercontent.com/huggingface/blog/main/assets/98_stable_diffusion/stable_diffusion_12_1.png",
+      "description": "First generated astronaut-on-horse example in the Stable Diffusion v1-4 tutorial. Bytes downloaded unchanged; no local generation or edits.",
+      "sha256": "65057b1bff8e1213261eb5d918242f2e768e111991296934402fec41b22904c2"
+    },
+    {
+      "file": "nasa-as11-40-5903.jpg",
+      "origin": "camera-origin",
+      "publisher": "NASA History Office / NASA JSC",
+      "source_page": "https://www.nasa.gov/wp-content/uploads/static/history/ap11ann/kippsphotos/apollo.html",
+      "provenance_record": "https://eol.jsc.nasa.gov/SearchPhotos/photo.pl?frame=5903&mission=AS11&roll=40",
+      "asset_url": "https://www.nasa.gov/wp-content/uploads/static/history/ap11ann/kippsphotos/5903.jpg",
+      "description": "AS11-40-5903: Buzz Aldrin photographed by Neil Armstrong using a 70mm lunar-surface camera. This is NASA's distributed JPEG scan, not an original digital camera file; camera origin does not imply the scan is unedited.",
+      "sha256": "a015d90725cbbc6b236857c000f020eafcce6389373826f346c7bac0c015f471"
+    }
+  ]
+}

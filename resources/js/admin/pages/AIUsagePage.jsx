@@ -33,6 +33,8 @@ const initialData = {
     sourceMix: [],
     mediaMix: [],
     usageNote: '',
+    billing: { budgetLabel: '$6.00', usedLabel: 'Not synced', remainingLabel: 'Unknown', usagePercent: null, warningThreshold: 80, warningAmountLabel: '$4.80', status: 'unavailable', scopeLabel: '', setupRequired: false },
+    requestUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, webSearchCalls: 0, requests: 0, unmeasuredRequests: 0, trackedSince: null },
 };
 
 const capacityTone = {
@@ -69,7 +71,7 @@ export default function AIUsagePage() {
             <PageHeader
                 eyebrow="TruthGuard AI"
                 title="AI Usage"
-                description="Track estimated model load, monthly verification volume, and the contributors driving AI-assisted activity."
+                description="Monitor recorded API tokens, OpenAI-reported spending, and admin budget alerts."
                 actions={
                     <button onClick={load} className="truthguard-admin-action">
                         Refresh
@@ -86,8 +88,36 @@ export default function AIUsagePage() {
                 ))}
             </div>
 
+            <Panel title="Monthly API Budget" description={`${data.billing.budgetLabel} budget · ${data.billing.scopeLabel} · UTC calendar month`}>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <p className="text-3xl font-semibold text-gray-900">{data.billing.usedLabel} <span className="text-base font-normal text-gray-500">/ {data.billing.budgetLabel}</span></p>
+                        <p className="mt-2 text-sm text-gray-600">Warning at {data.billing.warningAmountLabel} ({data.billing.warningThreshold}%). Limit alert at {data.billing.budgetLabel}.</p>
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${data.billing.status === 'synced' ? (Number(data.billing.usagePercent) >= 100 ? capacityTone.critical : Number(data.billing.usagePercent) >= data.billing.warningThreshold ? capacityTone.warning : capacityTone.healthy) : capacityTone.unknown}`}>
+                        {data.billing.status === 'synced' ? (Number(data.billing.usagePercent) >= 100 ? 'Budget reached' : Number(data.billing.usagePercent) >= data.billing.warningThreshold ? 'Running low' : 'Billing synced') : data.billing.status === 'stale' ? 'Stale billing data' : 'Billing not connected'}
+                    </span>
+                </div>
+                {data.billing.usagePercent !== null ? <div className="mt-5 h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${Math.min(data.billing.usagePercent, 100)}%` }} /></div> : null}
+                {data.billing.setupRequired ? <p className="mt-4 rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-700">Setup required: set OPENAI_ADMIN_API_KEY on the server. Optionally set OPENAI_USAGE_PROJECT_ID or OPENAI_USAGE_API_KEY_ID to monitor TruthGuard only. Run the Laravel scheduler for automatic billing checks every five minutes. Keep admin System notifications enabled; device push also requires push permission and a running queue worker.</p> : null}
+                {data.billing.lastSyncError ? <p className="mt-3 text-sm text-error-600">The last billing check failed ({data.billing.lastSyncError}). Any amount shown is from the last successful sync.</p> : null}
+                <p className="mt-4 text-sm leading-6 text-gray-500">{data.billing.note}</p>
+                <p className="mt-2 text-xs text-gray-500">Last successful sync: {data.billing.lastSyncedAt ? `${data.billing.lastSyncedAt} UTC` : 'Never'}. Dashboard refresh reads saved usage without calling an AI model.</p>
+            </Panel>
+
+            <Panel title="Recorded Token Usage" description="Captured directly from each API response, independently of saved reports.">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    <InfoRow label="Input" value={formatNumber(data.requestUsage.inputTokens)} />
+                    <InfoRow label="Output" value={formatNumber(data.requestUsage.outputTokens)} />
+                    <InfoRow label="Total" value={formatNumber(data.requestUsage.totalTokens)} />
+                    <InfoRow label="Web search calls" value={formatNumber(data.requestUsage.webSearchCalls)} />
+                </div>
+                <p className="mt-4 text-sm leading-6 text-gray-500">{data.usageNote}</p>
+                <p className="mt-2 text-xs text-gray-500">First recorded response: {data.requestUsage.trackedSince ? `${data.requestUsage.trackedSince} UTC` : 'None yet'}. Reusing a saved result does not add an API request.</p>
+            </Panel>
+
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-                <Panel title="Token Capacity" description="Shows whether the configured monthly OpenAI token budget still has room.">
+                {data.tokenUsage.monthlyTokenBudget > 0 ? <Panel title="Token Capacity" description="A separate token budget; this does not represent dollar credit remaining.">
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${capacityTone[data.capacity.status] ?? capacityTone.unknown}`}>
@@ -122,7 +152,7 @@ export default function AIUsagePage() {
                             <span>{data.tokenUsage.estimatedTokensPerRequest} estimated tokens/run</span>
                         </div>
                     </div>
-                </Panel>
+                </Panel> : null}
 
                 <Panel title="Model Settings" description="Current AI model configuration from environment settings.">
                     <div className="space-y-3">

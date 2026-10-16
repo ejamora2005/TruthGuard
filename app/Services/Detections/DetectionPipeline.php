@@ -4,10 +4,16 @@ namespace App\Services\Detections;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\Evidence\ClaimPlanner;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class DetectionPipeline
 {
@@ -20,12 +26,15 @@ class DetectionPipeline
         private readonly TrustedFactCheckVerdictResolver $trustedFactCheckVerdictResolver,
         private readonly FilipinoNewsClassifier $filipinoNewsClassifier,
         private readonly DeepfakeCnnClassifier $deepfakeCnnClassifier,
+        private readonly FactCheckResultService $factCheckResultService,
+        private readonly EvidenceVerificationService $evidenceVerificationService,
+        private readonly AiOriginClassifier $aiOriginClassifier,
     ) {}
 
     /**
      * @param  array<string, mixed>  $validated
      */
-    public function run(User $user, array $validated, ?UploadedFile $uploadedFile): Detection
+    public function run(User $user, array $validated, ?UploadedFile $uploadedFile, ?Detection $pending = null): Detection
     {
         $sourceUrl = $this->nullableString($validated['source_url'] ?? null);
         $captionText = $this->nullableString($validated['caption_text'] ?? null);
@@ -43,6 +52,22 @@ class DetectionPipeline
         ];
 
         $mediaType = $this->detectMediaType($uploadedFile, $sourceUrl);
+        $submission = $validated + ['media_type' => $mediaType];
+        $resolvedRequest = SubmissionTask::resolve($submission);
+        $primaryTask = $resolvedRequest['resolved_task'];
+        $requestedTasks = $resolvedRequest['tasks'];
+        // Use the same resolved request as the report. An empty literal claim
+        // after stripping a question is not permission to switch to AI screening.
+        $runMediaDetector = in_array('media', $requestedTasks, true);
+        $analysisId = (string) Str::uuid();
+        Log::info('TruthGuard analysis started.', [
+            'analysis_id' => $analysisId,
+            'detection_id' => $pending?->id,
+            'route' => $primaryTask,
+            'media_type' => $mediaType,
+            'has_upload' => $uploadedFile !== null,
+            'has_url' => $sourceUrl !== null,
+        ]);
         $platform = $selectedPlatform ?? $this->detectPlatform($sourceUrl, $captionText, $notes);
         $mediaChecksum = $this->buildMediaChecksum($uploadedFile);
         $requestFingerprint = $this->buildRequestFingerprint(
@@ -52,87 +77,134 @@ class DetectionPipeline
             $mediaType,
             $platform,
             $mediaChecksum,
+            $validated['analysis_task'] ?? 'auto',
+            ['tasks' => $requestedTasks, 'weather' => $weatherContext, 'locale' => app()->getLocale()],
         );
-        $mediaPath = $this->persistUploadedFile($uploadedFile);
-        $reusableDetection = $this->findReusableDetection($requestFingerprint);
-
-        if ($reusableDetection) {
-            return $this->createReusedDetection(
-                $user,
-                $reusableDetection,
-                $sourceUrl,
-                $captionText,
-                $notes,
-                $mediaPath,
-                $mediaChecksum,
-                $requestFingerprint,
-            );
+        $mediaPath = $pending?->media_path ?? $this->persistUploadedFile($uploadedFile);
+        // Infer against the persisted original, also used by queued analysis and retries.
+        if ($uploadedFile && $mediaPath) {
+            $uploadedFile = new UploadedFile(Storage::disk('public')->path($mediaPath), $uploadedFile->getClientOriginalName(), null, null, true);
         }
-
-        $analysis = $this->buildLocalAnalysis($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType, $platform);
-        $platform = $this->nullableString($analysis['platform'] ?? null) ?? $platform;
-        $mediaType = $this->nullableString($analysis['media_type'] ?? null) ?? $mediaType;
-
-        $openAiExtractedClaim = $this->openAiDetectionReportService->extractClaimText([
-            'source_url' => $sourceUrl,
-            'caption_text' => $captionText,
-            'notes' => $notes,
-            'media_type' => $mediaType,
-            'platform' => $platform,
-        ], $uploadedFile);
-
-        if ($openAiExtractedClaim !== null) {
-            $analysis = $this->attachExtractedClaimText($analysis, $openAiExtractedClaim);
+        // A URL alone does not identify immutable content: its page may change.
+        $reuseEnabled = (bool) config('fact_check.result_reuse.enabled', true) && ! $weatherConsent
+            && ($sourceUrl === null || $mediaChecksum !== null);
+        $forceRefresh = (bool) ($validated['force_refresh'] ?? false) || ($pending && $pending->fact_check_result !== null);
+        $reuseLock = $reuseEnabled && $requestFingerprint ? Cache::lock('truthguard-result:'.$requestFingerprint, 900) : null;
+        // Serialise identical submissions, then check the database again after
+        // acquiring the lock. A second worker must not pay for the same analysis.
+        try {
+            $reuseLock?->block(max(0, (int) config('fact_check.result_reuse.wait_seconds', 240)));
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['media_file' => 'An identical submission is still being analyzed. Retry after it finishes; no duplicate analysis was started.']);
         }
+        try {
+            if ($reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint))) {
+                $detection = $this->createReusedDetection($user, $reusableDetection, $sourceUrl, $captionText, $notes, $mediaPath, $mediaChecksum, $requestFingerprint, $pending);
+                Log::info('TruthGuard analysis reused a saved result without inference.', ['analysis_id' => $analysisId,
+                    'detection_id' => $detection->id, 'reused_from_detection_id' => $reusableDetection->id]);
 
-        $analysis = $this->enrichAnalysis(
-            $analysis,
-            $sourceUrl,
-            $captionText,
-            $notes,
-            $mediaType,
-            $platform,
-            $weatherContext,
-            $openAiExtractedClaim,
-        );
-        $analysis = $this->openAiDetectionReportService->enhance($analysis, [
-            'source_url' => $sourceUrl,
-            'caption_text' => $captionText,
-            'notes' => $notes,
-            'media_type' => $mediaType,
-            'platform' => $platform,
-            'openai_extracted_claim' => $openAiExtractedClaim,
-        ], $uploadedFile);
-        $analysis = $this->trustedFactCheckVerdictResolver->applyNoOfficialConfirmationFallback(
-            $analysis,
-            is_array($analysis['verification_sources'] ?? null) ? $analysis['verification_sources'] : [],
-        );
-        $analysis = $this->markVerificationPolicyVersion($analysis);
+                return $detection;
+            }
 
-        return Detection::create([
-            'user_id' => $user->id,
-            'source_kind' => $uploadedFile ? 'upload' : 'link',
-            'platform' => $platform,
-            'source_url' => $sourceUrl,
-            'media_path' => $mediaPath,
-            'media_checksum' => $mediaChecksum,
-            'media_type' => $mediaType,
-            'request_fingerprint' => $requestFingerprint,
-            'reused_from_detection_id' => null,
-            'caption_text' => $captionText,
-            'fake_score' => (int) $analysis['fake_score'],
-            'processing_status' => (string) $analysis['processing_status'],
-            'preprocessing_summary' => (string) $analysis['preprocessing_summary'],
-            'analysis_summary' => (string) $analysis['analysis_summary'],
-            'verification_summary' => (string) $analysis['verification_summary'],
-            'explanation_summary' => (string) $analysis['explanation_summary'],
-            'recommendation' => (string) $analysis['recommendation'],
-            'signals' => $analysis['signals'],
-            'verification_sources' => $analysis['verification_sources'],
-            'verdict' => (string) $analysis['verdict'],
-            'notes' => $notes,
-            'analyzed_at' => now(),
-        ]);
+            $analysis = $this->buildLocalAnalysis($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType, $platform,
+                $primaryTask !== 'claim', $runMediaDetector);
+            $platform = $this->nullableString($analysis['platform'] ?? null) ?? $platform;
+            $mediaType = $this->nullableString($analysis['media_type'] ?? null) ?? $mediaType;
+
+            if ((bool) config('fact_check.enhanced_enabled', true) || $primaryTask !== 'claim') {
+                $analysis = $this->evidenceVerificationService->apply($analysis, [
+                    'source_url' => $sourceUrl, 'caption_text' => $captionText, 'notes' => $notes,
+                    'media_type' => $mediaType, 'platform' => $platform,
+                    'analysis_task' => $validated['analysis_task'] ?? 'auto',
+                    'analysis_id' => $analysisId,
+                    'resolved_request' => $resolvedRequest,
+                ] + $weatherContext, $uploadedFile, $pending ? function (string $stage, array $domains = []) use ($pending): void {
+                    $signals = $pending->signals ?? [];
+                    $signals['analysis_progress'] = [['label' => $stage, 'weight' => 0,
+                        'source_domains' => $domains ?: data_get($signals, 'analysis_progress.0.source_domains', [])]];
+                    $pending->forceFill(['signals' => $signals])->saveQuietly();
+                } : null);
+            } else {
+                $openAiExtractedClaim = $this->openAiDetectionReportService->extractClaimText([
+                    'source_url' => $sourceUrl,
+                    'caption_text' => $captionText,
+                    'notes' => $notes,
+                    'media_type' => $mediaType,
+                    'platform' => $platform,
+                ], $uploadedFile);
+
+                if ($openAiExtractedClaim !== null) {
+                    $analysis = $this->attachExtractedClaimText($analysis, $openAiExtractedClaim);
+                }
+
+                $analysis = $this->enrichAnalysis(
+                    $analysis,
+                    $sourceUrl,
+                    $captionText,
+                    $notes,
+                    $mediaType,
+                    $platform,
+                    $weatherContext,
+                    $openAiExtractedClaim,
+                );
+                $analysis = $this->factCheckResultService->apply($analysis, [
+                    'source_url' => $sourceUrl,
+                    'caption_text' => $captionText,
+                    'notes' => $notes,
+                    'media_type' => $mediaType,
+                    'platform' => $platform,
+                    'openai_extracted_claim' => $openAiExtractedClaim,
+                    'locale' => app()->getLocale(),
+                ]);
+            }
+            $analysis = $this->markVerificationPolicyVersion($analysis);
+            // Every route, including the legacy fallback, crosses the same typed
+            // answer boundary before it can be compared, saved or displayed.
+            $analysis['fact_check_result'] = ReportAnswer::complete($analysis['fact_check_result']);
+            $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
+            // Older saved reports have not been admitted to this fresh cache.
+            $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation')];
+
+            $attributes = [
+                'user_id' => $user->id,
+                'source_kind' => $uploadedFile ? 'upload' : 'link',
+                'platform' => $platform,
+                'source_url' => $sourceUrl,
+                'media_path' => $mediaPath,
+                'media_checksum' => $mediaChecksum,
+                'media_type' => $mediaType,
+                'request_fingerprint' => $requestFingerprint,
+                'reused_from_detection_id' => null,
+                'caption_text' => $captionText,
+                'fake_score' => (int) $analysis['fake_score'],
+                'processing_status' => (string) $analysis['processing_status'],
+                'preprocessing_summary' => (string) $analysis['preprocessing_summary'],
+                'analysis_summary' => (string) $analysis['analysis_summary'],
+                'verification_summary' => (string) $analysis['verification_summary'],
+                'explanation_summary' => (string) $analysis['explanation_summary'],
+                'recommendation' => (string) $analysis['recommendation'],
+                'signals' => $analysis['signals'],
+                'verification_sources' => $analysis['verification_sources'],
+                'fact_check_result' => $analysis['fact_check_result'],
+                'verdict' => (string) $analysis['verdict'],
+                'notes' => $notes,
+                'analyzed_at' => now(),
+            ];
+
+            if ($pending) {
+                $pending->fill($attributes)->save();
+                Log::info('TruthGuard analysis persisted.', ['analysis_id' => $analysisId, 'detection_id' => $pending->id, 'source_count' => count($analysis['fact_check_result']['sources'] ?? [])]);
+
+                return $pending;
+            }
+
+            $detection = Detection::create($attributes);
+            Log::info('TruthGuard analysis persisted.', ['analysis_id' => $analysisId, 'detection_id' => $detection->id, 'source_count' => count($analysis['fact_check_result']['sources'] ?? [])]);
+
+            return $detection;
+        } finally {
+            $reuseLock?->release();
+        }
     }
 
     /**
@@ -145,28 +217,50 @@ class DetectionPipeline
         ?string $notes,
         string $mediaType,
         ?string $platform,
+        bool $mediaPrimary = false,
+        bool $runMediaDetector = true,
     ): array {
         $signals = $this->buildSignals($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType);
-        $localNlpClassification = $this->filipinoNewsClassifier->classify($captionText, $notes);
-        $deepfakeCnnClassification = $this->deepfakeCnnClassifier->classify($uploadedFile, $mediaType);
+        $enhanced = (bool) config('fact_check.enhanced_enabled', true) || $mediaPrimary;
+        $localNlpClassification = $enhanced ? null : $this->filipinoNewsClassifier->classify($captionText, $notes);
+        $deepfakeCnnClassification = ! $runMediaDetector && in_array($mediaType, ['image', 'video'], true)
+            ? ['status' => 'not_requested', 'media_type' => $mediaType,
+                'task' => $mediaType === 'image' ? 'AI-generation screening' : 'Sampled-frame synthetic-media screening',
+                'reason' => 'The requested factual or context analysis does not require media-origin screening.',
+                'label' => null, 'fake_probability' => null, 'model_version' => null]
+            : $this->deepfakeCnnClassifier->classify($uploadedFile, $mediaType);
 
         if ($localNlpClassification !== null) {
             $signals = $this->attachLocalNlpSignal($signals, $localNlpClassification);
         }
 
-        if ($deepfakeCnnClassification !== null) {
+        if (($deepfakeCnnClassification['status'] ?? '') === 'completed') {
             $signals = $this->attachDeepfakeCnnSignal($signals, $deepfakeCnnClassification);
         }
+        if ($runMediaDetector && $mediaType === 'image' && $uploadedFile && config('services.ai_origin.enabled', false)) {
+            $specialist = $this->aiOriginClassifier->classify($uploadedFile);
+            $specialist['supporting_assessments'] = ['image_cnn' => $deepfakeCnnClassification];
+            $specialist['detector_disagreement'] = ($specialist['status'] ?? '') === 'completed'
+                && ($deepfakeCnnClassification['status'] ?? '') === 'completed'
+                && $specialist['label'] !== $deepfakeCnnClassification['label'];
+            // No averaging, relabeling or reuse: keep both actual model findings.
+            $deepfakeCnnClassification = $specialist;
+        }
 
-        $fakeScore = $this->calculateFakeScore($signals);
-        $fakeScore = $this->applyLocalNlpRiskFloor($fakeScore, $localNlpClassification);
-        $fakeScore = $this->applyDeepfakeCnnRiskFloor($fakeScore, $deepfakeCnnClassification);
+        // The legacy numeric column is media screening only on the evidence path.
+        // It is never consumed by the factual assessment or presented as truth confidence.
+        $fakeScore = $enhanced ? (int) ($deepfakeCnnClassification['screening_score'] ?? 0) : $this->calculateFakeScore($signals);
+        if (! $enhanced) {
+            $fakeScore = $this->applyLocalNlpRiskFloor($fakeScore, $localNlpClassification);
+            $fakeScore = $this->applyDeepfakeCnnRiskFloor($fakeScore, $deepfakeCnnClassification);
+        }
         $verdict = $this->determineVerdict($fakeScore);
         $verificationSources = $this->buildVerificationSources($sourceUrl, $captionText, $notes, $platform);
 
         return [
             'platform' => $platform,
             'media_type' => $mediaType,
+            'media_assessment' => $deepfakeCnnClassification,
             'fake_score' => $fakeScore,
             'processing_status' => 'completed',
             'preprocessing_summary' => $this->buildPreprocessingSummary($uploadedFile, $sourceUrl, $mediaType, $platform, $captionText),
@@ -211,6 +305,8 @@ class DetectionPipeline
         string $mediaType,
         ?string $platform,
         ?string $mediaChecksum,
+        string $analysisTask = 'auto',
+        array $requestContext = [],
     ): ?string {
         $payload = [
             'source_url' => $this->normalizeFingerprintString($sourceUrl),
@@ -219,11 +315,29 @@ class DetectionPipeline
             'media_type' => $this->normalizeFingerprintString($mediaType),
             'platform' => $this->normalizeFingerprintString($platform),
             'media_checksum' => $this->normalizeFingerprintString($mediaChecksum),
+            'analysis_task' => $analysisTask,
+            'request_context' => $requestContext,
+            'reuse_version' => 'exact-submission-v1',
+            'inference_settings' => [
+                'enhanced' => config('fact_check.enhanced_enabled'),
+                'openai_enabled' => config('services.openai.analysis_enabled'),
+                'extraction_enabled' => config('services.openai.claim_extraction_enabled'),
+                'deepfake' => Arr::except(config('services.deepfake_cnn', []), ['python_binary', 'timeout']),
+                'origin' => Arr::only(config('services.ai_origin', []), ['enabled', 'model_path']),
+                'article_model' => Arr::except(config('services.filipino_news_classifier', []), ['timeout', 'connect_timeout']),
+                'artifacts' => $this->modelArtifactIdentity(),
+            ],
+            'routing_version' => 'question-routing-v4',
+            'pipeline_version' => AssessmentVerdict::VERSION.'|'.AssessmentScore::RUBRIC.'|'.SubmissionTask::VERSION
+                .'|'.EvidenceVerificationService::VERSION.'|'.EvidenceVerdictCalibration::identity()
+                .'|'.(config('services.ai_origin.enabled', false) ? AiOriginClassifier::VERSION : 'origin-disabled')
+                .'|'.(config('fact_check.verdict_calibration.enabled', false)
+                    ? EvidenceVerdictCalibration::METHOD.':'.config('fact_check.verdict_calibration.sha256', '') : 'evidence-calibration-disabled')
+                .'|'.(config('services.media_calibration.enabled', false)
+                    ? MediaScoreCalibration::METHOD.':'.config('services.media_calibration.sha256', '') : 'calibration-disabled'),
         ];
 
-        $hasMeaningfulInput = collect($payload)
-            ->reject(fn (?string $value, string $key) => in_array($key, ['media_type', 'platform'], true))
-            ->contains(fn (?string $value) => $value !== null);
+        $hasMeaningfulInput = filled($sourceUrl) || filled($captionText) || filled($notes) || filled($mediaChecksum);
 
         if (! $hasMeaningfulInput) {
             return null;
@@ -238,8 +352,8 @@ class DetectionPipeline
             return null;
         }
 
-        $normalized = Str::lower(trim($value));
-        $normalized = preg_replace('/\s+/', ' ', $normalized);
+        // URL paths and submitted wording can be case-sensitive.
+        $normalized = trim($value);
 
         return $normalized !== '' ? $normalized : null;
     }
@@ -253,14 +367,65 @@ class DetectionPipeline
         $query = Detection::query()
             ->where('request_fingerprint', $requestFingerprint)
             ->where('processing_status', 'completed')
+            ->whereNull('reused_from_detection_id')
             ->whereNotNull('analyzed_at');
 
-        $candidate = $this->retentionService
+        return $this->retentionService
             ->applyRetentionWindow($query)
             ->latest('analyzed_at')
-            ->first();
+            ->cursor()
+            ->first(fn (Detection $candidate): bool => $this->canReuseResult($candidate));
+    }
 
-        return $candidate && $this->hasCurrentVerificationPolicyVersion($candidate) ? $candidate : null;
+    private function canReuseResult(Detection $candidate): bool
+    {
+        $result = $candidate->fact_check_result;
+        if (! $this->hasCurrentVerificationPolicyVersion($candidate) || ! is_array($result)
+            || data_get($candidate->signals, 'result_cache.generation') !== (string) config('fact_check.result_reuse.generation')
+            || ($result['schema_version'] ?? null) !== 4 || ($result['processing_status'] ?? null) !== 'completed'
+            || in_array($result['verdict'] ?? '', ['ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS', 'CLARIFICATION_NEEDED'], true)
+            || filled(data_get($candidate->signals, 'submission_extraction.0.failure_reason'))
+            || collect(data_get($result, 'diagnostics.model_stages', []))->contains(fn ($status) => $status !== 'completed')
+            || in_array(data_get($result, 'claim_assessment.status'), ['partial', 'unavailable', 'failed'], true)) {
+            return false;
+        }
+        $question = implode(' ', array_filter([$candidate->caption_text, $candidate->notes,
+            $result['claim'] ?? null, data_get($candidate->signals, 'submission_extraction.0.visible_text')]));
+        if (ClaimPlanner::isCurrentStatus($question)
+            || preg_match('/\b(?:today|tonight|tomorrow|yesterday|now|latest|weather|forecast|live|ongoing)\b|ngayon|bukas|kasalukuyan|pinakabago/iu', $question)) {
+            return false;
+        }
+        $mediaOnly = ($result['primary_task'] ?? '') === 'media' && empty($result['secondary_assessments']);
+        $seconds = (int) config('fact_check.result_reuse.'.($mediaOnly ? 'media_seconds' : 'claim_seconds'), $mediaOnly ? 604800 : 86400);
+        if (in_array($result['verdict'] ?? '', ['UNVERIFIED', 'CONFLICTING_EVIDENCE', 'MISSING_CONTEXT'], true)) {
+            $seconds = min($seconds, (int) config('fact_check.result_reuse.unresolved_seconds', 300));
+        }
+
+        return $seconds > 0 && $candidate->analyzed_at->gte(now()->subSeconds($seconds));
+    }
+
+    private function modelArtifactIdentity(): array
+    {
+        $files = [__FILE__, __DIR__.'/MediaAnalysisReport.php', __DIR__.'/DeepfakeCnnClassifier.php', __DIR__.'/AiOriginClassifier.php', __DIR__.'/FilipinoNewsClassifier.php'];
+        foreach (['model_path', 'config_path', 'video_model_path', 'video_config_path', 'script_path'] as $key) {
+            $path = config('services.deepfake_cnn.'.$key);
+            if (is_string($path) && $path !== '') {
+                $files[] = preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $path) ? $path : base_path($path);
+            }
+        }
+        $origin = config('services.ai_origin.model_path');
+        if (is_string($origin) && $origin !== '') {
+            $origin = preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $origin) ? $origin : base_path($origin);
+            $files = array_merge($files, is_dir($origin) ? (glob($origin.'/*') ?: []) : [$origin]);
+        }
+        $identity = [];
+        foreach ($files as $file) {
+            clearstatcache(true, $file);
+            $identity[$file] = is_file($file) ? [filesize($file), filemtime($file),
+                filesize($file) < 2097152 ? hash_file('sha256', $file) : null] : null;
+        }
+
+        return $identity;
     }
 
     private function createReusedDetection(
@@ -272,6 +437,7 @@ class DetectionPipeline
         ?string $mediaPath,
         ?string $mediaChecksum,
         ?string $requestFingerprint,
+        ?Detection $pending = null,
     ): Detection {
         $sourceDetection = $reusableDetection->reused_from_detection_id
             ? Detection::query()->find($reusableDetection->reused_from_detection_id) ?? $reusableDetection
@@ -293,10 +459,18 @@ class DetectionPipeline
             'recommendation' => $reusableDetection->recommendation,
             'signals' => $reusableDetection->signals ?? [],
             'verification_sources' => $reusableDetection->verification_sources ?? [],
+            'fact_check_result' => $reusableDetection->fact_check_result,
             'verdict' => $reusableDetection->verdict,
         ];
 
-        return Detection::create([
+        $analysis['signals']['result_reuse'] = ['source_detection_id' => $sourceDetection->id,
+            'original_assessed_at' => $reusableDetection->analyzed_at?->toIso8601String(),
+            'original_openai_usage' => $analysis['signals']['openai_usage'] ?? [],
+            'original_usage_aliases' => Arr::only($analysis['signals'], ['ai_usage', 'token_usage', 'usage']), 'new_api_tokens' => 0];
+        // Preserve historical usage above, but never bill/count it again on a cache hit.
+        $analysis['signals']['openai_usage'] = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
+        unset($analysis['signals']['analysis_progress'], $analysis['signals']['ai_usage'], $analysis['signals']['token_usage'], $analysis['signals']['usage']);
+        $attributes = [
             'user_id' => $user->id,
             'source_kind' => $mediaPath ? 'upload' : 'link',
             'platform' => $reusableDetection->platform,
@@ -316,10 +490,19 @@ class DetectionPipeline
             'recommendation' => (string) $analysis['recommendation'],
             'signals' => $analysis['signals'],
             'verification_sources' => $analysis['verification_sources'],
+            'fact_check_result' => $analysis['fact_check_result'],
             'verdict' => (string) $analysis['verdict'],
             'notes' => $notes,
-            'analyzed_at' => now(),
-        ]);
+            'analyzed_at' => $reusableDetection->analyzed_at,
+        ];
+
+        if ($pending) {
+            $pending->fill($attributes)->save();
+
+            return $pending;
+        }
+
+        return Detection::create($attributes);
     }
 
     /**
@@ -655,8 +838,8 @@ class DetectionPipeline
         $label = (string) ($classification['label'] ?? ($fakeProbability >= $threshold ? 'fake' : 'real'));
         $mediaType = (string) ($classification['media_type'] ?? 'image');
         $modelLabel = $mediaType === 'video' ? 'Video CNN' : 'Image CNN';
-        $displayProbability = number_format($fakeProbability * 100, 1);
-        $displayThreshold = number_format($threshold * 100, 1);
+        $displayProbability = number_format($fakeProbability, 6);
+        $displayThreshold = number_format($threshold, 6);
         $weight = match (true) {
             $fakeProbability >= max(0.85, $threshold) => max(55, min(80, (int) round($fakeProbability * 80))),
             $fakeProbability >= $threshold => max(34, min(58, (int) round($fakeProbability * 70))),
@@ -665,7 +848,8 @@ class DetectionPipeline
         };
 
         $signals['deepfake_cnn'][] = [
-            'label' => "{$modelLabel} rated this upload as {$label} with {$displayProbability}% fake probability",
+            'model_version' => $classification['model_version'] ?? null,
+            'label' => "{$modelLabel} returned class {$label}, raw synthetic-class score {$displayProbability} (uncalibrated)",
             'weight' => $weight,
             'verdict' => $label,
             'fake_probability' => round($fakeProbability, 4),
@@ -674,7 +858,7 @@ class DetectionPipeline
             'aggregation_method' => (string) ($classification['aggregation_method'] ?? ''),
             'frames_used' => (int) ($classification['frames_used'] ?? 0),
             'screening_score' => $screeningScore,
-            'summary' => (string) ($classification['summary'] ?? "CNN threshold was {$displayThreshold}%."),
+            'summary' => (string) ($classification['summary'] ?? "CNN threshold was {$displayThreshold}."),
         ];
 
         return $signals;

@@ -11,6 +11,30 @@
 
 TruthGuard includes a production Docker image and Compose services for the app, MySQL, queue worker, and scheduler. See [the deployment guide](docs/DEPLOYMENT.md) for environment setup, HTTPS, migrations, backups, and updates, and [the load-balancing preparation](docs/LOAD-BALANCING.md) for Dokploy scaling. Start from `.env.production.example`; do not use development credentials in production.
 
+## Evidence-based fact checking (default)
+
+New submissions use the version 2 evidence pipeline: original text extraction, atomic claims, bounded article discovery, validated claim/source relationships, and explicit abstention. Media and article-classifier scores remain separate from factual verdicts. See [implementation, live checks, setup, and rollback](docs/EVIDENCE-VERIFICATION.md) and [held-out evaluation instructions](automation/evaluation/README.md). Existing saved reports are preserved.
+
+## API usage monitoring and saved-result reuse
+
+The complete Dokploy environment template is `.env.production.example`. Replace its marked secret values and proxy CIDR on the server. Compose forwards billing, evidence, calibration, and reuse settings to the app, worker, and scheduler. Keep the existing deployed `APP_KEY` until a planned rotation, and update existing MySQL account passwords in MySQL when rotating database credentials.
+
+Set `OPENAI_MONTHLY_DOLLAR_BUDGET=6` and a server-only `OPENAI_ADMIN_API_KEY` for cost alerts at 80% and 100%. `OPENAI_USAGE_PROJECT_ID` and `OPENAI_USAGE_API_KEY_ID` optionally scope billing; leaving both blank monitors the whole OpenAI organization. Admin **AI Usage** shows provider-reported request tokens from monitoring start, separately from OpenAI-reported monthly costs. Missing telemetry and unavailable/stale cost data are identified explicitly. The budget is an alert threshold, not a hard spending stop or prepaid-credit balance.
+
+Deploy the new code, run `php artisan migrate --force`, and recreate app, worker, and scheduler. The singleton scheduler runs `truthguard:sync-openai-costs` every five minutes when the admin key is configured. For one billing-only check, run `php artisan truthguard:sync-openai-costs`. Admins need system notifications enabled; device push additionally requires Firebase configuration, device permission, and a queue worker. The default worker does not consume the `evidence` queue, so leave `FACT_CHECK_QUEUE_ENABLED=false` unless a dedicated evidence worker is configured.
+
+Compatible, sufficiently fresh completed results can be reused before paid analysis; all reports predating the current `FACT_CHECK_RESULT_REUSE_GENERATION` are excluded. Changed content/questions/tasks, incompatible inference settings, explicit rechecks, failed analyses, and time-sensitive checks do not silently reuse a prior assessment. Cache hits retain the original assessment date and record zero new API tokens. Existing reports and uploads are preserved.
+
+## Legacy canonical fact-check results (rollback path)
+
+Run `php artisan migrate` when deploying the result engine. New submissions collect evidence before looking up a saved result. The canonical key includes the normalized claim, locale, source snapshot ID, and evidence cutoff. Opening a saved result preserves it unless evidence refresh is requested/configured. The authenticated result route also returns the exact result object with `Accept: application/json`.
+
+`resources/prompts/fact-check-result.txt` defines the result-writing policy. `FactCheckResultSchema` defines the JSON contract, and `FactCheckResultService` checks citations and applies the UI rules. Results use TRUE, FALSE, MISLEADING, PARTLY_TRUE, UNVERIFIABLE, or OUTDATED. Local media/text risk scores are kept separately and cannot substantiate a factual verdict.
+
+Evidence adapters must supply a retrieved record with `evidence_verified: true`, `evidence_text`, publisher `name`, a specific `title`, `url`, source `type`, and an actual `published_at` date (or null). Fact-check records also carry `claim_text` and the original `evidence_rating`. The approval flag is set by server-side adapters, never accepted from submission form input. Approved host/type pairs are configured in `config/fact_check.php`. Agency homepages, search routes/snippets, social posts, irrelevant records and records after the cutoff are excluded. News supplies context only. Existing Google/publisher feeds provide fact-check records; government/institution integrations must supply actual publications rather than directory links.
+
+Internal callers may pass an immutable `source_snapshot_id` and `evidence_cutoff` to reuse a supplied snapshot. Otherwise the service hashes the approved records and records the retrieval cutoff. API failures, invalid output, unsupported citations, or insufficient evidence produce an explicit UNVERIFIABLE result. Tests use mocked API responses; they do not assess the live model's factual accuracy.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

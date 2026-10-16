@@ -29,6 +29,7 @@ class Detection extends Model
         'recommendation',
         'signals',
         'verification_sources',
+        'fact_check_result',
         'verdict',
         'notes',
         'analyzed_at',
@@ -43,6 +44,7 @@ class Detection extends Model
             'archived_at' => 'datetime',
             'signals' => 'array',
             'verification_sources' => 'array',
+            'fact_check_result' => 'array',
         ];
     }
 

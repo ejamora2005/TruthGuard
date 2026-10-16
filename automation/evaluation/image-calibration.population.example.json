@@ -1,0 +1,8 @@
+{
+  "scope": "Replace with the reviewed image population, generator coverage, processing conditions and expected real/AI prevalence",
+  "representative_of_deployment": false,
+  "training_overlap_checked": false,
+  "reviewer": null,
+  "dataset_revision": null,
+  "notes": "Template only. Check the pinned model's training sources and review suitability before setting these fields. A balanced benchmark does not automatically represent real upload prevalence."
+}

@@ -116,6 +116,7 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('detections/create', [DetectionController::class, 'create'])->name('detections.create');
         Route::get('detections/{detection}/result', [DetectionController::class, 'result'])->name('detections.result');
         Route::post('detections', [DetectionController::class, 'store'])->name('detections.store');
+        Route::post('detections/{detection}/retry-media', [DetectionController::class, 'retryMedia'])->middleware('throttle:detection-retry')->name('detections.retry-media');
         Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::post('profile/password/setup', [ProfileController::class, 'setupPassword'])->name('profile.password.setup');
         Route::view('profile', 'profile')->name('profile');

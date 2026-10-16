@@ -2,6 +2,7 @@
 
 namespace App\Services\Detections;
 
+use App\Support\WindowsProcessEnvironment;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -10,17 +11,26 @@ use Throwable;
 
 class DeepfakeCnnClassifier
 {
+    private float $started;
+
+    private ?string $inputPath = null;
+
     /**
      * @return array<string, mixed>|null
      */
     public function classify(?UploadedFile $uploadedFile, string $mediaType, int $heuristicScore = 0): ?array
     {
-        if (! (bool) config('services.deepfake_cnn.enabled', false)) {
+        $this->started = microtime(true);
+        $this->inputPath = $uploadedFile ? $this->uploadedFilePath($uploadedFile) : null;
+        if (! in_array($mediaType, ['image', 'video'], true)) {
             return null;
+        }
+        if (! (bool) config('services.deepfake_cnn.enabled', false)) {
+            return $this->failure($mediaType, 'disabled', 'The media detector is disabled in this deployment.');
         }
 
         if (! $uploadedFile || ! $uploadedFile->isValid() || ! in_array($mediaType, ['image', 'video'], true)) {
-            return null;
+            return $this->failure($mediaType, 'missing_media', 'The original upload is unavailable or could not be read. Upload the file again.');
         }
 
         $mediaPath = $this->uploadedFilePath($uploadedFile);
@@ -28,8 +38,10 @@ class DeepfakeCnnClassifier
         $modelPath = $this->modelPathForMediaType($mediaType);
 
         if ($mediaPath === null || $scriptPath === null || $modelPath === null) {
-            return null;
+            return $this->failure($mediaType, 'configuration_error', 'The media detector or its model is not configured.');
         }
+        $inputHash = hash_file('sha256', $mediaPath);
+        $inputBytes = filesize($mediaPath);
 
         if (! is_file($scriptPath) || ! is_file($modelPath)) {
             Log::warning('TruthGuard CNN classifier is enabled but not fully configured.', [
@@ -37,7 +49,7 @@ class DeepfakeCnnClassifier
                 'model_path' => $modelPath,
             ]);
 
-            return null;
+            return $this->failure($mediaType, 'model_missing', 'The configured media model or inference adapter is missing.');
         }
 
         $payload = [
@@ -61,7 +73,7 @@ class DeepfakeCnnClassifier
                 'message' => $exception->getMessage(),
             ]);
 
-            return null;
+            return $this->failure($mediaType, 'process_failed', 'The media detector could not finish. Check the Python runtime and model dependencies, then retry.');
         }
 
         if (! $process->isSuccessful()) {
@@ -70,17 +82,59 @@ class DeepfakeCnnClassifier
                 'stderr' => Str::limit($process->getErrorOutput(), 500),
             ]);
 
-            return null;
+            return $this->failure($mediaType, 'process_failed', 'The media detector stopped before returning a result. Retry after checking the detector service.');
         }
 
         $payload = $this->decodePayload($process->getOutput());
 
         if ($payload === null || ($payload['status'] ?? null) !== 'completed') {
-            return null;
+            $code = $payload['status'] ?? 'invalid_response';
+            Log::warning('TruthGuard CNN inference unavailable.', ['status' => $code]);
+
+            return $this->failure($mediaType, $code, match ($code) {
+                'model-error' => 'The detector could not decode or process this upload. Try the original image in a supported format.',
+                'dependency-error' => 'The detector could not load its runtime or trained weights. Check the model installation and retry.',
+                'configuration-error' => 'The model configuration does not match the deployed weights or preprocessing.',
+                'missing-media' => 'The original upload could not be read by the detector. Upload the file again.',
+                default => 'The detector did not return a valid result. Retry the analysis.',
+            });
+        }
+
+        if (! is_readable($mediaPath) || ! is_file($mediaPath) || hash_file('sha256', $mediaPath) !== $inputHash) {
+            return $this->failure($mediaType, 'input_changed', 'The original upload changed or became unavailable during analysis.');
+        }
+
+        if (($payload['label_mapping'] ?? null) !== ['real', 'fake']
+            || ($payload['output_contract']['activation'] ?? null) !== 'sigmoid'
+            || ($payload['output_contract']['positive_class'] ?? null) !== 'fake'
+            || ($payload['output_contract']['binary_exclusive'] ?? null) !== true
+            || ($payload['output_contract']['validated_at_inference'] ?? null) !== true
+            || ! is_numeric($payload['fake_probability'] ?? null) || ! is_numeric($payload['threshold'] ?? null)
+            || ! is_finite((float) $payload['fake_probability']) || $payload['fake_probability'] < 0 || $payload['fake_probability'] > 1
+            || $payload['threshold'] < 0 || $payload['threshold'] > 1
+            || ($payload['label'] ?? null) !== ($payload['fake_probability'] >= $payload['threshold'] ? 'fake' : 'real')) {
+            return $this->failure($mediaType, 'invalid_response', 'The detector returned inconsistent scores or labels. No prediction was substituted.');
         }
 
         return [
             'status' => 'completed',
+            'task' => $mediaType === 'image' ? 'AI-generation screening' : 'Sampled-frame synthetic-media screening',
+            'elapsed_ms' => (int) round((microtime(true) - $this->started) * 1000),
+            'failure_reason' => null,
+            'failure_code' => null,
+            'assessed_at' => now()->utc()->toIso8601String(),
+            'input_sha256' => $inputHash,
+            'input_bytes' => $inputBytes,
+            'calibration' => 'not_established',
+            'adapter_version' => 'media-v2',
+            'config_sha256' => is_file($this->configPathForMediaType($mediaType) ?? '') ? hash_file('sha256', $this->configPathForMediaType($mediaType)) : null,
+            'model_name' => $payload['model_name'] ?? 'Trained media CNN',
+            'preprocessing' => $payload['preprocessing'] ?? [],
+            'label_mapping' => $payload['label_mapping'] ?? [],
+            'output_contract' => $payload['output_contract'] ?? [],
+            'raw_output' => ['synthetic_class_score' => (float) $payload['fake_probability'], 'decision_threshold' => (float) $payload['threshold']],
+            'threshold_source' => $payload['threshold_source'] ?? 'deployment_configuration',
+            'model_version' => 'sha256:'.hash_file('sha256', $modelPath),
             'model_family' => (string) ($payload['model_family'] ?? 'cnn'),
             'media_type' => (string) ($payload['media_type'] ?? $mediaType),
             'screening_score' => max(0, min(100, (int) ($payload['screening_score'] ?? 0))),
@@ -94,10 +148,24 @@ class DeepfakeCnnClassifier
         ];
     }
 
+    private function failure(string $mediaType, string $code, string $reason): array
+    {
+        $modelPath = $this->modelPathForMediaType($mediaType);
+
+        return ['status' => 'unavailable', 'media_type' => $mediaType,
+            'task' => $mediaType === 'image' ? 'AI-generation screening' : 'Sampled-frame synthetic-media screening',
+            'model_version' => $modelPath && is_file($modelPath) ? 'sha256:'.hash_file('sha256', $modelPath) : null,
+            'adapter_version' => 'media-v2', 'input_sha256' => $this->inputPath && is_file($this->inputPath) && is_readable($this->inputPath) ? hash_file('sha256', $this->inputPath) : null,
+            'label' => null, 'fake_probability' => null, 'threshold' => null,
+            'failure_code' => $code, 'failure_reason' => $reason,
+            'elapsed_ms' => (int) round((microtime(true) - $this->started) * 1000),
+            'assessed_at' => now()->utc()->toIso8601String()];
+    }
+
     private function uploadedFilePath(UploadedFile $uploadedFile): ?string
     {
         foreach ([$uploadedFile->getRealPath(), $uploadedFile->getPathname()] as $candidate) {
-            if (is_string($candidate) && $candidate !== '' && is_file($candidate)) {
+            if (is_string($candidate) && $candidate !== '' && is_file($candidate) && is_readable($candidate)) {
                 return $candidate;
             }
         }
@@ -195,7 +263,7 @@ class DeepfakeCnnClassifier
             $environment['DEEPFAKE_CNN_INPUT_RANGE'] = $inputRange;
         }
 
-        return $environment;
+        return $environment + WindowsProcessEnvironment::variables();
     }
 
     /**

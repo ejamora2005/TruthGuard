@@ -1,0 +1,20 @@
+{
+  "description": "Short dated document excerpts for pipeline regression only. These are not accuracy or calibration labels. Live requests must retrieve their own current sources.",
+  "checked_on": "2026-10-15",
+  "records": [
+    {
+      "url": "https://www.rappler.com/newsbreak/fact-check/no-barangay-sangguniang-kabataan-postponement-september-22-2026/",
+      "title": "FACT CHECK: Bill postponing 2026 barangay, SK polls not yet a law as of September 22",
+      "name": "Rappler",
+      "published_at": "2026-09-22T09:30:00Z",
+      "excerpts": ["the November 2026 barangay and Sangguniang Kabataan elections will proceed as there is yet no law for its postponement"]
+    },
+    {
+      "url": "https://verafiles.org/articles/fact-check-sc-did-not-junk-law-resetting-bske-to-2028",
+      "title": "FACT CHECK: SC did NOT junk law resetting BSKE to 2028",
+      "name": "VERA Files",
+      "published_at": "2026-10-13",
+      "excerpts": ["Republic Act No. 12326 that postponed the BSKE originally scheduled for Nov. 2.", "moved the next polls to Nov. 13, 2028."]
+    }
+  ]
+}

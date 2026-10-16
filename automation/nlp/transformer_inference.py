@@ -3,6 +3,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import hashlib
+import os
+
+# This endpoint loads a PyTorch DistilBERT checkpoint, not a TensorFlow model.
+os.environ.setdefault('USE_TF', '0')
 
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
@@ -36,6 +41,14 @@ class TruthGuardFilipinoClassifier:
         self.model = AutoModelForSequenceClassification.from_pretrained(str(self.model_dir), local_files_only=True)
         self.model.to(self.device)
         self.model.eval()
+        weights = self.model_dir / 'model.safetensors'
+        if not weights.exists():
+            weights = self.model_dir / 'pytorch_model.bin'
+        digest = hashlib.sha256()
+        with weights.open('rb') as handle:
+            for block in iter(lambda: handle.read(1024 * 1024), b''):
+                digest.update(block)
+        self.version = 'sha256:' + digest.hexdigest()
 
     def _load_tokenizer(self):
         try:
@@ -54,11 +67,20 @@ class TruthGuardFilipinoClassifier:
         if text == "":
             raise ValueError("Article text is empty.")
 
+        token_count = len(self.tokenizer(text, truncation=False, add_special_tokens=True)['input_ids'])
+        limit = min(settings.max_length, self.model.config.max_position_embeddings)
+        metadata = {'model_version': self.version, 'input_tokens': token_count, 'max_length': limit,
+                    'truncated': False, 'preprocessing': 'Whitespace normalization; bundled cased tokenizer',
+                    'task': 'article_style_classification'}
+        if token_count > limit:
+            return {'status': 'unsuitable_long_input', 'verdict': 'Uncertain', 'predicted_label': '',
+                    'confidence': None, 'real_probability': None, 'fake_probability': None,
+                    'word_count': len(text.split()), 'reason': 'Input exceeds the trained input window. No truncated prediction was substituted.', **metadata}
+
         inputs = self.tokenizer(
             text,
             return_tensors="pt",
-            truncation=True,
-            max_length=settings.max_length,
+            truncation=False,
             padding=True,
         ).to(self.device)
 
@@ -84,6 +106,8 @@ class TruthGuardFilipinoClassifier:
             reason = "Prediction passed length and confidence checks."
 
         return {
+            'status': 'completed',
+            **metadata,
             "verdict": verdict,
             "predicted_label": predicted_label,
             "confidence": round(confidence, 4),

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Usage\OpenAiCostMonitor;
+use App\Services\Usage\OpenAiUsageRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -315,6 +317,8 @@ class AdminDataController extends Controller
 
     public function aiUsage(): JsonResponse
     {
+        $requestUsage = app(OpenAiUsageRecorder::class)->monthlySummary();
+        $billing = app(OpenAiCostMonitor::class)->summary();
         $monthlyDetectionTrend = collect(range(1, 12))->map(function (int $month) {
             return [
                 'label' => now()->startOfYear()->addMonths($month - 1)->format('M'),
@@ -353,11 +357,13 @@ class AdminDataController extends Controller
 
         return response()->json([
             'summaryCards' => [
-                ['label' => 'Token Capacity', 'value' => $aiUsageSummary['capacity']['label'], 'note' => $aiUsageSummary['capacity']['description']],
+                ['label' => 'Monthly Spend', 'value' => $billing['usedLabel'], 'note' => $billing['scopeLabel']],
                 ['label' => 'Tokens Used', 'value' => number_format($aiUsageSummary['tokenUsage']['tokensUsed']), 'note' => $aiUsageSummary['tokenUsage']['usageSourceLabel']],
-                ['label' => 'Tokens Remaining', 'value' => $aiUsageSummary['tokenUsage']['tokensRemainingLabel'], 'note' => $aiUsageSummary['tokenUsage']['hasTokenCapacity'] === false ? 'Budget needs attention' : 'Estimated monthly availability'],
-                ['label' => 'This Month', 'value' => number_format($currentMonthDetections), 'note' => 'Detection runs in the current month'],
+                ['label' => 'Budget Remaining', 'value' => $billing['remainingLabel'], 'note' => 'Of your '.$billing['budgetLabel'].' monthly budget'],
+                ['label' => 'API Responses', 'value' => number_format($requestUsage['requests']), 'note' => 'Recorded this UTC month, including errors'],
             ],
+            'billing' => $billing,
+            'requestUsage' => $requestUsage,
             'monthlyUsage' => [
                 'labels' => $monthlyDetectionTrend->pluck('label')->all(),
                 'values' => $monthlyDetectionTrend->pluck('value')->all(),
@@ -493,11 +499,9 @@ class AdminDataController extends Controller
         $monthlyTokenBudget = max(0, (int) config('services.openai.monthly_token_budget', 0));
         $warningThreshold = max(1, min(99, (int) config('services.openai.token_warning_threshold', 80)));
 
-        $monthRange = [now()->startOfMonth(), now()->endOfMonth()];
-        $loggedMonthlyTokens = $this->loggedTokenTotalForRange($monthRange);
-        $estimatedMonthlyTokens = $currentMonthRequests * $estimatedTokensPerRequest;
-        $tokensUsed = $loggedMonthlyTokens > 0 ? $loggedMonthlyTokens : $estimatedMonthlyTokens;
-        $usageSource = $loggedMonthlyTokens > 0 ? 'logged' : 'estimated';
+        $requestUsage = app(OpenAiUsageRecorder::class)->monthlySummary();
+        $tokensUsed = $requestUsage['totalTokens'];
+        $usageSource = 'logged';
         $usagePercent = $monthlyTokenBudget > 0 ? min(100, (int) round(($tokensUsed / $monthlyTokenBudget) * 100)) : 0;
         $tokensRemaining = $monthlyTokenBudget > 0 ? max(0, $monthlyTokenBudget - $tokensUsed) : null;
         $hasTokenCapacity = match (true) {
@@ -539,9 +543,7 @@ class AdminDataController extends Controller
                 'estimatedInputTokensPerRequest' => $estimatedInputTokens,
                 'estimatedOutputTokensPerRequest' => $estimatedOutputTokens,
                 'usageSource' => $usageSource,
-                'usageSourceLabel' => $usageSource === 'logged'
-                    ? 'Stored token telemetry'
-                    : 'Estimated from detection runs',
+                'usageSourceLabel' => 'API response ledger',
                 'hasTokenCapacity' => $hasTokenCapacity,
             ],
             'capacity' => [
@@ -566,9 +568,7 @@ class AdminDataController extends Controller
                 'projectedRemainingLabel' => $projectedRemaining === null ? 'Set budget' : number_format($projectedRemaining),
             ],
             'recommendations' => $this->aiUsageRecommendations($providerEnabled, $monthlyTokenBudget, $usagePercent, $projectedPercent, $usageSource),
-            'usageNote' => $usageSource === 'logged'
-                ? 'Token usage is based on telemetry stored with detection results.'
-                : 'Token usage is estimated from verification runs until direct OpenAI billing telemetry is stored per request.',
+            'usageNote' => 'Tokens are provider-reported counts captured by TruthGuard from monitoring start; earlier reports and external API use are excluded. '.$requestUsage['unmeasuredRequests'].' recorded responses have no token usage; their usage is unknown, not assumed zero. Dollar spending is synced separately from OpenAI billing.',
         ];
     }
 
@@ -627,7 +627,7 @@ class AdminDataController extends Controller
         }
 
         if (($tokensRemaining ?? 0) <= 0) {
-            return ['critical', 'Budget exhausted', 'Estimated monthly token use has reached the configured budget.'];
+            return ['critical', 'Budget exhausted', 'Recorded monthly token use has reached the configured token budget.'];
         }
 
         if ($usagePercent >= $warningThreshold) {

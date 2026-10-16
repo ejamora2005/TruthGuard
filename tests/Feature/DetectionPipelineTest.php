@@ -20,6 +20,8 @@ class DetectionPipelineTest extends TestCase
     {
         parent::setUp();
 
+        // Keep exercising the supported legacy rollback path; EvidenceVerificationTest covers v2.
+        config()->set('fact_check.enhanced_enabled', false);
         config()->set('services.deepfake_cnn.enabled', false);
         config()->set('services.live_verification.enabled', false);
         config()->set('services.openai.analysis_enabled', false);
@@ -120,7 +122,7 @@ class DetectionPipelineTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(route('detections.store'), [
-                'caption_text' => 'Please verify this uploaded face image.',
+                'caption_text' => 'Is this uploaded face image AI-generated?',
                 'media_file' => UploadedFile::fake()->image('uploaded-face.png'),
             ]);
 
@@ -128,11 +130,12 @@ class DetectionPipelineTest extends TestCase
 
         $response->assertRedirect(route('detections.result', $detection));
 
-        $this->assertSame('fake', $detection->verdict);
+        $this->assertSame('LIKELY_AI_GENERATED', $detection->fact_check_result['verdict']);
+        $this->assertSame('media', $detection->fact_check_result['request']['resolved_task']);
         $this->assertSame(91, $detection->fake_score);
         $this->assertSame('fake', $detection->signals['deepfake_cnn'][0]['verdict']);
         $this->assertSame(0.9082, $detection->signals['deepfake_cnn'][0]['fake_probability']);
-        $this->assertStringContainsString('Image CNN', $detection->explanation_summary);
+        $this->assertSame([], $detection->fact_check_result['sources']);
     }
 
     public function test_detection_pipeline_uses_deepfake_cnn_for_uploaded_video(): void
@@ -170,7 +173,7 @@ class DetectionPipelineTest extends TestCase
         $response = $this
             ->actingAs($user)
             ->post(route('detections.store'), [
-                'caption_text' => 'Please verify this uploaded face video.',
+                'caption_text' => 'Is this uploaded face video AI-generated?',
                 'media_file' => UploadedFile::fake()->create('uploaded-face-video.mp4', 128, 'video/mp4'),
             ]);
 
@@ -183,7 +186,8 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame('video', $detection->signals['deepfake_cnn'][0]['media_type']);
         $this->assertSame('top5_mean', $detection->signals['deepfake_cnn'][0]['aggregation_method']);
         $this->assertSame(16, $detection->signals['deepfake_cnn'][0]['frames_used']);
-        $this->assertStringContainsString('Video CNN', $detection->explanation_summary);
+        $this->assertSame('LIKELY_AI_GENERATED', $detection->fact_check_result['verdict']);
+        $this->assertSame('media', $detection->fact_check_result['request']['resolved_task']);
     }
 
     public function test_detection_pipeline_uses_local_filipino_classifier_for_long_article_text(): void
@@ -222,11 +226,12 @@ class DetectionPipelineTest extends TestCase
             && $request['article'] === $article
             && $request['min_words'] === 20);
 
-        $this->assertSame('fake', $detection->verdict);
+        $this->assertSame('review', $detection->verdict);
+        $this->assertSame('UNVERIFIABLE', $detection->fact_check_result['verdict']);
         $this->assertGreaterThanOrEqual(72, $detection->fake_score);
         $this->assertSame('fake', $detection->signals['local_nlp'][0]['verdict']);
         $this->assertSame('1', $detection->signals['local_nlp'][0]['predicted_label']);
-        $this->assertStringContainsString('Filipino article classifier', $detection->explanation_summary);
+        $this->assertSame([], $detection->fact_check_result['sources']);
     }
 
     public function test_detection_center_shows_selected_case_pipeline_sections(): void
@@ -275,12 +280,9 @@ class DetectionPipelineTest extends TestCase
         $response->assertDontSee('Latest Result Ready');
         $response->assertDontSee('Latest Detection Result');
         $response->assertSee('Result');
-        $response->assertSee('AI confidence');
-        $response->assertSee('52%');
-        $response->assertSee('Needs Review at 52% risk because the strongest signal was: the source lacks corroboration.');
-        $response->assertSee('Review strongest source');
-        $response->assertSee('Source verification');
-        $response->assertSee('Google Fact Check Explorer');
+        $response->assertSee('Historical: Needs Review');
+        $response->assertSee('No reviewed source established a factual conclusion');
+        $response->assertDontSee('Google Fact Check Explorer');
     }
 
     public function test_detection_center_shows_uploaded_media_result_panel(): void
@@ -326,8 +328,8 @@ class DetectionPipelineTest extends TestCase
 
         $response->assertOk();
         $this->assertSame('/storage/detections/example-proof.png', $detection->media_url);
-        $response->assertSee('latest-detection-result', false);
-        $response->assertSee('Likely Real at 24% risk because the strongest signal was: limited corroborating context.');
+        $response->assertSee('data-fact-check-verdict="UNVERIFIED"', false);
+        $response->assertDontSee('Likely Real at 24% risk because the strongest signal was: limited corroborating context.');
         $response->assertSee('/storage/detections/example-proof.png');
     }
 
@@ -481,6 +483,7 @@ class DetectionPipelineTest extends TestCase
 
     public function test_detection_submission_reuses_matching_analysis_across_users(): void
     {
+        $this->freezeTime();
         Storage::fake('public');
 
         $firstUser = User::factory()->create();
@@ -520,8 +523,23 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame($firstDetection->request_fingerprint, $secondDetection->request_fingerprint);
         $this->assertSame($firstDetection->fake_score, $secondDetection->fake_score);
         $this->assertSame($firstDetection->verdict, $secondDetection->verdict);
+        $this->assertSame($firstDetection->fact_check_result, $secondDetection->fact_check_result);
         $this->assertSame($firstDetection->id, $secondDetection->reused_from_detection_id);
         $this->assertStringContainsString('reused the stored result', (string) $secondDetection->preprocessing_summary);
+    }
+
+    public function test_repeated_submission_with_a_new_cutoff_does_not_reuse_an_old_result(): void
+    {
+        $this->freezeTime();
+        $user = User::factory()->create();
+        $input = ['caption_text' => 'Are classes suspended in Manila today?'];
+        $first = app(DetectionPipeline::class)->run($user, $input, null);
+        $this->travel(1)->minutes();
+        $second = app(DetectionPipeline::class)->run($user, $input, null);
+
+        $this->assertSame($first->request_fingerprint, $second->request_fingerprint);
+        $this->assertNull($second->reused_from_detection_id);
+        $this->assertNotSame($first->fact_check_result['evidence_cutoff'], $second->fact_check_result['evidence_cutoff']);
     }
 
     private function createSharedUpload(): UploadedFile

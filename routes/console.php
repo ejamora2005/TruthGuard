@@ -9,6 +9,9 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
+Schedule::command('truthguard:sync-openai-costs')->everyFiveMinutes()->withoutOverlapping()
+    ->when(fn () => filled(config('services.openai.admin_key')));
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
