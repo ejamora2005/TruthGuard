@@ -3,12 +3,16 @@
     $logoUrl = is_file(public_path($logoPath)) ? asset($logoPath) : null;
 @endphp
 
+@once
+    <script data-navigate-once>{!! file_get_contents(resource_path('js/login-options.js')) !!}</script>
+@endonce
+
 <div class="truthguard-auth-shell relative flex h-dvh w-full items-center justify-center overflow-hidden bg-slate-100 px-4 sm:px-6 lg:px-8">
     @include('partials.auth-background')
 
     <div class="relative z-10 w-full max-w-md">
         <div
-            x-data="{ authLoading: null, rememberDevice: window.truthguardStandalone === true || @js((bool) old('remember', false)) }"
+            x-data="truthguardLoginOptions(@js((bool) old('remember', true)))"
             class="truthguard-auth-card tg-auth-card-detailed rounded-2xl border-2 border-slate-300 bg-white p-5 shadow-2xl shadow-slate-400/40 ring-2 ring-slate-200/70 backdrop-blur-xl sm:p-6"
         >
             <a href="{{ route('home') }}" class="mb-4 inline-flex w-full flex-col items-center justify-center gap-2">
@@ -44,10 +48,13 @@
                 method="POST"
                 action="{{ route('login') }}"
                 class="space-y-3"
-                x-on:submit="authLoading = 'password'"
+                x-on:submit="submitLogin($event)"
                 x-bind:aria-busy="authLoading === 'password'"
             >
                 @csrf
+                <input type="hidden" name="pwa" value="0" x-bind:value="isPwa ? '1' : '0'">
+                <input type="hidden" name="remember" value="0">
+                <p x-show="authError" x-cloak style="display:none;" x-text="authError" role="alert" class="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
                 <div>
                     <label for="email" class="mb-1 block text-sm font-semibold text-slate-700">Email</label>
                     <div class="relative">
@@ -122,9 +129,14 @@
                     @enderror
                 </div>
 
-                <label class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">
-                    <input type="checkbox" name="remember" value="1" x-model="rememberDevice" @checked(old('remember')) class="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" style="width:20px;height:20px;min-height:20px;flex:none">
+                <label x-show="isPwa" x-cloak style="display:none;" data-login-option="pwa" class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">
+                    <input type="checkbox" name="remember" value="1" x-model="rememberDevice" disabled x-bind:disabled="!isPwa" class="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" style="width:20px;height:20px;min-height:20px;flex:none">
                     <span>Keep me signed in for 30 days<span class="block text-xs text-slate-500">Use only on your personal device.</span></span>
+                </label>
+
+                <label x-show="!isPwa" x-cloak style="display:none;" data-login-option="web" class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">
+                    <input type="checkbox" x-model="rememberPassword" disabled x-bind:disabled="isPwa" class="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" style="width:20px;height:20px;min-height:20px;flex:none">
+                    <span>Remember password<span class="block text-xs text-slate-500">Let your browser offer to save your password.</span></span>
                 </label>
 
                 <div class="flex items-center justify-end text-sm">
@@ -163,7 +175,7 @@
             <div class="flex items-center justify-center gap-3">
                 <a
                     href="{{ route('google.redirect') }}"
-                    x-bind:href="@js(route('google.redirect')) + '?remember=' + (rememberDevice ? '1' : '0')"
+                    x-bind:href="@js(route('google.redirect')) + '?remember=' + (isPwa && rememberDevice ? '1' : '0') + '&pwa=' + (isPwa ? '1' : '0')"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
                     aria-label="Continue with Google"
                     x-on:click="if (authLoading) { $event.preventDefault(); return; } authLoading = 'google'"
@@ -187,7 +199,7 @@
 
                 <a
                     href="{{ route('facebook.redirect') }}"
-                    x-bind:href="@js(route('facebook.redirect')) + '?remember=' + (rememberDevice ? '1' : '0')"
+                    x-bind:href="@js(route('facebook.redirect')) + '?remember=' + (isPwa && rememberDevice ? '1' : '0') + '&pwa=' + (isPwa ? '1' : '0')"
                     class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
                     aria-label="Continue with Facebook"
                     x-on:click="if (authLoading) { $event.preventDefault(); return; } authLoading = 'facebook'"

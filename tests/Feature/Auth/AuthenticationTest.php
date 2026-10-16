@@ -3,13 +3,24 @@
 namespace Tests\Feature\Auth;
 
 use App\Models\User;
+use App\Services\Detections\GoogleFactCheckFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Http::preventStrayRequests();
+        Notification::fake();
+        $this->mock(GoogleFactCheckFeedService::class)
+            ->shouldReceive('latest')->andReturn(['items' => [], 'configured' => true]);
+    }
 
     public function test_login_screen_can_be_rendered(): void
     {
@@ -17,39 +28,30 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeVolt('pages.auth.login');
+            ->assertViewIs('auth.login')
+            ->assertSee('name="email"', false)
+            ->assertSee('name="password"', false);
     }
 
     public function test_users_can_authenticate_using_the_login_screen(): void
     {
         $user = User::factory()->create();
 
-        $component = Volt::test('pages.auth.login')
-            ->set('form.email', $user->email)
-            ->set('form.password', 'password');
-
-        $component->call('login');
-
-        $component
-            ->assertHasNoErrors()
+        $this->post(route('login'), ['email' => $user->email, 'password' => 'password'])
+            ->assertSessionHasNoErrors()
             ->assertRedirect(route('dashboard', absolute: false));
 
-        $this->assertAuthenticated();
+        $this->assertAuthenticatedAs($user);
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void
     {
         $user = User::factory()->create();
 
-        $component = Volt::test('pages.auth.login')
-            ->set('form.email', $user->email)
-            ->set('form.password', 'wrong-password');
-
-        $component->call('login');
-
-        $component
-            ->assertHasErrors()
-            ->assertNoRedirect();
+        $this->from(route('login'))
+            ->post(route('login'), ['email' => $user->email, 'password' => 'wrong-password'])
+            ->assertSessionHasErrors('email')
+            ->assertRedirect(route('login'));
 
         $this->assertGuest();
     }
@@ -64,7 +66,8 @@ class AuthenticationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSeeVolt('layout.navigation');
+            ->assertViewIs('user.dashboard')
+            ->assertSee('action="'.route('logout', absolute: false).'"', false);
     }
 
     public function test_users_can_logout(): void
@@ -73,12 +76,7 @@ class AuthenticationTest extends TestCase
 
         $this->actingAs($user);
 
-        $component = Volt::test('layout.navigation');
-
-        $component->call('logout');
-
-        $component
-            ->assertHasNoErrors()
+        $this->post(route('logout'))
             ->assertRedirect(route('login', absolute: false));
 
         $this->assertGuest();

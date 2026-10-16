@@ -27,7 +27,7 @@ class GoogleAuthController extends Controller
                 ->with('auth_error', 'Google sign-in is not configured yet.');
         }
 
-        request()->session()->put('oauth_remember', request()->boolean('remember'));
+        $this->storeRememberChoice();
 
         return $this->socialiteDriver('google')->redirect();
     }
@@ -58,7 +58,7 @@ class GoogleAuthController extends Controller
                 ->with('auth_error', 'Facebook sign-in is not configured yet.');
         }
 
-        request()->session()->put('oauth_remember', request()->boolean('remember'));
+        $this->storeRememberChoice();
 
         return $this->socialiteDriver('facebook')
             ->scopes(['email'])
@@ -239,7 +239,12 @@ class GoogleAuthController extends Controller
     {
         $this->ensureUserCanSignIn($user);
 
-        app(RememberedLogin::class)->establish($user, (bool) request()->session()->pull('oauth_remember', false));
+        // Use the context from the initiating window, not provider callback parameters.
+        app(RememberedLogin::class)->establish(
+            $user,
+            (bool) request()->session()->pull('oauth_remember', false),
+            (bool) request()->session()->pull('oauth_pwa', false),
+        );
         request()->session()->regenerate();
         app(SessionTimeoutManager::class)->touch(request());
 
@@ -262,6 +267,13 @@ class GoogleAuthController extends Controller
         if (in_array($status, ['inactive', 'suspended'], true)) {
             throw new RuntimeException('Your account is not active. Please contact TruthGuard support.');
         }
+    }
+
+    private function storeRememberChoice(): void
+    {
+        $pwa = request()->boolean('pwa');
+        request()->session()->put('oauth_pwa', $pwa);
+        request()->session()->put('oauth_remember', $pwa && request()->boolean('remember'));
     }
 
     private function findUserByEmail(string $email, ?int $exceptUserId = null): ?User

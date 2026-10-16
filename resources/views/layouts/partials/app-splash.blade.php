@@ -1,5 +1,5 @@
 @once
-<div id="truthguard-app-splash" class="tg-loader" data-truthguard-splash role="status" aria-live="polite" aria-hidden="true" aria-label="Loading TruthGuard">
+<div id="truthguard-app-splash" class="tg-loader" data-truthguard-splash role="status" aria-live="polite" aria-hidden="true" aria-label="Loading TruthGuard" tabindex="-1">
     <div class="tg-loader-panel">
         <div class="tg-loader-mark" aria-hidden="true">
             <span class="tg-loader-ring"></span>

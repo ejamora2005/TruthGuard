@@ -6,6 +6,7 @@
     // Detect this window, not whether an app was installed in another browser tab.
     window.truthguardStandalone = window.matchMedia('(display-mode: standalone)').matches
         || window.matchMedia('(display-mode: minimal-ui)').matches
+        || window.matchMedia('(display-mode: window-controls-overlay)').matches
         || window.navigator.standalone === true;
     // Existing installations may still launch the original manifest's homepage URL.
     // Protected routes restore the remembered session or redirect safely to login.

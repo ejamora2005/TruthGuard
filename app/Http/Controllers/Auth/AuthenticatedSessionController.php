@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Services\Auth\PostLoginDestination;
 use App\Services\Auth\SessionTimeoutManager;
 use App\Services\Notifications\TruthGuardNotificationManager;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -34,8 +36,7 @@ class AuthenticatedSessionController extends Controller
         LoginRequest $request,
         SessionTimeoutManager $sessionTimeoutManager,
         TruthGuardNotificationManager $notifications,
-    ): RedirectResponse
-    {
+    ): RedirectResponse|JsonResponse {
         $request->authenticate();
 
         $request->session()->regenerate();
@@ -51,9 +52,15 @@ class AuthenticatedSessionController extends Controller
             $notifications->sendWelcomeOnce($user);
         }
 
-        return redirect()
-            ->to(app(\App\Services\Auth\PostLoginDestination::class)->resolve($request, $user))
-            ->with('truthguard_auth_completed', true);
+        $destination = app(PostLoginDestination::class)->resolve($request, $user);
+        $request->session()->flash('truthguard_auth_completed', true);
+
+        if ($request->expectsJson()) {
+            return response()->json(['authenticated' => true, 'redirect' => $destination])
+                ->header('Cache-Control', 'no-store');
+        }
+
+        return redirect()->to($destination);
     }
 
     /**

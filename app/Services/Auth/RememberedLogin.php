@@ -13,9 +13,10 @@ class RememberedLogin
 
     public const MINUTES = 30 * 24 * 60;
 
-    public function establish(User $user, bool $requested): void
+    public function establish(User $user, bool $requested, bool $pwa = false): void
     {
-        $remember = $requested && ! $user->isAdmin();
+        // Login callers must explicitly carry the initiating window's PWA context.
+        $remember = $requested && $pwa && ! $user->isAdmin();
         $guard = Auth::guard('web');
         $guard->setRememberDuration(self::MINUTES);
         $guard->login($user, $remember);
@@ -26,7 +27,7 @@ class RememberedLogin
 
             return;
         }
-        $record = ['user' => (string) $user->id, 'until' => now()->timestamp + self::MINUTES * 60,
+        $record = ['user' => (string) $user->id, 'pwa' => true, 'until' => now()->timestamp + self::MINUTES * 60,
             'credential' => hash('sha256', $user->getAuthPassword())];
         request()->session()->put(self::KEY, $record);
         // Laravel's EncryptCookies protects this absolute deadline against tampering.
@@ -50,7 +51,8 @@ class RememberedLogin
             return null;
         }
         $user = $request->user();
-        if (! $user || $user->isAdmin() || ($record['user'] ?? '') !== (string) $user->id
+        // Older records allowed browser opt-in, so they must be renewed in the PWA.
+        if (! $user || $user->isAdmin() || ($record['pwa'] ?? false) !== true || ($record['user'] ?? '') !== (string) $user->id
             || ! hash_equals(hash('sha256', $user->getAuthPassword()), (string) ($record['credential'] ?? ''))) {
             return 0;
         }

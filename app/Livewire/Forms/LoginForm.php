@@ -21,6 +21,8 @@ class LoginForm extends Form
 
     public bool $remember = false;
 
+    public bool $pwa = false;
+
     /**
      * Attempt to authenticate the request's credentials.
      *
@@ -38,7 +40,7 @@ class LoginForm extends Form
             ]);
         }
 
-        app(RememberedLogin::class)->establish(Auth::user(), $this->remember);
+        app(RememberedLogin::class)->establish(Auth::user(), $this->remember, $this->pwa);
         RateLimiter::clear($this->throttleKey());
     }
 

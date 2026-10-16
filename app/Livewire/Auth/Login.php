@@ -19,6 +19,8 @@ class Login extends Component
 
     public bool $remember = false;
 
+    public bool $pwa = false;
+
     protected function rules(): array
     {
         return [
@@ -46,7 +48,7 @@ class Login extends Component
             return;
         }
 
-        app(RememberedLogin::class)->establish(Auth::user(), $this->remember);
+        app(RememberedLogin::class)->establish(Auth::user(), $this->remember, $this->pwa);
         request()->session()->regenerate();
         app(SessionTimeoutManager::class)->touch(request());
         request()->session()->forget('url.intended');

@@ -32,6 +32,7 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'string'],
             'password' => ['required', 'string'],
             'remember' => ['sometimes', 'boolean'],
+            'pwa' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -58,7 +59,7 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        app(RememberedLogin::class)->establish(Auth::user(), $this->boolean('remember'));
+        app(RememberedLogin::class)->establish(Auth::user(), $this->boolean('remember'), $this->boolean('pwa'));
         RateLimiter::clear($this->throttleKey());
     }
 

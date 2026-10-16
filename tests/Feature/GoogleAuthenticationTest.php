@@ -20,10 +20,53 @@ class GoogleAuthenticationTest extends TestCase
     {
         Notification::fake();
         $this->mockGoogleUser();
-        $this->withSession(['oauth_remember' => true])->get(route('google.callback'))
+        $this->withSession(['oauth_remember' => true, 'oauth_pwa' => true])->get(route('google.callback'))
             ->assertRedirect()->assertCookie(RememberedLogin::KEY)
-            ->assertSessionMissing('oauth_remember');
+            ->assertSessionMissing('oauth_remember')->assertSessionMissing('oauth_pwa');
         $this->assertNotNull(session(RememberedLogin::KEY));
+    }
+
+    public function test_browser_google_login_cannot_get_remembered_access_from_callback_parameters(): void
+    {
+        Notification::fake();
+        $this->mockGoogleUser();
+        $this->withSession(['oauth_remember' => true, 'oauth_pwa' => false])
+            ->get(route('google.callback', ['remember' => '1', 'pwa' => '1']))
+            ->assertRedirect()->assertSessionMissing(RememberedLogin::KEY)
+            ->assertCookieExpired(RememberedLogin::KEY)->assertSessionMissing('oauth_pwa');
+        $this->assertAuthenticated();
+    }
+
+    public function test_facebook_remembers_only_pwa_logins(): void
+    {
+        Notification::fake();
+        $this->mockFacebookUser();
+        $this->withSession(['oauth_remember' => true, 'oauth_pwa' => true])->get(route('facebook.callback'))
+            ->assertRedirect()->assertCookie(RememberedLogin::KEY)->assertSessionMissing('oauth_pwa');
+        $this->post('/logout');
+        $this->withSession(['oauth_remember' => true, 'oauth_pwa' => false])->get(route('facebook.callback'))
+            ->assertRedirect()->assertCookieExpired(RememberedLogin::KEY)->assertSessionMissing(RememberedLogin::KEY);
+    }
+
+    public function test_oauth_redirect_remembers_the_initiating_window_context_for_both_providers(): void
+    {
+        foreach (['google', 'facebook'] as $providerName) {
+            config()->set('services.'.$providerName.'.client_id', 'test-client');
+            config()->set('services.'.$providerName.'.client_secret', 'test-secret');
+            config()->set('services.'.$providerName.'.redirect', 'http://localhost/auth/'.$providerName.'/callback');
+            $provider = Mockery::mock();
+            $provider->shouldReceive('redirectUrl')->andReturnSelf();
+            $provider->shouldReceive('stateless')->andReturnSelf();
+            $provider->shouldReceive('scopes')->andReturnSelf();
+            $provider->shouldReceive('fields')->andReturnSelf();
+            $provider->shouldReceive('redirect')->andReturn(redirect('https://example.com/oauth'));
+            Socialite::shouldReceive('driver')->with($providerName)->andReturn($provider);
+
+            $this->get(route($providerName.'.redirect', ['remember' => '1', 'pwa' => '1']))
+                ->assertRedirect()->assertSessionHas('oauth_remember', true)->assertSessionHas('oauth_pwa', true);
+            $this->get(route($providerName.'.redirect', ['remember' => '1']))
+                ->assertRedirect()->assertSessionHas('oauth_remember', false)->assertSessionHas('oauth_pwa', false);
+        }
     }
 
     protected function tearDown(): void
