@@ -43,7 +43,8 @@ class ResearchWorkflowTest extends TestCase
             $this->assertTrue($request['tools'][0]['external_web_access']);
             $this->assertSame('required', $request['tool_choice']);
             $this->assertSame(['web_search_call.action.sources'], $request['include']);
-            $this->assertSame(3, $request['max_tool_calls']);
+            $this->assertSame(1, $request['max_tool_calls']);
+            $this->assertSame('low', $request['tools'][0]['search_context_size']);
 
             return true;
         });
@@ -129,7 +130,7 @@ class ResearchWorkflowTest extends TestCase
         $url = 'https://example.gov/specific-record';
         $old = str_repeat('A previously retrieved schedule. ', 4);
         $new = str_repeat('The updated official schedule. ', 4);
-        Cache::put('evidence-page:v1:'.hash('sha256', $url), ['text' => $old, 'status' => 'retrieved'], 300);
+        Cache::put('evidence-page:v2:'.hash('sha256', $url), ['text' => $old, 'status' => 'retrieved'], 300);
         Http::preventStrayRequests();
         Http::fake([$url => Http::response($new, 200, ['Content-Type' => 'text/plain'])]);
         $fetcher = $this->partialMock(SafeArticleFetcher::class);

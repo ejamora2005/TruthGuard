@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\PublicClaimReviewAnnouncement;
 use App\Notifications\PublicClaimReviewPublished;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class PublicClaimReviewPublishedTest extends TestCase
 {
@@ -21,7 +21,7 @@ class PublicClaimReviewPublishedTest extends TestCase
         ]);
         $announcement->id = 123;
 
-        $payload = (new PublicClaimReviewPublished($announcement))->toArray(new \stdClass());
+        $payload = (new PublicClaimReviewPublished($announcement))->toArray(new \stdClass);
 
         $this->assertSame('news', $payload['category']);
         $this->assertSame('Latest public claim review', $payload['title']);
@@ -37,6 +37,6 @@ class PublicClaimReviewPublishedTest extends TestCase
             'headline' => 'FACT CHECK: Another verified-news item',
         ]);
 
-        $this->assertSame(['mail'], (new PublicClaimReviewPublished($announcement))->via(new \stdClass()));
+        $this->assertSame(['mail'], (new PublicClaimReviewPublished($announcement))->via(new \stdClass));
     }
 }

@@ -123,6 +123,8 @@
         x-data="{
             activeTab: 'all',
             notifications: @js($notifications),
+            pendingArchives: [],
+            errorMessage: '',
             csrfToken: @js(csrf_token()),
             markAllUrl: @js(route('notifications.mark-all-read', absolute: false)),
             readUrlTemplate: @js(url('/notifications/__ID__/read')),
@@ -159,6 +161,7 @@
 
                 await fetch(this.readUrlTemplate.replace('__ID__', id), {
                     method: 'POST',
+                    keepalive: true,
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
@@ -187,12 +190,9 @@
                 });
             },
             async archiveNotification(id) {
-                const index = this.notifications.findIndex((notification) => notification.id === id);
-                if (index === -1) return;
-
-                const removed = this.notifications[index];
-                this.notifications.splice(index, 1);
-
+                if (this.pendingArchives.includes(id)) return;
+                this.pendingArchives.push(id);
+                this.errorMessage = '';
                 try {
                     const response = await fetch(this.deleteUrlTemplate.replace('__ID__', id), {
                         method: 'DELETE',
@@ -204,12 +204,17 @@
                     });
 
                     if (!response.ok) throw new Error('Failed to archive notification.');
+                    window.dispatchEvent(new CustomEvent('truthguard:notification-archived', { detail: { id } }));
                 } catch (error) {
-                    this.notifications.splice(index, 0, removed);
+                    this.errorMessage = 'Could not remove this notification. Please try again.';
+                } finally {
+                    this.pendingArchives = this.pendingArchives.filter((pending) => pending !== id);
                 }
             },
         }"
+        @truthguard:notification-archived.window="notifications = notifications.filter((notification) => notification.id !== $event.detail.id)"
     >
+        <p x-show="errorMessage" x-cloak x-text="errorMessage" role="status" class="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600"></p>
         <section class="truthguard-notifications-shell overflow-hidden rounded-[24px] border">
             <div class="truthguard-notifications-hero border-b border-slate-200/80 px-5 py-5 sm:px-6">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -318,6 +323,8 @@
                                     <button
                                         type="button"
                                         @click="archiveNotification(notification.id)"
+                                        :disabled="pendingArchives.includes(notification.id)"
+                                        :aria-busy="pendingArchives.includes(notification.id)"
                                         class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 transition hover:-translate-y-0.5 hover:bg-rose-50 hover:text-rose-700"
                                         :aria-label="'Archive ' + notification.title"
                                         title="Archive notification"

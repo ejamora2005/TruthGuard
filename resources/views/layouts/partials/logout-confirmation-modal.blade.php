@@ -5,36 +5,30 @@
         : 'Your current session will end.';
 @endphp
 
-<div
-    x-show="logoutConfirmOpen"
-    x-cloak
-    class="fixed inset-0"
-    style="display: none; z-index: 2147483647;"
+<dialog
+    x-data="{ previousOverflow: '' }"
+    x-init="$watch('logoutConfirmOpen', value => {
+        if (value) {
+            previousOverflow = document.documentElement.style.overflow;
+            $el.showModal();
+            document.documentElement.style.overflow = 'hidden';
+        } else if ($el.open) {
+            $el.close();
+            document.documentElement.style.overflow = previousOverflow;
+        }
+    })"
+    class="tg-dialog"
+    style="width: min(24rem, calc(100vw - 2rem));"
     role="dialog"
     aria-modal="true"
     aria-labelledby="truthguard-logout-title"
-    @keydown.escape.window="if (!logoutSubmitting) logoutConfirmOpen = false"
+    @cancel.prevent="if (!logoutSubmitting) logoutConfirmOpen = false"
 >
     <div
-        x-show="logoutConfirmOpen"
-        x-transition.opacity
-        class="absolute inset-0 bg-slate-950/55 backdrop-blur-md"
-        @click="if (!logoutSubmitting) logoutConfirmOpen = false"
-    ></div>
-
-    <div
-        x-show="logoutConfirmOpen"
-        x-transition:enter="ease-out duration-300"
-        x-transition:enter-start="opacity-0 translate-y-4 sm:scale-95"
-        x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-        x-transition:leave="ease-in duration-200"
-        x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-        x-transition:leave-end="opacity-0 translate-y-4 sm:scale-95"
-        class="fixed overflow-hidden rounded-[24px] border border-blue-100 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.24)]"
-        style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(24rem, calc(100vw - 2rem));"
+        class="relative overflow-hidden"
     >
         <div class="relative overflow-hidden">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(37,99,235,0.16),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(14,165,233,0.16),transparent_34%),linear-gradient(180deg,#ffffff,#f8fbff)]"></div>
+            <div class="truthguard-logout-decoration absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(37,99,235,0.16),transparent_32%),radial-gradient(circle_at_90%_10%,rgba(14,165,233,0.16),transparent_34%),linear-gradient(180deg,#ffffff,#f8fbff)]"></div>
             <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-cyan-400 to-violet-500"></div>
 
             <div class="relative space-y-4 p-5 sm:p-6">
@@ -58,6 +52,7 @@
                         class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                         @click="logoutConfirmOpen = false"
                         :disabled="logoutSubmitting"
+                        autofocus
                         aria-label="Close logout confirmation"
                     >
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -112,4 +107,4 @@
             </div>
         </div>
     </div>
-</div>
+</dialog>

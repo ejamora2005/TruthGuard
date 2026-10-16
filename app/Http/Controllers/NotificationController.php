@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Notifications\NotificationInbox;
 use App\Services\Notifications\NotificationUrl;
 use App\Services\Notifications\TruthGuardNotificationManager;
 use Illuminate\Http\JsonResponse;
@@ -39,10 +40,14 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $notification): View
+    public function show(Request $request, string $notification): View|RedirectResponse
     {
         $record = $this->visibleNotifications($request)->whereKey($notification)->firstOrFail();
         $record->markAsRead();
+
+        if ($resultUrl = NotificationInbox::resultUrl($record->data ?: [])) {
+            return redirect($resultUrl);
+        }
 
         return view('notifications.show', [
             'notification' => $this->formatNotification($record),
@@ -70,7 +75,7 @@ class NotificationController extends Controller
             'unreadCount' => $this->visibleUnreadNotifications($request)->count(),
             'latestId' => $latestUnread?->id,
             'notifications' => $notifications,
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function markAsRead(Request $request, DatabaseNotification $notification): JsonResponse|RedirectResponse
@@ -100,12 +105,14 @@ class NotificationController extends Controller
     {
         $this->authorizeNotification($request, $notification);
 
+        $updates = [
+            'read_at' => $notification->read_at ?? now(),
+            'data' => array_replace($notification->data ?: [], ['dismissed_at' => now()->toIso8601String()]),
+        ];
         if ($this->supportsArchivedNotifications()) {
-            $notification->forceFill([
-                'read_at' => $notification->read_at ?? now(),
-                'archived_at' => now(),
-            ])->save();
+            $updates['archived_at'] = now();
         }
+        $notification->forceFill($updates)->save();
 
         if ($request->expectsJson()) {
             $latestUnread = $this->visibleUnreadNotifications($request)
@@ -124,24 +131,12 @@ class NotificationController extends Controller
 
     private function visibleNotifications(Request $request)
     {
-        $query = $request->user()->notifications();
-
-        if ($this->supportsArchivedNotifications()) {
-            $query->whereNull('archived_at');
-        }
-
-        return $query;
+        return NotificationInbox::visible($request->user());
     }
 
     private function visibleUnreadNotifications(Request $request)
     {
-        $query = $request->user()->unreadNotifications();
-
-        if ($this->supportsArchivedNotifications()) {
-            $query->whereNull('archived_at');
-        }
-
-        return $query;
+        return NotificationInbox::visible($request->user(), unread: true);
     }
 
     private function supportsArchivedNotifications(): bool
@@ -163,44 +158,6 @@ class NotificationController extends Controller
 
     private function formatNotification(DatabaseNotification $notification): array
     {
-        $data = $notification->data ?: [];
-
-        return [
-            'id' => (string) $notification->id,
-            'title' => (string) data_get($data, 'title', 'TruthGuard notification'),
-            'message' => $this->sanitizeNotificationMessage(
-                (string) data_get($data, 'message', 'Open TruthGuard to review the latest update.'),
-                $data
-            ),
-            'category' => (string) data_get($data, 'category', 'system'),
-            'actionUrl' => route('notifications.show', $notification->id, absolute: false),
-            'actionLabel' => 'Read notification',
-            'icon' => (string) data_get($data, 'icon', 'bell'),
-            'imageUrl' => (string) data_get($data, 'image_url', ''),
-            'publisher' => (string) data_get($data, 'publisher', ''),
-            'rating' => (string) data_get($data, 'rating', ''),
-            'createdAt' => $notification->created_at?->diffForHumans() ?? '',
-            'unread' => $notification->read_at === null,
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function sanitizeNotificationMessage(string $message, array $data): string
-    {
-        if (! preg_match('/TG-\d+/i', $message)) {
-            return $message;
-        }
-
-        $confidence = (int) data_get($data, 'confidence', 0);
-
-        if ((string) data_get($data, 'category') === 'fact-check') {
-            return $confidence > 0
-                ? "TruthGuard completed your latest fact check with {$confidence}% confidence."
-                : 'TruthGuard completed your latest fact check.';
-        }
-
-        return trim((string) preg_replace('/\s*TG-\d+\s*/i', ' ', $message));
+        return NotificationInbox::format($notification);
     }
 }

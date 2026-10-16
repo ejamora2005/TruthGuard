@@ -3,12 +3,39 @@
 namespace Tests\Unit;
 
 use App\Models\Detection;
+use App\Services\Detections\AssessmentVerdict;
 use App\Services\Detections\DetectionVerdictPresenter;
 use App\Services\Detections\FactCheckRatingNormalizer;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class DetectionVerdictPresenterTest extends TestCase
 {
+    public static function canonicalMediaVerdicts(): array
+    {
+        return array_map(fn ($verdict) => [$verdict, AssessmentVerdict::label($verdict)],
+            AssessmentVerdict::MEDIA);
+    }
+
+    #[DataProvider('canonicalMediaVerdicts')]
+    public function test_saved_media_verdicts_do_not_become_generic_real_or_fake_labels(string $verdict, string $label): void
+    {
+        $detection = new Detection(['verdict' => 'fake', 'fake_score' => 99, 'fact_check_result' => [
+            'schema_version' => 4, 'primary_task' => 'media', 'verdict' => $verdict,
+            'summary' => 'This recorded screening does not prove AI-generated origin or human origin.',
+        ]]);
+        $before = $detection->getAttributes();
+        $presentation = DetectionVerdictPresenter::forDetection($detection);
+        $this->assertSame($label, $presentation['verdict_label']);
+        $this->assertSame($label, $presentation['history_label']);
+        $this->assertSame($label, $presentation['notification_label']);
+        $this->assertNull($presentation['source_rating']);
+        if (in_array($verdict, ['LIKELY_NOT_AI_GENERATED', 'NO_MANIPULATION_DETECTED', 'INCONCLUSIVE'], true)) {
+            $this->assertNotSame('ai_generated', $presentation['category_key']);
+        }
+        $this->assertSame($before, $detection->getAttributes());
+    }
+
     public function test_ai_generated_detection_uses_specific_public_label(): void
     {
         $detection = new Detection([

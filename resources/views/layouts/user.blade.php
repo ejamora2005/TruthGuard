@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        @include('layouts.partials.appearance-preferences')
         @include('layouts.partials.global-loader-assets')
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -65,39 +66,9 @@
             $latestUnreadNotificationId = null;
 
             if ($user && \Illuminate\Support\Facades\Schema::hasTable('notifications')) {
-                $hasNotificationArchive = \Illuminate\Support\Facades\Schema::hasColumn('notifications', 'archived_at');
-                $formatNavNotification = static function ($notification): array {
-                    $data = $notification->data ?: [];
-                    $message = (string) data_get($data, 'message', 'Open TruthGuard to review the latest update.');
-
-                    if (preg_match('/TG-\d+/i', $message)) {
-                        $confidence = (int) data_get($data, 'confidence', 0);
-                        $message = ((string) data_get($data, 'category') === 'fact-check')
-                            ? ($confidence > 0
-                                ? "TruthGuard completed your latest fact check with {$confidence}% confidence."
-                                : 'TruthGuard completed your latest fact check.')
-                            : trim((string) preg_replace('/\s*TG-\d+\s*/i', ' ', $message));
-                    }
-
-                    return [
-                        'id' => (string) $notification->id,
-                        'title' => (string) data_get($data, 'title', 'TruthGuard notification'),
-                        'message' => $message,
-                        'category' => (string) data_get($data, 'category', 'system'),
-                        'actionUrl' => route('notifications.show', $notification->id, absolute: false),
-                        'actionLabel' => (string) data_get($data, 'action_label', 'Open'),
-                        'createdAt' => $notification->created_at?->diffForHumans() ?? '',
-                        'unread' => $notification->read_at === null,
-                    ];
-                };
-
-                $unreadNotificationQuery = $user->unreadNotifications();
-                $notificationQuickQuery = $user->notifications();
-
-                if ($hasNotificationArchive) {
-                    $unreadNotificationQuery->whereNull('archived_at');
-                    $notificationQuickQuery->whereNull('archived_at');
-                }
+                $formatNavNotification = \App\Services\Notifications\NotificationInbox::format(...);
+                $unreadNotificationQuery = \App\Services\Notifications\NotificationInbox::visible($user, unread: true);
+                $notificationQuickQuery = \App\Services\Notifications\NotificationInbox::visible($user);
 
                 $unreadNotificationCount = (clone $unreadNotificationQuery)->count();
                 $latestUnreadNotificationId = (clone $unreadNotificationQuery)->latest()->value('id');
@@ -817,7 +788,6 @@
             themeAvatarClasses: @js($themeAvatarClasses),
             themeAvatarPlainClasses: @js($themeAvatarPlainClasses),
             themeBadgeClasses: @js($themeBadgeClasses),
-            themeOrder: ['ocean', 'forest', 'sunset'],
             currentDay: '',
             currentTime: '',
             clockTimer: null,
@@ -876,10 +846,6 @@
                     minute: '2-digit',
                     hour12: true
                 }).format(now);
-            },
-            cycleTheme() {
-                const currentIndex = this.themeOrder.indexOf(this.themeKey);
-                this.themeKey = this.themeOrder[(currentIndex + 1) % this.themeOrder.length] || 'ocean';
             },
             toggleSidebar() {
                 if (this.isDesktop) {
@@ -1147,12 +1113,7 @@
                                     </span>
                                 </div>
 
-                                <button type="button" class="truthguard-top-icon" aria-label="Cycle theme" title="Cycle theme" @click="cycleTheme()">
-                                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.05 16.95l-1.41 1.41m12.72 0-1.42-1.41M7.05 7.05 5.64 5.64" />
-                                        <circle cx="12" cy="12" r="4" />
-                                    </svg>
-                                </button>
+                                @include('layouts.partials.display-mode-toggle')
 
                                 @include('layouts.partials.notification-center')
 

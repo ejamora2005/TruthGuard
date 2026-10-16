@@ -1,4 +1,5 @@
 import './bootstrap';
+import './dialog';
 import './pwa';
 import './push-notifications';
 import '../css/app.css';

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\AiOriginClassifier;
 use App\Services\Detections\DeepfakeCnnClassifier;
 use App\Services\Detections\DetectionPipeline;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,6 +24,7 @@ class DetectionPipelineTest extends TestCase
         // Keep exercising the supported legacy rollback path; EvidenceVerificationTest covers v2.
         config()->set('fact_check.enhanced_enabled', false);
         config()->set('services.deepfake_cnn.enabled', false);
+        config()->set('services.ai_origin.enabled', false);
         config()->set('services.live_verification.enabled', false);
         config()->set('services.openai.analysis_enabled', false);
         config()->set('services.openai.claim_extraction_enabled', false);
@@ -90,21 +92,24 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame(0, Detection::query()->count());
     }
 
-    public function test_detection_pipeline_uses_deepfake_cnn_for_uploaded_image(): void
+    public function test_detection_pipeline_uses_only_origin_classifier_for_uploaded_image(): void
     {
         Storage::fake('public');
-        config()->set('services.deepfake_cnn.enabled', true);
+        config()->set('services.ai_origin.enabled', true);
+        $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
 
-        $this->app->instance(DeepfakeCnnClassifier::class, new class extends DeepfakeCnnClassifier
+        $this->app->instance(AiOriginClassifier::class, new class extends AiOriginClassifier
         {
-            public function classify(?UploadedFile $uploadedFile, string $mediaType, int $heuristicScore = 0): ?array
+            public function classify(UploadedFile $uploadedFile): array
             {
                 return [
                     'status' => 'completed',
-                    'model_family' => 'cnn',
+                    'media_type' => 'image',
+                    'model_family' => 'siglip2_dinov2',
+                    'model_name' => 'Fixture AI-origin detector',
                     'screening_score' => 91,
                     'fake_probability' => 0.9082,
-                    'threshold' => 0.475,
+                    'threshold' => 0.5,
                     'label' => 'fake',
                     'summary' => 'CNN inference completed with 91% synthetic-media probability.',
                     'signals' => [

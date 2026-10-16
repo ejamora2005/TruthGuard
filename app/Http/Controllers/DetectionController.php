@@ -221,7 +221,7 @@ class DetectionController extends Controller
             $lock->release();
         }
 
-        return redirect()->route('detections.result', $detection)->with('status', 'Media analysis retry finished. Review the recorded detector status below.');
+        return redirect()->route('detections.result', $detection)->with('status', 'Assessment retry finished. Review the recorded status below.');
     }
 
     /**

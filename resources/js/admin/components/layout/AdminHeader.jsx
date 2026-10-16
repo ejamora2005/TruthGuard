@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { getAdminConfig } from '../../lib/admin-config';
 import { postLogout } from '../../lib/admin-api';
 
@@ -103,6 +104,22 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
     const [logoutSubmitting, setLogoutSubmitting] = useState(false);
     const [logoutError, setLogoutError] = useState('');
     const profileRef = useRef(null);
+    const logoutDialogRef = useRef(null);
+
+    useEffect(() => {
+        if (!logoutConfirmOpen) return;
+        const dialog = logoutDialogRef.current;
+        const previousFocus = document.activeElement;
+        const previousOverflow = document.documentElement.style.overflow;
+        dialog.showModal();
+        dialog.querySelector('.truthguard-admin-action')?.focus();
+        document.documentElement.style.overflow = 'hidden';
+        return () => {
+            dialog.close();
+            document.documentElement.style.overflow = previousOverflow;
+            if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+        };
+    }, [logoutConfirmOpen]);
 
     useEffect(() => {
         const timer = window.setInterval(() => setNow(new Date()), 30000);
@@ -294,12 +311,17 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
                 </div>
             </div>
 
-            {logoutConfirmOpen ? (
-                <div
+            {logoutConfirmOpen ? createPortal(
+                <dialog
+                    ref={logoutDialogRef}
                     className="truthguard-admin-logout-modal fixed inset-0"
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="truthguard-admin-logout-title"
+                    onCancel={(event) => {
+                        event.preventDefault();
+                        if (!logoutSubmitting) setLogoutConfirmOpen(false);
+                    }}
                 >
                     <button
                         type="button"
@@ -312,7 +334,7 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
                         aria-label="Close logout confirmation"
                     />
 
-                    <div className="truthguard-admin-logout-card fixed overflow-hidden rounded-[24px] border border-blue-100 bg-white">
+                    <div className="truthguard-admin-logout-card relative rounded-[24px] border border-blue-100 bg-white">
                         <div className="truthguard-admin-logout-card-accent" />
                         <div className="relative space-y-4 p-5 sm:p-6">
                             <div className="flex items-start justify-between gap-4">
@@ -388,7 +410,7 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
                             </div>
                         </div>
                     </div>
-                </div>
+                </dialog>, document.body,
             ) : null}
         </header>
     );

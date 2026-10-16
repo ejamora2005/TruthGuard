@@ -9,7 +9,10 @@ use Throwable;
 
 class ModelHealthService
 {
-    public function __construct(private readonly DeepfakeCnnClassifier $deepfakeCnnClassifier) {}
+    public function __construct(
+        private readonly DeepfakeCnnClassifier $deepfakeCnnClassifier,
+        private readonly AiOriginClassifier $aiOriginClassifier,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -18,7 +21,7 @@ class ModelHealthService
     {
         $checks = [
             'filipino_news_transformer' => $this->checkFilipinoTransformer($load),
-            'image_cnn' => $this->checkImageCnn($load),
+            'image_origin' => $this->checkImageOrigin($load),
             'video_face_cnn' => $this->checkVideoCnn($load),
         ];
 
@@ -76,14 +79,21 @@ class ModelHealthService
     /**
      * @return array<string, mixed>
      */
-    private function checkImageCnn(bool $load): array
+    private function checkImageOrigin(bool $load): array
     {
-        $modelPath = $this->configuredPath('services.deepfake_cnn.model_path');
-        $configPath = $this->configuredPath('services.deepfake_cnn.config_path');
-        $base = $this->checkCnnPaths($modelPath, $configPath);
+        $directory = $this->configuredPath('services.ai_origin.model_path');
+        $files = [
+            'model_file_exists' => $directory && is_file($directory.'/pytorch_model.pt'),
+            'config_file_exists' => $directory && is_file($directory.'/config.json'),
+            'processor_file_exists' => $directory && is_file($directory.'/preprocessor_config.json'),
+            'backbone_config_file_exists' => $directory && is_file($directory.'/siglip_config.json'),
+            'manifest_file_exists' => $directory && is_file($directory.'/source.json'),
+            'script_file_exists' => is_file(base_path('automation/deepfake-models/broad_ai_origin_adapter.py')),
+        ];
+        $base = ['ok' => ! in_array(false, $files, true), 'enabled' => (bool) config('services.ai_origin.enabled', false)] + $files;
 
-        if (! $load || ! $base['ok']) {
-            return array_merge($base, ['enabled' => (bool) config('services.deepfake_cnn.enabled', false)]);
+        if (! $load || ! $base['ok'] || ! $base['enabled']) {
+            return $base;
         }
 
         $probePath = tempnam(sys_get_temp_dir(), 'truthguard-image-model-');
@@ -91,7 +101,6 @@ class ModelHealthService
         if ($probePath === false) {
             return array_merge($base, [
                 'ok' => false,
-                'enabled' => (bool) config('services.deepfake_cnn.enabled', false),
                 'reason' => 'Unable to create image probe file.',
             ]);
         }
@@ -101,17 +110,15 @@ class ModelHealthService
         file_put_contents($pngPath, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2Z3ioAAAAASUVORK5CYII=', true));
 
         try {
-            $result = $this->withDeepfakeEnabled(fn () => $this->deepfakeCnnClassifier->classify(
+            $result = $this->aiOriginClassifier->classify(
                 new UploadedFile($pngPath, 'truthguard-model-health.png', 'image/png', null, true),
-                'image'
-            ));
+            );
         } finally {
             @unlink($pngPath);
         }
 
         return array_merge($base, [
             'ok' => is_array($result) && ($result['status'] ?? null) === 'completed',
-            'enabled' => (bool) config('services.deepfake_cnn.enabled', false),
             'loaded' => is_array($result) && ($result['status'] ?? null) === 'completed',
         ]);
     }

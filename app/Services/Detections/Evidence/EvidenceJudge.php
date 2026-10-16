@@ -2,6 +2,8 @@
 
 namespace App\Services\Detections\Evidence;
 
+use App\Services\Detections\AssessmentVerdict;
+use App\Services\Detections\ResultWording;
 use App\Services\Detections\SubmissionTask;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -15,7 +17,20 @@ class EvidenceJudge
     /** Dated, source-backed context for a searchable headline without an asserted outcome. */
     public array $contextualSources = [];
 
+    public array $wordingCandidates = [];
+
+    private array $completedReviews = [];
+
+    public int $duplicateReviewsSkipped = 0;
+
     public function __construct(private readonly StructuredAnalysis $model, private readonly ArticleSearch $search) {}
+
+    public function reset(): void
+    {
+        $this->reviewScopes = $this->contextFindings = $this->contextualSources = $this->completedReviews = [];
+        $this->wordingCandidates = [];
+        $this->duplicateReviewsSkipped = 0;
+    }
 
     public function assess(array $claims, array $records, string $cutoff, int $round, array $request = []): array
     {
@@ -46,8 +61,9 @@ class EvidenceJudge
             'excerpt' => $string, 'explanation' => $string, 'matches' => $matches,
             'basis' => ['type' => 'string', 'enum' => ['primary_record', 'direct_reporting', 'fact_check', 'background']],
             'supersedes_source_ids' => ['type' => 'array', 'items' => $string], 'supersession_excerpt' => $string,
-        ])]]);
-        $instructions = 'Compare each exact claim with retrieved article text. Give a relationship for each candidate considered; insufficient for unrelated/background material. Shared keywords are not a match. All decisive relationships require a verbatim contiguous excerpt from text and matching event, people, location, date, quantities, qualifiers and asserted action. Mark unspecified dimensions true only when they impose no constraint. A fact-check of a different claim is insufficient regardless of its rating. A petition or constitutional challenge is not a final ruling; a bill is not an enacted law. An official statement only establishes what that body can directly establish. News describing a statement does not automatically prove the statement. Do not infer truth from image authenticity or model scores. Distinguish past accuracy from current accuracy at the supplied cutoff. Only mark supersession when newer text explicitly replaces/corrects the older record, and quote that passage. Explain unresolved conflicts; never select a preferred verdict. For rhetorical or unclear headings, or a factual heading marked requires_context, never mark a relationship supporting or contradicting: the missing material detail prevents a specific outcome. A directly relevant, dated passage about the named event or its proposal/enactment/decision status may instead be returned as a RELATED_STATUS context_finding, with a short explanation limited to what the passage establishes at its date. Unrelated claims or merely shared topic words cannot be RELATED_STATUS. Cite ONLY provided claim IDs and source IDs. Summaries and search snippets are not article text.'
+        ])], 'wording' => ['type' => 'array', 'maxItems' => 1,
+            'items' => ResultWording::schema(array_merge(AssessmentVerdict::FACTUAL, AssessmentVerdict::CONTEXT))]]);
+        $instructions = 'Compare each exact claim with retrieved article text. Give relationships for relevant candidates; omit unrelated/background pairs, which remain insufficient. Shared keywords are not a match. All decisive relationships require a verbatim contiguous excerpt from text and matching event, people, location, date, quantities, qualifiers and asserted action. Mark unspecified dimensions true only when they impose no constraint. A fact-check of a different claim is insufficient regardless of its rating. A petition or constitutional challenge is not a final ruling; a bill is not an enacted law. An official statement only establishes what that body can directly establish. News describing a statement does not automatically prove the statement. Do not infer truth from image authenticity or model scores. Distinguish past accuracy from current accuracy at the supplied cutoff. Only mark supersession when newer text explicitly replaces/corrects the older record, and quote that passage. Explain unresolved conflicts; never select a preferred verdict. For rhetorical or unclear headings, or a factual heading marked requires_context, never mark a relationship supporting or contradicting: the missing material detail prevents a specific outcome. A directly relevant, dated passage about the named event or its proposal/enactment/decision status may instead be returned as a RELATED_STATUS context_finding, with a short explanation limited to what the passage establishes at its date. Unrelated claims or merely shared topic words cannot be RELATED_STATUS. Cite ONLY provided claim IDs and source IDs. Summaries and search snippets are not article text.'
             .' Match flags measure correspondence to the exact assertion, not agreement with its asserted values. For a contradicting relationship, a passage explicitly correcting the date, quantity, location or qualifier of the SAME event/media/statement addresses that dimension: mark its flag true. An unrelated event in another year remains a non-match. Do not reject a directly established correction merely because it contradicts the submitted value. No correction may be inferred from shared keywords alone.'
             .' Explain decisive findings in plain language that answers the requested question: state what happened, the applicable dates and the responsible authority when the quoted passage establishes them. Do not fill explanations with internal matching terminology; match flags already record that separately. A candidate event preserved from the user question is the assertion under review. The poster heading need not independently assert that outcome. Resolve its subject from validated references and the whole submission; do not treat a general factual question about poster text as a demand to authenticate a particular photograph.'
             .' Return every independently established contextual finding, not just one genre label: source-backed satire can also be out of context when the same clip is recaptioned as a different event/date. Each label still needs a matching passage. Prioritize findings that answer the requested context check.'
@@ -63,7 +79,9 @@ class EvidenceJudge
                 .' Explain decisive findings in two short informative sentences, beginning with the concrete outcome, its applicable date and responsible authority when established by the passage. Then state material qualifications. Avoid openings such as This confirms, This supports, or I searched. Do not fill explanations with internal matching terminology. Do not infer facts from AI-origin scores, assumed faces or image authenticity. Cite only provided claim IDs and source IDs. Preserve genuinely conflicting records. A newer publication alone does not resolve a conflict: quote explicit superseding evidence and identify the older source. RELATED_STATUS is only for material unresolved scope, not a substitute for answering a resolved factual question.';
         }
         $instructions .= ' For current_status_question, an older dated report establishes what was known then, not necessarily the status at the evaluation cutoff. A provisional statement that an event will proceed unless a new law or decision changes it cannot refute a later postponement. Check subsequent enactments, cancellations and corrections. When a later passage explicitly establishes a changed schedule for the SAME event, identify the older source it supersedes and quote the changed schedule. A court challenge alone does not overturn an enacted law.';
-        $instructions .= ' Write explanations for the person who submitted this content: lead with the concrete evidence, then explain why it supports or contradicts the exact claim, or what remains unverified. Use two short sentences. Name the supplied publisher when attributing its reporting; distinguish what a source reports from what it independently establishes. No confidence percentages, invented reasons, unrelated publisher ratings, or follow-up questions.';
+        $instructions .= ' Keep individual relationship/context explanations brief evidence notes. Name the supplied publisher when attributing reporting; distinguish reporting from independently established facts. No invented reasons, unrelated publisher ratings, or follow-up questions.';
+        $instructions .= ' Keep output compact: omit claim/source pairs with no relevant passage; missing pairs mean insufficient evidence, never support. Include every relevant contrary finding and explicit supersession. Use the shortest complete verbatim excerpt that establishes the finding, preferably 20 to 400 characters, retaining material qualifiers; the 1200-character validation limit still applies.';
+        $instructions .= ' In wording return at most one presentation candidate for the overall requested task, with its evidence-supported verdict; return [] if unresolved conflicts or scope prevent a consistent explanation. This copy never overrides server validation or decides the verdict. '.ResultWording::instructions();
         // The planner stores the whole submission on every claim for validation.
         if (($request['media_attached'] ?? false) && preg_match('/\b(?:this|that|pictured|shown)\s+(?:old\s+|elderly\s+)?(?:woman|man|lady|person|people)\b/iu', $request['question'] ?? '')) {
             $instructions .= ' The user is asking about a particular person or action in an attached photograph. You have article text, not a verified visual match of that photograph. A report of a similar event involving the same public figure cannot establish that this particular image is authentic or shows that event. Do not identify people from assumed resemblance, invent reverse-image searches, or claim a visual comparison occurred. Without source provenance explicitly establishing the submitted photograph, keep its specific identity/event relationship insufficient and explain the distinction from any general event reporting.';
@@ -79,23 +97,35 @@ class EvidenceJudge
             'excerpt_rule' => 'Every decisive excerpt must be 20 to 1200 characters. A RELATED_STATUS excerpt must be 20 to 500 characters and explicitly state the named event or proposal status. review_text_truncated means only the supplied prefix was read; do not claim the rest was reviewed. possible_copy_of flags suspected shared reporting: do not count it as independent confirmation, but check material differences and conflicts.'];
         $sources = $this->fitSources($sources, $input, $instructions);
         $input['sources'] = $sources;
-        $data = $this->model->ask('evidence_relationships_'.$round, $instructions, $input, $schema);
+        // A second search can find no new reviewable text. Reuse only this
+        // request's identical completed review; never reuse old saved verdicts.
+        $identity = hash('sha256', json_encode([$instructions, $input], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+        if (array_key_exists($identity, $this->completedReviews)) {
+            $this->duplicateReviewsSkipped++;
+
+            return $this->completedReviews[$identity];
+        }
+        $data = $this->model->ask('evidence_relationships_'.$round, $instructions, $input, $schema, ['wording']);
 
         if ($data === null) {
+            $this->wordingCandidates[] = null;
+
             return [];
         }
+        $this->wordingCandidates[] = is_array($data['wording'] ?? null) && array_is_list($data['wording']) && count($data['wording']) === 1
+            ? $data['wording'][0] : null;
         $findings = $this->validateContext($data['context_findings'], $reviewable, $sources, $cutoff);
         $this->contextualSources = array_values(array_unique(array_merge($this->contextualSources,
             array_values(array_filter($findings, fn ($row) => $row['label'] === 'RELATED_STATUS'))), SORT_REGULAR));
         $this->contextFindings = array_values(array_unique(array_merge($this->contextFindings,
             array_values(array_filter($findings, fn ($row) => $row['label'] !== 'RELATED_STATUS'))), SORT_REGULAR));
 
-        return $this->validate($data['relationships'], $reviewable, $sources, $cutoff);
+        return $this->completedReviews[$identity] = $this->validate($data['relationships'], $reviewable, $sources, $cutoff);
     }
 
     private function fitSources(array $sources, array $input, string $instructions): array
     {
-        $limit = max(1024, (int) config('fact_check.max_model_input_bytes', 65536));
+        $limit = max(1024, (int) config('fact_check.max_model_input_bytes', 32768));
         $low = 0;
         $high = max(array_map(fn ($s) => strlen($s['text']), $sources));
         $cut = fn ($bytes) => array_map(fn ($s) => array_replace($s, [

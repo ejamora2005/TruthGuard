@@ -94,7 +94,7 @@ class DetectionRetentionTest extends TestCase
         $secondPage
             ->assertOk()
             ->assertSee('Recent paged fact check 16')
-            ->assertDontSee('Recent paged fact check 1');
+            ->assertDontSee('>Recent paged fact check 1</span>', false);
     }
 
     /**

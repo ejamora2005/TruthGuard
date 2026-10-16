@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Detection;
+use App\Services\Detections\AssessmentScore;
 use App\Services\Detections\DetectionRetentionService;
 use App\Services\Detections\DetectionVerdictPresenter;
 use App\Services\Detections\GoogleFactCheckFeedService;
@@ -19,6 +20,8 @@ class DashboardController extends Controller
     private const FACT_CHECK_FEED_LIMIT = 500;
 
     private const FACT_CHECK_FEED_LOOKBACK_DAYS = 7;
+
+    private const HISTORY_TIMEZONE = 'Asia/Shanghai';
 
     public function __invoke(Request $request, DetectionRetentionService $retentionService): View|RedirectResponse
     {
@@ -54,9 +57,9 @@ class DashboardController extends Controller
         $historySearch = trim((string) $request->query('search', ''));
         $historySort = $this->normalizeHistorySort($request->query('sort'));
         $dateFrom = $this->normalizeHistoryDate($request->query('date_from'))
-            ?? ($showArchived ? null : now()->subDays(6)->startOfDay());
+            ?? ($showArchived ? null : now(self::HISTORY_TIMEZONE)->subDays(6)->startOfDay());
         $dateTo = $this->normalizeHistoryDate($request->query('date_to'), true)
-            ?? ($showArchived ? null : now()->endOfDay());
+            ?? ($showArchived ? null : now(self::HISTORY_TIMEZONE)->endOfDay());
 
         if ($dateFrom && $dateTo && $dateFrom->greaterThan($dateTo)) {
             [$dateFrom, $dateTo] = [
@@ -75,17 +78,21 @@ class DashboardController extends Controller
             $this->applyHistorySearch($filteredHistoryQuery, $historySearch);
         }
 
-        if ($dateFrom && $dateTo) {
-            $filteredHistoryQuery->whereBetween('analyzed_at', [$dateFrom, $dateTo]);
-        } elseif ($dateFrom) {
-            $filteredHistoryQuery->where('analyzed_at', '>=', $dateFrom);
-        } elseif ($dateTo) {
-            $filteredHistoryQuery->where('analyzed_at', '<=', $dateTo);
+        // Inputs are local calendar dates; stored timestamps remain UTC.
+        if ($dateFrom) {
+            $filteredHistoryQuery->where('analyzed_at', '>=', $dateFrom->copy()->utc());
+        }
+        if ($dateTo) {
+            $filteredHistoryQuery->where('analyzed_at', '<', $dateTo->copy()->addDay()->startOfDay()->utc());
         }
 
         $this->applyHistorySort($filteredHistoryQuery, $historySort);
 
         $historyDetections = $filteredHistoryQuery
+            ->select('detections.*')
+            ->selectSub(Detection::query()->from('detections as owner_reports')->selectRaw('COUNT(*)')
+                ->whereColumn('owner_reports.user_id', 'detections.user_id')
+                ->whereColumn('owner_reports.id', '<=', 'detections.id'), 'owner_report_number')
             ->paginate(DetectionRetentionService::PAGE_SIZE)
             ->withQueryString();
 
@@ -127,6 +134,21 @@ class DashboardController extends Controller
             'reviewDetections' => $reviewDetections,
             'latestDetection' => $latestDetection,
         ]);
+    }
+
+    public function archiveHistory(Request $request, Detection $detection): RedirectResponse
+    {
+        abort_unless($detection->user_id === $request->user()->id, 404);
+
+        // Archiving changes inbox visibility only; the saved assessment and media remain intact.
+        Detection::query()->whereKey($detection->id)->whereNull('archived_at')->update([
+            'archived_at' => now(), 'archive_reason' => 'user', 'updated_at' => now(),
+        ]);
+
+        $filters = collect($request->only(['status', 'search', 'sort', 'date_from', 'date_to']))
+            ->filter(fn ($value) => is_string($value) && $value !== '')->all();
+
+        return redirect()->route('history', $filters)->with('status', 'history-archived');
     }
 
     public function factCheck(Request $request, GoogleFactCheckFeedService $feedService, string $factCheck): View|RedirectResponse
@@ -287,7 +309,7 @@ class DashboardController extends Controller
         }
 
         try {
-            $date = Carbon::createFromFormat('Y-m-d', $value);
+            $date = Carbon::createFromFormat('!Y-m-d', $value, self::HISTORY_TIMEZONE);
         } catch (\Throwable) {
             return null;
         }
@@ -348,22 +370,40 @@ class DashboardController extends Controller
     {
         $rows = $recentDetections->map(function (Detection $detection) {
             $presentation = DetectionVerdictPresenter::forDetection($detection);
-            $confidence = DetectionVerdictPresenter::confidencePercent($detection);
+            $saved = is_array($detection->fact_check_result) ? $detection->fact_check_result : [];
+            $score = AssessmentScore::badge($saved);
+            $localAnalyzedAt = $detection->analyzed_at?->copy()->timezone(self::HISTORY_TIMEZONE);
+            $localToday = now(self::HISTORY_TIMEZONE)->startOfDay();
+            $relativeDate = match (true) {
+                $localAnalyzedAt === null => 'Pending',
+                $localAnalyzedAt->isSameDay($localToday) => 'Today',
+                $localAnalyzedAt->isSameDay($localToday->copy()->subDay()) => 'Yesterday',
+                default => $localAnalyzedAt->format('M j, Y'),
+            };
 
             return [
-                'case' => 'Fact check result',
+                'id' => $detection->id,
+                'case' => Str::squish((string) ($detection->caption_text ?: $detection->notes ?: data_get($saved, 'claim') ?: 'Untitled assessment')),
                 'summary' => Str::limit((string) ($detection->caption_text ?: $detection->notes ?: 'Detection request submitted without extra context.'), 72),
+                'media_label' => ucfirst((string) ($detection->media_type ?: 'text')),
+                'report_reference' => 'TG-'.str_pad((string) $detection->owner_report_number, 2, '0', STR_PAD_LEFT),
                 'thumbnail' => $detection->media_type === 'image' ? $detection->media_url : null,
                 'result' => $presentation['history_label'],
                 'category_key' => $presentation['category_key'],
                 'verdict' => $detection->verdict,
-                'confidence' => $confidence,
-                'confidence_display' => DetectionVerdictPresenter::scoreDisplay($detection),
+                'confidence' => null,
+                'confidence_display' => $score['has_percentage'] ? $score['title'] : 'Not available',
+                'score_note' => $score['has_percentage'] ? $score['description'] : null,
+                'score_detail' => $score['detail'] ?: 'No valid percentage was recorded for this assessment.',
+                'has_score' => $score['has_percentage'],
                 'url' => route('detections.result', $detection),
-                'date' => $detection->analyzed_at?->format('M d, Y') ?? 'Pending',
-                'time' => $detection->analyzed_at?->format('h:i A') ?? '--',
+                'archive_url' => route('history.archive', $detection),
+                'date' => $localAnalyzedAt?->format('M d, Y') ?? 'Pending',
+                'date_label' => $relativeDate,
+                'date_iso' => $localAnalyzedAt?->toIso8601String(),
+                'time' => $localAnalyzedAt?->format('h:i A') ?? '--',
                 'archived' => filled($detection->archived_at),
-                'archived_label' => $detection->archived_at?->format('M d, Y'),
+                'archived_label' => $detection->archived_at?->copy()->timezone(self::HISTORY_TIMEZONE)->format('M d, Y'),
                 'demo' => false,
             ];
         });

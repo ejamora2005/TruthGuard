@@ -12,6 +12,73 @@ class DetectionVerdictPresenter
      */
     public static function forDetection(Detection $detection): array
     {
+        $recordedVerdict = data_get($detection->fact_check_result, 'verdict');
+        if ($recordedVerdict === 'ANALYSIS_UNAVAILABLE') {
+            $label = AssessmentVerdict::label($recordedVerdict);
+
+            return array_replace(self::fallbackProfile('review'), [
+                'short_label' => Str::upper($label), 'history_label' => $label, 'notification_label' => $label,
+                'risk_label' => 'ASSESSMENT INCOMPLETE', 'summary_lead' => 'The requested assessment did not complete; no factual or media-origin conclusion was reached.',
+                'rating' => null, 'source_rating' => null, 'verdict' => 'review', 'verdict_label' => $label,
+                'verdict_meaning' => 'The requested assessment did not complete. This is not a true or false finding about the submitted claim.',
+                'is_unconfirmed' => false,
+            ]);
+        }
+        $mediaResult = data_get($detection->fact_check_result, 'primary_task') === 'media'
+            ? ReportAnswer::forPresentation($detection->fact_check_result) : [];
+        if (($mediaResult['primary_task'] ?? null) === 'media'
+            && in_array($mediaResult['verdict'] ?? null, AssessmentVerdict::MEDIA, true)) {
+            // Canonical origin/manipulation findings must not become generic
+            // "real/fake" labels, or be inferred from negated explanation text.
+            $recordedVerdict = $mediaResult['verdict'];
+            $label = AssessmentVerdict::label($recordedVerdict);
+            $verdict = match ($recordedVerdict) {
+                'AI_GENERATED', 'LIKELY_AI_GENERATED', 'MANIPULATED', 'LIKELY_MANIPULATED' => 'fake',
+                'LIKELY_NOT_AI_GENERATED', 'NO_MANIPULATION_DETECTED' => 'real',
+                default => 'review',
+            };
+            $rating = match ($recordedVerdict) {
+                'AI_GENERATED', 'LIKELY_AI_GENERATED' => FactCheckRatingNormalizer::AI_GENERATED_MISINFORMATION,
+                'MANIPULATED', 'LIKELY_MANIPULATED' => FactCheckRatingNormalizer::MANIPULATED_MEDIA,
+                default => null,
+            };
+            $meaning = match ($recordedVerdict) {
+                'AI_GENERATED' => 'The recorded assessment identifies AI-generated media. This origin finding does not verify any factual claim associated with it.',
+                'LIKELY_AI_GENERATED' => 'The primary AI-origin detector found signals consistent with AI generation. This is a model-based finding, not proof of how the media was created.',
+                'LIKELY_NOT_AI_GENERATED' => 'The primary AI-origin detector did not find strong AI-generation signals. This does not prove human origin or rule out editing.',
+                'MANIPULATED', 'LIKELY_MANIPULATED' => 'The recorded assessment found signs of alteration. Review the original media and the recorded limitations; this does not verify associated factual claims.',
+                'NO_MANIPULATION_DETECTED' => 'The recorded checks did not detect manipulation. This does not prove the media is authentic or that associated factual claims are true.',
+                default => 'The available media analysis did not resolve the origin. Neither AI generation nor human origin has been established.',
+            };
+
+            return array_replace(self::profileFor($rating, $verdict), [
+                'short_label' => Str::upper($label), 'history_label' => $label, 'notification_label' => $label,
+                'summary_lead' => $meaning, 'rating' => $rating, 'source_rating' => null, 'verdict' => $verdict,
+                'verdict_label' => $label, 'verdict_meaning' => $meaning, 'is_unconfirmed' => false,
+            ]);
+        }
+        if (is_array($detection->fact_check_result) && ($detection->fact_check_result['schema_version'] ?? 0) >= 4) {
+            $result = ReportAnswer::forPresentation($detection->fact_check_result);
+            $label = $result['assessment_label'];
+            $verdict = match ($result['verdict']) {
+                'TRUE' => 'real', 'FALSE', 'MISLEADING' => 'fake', default => 'review',
+            };
+            $category = match ($result['verdict']) {
+                'TRUE' => 'confirmed', 'FALSE' => 'false_claim', 'PARTLY_TRUE' => 'partly_true',
+                'MISLEADING' => 'misleading', 'OUTDATED' => 'outdated', 'OUT_OF_CONTEXT' => 'miscaptioned',
+                'MISSING_CONTEXT' => 'missing_context', 'SATIRE_PARODY' => 'satire_parody',
+                'OPINION_NOT_FACT_CHECKABLE' => 'opinion', 'CONFLICTING_EVIDENCE' => 'conflicting_evidence',
+                default => 'needs_review',
+            };
+
+            return array_replace(self::fallbackProfile($verdict), [
+                'category_key' => $category, 'short_label' => Str::upper($label),
+                'history_label' => $label, 'notification_label' => $label,
+                'summary_lead' => $result['summary'], 'rating' => null, 'source_rating' => null,
+                'verdict' => $verdict, 'verdict_label' => $label,
+                'verdict_meaning' => $result['summary'], 'is_unconfirmed' => false,
+            ]);
+        }
         $rating = self::specificRating($detection);
         $sourceRating = self::sourceRating($detection);
         $verdict = (string) ($detection->verdict ?: 'review');
@@ -32,8 +99,15 @@ class DetectionVerdictPresenter
         ];
     }
 
-    public static function confidencePercent(Detection $detection): int
+    public static function confidencePercent(Detection $detection): ?int
     {
+        if (is_array($detection->fact_check_result)) {
+            $score = ReportAnswer::forPresentation($detection->fact_check_result)['score'];
+
+            return ($score['type'] ?? '') === 'confidence' && ($score['validation'] ?? '') === 'calibrated'
+                && is_numeric($score['value'] ?? null)
+                ? (int) round($score['value'] * 100) : null;
+        }
         if (self::isNoOfficialConfirmation($detection)) {
             return 50;
         }

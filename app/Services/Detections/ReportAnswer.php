@@ -136,6 +136,39 @@ class ReportAnswer
         return $publisher.' reports: '.$explanation;
     }
 
+    /** Short display summary; the complete saved explanation stays available separately. */
+    public static function interpretationSummary(array $result, string $explanation): string
+    {
+        // Context-only quotations are background, not the conclusion of the assessment.
+        $copy = preg_split('/\bA related source dated\b/u', $explanation, 2)[0];
+        $sentences = collect(SubmittedText::sentences($copy))
+            ->reject(fn ($sentence) => preg_match('/^(?:I|We|TruthGuard)\s+(?:searched|browsed|queried|looked for)\b/iu', $sentence))
+            ->unique()->values();
+        $summary = $sentences->take(2)->implode(' ');
+        if ($summary === '') {
+            $summary = match ($result['verdict'] ?? '') {
+                'MISSING_CONTEXT' => 'The available context is insufficient to establish a factual verdict. Related reporting provides background but does not resolve the submitted claim.',
+                'UNVERIFIED' => 'The available evidence does not establish whether the submitted claim is true or false.',
+                'INCONCLUSIVE' => 'The available detector findings do not establish the origin of the submitted media.',
+                default => 'Review the displayed verdict and its supporting evidence before relying on this result.',
+            };
+        }
+
+        return Str::limit($summary, 550, '…');
+    }
+
+    /** Avoid repeating complete summary sentences in the next-step card. */
+    public static function interpretationAction(string $summary, string $recommendation): string
+    {
+        $key = fn (string $text) => Str::lower(Str::squish($text));
+        $summarySentences = array_map($key, SubmittedText::sentences($summary));
+        $action = collect(SubmittedText::sentences($recommendation))
+            ->reject(fn ($sentence) => in_array($key($sentence), $summarySentences, true))->implode(' ');
+
+        // If there is no distinct next step, preserve the recorded recommendation.
+        return $action !== '' ? $action : $recommendation;
+    }
+
     /** Adapt a saved result for HTML or JSON without updating its historical record. */
     public static function forPresentation(array $saved): array
     {

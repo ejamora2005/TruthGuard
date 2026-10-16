@@ -61,6 +61,22 @@ Monitor `/up` for application boot health, plus database connectivity, disk spac
 
 The optional Python deepfake model is disabled in this image. Enabling it requires a separate image extension with Python, the model's dependencies and a mounted model file. Review provider budgets and mail delivery before enabling scheduled public-review notifications, which run every thirty minutes.
 
+## AI Usage monitoring setup
+
+An HTTP 500 from `/admin/api/ai-usage` with SQLSTATE `42S02` naming `openai_request_usages` means the monitoring database migration is missing. Container startup builds Laravel caches but does not run migrations; `/up` can still pass in this state. In the Dokploy **app container terminal**, run:
+
+```sh
+cd /var/www/html
+php artisan migrate --force --path=database/migrations/2026_10_16_000000_create_openai_usage_monitoring_tables.php
+php artisan truthguard:sync-openai-costs
+```
+
+The targeted migration creates the request ledger and monthly cost snapshot tables. The sync command reads billing data without generating a model response; it requires the existing server-side `OPENAI_ADMIN_API_KEY`. Then refresh AI Usage. The scheduler maintains subsequent billing checks every five minutes. Request-level token tracking starts when the ledger exists; past unrecorded calls are not reconstructed from saved reports. Monthly billing sync can still report provider spending for the configured scope.
+
+For dollar-only monitoring, use `OPENAI_MONTHLY_DOLLAR_BUDGET=6` and `OPENAI_MONTHLY_TOKEN_BUDGET=0`. Admin capacity uses synced dollar spending, with the existing 80% warning ($4.80) and limit notice ($6.00). Stale or missing billing is shown as unknown. Token counts are still recorded independently; the displayed average per API response excludes responses without usage counts and is not the token cost of a whole review. These settings send alerts; they do not stop requests or represent the prepaid credit balance.
+
+If the migration reports that there is nothing to migrate while a table remains missing, or that a table already exists, inspect the migration history and schema before repairing the partial state. Preserve existing usage rows and cost snapshots.
+
 ## Validation
 
 Use PHP 8.3 or newer with PDO SQLite for tests, and Node 24:

@@ -65,7 +65,7 @@
         [
             'id' => 'appearance',
             'label' => 'Appearance',
-            'description' => 'Theme and accent',
+            'description' => 'Display mode, text size, and colors',
             'status' => 'Visual',
             'icon' => 'M12 3v2.25M12 18.75V21M4.64 4.64l1.59 1.59M17.77 17.77l1.59 1.59M3 12h2.25M18.75 12H21M4.64 19.36l1.59-1.59M17.77 6.23l1.59-1.59M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z',
         ],

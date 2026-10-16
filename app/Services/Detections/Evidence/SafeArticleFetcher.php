@@ -20,7 +20,7 @@ class SafeArticleFetcher
             return $base + ['status' => 'budget_exhausted'];
         }
         try {
-            $cacheKey = 'evidence-page:v1:'.hash('sha256', $url);
+            $cacheKey = 'evidence-page:v2:'.hash('sha256', $url);
             if (! $budget->freshSources && ($cached = Cache::get($cacheKey))) {
                 return $cached + ['cached' => true];
             }
@@ -264,7 +264,9 @@ class SafeArticleFetcher
         foreach ($xpath->query('//script|//style|//nav|//header[not(ancestor::article) and not(ancestor::main)]|//footer|//aside|//form|//*[@hidden or @data-nosnippet]') as $node) {
             $node->parentNode?->removeChild($node);
         }
-        $root = $xpath->query('//article|//main')->item(0) ?? $xpath->query('//body')->item(0);
+        // A union is in document order: <main> enclosing <article> wins,
+        // leaking navigation and unrelated recommendations into paid reviews.
+        $root = $xpath->query('//article')->item(0) ?? $xpath->query('//main')->item(0) ?? $xpath->query('//body')->item(0);
         $links = [];
         foreach ($xpath->query('.//a[@href]', $root) as $node) {
             try {

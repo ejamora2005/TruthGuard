@@ -7,7 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-/** Offline image-origin specialist; the original CNN still runs independently. */
+/** Offline primary image-origin classifier. Video uses its separate detector. */
 class AiOriginClassifier
 {
     public const VERSION = 'broad-ai-origin-v1';
@@ -22,13 +22,20 @@ class AiOriginClassifier
         if (! preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $modelPath)) {
             $modelPath = base_path($modelPath);
         }
+        foreach (['pytorch_model.pt', 'config.json', 'preprocessor_config.json', 'siglip_config.json', 'source.json'] as $required) {
+            if (! is_file($modelPath.'/'.$required)) {
+                return $this->unavailable('model_missing');
+            }
+        }
         $hash = hash_file('sha256', $path);
         $binary = (string) config('services.ai_origin.python_binary', '.venv-ai-origin/Scripts/python.exe');
         if (str_contains($binary, '/') && ! preg_match('/^(?:[A-Za-z]:[\\\\\/]|\/)/', $binary)) {
             $binary = base_path($binary);
         }
         $process = new Process([$binary, base_path('automation/deepfake-models/broad_ai_origin_adapter.py')], base_path());
-        $process->setEnv(['AI_ORIGIN_MODEL_PATH' => $modelPath, 'USE_TF' => '0', 'USE_FLAX' => '0'] + WindowsProcessEnvironment::variables());
+        $process->setEnv(['AI_ORIGIN_MODEL_PATH' => $modelPath, 'USE_TF' => '0', 'USE_FLAX' => '0',
+            'HF_HUB_OFFLINE' => '1', 'TRANSFORMERS_OFFLINE' => '1', 'HF_HUB_DISABLE_TELEMETRY' => '1']
+            + WindowsProcessEnvironment::variables());
         $process->setTimeout((int) config('services.ai_origin.timeout', 120));
         $process->setInput(json_encode(['media_path' => $path], JSON_THROW_ON_ERROR));
         try {

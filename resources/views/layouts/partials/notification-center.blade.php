@@ -1,6 +1,12 @@
 @once
     <style>
         .truthguard-notification-popover {
+            display: flex;
+            flex-direction: column;
+            width: min(24rem, calc(100vw - 2rem));
+            transform-origin: var(--notification-arrow-x, calc(100% - 35px)) top;
+            top: calc(100% + 18px);
+            right: 0;
             overflow: visible;
             border-color: rgba(147, 197, 253, 0.72);
             background: #fff;
@@ -15,32 +21,37 @@
             content: '';
             position: absolute;
             z-index: 3;
-            top: -0.86rem;
-            right: 1.12rem;
-            height: 1.02rem;
-            width: 1.7rem;
-            clip-path: polygon(50% 0, 0 100%, 100% 100%);
-            background: linear-gradient(180deg, #ffffff 0%, #f4f9ff 100%);
-            filter:
-                drop-shadow(0 -1px 0 rgba(147, 197, 253, 0.9))
-                drop-shadow(0 -12px 18px rgba(37, 99, 235, 0.17));
+            top: -10px;
+            left: var(--notification-arrow-x, calc(100% - 35px));
+            transform: translateX(-50%);
+            height: 0;
+            width: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid rgba(147, 197, 253, 0.72);
+            pointer-events: none;
         }
 
         .truthguard-notification-popover::after {
             content: '';
             position: absolute;
-            z-index: 2;
-            top: -1.02rem;
-            right: 0.9rem;
-            height: 1.18rem;
-            width: 2.18rem;
-            clip-path: polygon(50% 0, 0 100%, 100% 100%);
-            background: linear-gradient(180deg, rgba(37, 99, 235, 0.34), rgba(219, 234, 254, 0.12));
-            filter: blur(0.5px);
+            z-index: 4;
+            top: -8px;
+            left: var(--notification-arrow-x, calc(100% - 35px));
+            transform: translateX(-50%);
+            height: 0;
+            width: 0;
+            border-left: 9px solid transparent;
+            border-right: 9px solid transparent;
+            border-bottom: 9px solid #fff;
             pointer-events: none;
         }
 
         .truthguard-notification-surface {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            max-height: inherit;
             background: #fff;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
         }
@@ -65,7 +76,8 @@
 @endonce
 
 <div
-    class="relative"
+    class="relative shrink-0"
+    x-id="['notification-panel']"
     x-data="{
         open: false,
         notifications: @js($notificationQuickItems ?? []),
@@ -74,6 +86,10 @@
         toast: null,
         toastTimer: null,
         pollTimer: null,
+        pendingArchives: [],
+        mutationVersion: 0,
+        fetchSequence: 0,
+        errorMessage: '',
         csrfToken: @js(csrf_token()),
         notificationStorageScope: @js((string) auth()->id()),
         peekUrl: @js(route('notifications.peek', absolute: false)),
@@ -83,8 +99,31 @@
         deleteUrlTemplate: @js(url('/notifications/__ID__')),
         init() {
             this.showInitialToast();
-            window.addEventListener('truthguard:notification', () => this.fetchNotifications());
+            this.$watch('open', (value) => {
+                if (value) this.$nextTick(() => this.positionPopover());
+            });
             this.pollTimer = window.setInterval(() => this.fetchNotifications(), 30000);
+        },
+        destroy() {
+            window.clearInterval(this.pollTimer);
+            window.clearTimeout(this.toastTimer);
+        },
+        positionPopover() {
+            const bell = this.$refs.notificationBell.getBoundingClientRect();
+            const parent = this.$el.getBoundingClientRect();
+            const panel = this.$refs.notificationPanel;
+            const width = panel.offsetWidth;
+            const gutter = window.innerWidth >= 640 ? 24 : 16;
+            const viewportWidth = document.documentElement.clientWidth;
+            // bottom-end with a small end offset: keep the pointer beneath the
+            // bell and clear of the rounded corner, with viewport protection.
+            const endOffset = 16;
+            const left = Math.max(gutter, Math.min(bell.right + endOffset - width, viewportWidth - width - gutter));
+            panel.style.left = `${left - parent.left}px`;
+            panel.style.right = 'auto';
+            panel.style.top = `${bell.bottom - parent.top + 18}px`;
+            panel.style.maxHeight = `${Math.max(0, window.innerHeight - bell.bottom - 26)}px`;
+            panel.style.setProperty('--notification-arrow-x', `${(bell.left + bell.right) / 2 - left}px`);
         },
         showInitialToast() {
             if (!this.unreadCount || !this.notifications.length) return;
@@ -93,8 +132,12 @@
             this.showToastOnce(first);
         },
         async fetchNotifications() {
+            if (this.pendingArchives.length) return;
+            const version = this.mutationVersion;
+            const sequence = ++this.fetchSequence;
             try {
                 const response = await fetch(this.peekUrl, {
+                    cache: 'no-store',
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
@@ -104,6 +147,7 @@
                 if (!response.ok) return;
 
                 const data = await response.json();
+                if (version !== this.mutationVersion || sequence !== this.fetchSequence) return;
                 const previousLatest = this.latestId;
 
                 this.unreadCount = data.unreadCount || 0;
@@ -130,6 +174,7 @@
             this.toastTimer = window.setTimeout(() => this.toast = null, 5200);
         },
         async markAllRead() {
+            this.mutationVersion++;
             const oldNotifications = this.notifications;
             const oldCount = this.unreadCount;
 
@@ -157,12 +202,14 @@
 
             if (!item || !item.unread) return;
 
+            this.mutationVersion++;
             item.unread = false;
             this.unreadCount = Math.max(0, this.unreadCount - 1);
 
             try {
                 const response = await fetch(this.readUrlTemplate.replace('__ID__', id), {
                     method: 'POST',
+                    keepalive: true,
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
@@ -176,25 +223,23 @@
                 this.unreadCount += 1;
             }
         },
-        async archiveNotification(id) {
-            const index = this.notifications.findIndex((notification) => notification.id === id);
-            if (index === -1) return;
-
-            const removed = this.notifications[index];
-            const oldCount = this.unreadCount;
-            const oldLatest = this.latestId;
-            const oldToast = this.toast;
-
-            this.notifications.splice(index, 1);
-
-            if (removed.unread) {
+        removeArchived(id) {
+            this.mutationVersion++;
+            const removed = this.notifications.find((notification) => notification.id === id);
+            this.notifications = this.notifications.filter((notification) => notification.id !== id);
+            if (removed?.unread) {
                 this.unreadCount = Math.max(0, this.unreadCount - 1);
             }
-
-            if (this.toast?.id === id) {
-                this.toast = null;
+            if (this.latestId === id) {
+                this.latestId = this.notifications.find((notification) => notification.unread)?.id || null;
             }
-
+            if (this.toast?.id === id) this.toast = null;
+        },
+        async archiveNotification(id) {
+            if (this.pendingArchives.includes(id)) return;
+            this.pendingArchives.push(id);
+            this.mutationVersion++;
+            this.errorMessage = '';
             try {
                 const response = await fetch(this.deleteUrlTemplate.replace('__ID__', id), {
                     method: 'DELETE',
@@ -207,20 +252,13 @@
 
                 if (!response.ok) throw new Error('Failed to archive notification.');
 
-                const data = await response.json().catch(() => ({}));
-
-                if (Object.prototype.hasOwnProperty.call(data, 'unreadCount')) {
-                    this.unreadCount = data.unreadCount;
-                }
-
-                if (Object.prototype.hasOwnProperty.call(data, 'latestId')) {
-                    this.latestId = data.latestId || null;
-                }
+                window.dispatchEvent(new CustomEvent('truthguard:notification-archived', { detail: { id } }));
             } catch (error) {
-                this.notifications.splice(index, 0, removed);
-                this.unreadCount = oldCount;
-                this.latestId = oldLatest;
-                this.toast = oldToast;
+                this.errorMessage = 'Could not remove this notification. Please try again.';
+            } finally {
+                this.pendingArchives = this.pendingArchives.filter((pending) => pending !== id);
+                this.mutationVersion++;
+                if (!this.pendingArchives.length) this.fetchNotifications();
             }
         },
         tone(category) {
@@ -233,14 +271,20 @@
             }[category] || 'bg-slate-100 text-slate-700 ring-slate-200';
         },
     }"
+    @truthguard:notification.window="fetchNotifications()"
+    @truthguard:notification-archived.window="removeArchived($event.detail.id)"
+    @resize.window="if (open) positionPopover()"
     @keydown.escape.window="open = false; toast = null"
 >
     <button
         type="button"
         data-tour="notifications-bell"
+        x-ref="notificationBell"
         class="truthguard-top-icon relative"
         aria-label="Open notifications"
         title="Notifications"
+        :aria-expanded="open"
+        :aria-controls="$id('notification-panel')"
         @click="open = !open"
     >
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">
@@ -259,6 +303,11 @@
 
     <div
         x-show="open"
+        x-ref="notificationPanel"
+        data-placement="bottom-end"
+        :id="$id('notification-panel')"
+        role="region"
+        aria-label="Notifications"
         x-cloak
         x-transition:enter="ease-out duration-200"
         x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
@@ -266,11 +315,11 @@
         x-transition:leave="ease-in duration-150"
         x-transition:leave-start="opacity-100 translate-y-0 scale-100"
         x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
-        @click.outside="open = false"
-        class="truthguard-notification-popover absolute right-0 z-[99999] mt-4 w-[min(24rem,calc(100vw-1rem))] rounded-[24px] border p-1.5"
+        @click.outside="if (!$refs.notificationBell.contains($event.target)) open = false"
+        class="truthguard-notification-popover absolute z-[99999] rounded-[20px] border p-1.5"
     >
-        <div class="truthguard-notification-surface overflow-hidden rounded-[20px]">
-        <div class="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] px-4 py-4">
+        <div class="truthguard-notification-surface overflow-hidden rounded-2xl">
+        <div class="shrink-0 border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] px-3 py-3">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Notifications</p>
@@ -288,7 +337,8 @@
             </div>
         </div>
 
-        <div class="max-h-[22rem] overflow-y-auto bg-white p-2">
+        <p x-show="errorMessage" x-cloak x-text="errorMessage" role="status" class="shrink-0 px-4 py-2 text-xs text-rose-600"></p>
+        <div class="min-h-0 max-h-[18rem] overflow-y-auto bg-white p-1.5">
             <template x-if="notifications.length === 0">
                 <div class="px-4 py-8 text-center">
                     <p class="text-sm font-semibold text-slate-900">No notifications yet</p>
@@ -298,13 +348,13 @@
 
             <template x-for="notification in notifications" :key="notification.id">
                 <div
-                    class="truthguard-notification-item group flex gap-3 rounded-2xl px-3 py-3 transition hover:-translate-y-0.5 hover:border-blue-100 hover:bg-blue-50/70 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
+                    class="truthguard-notification-item group flex gap-2 rounded-2xl px-2 py-2.5 transition hover:-translate-y-0.5 hover:border-blue-100 hover:bg-blue-50/70 hover:shadow-[0_14px_30px_rgba(15,23,42,0.08)]"
                     :class="notification.unread ? 'is-unread' : ''"
                 >
                     <a
                         :href="notification.actionUrl || indexUrl"
                         @click="markRead(notification.id); open = false"
-                        class="flex min-w-0 flex-1 gap-3"
+                        class="flex min-w-0 flex-1 gap-2"
                     >
                         <template x-if="notification.imageUrl">
                             <img
@@ -317,7 +367,7 @@
 
                         <span
                             x-show="!notification.imageUrl"
-                            class="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1"
+                            class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ring-1"
                             :class="tone(notification.category)" :data-notice-category="notification.category"
                         >
                             <x-notification-icon expression="notification.category" />
@@ -336,6 +386,8 @@
                     <button
                         type="button"
                         @click.stop.prevent="archiveNotification(notification.id)"
+                        :disabled="pendingArchives.includes(notification.id)"
+                        :aria-busy="pendingArchives.includes(notification.id)"
                         class="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                         :aria-label="'Archive ' + notification.title"
                         title="Archive notification"
@@ -348,7 +400,7 @@
             </template>
         </div>
 
-        <div class="border-t border-slate-100 bg-white p-2">
+        <div class="shrink-0 border-t border-slate-100 bg-white p-2">
             <a
                 href="{{ route('notifications.index', absolute: false) }}"
                 class="flex items-center justify-center rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"

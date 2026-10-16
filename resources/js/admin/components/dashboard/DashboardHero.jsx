@@ -65,7 +65,8 @@ function getModerationItem(items, label) {
 export function DashboardHero({ data, onRefresh, websiteUrl }) {
     const reviewQueue = getModerationItem(data.moderation.items, 'review');
     const likelyFake = getModerationItem(data.moderation.items, 'fake');
-    const usagePercent = Math.min(Number(data.aiUsage.usagePercent ?? 0), 100);
+    const capacity = data.aiUsage.budgetCapacity;
+    const usagePercent = Math.min(Number(capacity ? capacity.usagePercent ?? 0 : data.aiUsage.usagePercent ?? 0), 100);
     const snapshotTiles = [
         {
             label: 'Runs this month',
@@ -149,7 +150,7 @@ export function DashboardHero({ data, onRefresh, websiteUrl }) {
                                 <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">AI capacity</p>
                                 <h3 className="mt-2 text-2xl font-black text-slate-950">{data.aiUsage.statusLabel ?? 'Unknown'}</h3>
                             </div>
-                            <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">{usagePercent}%</span>
+                            <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-black text-white">{capacity && capacity.usagePercent == null ? 'Unknown' : `${usagePercent}%`}</span>
                         </div>
                         <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-100">
                             <div className="h-full rounded-full bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400" style={{ width: `${usagePercent}%` }} />
@@ -157,11 +158,11 @@ export function DashboardHero({ data, onRefresh, websiteUrl }) {
                         <div className="mt-5 grid gap-3">
                             <div className="flex items-center justify-between gap-3 text-sm">
                                 <span className="font-bold text-slate-500">Budget</span>
-                                <span className="font-black text-slate-900">{data.aiUsage.monthlyTokenBudgetLabel ?? 'Not set'}</span>
+                                <span className="font-black text-slate-900">{capacity?.budgetLabel ?? data.aiUsage.monthlyTokenBudgetLabel ?? 'Not set'}</span>
                             </div>
                             <div className="flex items-center justify-between gap-3 text-sm">
                                 <span className="font-bold text-slate-500">Remaining</span>
-                                <span className="font-black text-slate-900">{data.aiUsage.tokensRemainingLabel ?? 'Set budget'}</span>
+                                <span className="font-black text-slate-900">{capacity?.remainingLabel ?? data.aiUsage.tokensRemainingLabel ?? 'Unknown'}</span>
                             </div>
                             <div className="flex items-center justify-between gap-3 text-sm">
                                 <span className="font-bold text-slate-500">Model</span>

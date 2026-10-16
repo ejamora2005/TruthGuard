@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\AiOriginClassifier;
 use App\Services\Detections\DeepfakeCnnClassifier;
 use App\Services\Detections\DetectionPipeline;
 use App\Services\Detections\EvidenceVerificationService;
@@ -28,7 +29,7 @@ class StoredResultReuseTest extends TestCase
         Http::preventStrayRequests();
         Storage::fake('public');
         config()->set(['fact_check.enhanced_enabled' => true, 'fact_check.result_reuse.enabled' => true,
-            'fact_check.queue_enabled' => false, 'services.ai_origin.enabled' => false,
+            'fact_check.queue_enabled' => false, 'services.ai_origin.enabled' => true,
             'services.openai.analysis_enabled' => false, 'services.filipino_news_classifier.enabled' => false,
             'services.live_verification.enabled' => false, 'playwright.related_posts_inline' => false]);
     }
@@ -40,7 +41,8 @@ class StoredResultReuseTest extends TestCase
 
     private function mockAnalysis(int $calls, string $task = 'media', ?int $detectorCalls = null): void
     {
-        $this->mock(DeepfakeCnnClassifier::class)->shouldReceive('classify')->times($detectorCalls ?? $calls)->andReturn(['status' => 'unavailable']);
+        $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
+        $this->mock(AiOriginClassifier::class)->shouldReceive('classify')->times($detectorCalls ?? $calls)->andReturn(['status' => 'unavailable']);
         $this->mock(EvidenceVerificationService::class)->shouldReceive('apply')->times($calls)->andReturnUsing(function ($analysis) use ($task) {
             $result = ReportAnswer::complete(['schema_version' => 4, 'primary_task' => $task,
                 'verdict' => $task === 'media' ? 'INCONCLUSIVE' : 'UNVERIFIED',

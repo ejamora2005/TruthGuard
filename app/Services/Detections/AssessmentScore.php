@@ -107,4 +107,46 @@ class AssessmentScore
 
         return $score['label'].': '.$percent.'%';
     }
+
+    /** Read-only badge: measured outputs and evidence status have distinct labels. */
+    public static function badge(array $saved): array
+    {
+        $result = ReportAnswer::forPresentation($saved);
+        $score = $result['score'];
+        $text = self::display($score);
+        if ($text !== 'Score unavailable') {
+            return ['title' => $text, 'description' => match ($score['type']) {
+                'confidence' => 'Calibrated on validation data',
+                'evidence_strength' => 'Provisional evidence assessment',
+                default => 'Uncalibrated model output',
+            }, 'detail' => $score['explanation'], 'has_percentage' => true, 'type' => $score['type']];
+        }
+        // An inconclusive verdict can still have a valid raw detector output.
+        // Show its AI-class score as a diagnostic, never confidence in that verdict.
+        $media = $saved['media_assessment'] ?? null;
+        if ($result['primary_task'] === 'media' && $result['verdict'] === 'INCONCLUSIVE' && is_array($media)) {
+            $raw = self::media($media);
+            if (($raw['type'] ?? '') !== 'unavailable') {
+                $raw['type'] = 'model_score';
+                $raw['label'] = 'AI-generation score';
+                $raw['value'] = (float) $media['fake_probability'];
+
+                return ['title' => self::display($raw), 'description' => 'Uncalibrated; origin remains inconclusive',
+                    'detail' => 'The recorded AI-class output, not confidence in an origin verdict. The detector did not separate the classes strongly enough to resolve origin.',
+                    'has_percentage' => true, 'type' => 'model_score'];
+            }
+        }
+        $title = match ($result['verdict']) {
+            'MISSING_CONTEXT' => 'Missing claim context',
+            'UNVERIFIED', 'UNVERIFIABLE' => 'Evidence insufficient',
+            'CONFLICTING_EVIDENCE' => 'Evidence conflicting',
+            'OPINION_NOT_FACT_CHECKABLE' => 'Not fact-checkable',
+            'ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS', 'UNREADABLE_CONTENT', 'CLARIFICATION_NEEDED' => 'Analysis incomplete',
+            default => 'Confidence not available',
+        };
+
+        return ['title' => $title, 'description' => AssessmentVerdict::technical($result['verdict'])
+            ? 'No completed assessment to score' : 'No calibrated confidence recorded',
+            'detail' => $score['explanation'], 'has_percentage' => false, 'type' => 'unavailable'];
+    }
 }

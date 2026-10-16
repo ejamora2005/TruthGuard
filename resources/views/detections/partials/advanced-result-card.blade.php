@@ -2,10 +2,13 @@
     $ratingNormalizer = \App\Services\Detections\FactCheckRatingNormalizer::class;
     $verdictPresenter = \App\Services\Detections\DetectionVerdictPresenter::class;
     $presentation = $verdictPresenter::forDetection($selectedDetection);
+    $publicResult = is_array($selectedDetection->fact_check_result)
+        ? \App\Services\Detections\ReportAnswer::forPresentation($selectedDetection->fact_check_result)
+        : \App\Services\Detections\ReportAnswer::forLegacyDetection($selectedDetection);
+    $presentation['verdict_label'] = $publicResult['assessment_label'];
     $categoryKey = (string) ($presentation['category_key'] ?? 'needs_review');
     $verdict = (string) ($selectedDetection->verdict ?: 'review');
     $riskScore = max(0, min(100, (int) $selectedDetection->fake_score));
-    $confidenceScore = $verdictPresenter::confidencePercent($selectedDetection);
 
     $tone = match ($categoryKey) {
         'confirmed', 'low_risk' => [
@@ -69,34 +72,36 @@
         ? \Illuminate\Support\Str::headline((string) $selectedDetection->platform)
         : ($sourceHost ? preg_replace('/^www\./', '', $sourceHost) : 'Direct submission');
     $contentType = \Illuminate\Support\Str::headline($selectedDetection->media_type ?: 'Unknown');
-    $isMediaReport = in_array($selectedDetection->media_type, ['image', 'video', 'document'], true);
-    $reportTitle = $isMediaReport ? 'Media analysis report' : 'Fact-check report';
+    $isMediaReport = in_array($publicResult['primary_task'], ['media', 'manipulation'], true);
+    $submittedMedia = in_array($selectedDetection->media_type, ['image', 'video', 'document'], true);
+    $combinedReport = count($publicResult['request']['tasks'] ?? []) > 1;
+    $reportTitle = $combinedReport ? 'Content verification report' : ($submittedMedia ? 'Media analysis report' : 'Fact-check report');
     $claimText = trim((string) ($selectedDetection->caption_text ?: $selectedDetection->notes ?: ''));
     $submittedQuestion = $claimText;
     $submittedFileName = $selectedDetection->media_path ? basename(str_replace('\\', '/', $selectedDetection->media_path)) : null;
-    $recordedTask = data_get($selectedDetection->fact_check_result, 'primary_task');
+    $recordedTask = $publicResult['primary_task'];
     $assessmentHeading = match ($recordedTask) {
         'media' => 'AI-generation assessment',
         'manipulation' => 'Manipulation assessment',
         'context' => 'Context assessment',
         default => $categoryKey === 'ai_generated' ? 'AI-generation assessment' : 'Fact-check verdict',
     };
-    $recordedScore = data_get($selectedDetection->fact_check_result, 'score');
-    $scoreText = \App\Services\Detections\AssessmentScore::display(is_array($recordedScore) ? $recordedScore : null);
-    $scoreAvailable = $scoreText !== 'Score unavailable';
-    $scoreDescription = $scoreAvailable ? match ($recordedScore['type'] ?? '') {
-        'model_score' => 'Uncalibrated model output',
-        'evidence_strength' => 'Provisional evidence heuristic',
-        'confidence' => 'Calibrated on validation data',
-        default => 'No defensible percentage',
-    } : 'No defensible percentage';
-    $isUnconfirmed = $verdictPresenter::isNoOfficialConfirmation($selectedDetection);
+    $savedAssessment = is_array($selectedDetection->fact_check_result) ? $selectedDetection->fact_check_result : $publicResult;
+    $presentationAdjusted = $publicResult['primary_task'] !== ($savedAssessment['primary_task'] ?? $publicResult['primary_task'])
+        || $publicResult['verdict'] !== ($savedAssessment['verdict'] ?? $publicResult['verdict']);
+    $scoreBadge = \App\Services\Detections\AssessmentScore::badge($presentationAdjusted ? $publicResult : $savedAssessment);
+    $isUnconfirmed = ! $presentationAdjusted && $verdictPresenter::isNoOfficialConfirmation($selectedDetection);
     $assessment = trim((string) (
-        $selectedDetection->analysis_summary
+        (filled(data_get($selectedDetection->fact_check_result, 'summary')) || ($selectedDetection->fact_check_result['schema_version'] ?? 0) < 4
+            ? $publicResult['summary'] : $selectedDetection->analysis_summary)
+        ?: $selectedDetection->analysis_summary
         ?: $selectedDetection->explanation_summary
         ?: 'TruthGuard completed the analysis, but no summary was recorded for this case.'
     ));
     $reasoning = trim((string) ($selectedDetection->explanation_summary ?: $assessment));
+    if (($selectedDetection->fact_check_result['schema_version'] ?? 0) < 4) {
+        $reasoning = $publicResult['summary'];
+    }
     $verificationSummary = trim((string) ($selectedDetection->verification_summary ?: 'Available public evidence was compared with the submitted content.'));
     $recommendation = trim((string) ($selectedDetection->recommendation ?: match ($verdict) {
         'fake' => 'Do not share this content until a trusted source confirms it.',
@@ -111,8 +116,19 @@
         $recommendation = 'Do not treat this claim as verified. Check the relevant official agency, trusted fact-checkers, and the original source before sharing it.';
     }
 
+    if ($presentationAdjusted) {
+        $assessment = $reasoning = $publicResult['summary'];
+    }
+
+    $recordedWording = $presentationAdjusted ? null : \App\Services\Detections\ResultWording::saved($savedAssessment);
+    $savedWording = $recordedWording
+        ? \App\Services\Detections\ResultWording::accept($publicResult, \Illuminate\Support\Arr::except($recordedWording, ['version']))
+        : null;
+    if ($savedWording) {
+        $assessment = $savedWording['explanation'];
+    }
     $evidenceParagraphs = collect([$assessment]);
-    if ($recordedTask === 'media'
+    if (! $savedWording && $recordedTask === 'media'
         && data_get($selectedDetection->fact_check_result, 'verdict') === 'INCONCLUSIVE'
         && \Illuminate\Support\Str::wordCount($assessment) < 100) {
         $recordedLimitations = collect(data_get($selectedDetection->fact_check_result, 'limitations', []))
@@ -127,6 +143,8 @@
         }
     }
     $evidenceText = $evidenceParagraphs->implode("\n\n");
+    $interpretationSummary = $savedWording['result_summary'] ?? \App\Services\Detections\ReportAnswer::interpretationSummary($savedAssessment, $reasoning);
+    $interpretationAction = $savedWording['recommended_action'] ?? \App\Services\Detections\ReportAnswer::interpretationAction($interpretationSummary, $recommendation);
 
     $signalGroups = is_array($selectedDetection->signals ?? null) ? $selectedDetection->signals : [];
     $aiBasis = collect($signalGroups['ai_basis'] ?? [])
@@ -185,11 +203,14 @@
         || max((int) ($openAiUsage['total_tokens'] ?? 0), (int) ($openAiUsage['input_tokens'] ?? 0), (int) ($openAiUsage['output_tokens'] ?? 0)) > 0;
     $openAiModel = trim((string) ($openAiUsage['model'] ?? $openAiExtraction['response_model'] ?? $openAiExtraction['configured_model'] ?? ''));
     $openAiStages = collect(data_get($selectedDetection->fact_check_result, 'diagnostics.model_stages', []));
-    $openAiFailure = $openAiExtraction['failure_reason'] ?? data_get($signalGroups, 'media_explanation.0.failure_reason')
+    $openAiFailure = \App\Services\Detections\OpenAiExtractionFailure::recordedReason($openAiExtraction) ?? data_get($signalGroups, 'media_explanation.0.failure_reason')
         ?? ($openAiStages->contains('quota_exhausted') ? 'quota_exhausted' : null);
     $openAiFailureMessage = match ($openAiFailure) {
         'quota_exhausted' => 'OpenAI rejected this request because the API account had no remaining credits or had reached its billing limit. API billing must be restored before a new assessment can use OpenAI.',
         'authentication_failed' => 'OpenAI rejected the configured API credentials for this request. The API configuration needs attention before retrying.',
+        'access_denied' => 'OpenAI denied access to the requested operation or model. An administrator must check API key and model permissions before retrying.',
+        'model_unavailable' => 'The configured OpenAI model is unavailable to this API project. An administrator must enable it or select an accessible model.',
+        'unsupported_region' => 'OpenAI could not accept this request from the deployment region. An administrator must check service availability.',
         'not_configured' => 'OpenAI analysis was disabled or its API key was missing when this report was created.',
         'rate_limited' => 'OpenAI temporarily rate-limited this request. A new assessment can be retried after the limit clears.',
         'request_incomplete', 'request_or_validation_failed', 'input_budget_exhausted' => 'The optional OpenAI explanation could not complete. The saved detector verdict and its original explanation remain available.',
@@ -200,15 +221,45 @@
     $openAiStatus = $openAiPartial ? 'Partially completed' : ($openAiUsed ? 'Used for this report' : match ($openAiFailure) {
         'quota_exhausted' => 'API credits exhausted',
         'authentication_failed' => 'API authentication failed',
+        'access_denied' => 'API access denied',
+        'model_unavailable' => 'Model unavailable',
+        'unsupported_region' => 'Service unavailable in this region',
         'not_configured' => 'Not configured',
         default => $openAiFailureMessage ? 'Request unavailable' : 'Not recorded',
     });
     if ($resultReuse && $openAiUsed) {
         $openAiStatus = 'Reused saved assistance';
     }
+    $extractionIssue = data_get($savedAssessment, 'diagnostics.outcome_reason') === 'extraction_unavailable'
+        && ($savedAssessment['verdict'] ?? '') === 'ANALYSIS_UNAVAILABLE'
+        ? \App\Services\Detections\OpenAiExtractionFailure::explanation($openAiExtraction) : null;
+    if ($extractionIssue) {
+        // Explain recorded service failures without rewriting the historical row
+        // or silently running another paid assessment when this page is opened.
+        $evidenceParagraphs = collect([$extractionIssue]);
+        $evidenceText = $extractionIssue;
+        $interpretationSummary = \App\Services\Detections\ReportAnswer::interpretationSummary($savedAssessment, $extractionIssue);
+        $interpretationAction = \App\Services\Detections\OpenAiExtractionFailure::action($openAiExtraction);
+    }
 
-    $sources = collect($selectedDetection->verification_sources ?? [])
-        ->filter(fn ($source): bool => is_array($source) && filled($source['url'] ?? null))
+    $recordedSources = is_array($selectedDetection->fact_check_result)
+        ? array_merge($publicResult['sources'] ?? [], $publicResult['contextual_sources'] ?? [], $publicResult['reference_links'] ?? [], $publicResult['method_references'] ?? [], $selectedDetection->verification_sources ?? [])
+        : ($selectedDetection->verification_sources ?? []);
+    foreach ($publicResult['secondary_assessments'] ?? [] as $secondary) {
+        $recordedSources = array_merge($recordedSources, $secondary['sources'] ?? [], $secondary['contextual_sources'] ?? []);
+    }
+    $sources = collect($recordedSources)
+        ->map(fn ($source) => is_array($source) ? array_merge($source, [
+            'source_type' => match ($source['source_type'] ?? $source['type'] ?? 'reference') {
+                'official_government', 'institution', 'research' => 'official',
+                default => $source['source_type'] ?? $source['type'] ?? 'reference',
+            },
+            'summary' => $source['summary'] ?? $source['used_for'] ?? '',
+        ]) : $source)
+        ->filter(fn ($source): bool => is_array($source) && \App\Services\Detections\ReportAnswer::safeUrl($source['url'] ?? null) !== null)
+        ->reject(fn (array $source): bool => ($selectedDetection->fact_check_result['schema_version'] ?? 0) < 4
+            && str_contains($source['url'], 'toolbox.google.com/factcheck/explorer'))
+        ->unique('url')
         ->sortBy(fn (array $source): int => match ($source['source_type'] ?? 'reference') {
             'fact_check' => 1,
             'official', 'weather' => 2,
@@ -219,7 +270,8 @@
         })->values();
     $primarySources = $sources->reject(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->take(6)->values();
     $socialSources = $sources->filter(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->take(4)->values();
-    $trustedSourceCount = $sources->filter(fn (array $source): bool => in_array(($source['source_type'] ?? null), ['fact_check', 'official', 'weather'], true))->count();
+    [$trustedSources, $otherSources] = $sources->partition(fn (array $source): bool => in_array(($source['source_type'] ?? null), ['fact_check', 'official', 'weather'], true));
+    $trustedSourceCount = $trustedSources->count();
     $sourceCount = $sources->count();
     $topSource = $sources->first();
     $topFactCheck = $sources->first(fn (array $source): bool => ($source['source_type'] ?? null) === 'fact_check');
@@ -227,14 +279,17 @@
         ?: (($presentation['rating'] ?? null) === $ratingNormalizer::NO_OFFICIAL_CONFIRMATION
             ? $ratingNormalizer::NO_OFFICIAL_CONFIRMATION
             : null);
-    $matchedClaimText = is_array($topFactCheck)
-        ? trim((string) ($topFactCheck['claim'] ?? $topFactCheck['claim_text'] ?? $topFactCheck['text'] ?? ''))
+    // A retrieved article body is evidence, not the claim checked by its publisher.
+    // Keep explicit source claims separate without implying an established match.
+    $sourceClaimText = is_array($topFactCheck)
+        ? collect(['reviewed_claim', 'claim', 'claim_text'])->map(fn ($field) => $topFactCheck[$field] ?? null)
+            ->filter(fn ($text) => is_string($text) && trim($text) !== '')->map(fn ($text) => trim($text))->first() ?? ''
         : '';
     $claimEvidenceItems = collect([
         $selectedDetection->caption_text ? ['label' => 'User-provided caption', 'text' => trim((string) $selectedDetection->caption_text)] : null,
         $selectedDetection->notes ? ['label' => 'User-provided notes', 'text' => trim((string) $selectedDetection->notes)] : null,
         $ocrText ? ['label' => 'Extracted image text (OCR-style; may be imperfect)', 'text' => $ocrText] : null,
-        $matchedClaimText ? ['label' => 'Matched fact-check claim', 'text' => $matchedClaimText] : null,
+        $sourceClaimText ? ['label' => 'Claim checked by source', 'text' => $sourceClaimText] : null,
     ])->filter()->values();
 
     $sourceTypeLabel = function (array $source): string {
@@ -527,11 +582,6 @@
         .tg-interpretation-reasoning { padding: .25rem 0; }
         .tg-ai-report .tg-interpretation-reasoning > h4 { font-size: .6875rem !important; line-height: 1.5 !important; }
         .tg-interpretation-copy { max-width: 72ch; margin-top: .75rem; font-size: 1rem; font-weight: 400; line-height: 1.85; color: #334155; white-space: pre-line; }
-        .tg-interpretation-summary { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
-        .tg-ai-report .tg-interpretation-summary > summary { list-style: disclosure-closed; cursor: pointer; color: #475569; font-size: .75rem; font-weight: 700; }
-        .tg-ai-report .tg-interpretation-summary[open] > summary { list-style: disclosure-open; }
-        .tg-ai-report .tg-interpretation-summary > summary::-webkit-details-marker { display: inline; }
-        .tg-interpretation-summary > p { margin-top: .75rem; font-size: .875rem; line-height: 1.8; color: #475569; white-space: pre-line; }
         .tg-interpretation-action { align-self: start; padding: 1.25rem; border: 1px solid #d1fae5; border-radius: 14px; background: #ecfdf5; }
         .tg-interpretation-action-heading { display: flex; align-items: center; gap: .75rem; }
         .tg-interpretation-action-heading > div { min-width: 0; }
@@ -542,7 +592,7 @@
         .tg-interpretation-reference > span:last-child { font-size: .75rem; line-height: 1.5; color: #64748b; }
         .tg-interpretation-link { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.75rem; max-width: 100%; margin-top: 1rem; padding: .625rem 1rem; border-radius: 10px; background: #0f172a; color: #fff; font-size: .75rem; font-weight: 700; line-height: 1.5; text-decoration: none; }
         .tg-interpretation-link:hover { background: #1d4ed8; }
-        .tg-interpretation-link:focus-visible, .tg-interpretation-summary > summary:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+        .tg-interpretation-link:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
         .tg-interpretation-link > svg { flex-shrink: 0; width: 16px; height: 16px; }
         @media (min-width: 1100px) {
             .tg-interpretation-layout { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 2rem; }
@@ -667,6 +717,22 @@
         .tg-source-section-title p { margin-top: .25rem; font-size: .8125rem; line-height: 1.6; color: #64748b; }
         .tg-source-count { display: inline-flex; align-items: baseline; gap: .35rem; flex-shrink: 0; padding: .5rem .75rem; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; font-size: .75rem; color: #64748b; }
         .tg-source-count strong { font-size: 1rem; color: #334155; font-variant-numeric: tabular-nums; }
+        .tg-source-counts { position: relative; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .5rem; flex-shrink: 0; }
+        .tg-source-count-button { min-height: 2.75rem; align-items: center; cursor: pointer; transition: border-color .18s ease, background .18s ease; }
+        .tg-source-count-button:hover, .tg-source-count-button[aria-expanded="true"] { background: #eff6ff; border-color: #bfdbfe; }
+        .tg-source-count-button:focus-visible, .tg-source-popover a:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+        .tg-source-count-button svg { width: .75rem; height: .75rem; margin-left: .125rem; }
+        .tg-source-popover { position: absolute; z-index: 30; top: 100%; right: 0; width: min(22rem, calc(100vw - 3rem)); padding-top: .5rem; text-align: left; }
+        .tg-source-popover[x-cloak] { display: none; }
+        .tg-source-popover-card { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; box-shadow: 0 16px 36px rgba(15,23,42,.13); }
+        .tg-source-popover-heading { font-size: .875rem; font-weight: 800; color: #0f172a; }
+        .tg-source-popover-note { margin-top: .25rem; font-size: .75rem; line-height: 1.5; color: #64748b; }
+        .tg-source-popover ul { max-height: 16rem; overflow-y: auto; overscroll-behavior: contain; margin-top: .75rem; }
+        .tg-source-popover li + li { border-top: 1px solid #f1f5f9; }
+        .tg-source-popover a, .tg-source-popover-entry { display: block; padding: .625rem .375rem; border-radius: 6px; overflow-wrap: anywhere; }
+        .tg-source-popover a:hover { background: #eff6ff; }
+        .tg-source-popover strong { display: block; font-size: .8125rem; line-height: 1.5; color: #1e293b; }
+        .tg-source-popover span { display: block; margin-top: .125rem; font-size: .75rem; line-height: 1.5; color: #64748b; }
         .tg-source-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: .875rem; margin-top: 1.25rem; }
         .tg-source-group { display: flex; align-items: center; gap: .75rem; grid-column: 1 / -1; padding-block: .375rem; }
         .tg-ai-report .tg-source-group { font-size: .8125rem; font-weight: 700; line-height: 1.5; color: #475569; }
@@ -698,11 +764,13 @@
             .tg-source-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 640px) {
-            .tg-source-section-header { align-items: flex-start; gap: .625rem; }
+            .tg-source-section-header { flex-direction: column; align-items: stretch; gap: .875rem; }
             .tg-source-section-title { gap: .625rem; }
             .tg-ai-report .tg-source-section-title h3 { font-size: 1rem; }
             .tg-source-section-title p { font-size: .75rem; }
             .tg-source-count { padding: .3rem .5rem; }
+            .tg-source-counts { justify-content: flex-start; }
+            .tg-source-popover { left: 0; right: auto; width: 100%; }
             .tg-ai-report .tg-source-card { padding: 1rem; }
             .tg-source-card-footer { align-items: flex-end; }
         }
@@ -798,6 +866,7 @@
         }
     }"
     class="tg-ai-report truthguard-scroll-target space-y-5 sm:space-y-6"
+    data-fact-check-verdict="{{ $publicResult['verdict'] }}"
     style="--tg-accent: {{ $tone['accent'] }}; --tg-accent-rgb: {{ $tone['accentRgb'] }};"
 >
     <header class="tg-report-header">
@@ -906,7 +975,7 @@
         </div>
 
         <div class="tg-report-verdict">
-            <article class="tg-ai-hero min-w-0" x-data="{ supported: 'speechSynthesis' in window &amp;&amp; 'SpeechSynthesisUtterance' in window, speaking: false, talking: false }" @pagehide.window="if (supported) { window.speechSynthesis.cancel(); speaking = false; talking = false; }">
+            <article class="tg-ai-hero min-w-0" x-data="{ supported: 'speechSynthesis' in window &amp;&amp; 'SpeechSynthesisUtterance' in window, speaking: false, talking: false, speechRequest: 0 }" @pagehide.window="if (supported) { speechRequest++; window.speechSynthesis.cancel(); speaking = false; talking = false; }">
                 <div class="tg-report-verdict-content flex flex-col gap-6">
                     <div class="min-w-0">
                         <div class="tg-report-verdict-heading">
@@ -945,9 +1014,9 @@
                                     <p>{{ $presentation['verdict_meaning'] ?? $tone['summary'] }}</p>
                                 </div>
                             </div>
-                            <div class="tg-verdict-score" aria-label="Assessment score">
-                                <strong>{{ $scoreAvailable ? $scoreText : 'Confidence not available' }}</strong>
-                                <span>{{ $scoreDescription }}</span>
+                            <div class="tg-verdict-score" aria-label="Assessment score" title="{{ $scoreBadge['detail'] }}">
+                                <strong>{{ $scoreBadge['title'] }}</strong>
+                                <span>{{ $scoreBadge['description'] }}</span>
                             </div>
                         </div>
                         <div class="tg-verdict-explanation">
@@ -957,10 +1026,21 @@
                             @endforeach
                         </div>
                         <div class="tg-verdict-actions">
+                            @if (($extractionIssue || $isMediaReport) && in_array($selectedDetection->media_type, ['image', 'video'], true) && $selectedDetection->media_path)
+                                <form method="POST" action="{{ route('detections.retry-media', $selectedDetection) }}" x-data="{ retrying: false }" @submit="retrying = true" class="mb-4">
+                                    @csrf
+                                    <input type="hidden" name="analysis_task" value="{{ $isMediaReport ? $recordedTask : ($recordedTask === 'context' ? 'context' : 'claim') }}">
+                                    <button type="submit" :disabled="retrying" :aria-busy="retrying" class="inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60">
+                                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7v5h-5M4 17v-5h5m-3.2-4a7 7 0 0 1 11.5-2L20 9M4 15l2.7 3A7 7 0 0 0 18.2 16" /></svg>
+                                        <span x-show="!retrying">{{ $isMediaReport ? 'Retry media analysis' : 'Retry assessment' }}</span><span x-show="retrying" x-cloak>Retrying assessment…</span>
+                                    </button>
+                                    <p class="mt-2 text-xs text-slate-500">Runs a new assessment; API usage may apply.</p>
+                                </form>
+                            @endif
                             <button type="button" class="tg-read-result" x-data="{ labelOpen: false, touchReveal: false }" x-show="supported" x-cloak :aria-pressed="speaking" :aria-label="speaking ? 'Stop reading' : 'Read result aloud'" :class="{ 'is-expanded': labelOpen || speaking, 'is-talking': talking }"
                                 @mouseenter="labelOpen = true" @mouseleave="labelOpen = false" @focus="labelOpen = true" @blur="labelOpen = false; touchReveal = false"
                                 @pointerdown="if ($event.pointerType === 'touch') { touchReveal = !labelOpen &amp;&amp; !speaking; labelOpen = true; } else { touchReveal = false; }"
-                                @click="if (touchReveal) { touchReveal = false; return; } if (speaking) { window.speechSynthesis.cancel(); speaking = false; talking = false; } else { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance({{ \Illuminate\Support\Js::from(($presentation['verdict_label'] ?? 'Needs Review').'. '.$evidenceText) }}); utterance.onstart = () => talking = true; utterance.onpause = () => talking = false; utterance.onresume = () => talking = true; utterance.onend = () => { speaking = false; talking = false; }; utterance.onerror = () => { speaking = false; talking = false; }; speaking = true; talking = false; window.speechSynthesis.speak(utterance); }">
+                                @click="if (touchReveal) { touchReveal = false; return; } window.TruthGuardSpeech?.toggle($data, {{ \Illuminate\Support\Js::from(($presentation['verdict_label'] ?? 'Needs Review').'. '.$evidenceText) }}, document.documentElement.lang || 'en')">
                                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m11 5-6 4H2v6h3l6 4V5Z" />
                                     <path class="tg-speech-wave" stroke-linecap="round" d="M15 8a6 6 0 0 1 0 8" />
@@ -991,14 +1071,8 @@
         </header>
         <div class="tg-interpretation-layout">
             <section class="tg-interpretation-reasoning" aria-labelledby="interpretation-basis-title">
-                <h4 id="interpretation-basis-title" class="tg-card-eyebrow">Assessment basis</h4>
-                <p class="tg-interpretation-copy">{{ $reasoning !== $assessment ? $reasoning : $assessment }}</p>
-                @if ($reasoning !== $assessment)
-                    <details class="tg-interpretation-summary">
-                        <summary>View assessment summary</summary>
-                        <p>{{ $assessment }}</p>
-                    </details>
-                @endif
+                <h4 id="interpretation-basis-title" class="tg-card-eyebrow">Result summary</h4>
+                <p class="tg-interpretation-copy">{{ $interpretationSummary }}</p>
             </section>
             <aside class="tg-interpretation-action" aria-labelledby="interpretation-action-title">
                 <div class="tg-interpretation-action-heading">
@@ -1013,7 +1087,7 @@
                         <h4 id="interpretation-action-title">Recommended action</h4>
                     </div>
                 </div>
-                <p class="tg-interpretation-recommendation">{{ $recommendation }}</p>
+                <p class="tg-interpretation-recommendation">{{ $interpretationAction }}</p>
                 @if (is_array($topSource))
                     <div class="tg-interpretation-reference">
                         <span class="tg-card-eyebrow">Linked reference</span>
@@ -1038,6 +1112,14 @@
         </div>
     </article>
 
+    @foreach ($publicResult['secondary_assessments'] ?? [] as $secondary)
+        <section class="tg-ai-surface p-5 sm:p-7" aria-label="{{ $secondary['assessment_label'] }}">
+            <p class="tg-card-eyebrow">{{ match ($secondary['primary_task']) { 'media' => 'AI-generation assessment', 'manipulation' => 'Manipulation assessment', 'context' => 'Context assessment', default => 'Factual claim assessment' } }}</p>
+            <h2 class="mt-2 text-lg font-bold text-slate-900">{{ $secondary['assessment_label'] }}</h2>
+            <p class="mt-3 text-slate-600">{{ $secondary['summary'] }}</p>
+        </section>
+    @endforeach
+
     <details id="assessment-details" class="tg-ai-surface tg-report-method tg-report-details p-5">
         <summary class="tg-report-method-summary cursor-pointer">
             <span class="tg-details-heading">
@@ -1048,7 +1130,34 @@
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
             </span>
         </summary>
+        <p class="mt-4 text-xs text-slate-500">Evidence cutoff: {{ $publicResult['evidence_cutoff'] ?? 'Not recorded' }}</p>
         <div class="tg-report-method-body space-y-5">
+            @php
+                $recordedMedia = data_get($selectedDetection->fact_check_result, 'media_assessment');
+                $additionalMedia = is_array($recordedMedia) ? data_get($recordedMedia, 'supporting_assessments.image_cnn') : null;
+            @endphp
+            @if (is_array($recordedMedia) && ($recordedMedia['status'] ?? 'not_requested') !== 'not_requested')
+                <section class="rounded-2xl border border-slate-200 bg-white/80 p-4" aria-label="Media detector details">
+                    <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Media detector</p>
+                    <h3 class="mt-1 text-base font-bold text-slate-950">{{ $recordedMedia['model_name'] ?? 'Trained media detector' }}</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Status: {{ \Illuminate\Support\Str::headline($recordedMedia['status'] ?? 'unavailable') }}. This screens for AI-generation signals; it does not verify factual claims.</p>
+                    @if (is_array($additionalMedia))
+                        <p class="mt-3 text-sm font-bold text-slate-800">Additional image screening</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">Original image classifier: {{ ($additionalMedia['status'] ?? '') !== 'completed' ? 'Unavailable' : (($additionalMedia['label'] ?? '') === 'fake' ? 'Synthetic-media signal detected' : 'No synthetic-media signal detected; this does not prove authenticity') }}.</p>
+                    @endif
+                    @if (($recordedMedia['detector_disagreement'] ?? false) === true)
+                        <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800">The classifiers disagree. Their findings are recorded separately; review the original source before relying on this result.</p>
+                    @endif
+                    @if (! empty($selectedDetection->fact_check_result['method_references']))
+                        <p class="mt-3 text-sm font-bold text-slate-800">Method references</p>
+                        @foreach ($selectedDetection->fact_check_result['method_references'] as $methodReference)
+                            @if ($methodUrl = \App\Services\Detections\ReportAnswer::safeUrl($methodReference['url'] ?? null))
+                                <a href="{{ $methodUrl }}" target="_blank" rel="noopener noreferrer" class="mt-1 inline-block text-sm font-semibold text-blue-700 underline underline-offset-2">{{ $methodReference['name'] ?? 'Model documentation' }}</a>
+                            @endif
+                        @endforeach
+                    @endif
+                </section>
+            @endif
             <div class="tg-report-verdict-footer grid gap-3">
                 <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
                     <p class="text-xs font-black uppercase tracking-[0.12em] text-slate-500">Source result</p>
@@ -1069,7 +1178,7 @@
 
             <dl class="tg-report-metrics">
                 @foreach ([
-                    ['label' => 'AI confidence', 'value' => $confidenceScore.'%', 'help' => 'How strongly the available evidence supports the displayed verdict. Not certainty.'],
+                    ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : 'Assessment score', 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']],
                     ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
                     ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
                     ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
@@ -1083,16 +1192,23 @@
                     <div class="flex items-start justify-between gap-3">
                         <div>
                             <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-500">Claim being checked</p>
-                            <p class="mt-1 text-xs text-slate-500">Only text recorded from the submission or a matched review is shown.</p>
+                            <p class="mt-1 text-xs text-slate-500">Submitted text and any explicit claim recorded by a source.</p>
                         </div>
                         @if ($ocrText)
                             <span class="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">OCR may be imperfect</span>
                         @endif
                     </div>
                     @forelse ($claimEvidenceItems as $claimEvidence)
+                        @php $claimPreview = \Illuminate\Support\Str::limit($claimEvidence['text'], 500); @endphp
                         <div class="mt-4 border-t border-slate-200 pt-3 first:mt-3 first:border-t-0 first:pt-0">
                             <p class="text-xs font-black text-slate-500">{{ $claimEvidence['label'] }}</p>
-                            <p class="mt-1 text-sm leading-7 text-slate-800">{{ $claimEvidence['text'] }}</p>
+                            <p class="mt-1 break-words text-sm leading-7 text-slate-800">{{ $claimPreview }}</p>
+                            @if ($claimPreview !== $claimEvidence['text'])
+                                <details class="tg-claim-full-text mt-3">
+                                    <summary class="cursor-pointer text-xs font-bold text-blue-700">View full text</summary>
+                                    <p class="mt-2 break-words whitespace-pre-line text-sm leading-7 text-slate-700">{{ $claimEvidence['text'] }}</p>
+                                </details>
+                            @endif
                         </div>
                     @empty
                         <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">No clear factual claim was detected.</p>
@@ -1270,9 +1386,60 @@
                     <p>Recorded sources and references for this report.</p>
                 </div>
             </div>
-            <span class="tg-source-count"><strong>{{ $sourceCount }}</strong> total</span>
+            <div class="tg-source-counts" role="group" aria-label="Source classification counts">
+                @foreach ([
+                    ['key' => 'trusted', 'label' => 'Trusted', 'heading' => 'Trusted sources', 'sources' => $trustedSources, 'note' => 'Recorded as fact-check, official, or weather sources. This does not confirm the submitted claim.'],
+                    ['key' => 'other', 'label' => 'Other sources', 'heading' => 'Other sources', 'sources' => $otherSources, 'note' => 'Not classified as trusted in this report. This does not mean these sources are false.'],
+                ] as $sourceGroup)
+                    <div data-source-group="{{ $sourceGroup['key'] }}" x-data="{ open: false, pinned: false }"
+                        @mouseenter="open = true" @mouseleave="if (!pinned) open = false"
+                        @focusout="if (!$el.contains($event.relatedTarget)) { open = false; pinned = false }"
+                        @click.outside="open = false; pinned = false"
+                        @keydown.escape.stop.prevent="open = false; pinned = false; $refs.trigger.focus()">
+                        <button type="button" x-ref="trigger" class="tg-source-count tg-source-count-button"
+                            @click="pinned = !pinned; open = pinned" :aria-expanded="open" aria-expanded="false"
+                            aria-controls="report-{{ $selectedDetection->id }}-{{ $sourceGroup['key'] }}-sources"
+                            aria-label="{{ $sourceGroup['sources']->count() }} {{ strtolower($sourceGroup['heading']) }}. Show sources">
+                            <strong>{{ $sourceGroup['sources']->count() }}</strong> {{ $sourceGroup['label'] }}
+                            <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="m5 7.5 5 5 5-5" /></svg>
+                        </button>
+                        <div id="report-{{ $selectedDetection->id }}-{{ $sourceGroup['key'] }}-sources" class="tg-source-popover"
+                            x-cloak x-show="open" x-transition.opacity.duration.150ms role="region" aria-label="{{ $sourceGroup['heading'] }}">
+                            <div class="tg-source-popover-card">
+                                <p class="tg-source-popover-heading">{{ $sourceGroup['heading'] }} · {{ $sourceGroup['sources']->count() }}</p>
+                                <p class="tg-source-popover-note">{{ $sourceGroup['note'] }}</p>
+                                <ul>
+                                    @forelse ($sourceGroup['sources'] as $groupSource)
+                                        @php
+                                            $groupSourceUrl = \App\Services\Detections\ReportAnswer::safeUrl($groupSource['url'] ?? null);
+                                            $groupSourceName = ($groupSource['name'] ?? '') ?: (parse_url($groupSource['url'], PHP_URL_HOST) ?: 'Recorded source');
+                                            $groupSourceTitle = trim((string) ($groupSource['title'] ?? ''));
+                                        @endphp
+                                        <li>
+                                            @if ($groupSourceUrl)
+                                                <a href="{{ $groupSourceUrl }}" target="_blank" rel="noopener noreferrer">
+                                                    <strong>{{ $groupSourceName }}</strong>
+                                                    <span>{{ \Illuminate\Support\Str::limit($groupSourceTitle ?: $groupSourceUrl, 110) }}</span>
+                                                </a>
+                                            @else
+                                                <div class="tg-source-popover-entry"><strong>{{ $groupSourceName }}</strong><span>{{ \Illuminate\Support\Str::limit($groupSourceTitle, 110) }}</span></div>
+                                            @endif
+                                        </li>
+                                    @empty
+                                        <li><p class="tg-source-popover-note">No {{ strtolower($sourceGroup['heading']) }} recorded.</p></li>
+                                    @endforelse
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+                <span class="tg-source-count"><strong>{{ $sourceCount }}</strong> total</span>
+            </div>
         </div>
 
+        @if (!$isMediaReport && empty($publicResult['sources']))
+            <p class="mb-4 text-sm text-slate-600">No reviewed source established a factual conclusion for this submission. This does not mean the claim is false.</p>
+        @endif
         <div class="tg-source-list">
             @forelse ($primarySources as $source)
                 @if ($loop->first || ($primarySources[$loop->index - 1]['source_type'] ?? 'reference') !== ($source['source_type'] ?? 'reference'))

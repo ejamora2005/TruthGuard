@@ -23,6 +23,84 @@ Only passing cells from a genuine `validated_on_supplied_population` artifact ca
 
 ## Image score calibration
 
+### Publisher-labeled benchmark experiment
+
+For a downloaded known-origin benchmark whose independent review or training
+exclusion remains unresolved, run the separate offline experiment instead of
+marking review fields complete:
+
+```powershell
+.venv-ai-origin/Scripts/python.exe automation/evaluation/benchmark_image_calibration.py --annotations path/to/annotations.draft.jsonl --output-dir storage/tmp-benchmark-v1 --threads 3
+```
+
+It captures the pinned detector's original scores, fits temperature on the existing
+calibration split, and evaluates once on the untouched test split. Matching scene
+groups and exact duplicates must already be grouped and deduplicated. A completed
+report is immutable. After an interruption, repeat the command with `--resume`;
+the manifest, model identity, and captured scores must match. Interrupted malformed
+records are rejected rather than silently repaired. No network access is allowed
+during inference. Progress reports show timing, not test performance.
+
+The report always has `status=experimental_benchmark_only`,
+`deployment_eligible=false`, and `validation.passed=false`. It records benchmark
+improvement separately from the unresolved review requirements, preserves the
+original annotation flags, and cannot enable live confidence. The reviewed fitter
+below remains the only deployment-artifact path. Public benchmark results alone
+do not establish calibration on real user uploads.
+
+To prepare a portable Google Colab notebook and a small upload ZIP:
+
+```powershell
+.venv-ai-origin/Scripts/python.exe automation/evaluation/build_colab_calibration.py --annotations storage/tmp-calibration-download-audit/annotations.draft.jsonl --output-dir storage/tmp-colab-calibration
+```
+
+Upload the generated notebook in Colab, select a GPU, and run its cells in order.
+The ZIP contains only an explicit code/config whitelist and the portable annotation
+manifest. It excludes images, weights, credentials and `.env`. Colab downloads the
+two official archives with pinned MD5 checks and the unchanged model at its pinned
+revision/SHA-256. Scores and progress go to an authorized Google Drive folder;
+image/model downloads stay on the temporary VM. No OpenAI API calls are made.
+
+The separate CUDA FP32 benchmark adapter supports GPUs without native BF16 such
+as T4. It does not change the application adapter. CUDA receives its own adapter
+identity and hardware/library profile, and cannot resume from CPU captures. Drive
+run folders include the environment and bundle fingerprints so incompatible runs
+remain separate. Reconnecting to the same profile resumes verified saved scores.
+The output remains experimental and must not be enabled on the CPU detector.
+Actual Colab GPU execution must be checked in Colab; local packaging tests do not
+measure CUDA inference speed, numerical agreement, or calibration quality.
+
+To import a completed Colab result ZIP for local review (no new inference or API
+calls), keep the original notebook bundle and run:
+
+```powershell
+.venv-ai-origin/Scripts/python.exe automation/evaluation/review_colab_results.py --archive C:/Downloads/TruthGuard-GPU-results-RUN_ID.zip --bundle storage/tmp-colab-calibration/TruthGuard-calibration-bundle.zip --output-dir output/calibration/gpu-RUN_ID
+```
+
+The importer checks archive contents/CRC, complete score capture, original bundle
+code and labels/splits, exact local checkpoint/configuration, and reproduces the
+existing temperature fit and held-out metrics. Numeric comparison allows tiny
+Linux/Windows math differences; counts and split identities must match exactly.
+It refuses to overwrite prior imports and saves the unchanged returned files,
+original ZIP, machine-readable `review.json`, and readable `review.html`.
+This verification does not constitute independent label/population review or
+authorize transferring GPU FP32 calibration to CPU BF16. No settings, verdicts,
+thresholds, or saved user reports are changed by the importer.
+
+The completed `22bebf65575dda12` T4 run was imported locally on 2026-10-16:
+2,994 unique images, with 1,495 calibration and 1,499 held-out test images.
+At the original raw 0.5 threshold, 1,433/1,499 test images were classified correctly
+(95.60% on this benchmark): 435/497 camera, 501/501 FLUX and 497/501 SD3 images.
+Temperature 0.757461938 improved held-out log loss from 0.119739 to 0.112887,
+Brier score from 0.033585 to 0.032684 and 10-bin calibration error from 0.052621
+to 0.042794. The paired log-loss-difference 95% interval was
+[-0.011375, -0.001837]. Temperature scaling did not change classification accuracy.
+These numbers describe the supplied original-file benchmark and its class ratio,
+not the live CPU service or all user uploads. Independent review, training overlap,
+deployment-population suitability and exact-runtime calibration remain unresolved;
+live calibrated confidence remains disabled. The original final test split stays
+sealed rather than being reused to choose a new method.
+
 The application supports a separate, optional image-origin calibrator. No validated live calibration artifact is bundled. The dataset directories currently contain placeholders; synthetic unit-test artifacts and the nine-image smoke set are not calibration evidence.
 
 1. Copy `image-calibration.annotations.example.jsonl` and `image-calibration.population.example.json` to a working dataset folder. The examples deliberately fail review validation until replaced with real records. Supply independently reviewed real-camera and AI-generation provenance, original file paths/hashes, training exclusion and a reviewed population/prevalence scope. Never use a previous detector verdict as a ground-truth label.

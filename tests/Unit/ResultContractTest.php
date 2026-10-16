@@ -9,6 +9,16 @@ use Tests\TestCase;
 
 class ResultContractTest extends TestCase
 {
+    public function test_interpretation_action_omits_only_complete_repeated_summary_sentences(): void
+    {
+        $summary = 'The wording is incomplete. The visible text does not identify a specific assertion.';
+        $recommendation = 'The visible text does not identify a specific assertion. Confirm the unreadable words; they could change its meaning.';
+        $this->assertSame('Confirm the unreadable words; they could change its meaning.', ReportAnswer::interpretationAction($summary, $recommendation));
+        $qualified = 'The visible text does not identify a specific assertion unless the missing date is recovered.';
+        $this->assertSame($qualified, ReportAnswer::interpretationAction($summary, $qualified));
+        $this->assertSame($summary, ReportAnswer::interpretationAction($summary, $summary));
+    }
+
     public function test_explicitly_unreviewed_sources_and_their_citations_are_excluded(): void
     {
         $result = ReportAnswer::complete($this->fixture([
@@ -174,6 +184,19 @@ class ResultContractTest extends TestCase
         $this->assertSame([['text' => 'The reviewed record supports the stated date.', 'source_ids' => ['s1']]], $public['answer_segments']);
         $this->assertCount(1, $public['sources']);
         $this->assertStringNotContainsString('fixture', json_encode($public));
+    }
+
+    public function test_interpretation_summarizes_the_finding_without_search_narration_or_background_quotes(): void
+    {
+        $finding = 'The submitted wording still needs clarification before a factual outcome can be judged. The visible text is too fragmentary to identify a specific factual assertion about the Constitution and elections.';
+        $original = 'I searched for records about “constitution to, ano, the elections”. '.$finding
+            .' A related source dated 2026-10-16 states: “A lengthy transcript provides related background.” This provides context, not a verdict.';
+        $saved = ['verdict' => 'MISSING_CONTEXT', 'summary' => $original];
+        $before = $saved;
+        $this->assertSame($finding, ReportAnswer::interpretationSummary($saved, $original));
+        $this->assertSame($before, $saved);
+        $this->assertSame('The image origin remains inconclusive. No reliable origin conclusion was established.',
+            ReportAnswer::interpretationSummary(['verdict' => 'INCONCLUSIVE'], 'The image origin remains inconclusive. No reliable origin conclusion was established. Review the original file.'));
     }
 
     private function fixture(array $overrides = []): array

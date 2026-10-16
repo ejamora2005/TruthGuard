@@ -84,7 +84,7 @@ new class extends Component
 
     $displayModes = [
         ['key' => 'light', 'label' => 'Light', 'description' => 'Bright workspace surfaces.'],
-        ['key' => 'dark', 'label' => 'Dark', 'description' => 'Deep preview for low-light work.'],
+        ['key' => 'dark', 'label' => 'Dark', 'description' => 'Darker surfaces for low-light reading.'],
         ['key' => 'system', 'label' => 'System', 'description' => 'Follow device preference.'],
     ];
 
@@ -136,13 +136,21 @@ new class extends Component
         avatarUploadMaxBytes: @js($avatarUploadMaxBytes),
         avatarUploadError: '',
         displayMode: 'system',
+        textSize: 'standard',
         accentColor: 'blue',
         init() {
             try {
                 this.profileBio = localStorage.getItem('truthguard-profile-bio') || '';
-                this.displayMode = localStorage.getItem('truthguard-display-mode') || 'system';
                 this.accentColor = localStorage.getItem('truthguard-accent-color') || 'blue';
             } catch (error) {}
+            const appearance = window.TruthGuardAppearance?.preferences;
+            this.displayMode = appearance?.mode || 'system';
+            this.textSize = appearance?.textSize || 'standard';
+            this.appearanceListener = (event) => {
+                this.displayMode = event.detail.mode;
+                this.textSize = event.detail.textSize;
+            };
+            window.addEventListener('truthguard-appearance-updated', this.appearanceListener);
 
             window.addEventListener('truthguard-profile-updated', (event) => {
                 const detail = event.detail || {};
@@ -168,6 +176,9 @@ new class extends Component
                     this.storedAvatarUrl = detail.avatarUrl;
                 }
             });
+        },
+        destroy() {
+            window.removeEventListener('truthguard-appearance-updated', this.appearanceListener);
         },
         composeDisplayName() {
             const full = [this.profileFirstName, this.profileLastName].map((part) => part.trim()).filter(Boolean).join(' ');
@@ -202,7 +213,7 @@ new class extends Component
                     this.$refs.avatarInput.value = '';
                 }
 
-                window.alert(this.avatarUploadError);
+                window.TruthGuardDialog.alert(this.avatarUploadError, { title: 'Profile photo too large' });
                 return;
             }
 
@@ -223,9 +234,11 @@ new class extends Component
             }
         },
         saveLocalPreferences() {
-            localStorage.setItem('truthguard-profile-bio', this.profileBio || '');
-            localStorage.setItem('truthguard-display-mode', this.displayMode);
-            localStorage.setItem('truthguard-accent-color', this.accentColor);
+            window.TruthGuardAppearance?.set({ mode: this.displayMode, textSize: this.textSize });
+            try {
+                localStorage.setItem('truthguard-profile-bio', this.profileBio || '');
+                localStorage.setItem('truthguard-accent-color', this.accentColor);
+            } catch (error) {}
         },
     }"
 >
@@ -633,6 +646,43 @@ new class extends Component
             <input type="hidden" name="return_section" value="appearance">
 
             <div class="truthguard-appearance-main space-y-5">
+                <div class="grid gap-4 xl:grid-cols-2">
+                    <div class="rounded-[24px] border border-white/80 bg-white/85 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+                        <h3 class="text-base font-black text-slate-950" id="tg-display-label">Display mode</h3>
+                        <p class="mt-1 text-sm text-slate-500">Choose what feels comfortable to read.</p>
+                        <div role="group" aria-labelledby="tg-display-label" class="mt-4 grid grid-cols-3 gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1">
+                            @foreach ($displayModes as $mode)
+                                <button
+                                    type="button"
+                                    :aria-pressed="displayMode === '{{ $mode['key'] }}'"
+                                    @click="displayMode = '{{ $mode['key'] }}'; saveLocalPreferences()"
+                                    class="rounded-xl px-3 py-2.5 text-left text-sm transition focus:outline-none focus:ring-4 focus:ring-blue-100"
+                                    :class="displayMode === '{{ $mode['key'] }}' ? 'bg-white font-black text-slate-950 shadow-sm' : 'font-semibold text-slate-500 hover:text-slate-900'"
+                                >
+                                    <span class="block">{{ $mode['label'] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="rounded-[24px] border border-white/80 bg-white/85 p-5 shadow-sm">
+                        <h3 id="tg-text-size-label" class="text-base font-black text-slate-950">Text size</h3>
+                        <p class="mt-1 text-sm text-slate-500">Make text easier to read across TruthGuard.</p>
+                        <div role="group" aria-labelledby="tg-text-size-label" class="tg-text-size-options mt-4 grid grid-cols-3 gap-2">
+                            @foreach ([['key' => 'standard', 'label' => 'Standard', 'size' => '16px'], ['key' => 'large', 'label' => 'Large', 'size' => '18px'], ['key' => 'extra-large', 'label' => 'Extra large', 'size' => '20px']] as $size)
+                                <button type="button"
+                                    @click="textSize = '{{ $size['key'] }}'; saveLocalPreferences()"
+                                    :aria-pressed="textSize === '{{ $size['key'] }}'"
+                                    :class="textSize === '{{ $size['key'] }}' ? 'border-blue-400 bg-blue-50 text-blue-700 ring-2 ring-blue-100' : 'border-slate-200 bg-white text-slate-600'"
+                                    class="min-w-0 rounded-xl border px-2 py-3 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                                    <span aria-hidden="true" class="block font-semibold" style="font-size: {{ $size['size'] }}">Aa</span>
+                                    <span class="mt-1 block text-xs font-semibold">{{ $size['label'] }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-500" role="status">Display mode and text size apply immediately and are saved on this browser.</p>
                 <div class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
                     <div class="flex flex-col gap-3 border-b border-slate-200/70 bg-white/65 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                         <div class="flex items-center gap-3">
@@ -699,23 +749,6 @@ new class extends Component
                     @endif
                 </div>
 
-                <div class="grid gap-4 xl:grid-cols-2">
-                    <div class="rounded-[24px] border border-white/80 bg-white/85 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
-                        <h3 class="text-base font-black text-slate-950">Display mode</h3>
-                        <div class="mt-4 grid gap-1 rounded-2xl border border-slate-200/80 bg-slate-100/80 p-1 sm:grid-cols-3">
-                            @foreach ($displayModes as $mode)
-                                <button
-                                    type="button"
-                                    @click="displayMode = '{{ $mode['key'] }}'; saveLocalPreferences()"
-                                    class="rounded-xl px-3 py-2.5 text-left text-sm transition focus:outline-none focus:ring-4 focus:ring-blue-100"
-                                    :class="displayMode === '{{ $mode['key'] }}' ? 'bg-white font-black text-slate-950 shadow-sm' : 'font-semibold text-slate-500 hover:text-slate-900'"
-                                >
-                                    <span class="block">{{ $mode['label'] }}</span>
-                                </button>
-                            @endforeach
-                        </div>
-                    </div>
-
                     <div class="rounded-[24px] border border-white/80 bg-white/85 p-5 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
                         <h3 class="text-base font-black text-slate-950">Accent color</h3>
                         <div class="mt-4 flex flex-wrap gap-3">
@@ -733,8 +766,6 @@ new class extends Component
                             @endforeach
                         </div>
                     </div>
-                </div>
-
                 <div class="truthguard-settings-action-footer flex justify-end rounded-[24px] border border-white/80 bg-white/75 px-5 py-4 shadow-[0_18px_48px_rgba(15,23,42,0.07)] backdrop-blur-xl">
                     <button
                         type="submit"
@@ -748,58 +779,18 @@ new class extends Component
                 </div>
             </div>
 
-            <aside class="truthguard-appearance-preview-card overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 text-white shadow-[0_24px_70px_rgba(37,99,235,0.18)] xl:sticky xl:top-28 xl:self-start">
-                <div class="border-b border-white/20 px-5 py-4">
-                    <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-50/80">Preview</p>
-                    <h3 class="mt-1 text-base font-black">Workspace sample</h3>
+            <aside class="truthguard-appearance-preview-card tg-reading-preview overflow-hidden rounded-[24px] border border-slate-200 bg-white xl:sticky xl:top-6 xl:self-start" aria-label="Reading preview">
+                <div class="border-b border-slate-200 px-5 py-4">
+                    <p class="text-xs font-bold uppercase tracking-widest text-blue-600">Live preview</p>
+                    <h3 class="mt-1 text-base font-bold text-slate-950">Comfortable reading</h3>
                 </div>
-
                 <div class="p-5">
-                    <div
-                        class="rounded-[24px] bg-gradient-to-br p-4 transition ring-1 ring-white/20"
-                        :class="{
-                            'from-blue-400/30 via-white/15 to-sky-300/20': profileTheme === 'ocean',
-                            'from-emerald-300/30 via-white/15 to-teal-300/20': profileTheme === 'forest',
-                            'from-amber-300/30 via-white/15 to-orange-300/20': profileTheme === 'sunset'
-                        }"
-                    >
-                        <div class="rounded-[22px] border border-white/50 bg-white/95 p-4 text-slate-950 shadow-xl">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">TruthGuard</p>
-                                    <p class="mt-1 text-sm font-black">Dashboard chrome</p>
-                                </div>
-                                <span
-                                    class="h-8 w-8 rounded-2xl shadow-sm"
-                                    :class="{
-                                        'bg-blue-600': accentColor === 'blue',
-                                        'bg-violet-600': accentColor === 'violet',
-                                        'bg-emerald-500': accentColor === 'emerald',
-                                        'bg-slate-800': accentColor === 'slate'
-                                    }"
-                                ></span>
-                            </div>
-                            <div class="mt-5 space-y-2">
-                                <div class="h-2 w-3/4 rounded-full bg-slate-200"></div>
-                                <div class="h-2 w-1/2 rounded-full bg-slate-100"></div>
-                            </div>
-                            <div class="mt-5 grid grid-cols-3 gap-2">
-                                <div class="h-12 rounded-2xl bg-slate-100"></div>
-                                <div class="h-12 rounded-2xl bg-slate-100"></div>
-                                <div class="h-12 rounded-2xl bg-slate-100"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 space-y-3">
-                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-white/20 bg-white/15 px-3 py-3">
-                            <span class="text-sm text-blue-50">Theme</span>
-                            <span class="text-sm font-semibold" x-text="{ ocean: 'Ocean', forest: 'Forest', sunset: 'Sunset' }[profileTheme] || 'Ocean'"></span>
-                        </div>
-                        <div class="flex items-center justify-between gap-3 rounded-2xl border border-white/20 bg-white/15 px-3 py-3">
-                            <span class="text-sm text-blue-50">Display</span>
-                            <span class="text-sm font-semibold capitalize" x-text="displayMode"></span>
-                        </div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Sample result</p>
+                    <h4 class="mt-2 text-lg font-bold text-slate-950">What the evidence shows</h4>
+                    <p class="tg-reading-sample mt-3 text-sm leading-relaxed text-slate-600">A clear explanation helps you understand the finding and the evidence behind it. Choose the display mode and text size that work best for you.</p>
+                    <div class="mt-5 border-t border-slate-200 pt-4 text-sm text-slate-500">
+                        <p>Mode: <strong class="font-semibold capitalize" x-text="displayMode"></strong></p>
+                        <p class="mt-1">Text: <strong class="font-semibold" x-text="{ standard: 'Standard', large: 'Large', 'extra-large': 'Extra large' }[textSize]"></strong></p>
                     </div>
                 </div>
             </aside>

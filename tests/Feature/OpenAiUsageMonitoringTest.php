@@ -12,6 +12,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class OpenAiUsageMonitoringTest extends TestCase
@@ -48,6 +50,7 @@ class OpenAiUsageMonitoringTest extends TestCase
         $this->assertStringNotContainsString('private', $saved);
         $summary = app(OpenAiUsageRecorder::class)->monthlySummary();
         $this->assertSame(230, $summary['totalTokens']); // Cached/reasoning counts are subsets, not added again.
+        $this->assertSame(230, $summary['averageTokensPerResponse']);
         $this->assertSame(1, $summary['requests']);
         $this->assertSame(0, $summary['unmeasuredRequests']);
     }
@@ -61,6 +64,7 @@ class OpenAiUsageMonitoringTest extends TestCase
         $this->assertDatabaseCount('openai_request_usages', 1);
         $this->assertDatabaseHas('openai_request_usages', ['http_status' => 429, 'total_tokens' => null, 'quota_exhausted' => false]);
         $this->assertSame(1, app(OpenAiUsageRecorder::class)->monthlySummary()['unmeasuredRequests']);
+        $this->assertNull(app(OpenAiUsageRecorder::class)->monthlySummary()['averageTokensPerResponse']);
     }
 
     public function test_dollar_warning_and_limit_alerts_are_admin_only_and_deduplicated(): void
@@ -200,6 +204,86 @@ class OpenAiUsageMonitoringTest extends TestCase
         Http::assertSentCount(1); // Loading or refreshing the admin page never polls billing or inference.
         $regular = User::factory()->create(['is_admin' => false]);
         $this->actingAs($regular)->getJson('/admin/api/ai-usage')->assertRedirect(route('dashboard'));
+    }
+
+    public function test_missing_monitoring_tables_return_actionable_setup_status_without_fabricated_totals(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        Schema::drop('openai_request_usages');
+        $this->actingAs($admin)->getJson('/admin/api/ai-usage')->assertStatus(503)
+            ->assertJsonPath('code', 'ai_usage_storage_not_ready')
+            ->assertJsonPath('missingTables', ['openai_request_usages'])
+            ->assertJsonMissingPath('requestUsage')->assertJsonMissingPath('billing');
+        Schema::drop('openai_cost_snapshots');
+        $this->getJson('/admin/api/ai-usage')->assertStatus(503)
+            ->assertJsonPath('missingTables', ['openai_request_usages', 'openai_cost_snapshots']);
+        DB::table('migrations')->where('migration', '2026_10_16_000000_create_openai_usage_monitoring_tables')->delete();
+        $this->artisan('migrate', [
+            '--path' => 'database/migrations/2026_10_16_000000_create_openai_usage_monitoring_tables.php',
+            '--force' => true,
+        ])->assertExitCode(0);
+        $this->getJson('/admin/api/ai-usage')->assertOk()
+            ->assertJsonPath('requestUsage.requests', 0)->assertJsonPath('billing.status', 'unavailable');
+        Http::assertNothingSent();
+    }
+
+    public static function dollarCapacityCases(): array
+    {
+        return [
+            'below warning' => [4.0, false, 'healthy', 'Budget available', 66.7, '$2.00'],
+            'rounded warning is not crossed' => [4.7999, false, 'healthy', 'Budget available', 80.0, '$1.20'],
+            'at warning' => [4.8, false, 'warning', 'Budget running low', 80.0, '$1.20'],
+            'at limit' => [6.0, false, 'critical', 'Budget reached', 100.0, '$0.00'],
+            'rounded limit is not crossed' => [5.9999, false, 'warning', 'Budget running low', 100.0, '$0.00'],
+            'over limit' => [6.6, false, 'critical', 'Budget reached', 110.0, '$0.00'],
+            'stale balance' => [4.0, true, 'unknown', 'Billing needs refresh', null, 'Unknown'],
+            'never synced' => [null, false, 'unknown', 'Billing not synced', null, 'Unknown'],
+        ];
+    }
+
+    #[DataProvider('dollarCapacityCases')]
+    public function test_dollar_only_capacity_has_no_token_budget_prompt_or_live_dashboard_calls(?float $amount, bool $stale, string $status, string $label, ?float $percent, string $remaining): void
+    {
+        config()->set(['services.openai.key' => 'offline-test-key', 'services.openai.monthly_token_budget' => 0]);
+        $admin = User::factory()->create(['is_admin' => true]);
+        if ($amount !== null) {
+            Http::fake(['api.openai.com/*' => Http::response($this->costs($amount))]);
+            $this->assertTrue(app(OpenAiCostMonitor::class)->sync());
+            if ($stale) {
+                $this->travel(16)->minutes();
+            }
+        }
+        $this->actingAs($admin);
+        $usage = $this->getJson('/admin/api/ai-usage')->assertOk()
+            ->assertJsonPath('tokenUsage.monthlyTokenBudget', 0)->assertJsonPath('billing.budgetLabel', '$6.00')
+            ->assertJsonPath('capacity.basis', 'dollars')->assertJsonPath('capacity.status', $status)
+            ->assertJsonPath('capacity.label', $label)->assertJsonPath('capacity.remainingLabel', $remaining)
+            ->assertDontSee('Set a monthly token budget')->assertDontSee('OPENAI_MONTHLY_TOKEN_BUDGET');
+        $this->assertEquals($percent, $usage->json('capacity.usagePercent'));
+        $dashboard = $this->getJson('/admin/api/dashboard')->assertOk()
+            ->assertJsonPath('aiUsage.status', $status)->assertJsonPath('aiUsage.budgetCapacity.basis', 'dollars')
+            ->assertJsonPath('aiUsage.budgetCapacity.budgetLabel', '$6.00')
+            ->assertJsonPath('aiUsage.budgetCapacity.remainingLabel', $remaining);
+        if (getenv('TRUTHGUARD_DOLLAR_BUDGET_BROWSER_FIXTURE') && $amount === 4.0 && ! $stale) {
+            file_put_contents(storage_path('tmp-dollar-dashboard.json'), $dashboard->getContent());
+        }
+        Http::assertSentCount($amount === null ? 0 : 1); // Only the mocked cost sync, never a model request.
+    }
+
+    public function test_average_per_api_response_excludes_unmeasured_responses(): void
+    {
+        Http::fake(['api.openai.com/*' => Http::sequence()
+            ->push(['id' => 'resp_measured_one', 'usage' => ['input_tokens' => 8, 'output_tokens' => 4, 'total_tokens' => 12]])
+            ->push(['id' => 'resp_measured_two', 'usage' => ['input_tokens' => 6, 'output_tokens' => 2, 'total_tokens' => 8]])
+            ->push(['id' => 'resp_unknown'])]);
+        foreach (range(1, 3) as $attempt) {
+            Http::post('https://api.openai.com/v1/responses');
+        }
+        $summary = app(OpenAiUsageRecorder::class)->monthlySummary();
+        $this->assertSame(3, $summary['requests']);
+        $this->assertSame(2, $summary['measuredRequests']);
+        $this->assertSame(1, $summary['unmeasuredRequests']);
+        $this->assertSame(10, $summary['averageTokensPerResponse']);
     }
 
     private function costs(float $amount, bool $more = false, ?string $cursor = null): array

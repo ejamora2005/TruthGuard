@@ -79,6 +79,8 @@ class OpenAiUsageRecorder
             'inputTokens' => (int) $totals->input_tokens,
             'outputTokens' => (int) $totals->output_tokens,
             'totalTokens' => (int) $totals->total_tokens,
+            'averageTokensPerResponse' => $totals->measured_requests > 0
+                ? (int) round($totals->total_tokens / $totals->measured_requests) : null,
             'webSearchCalls' => (int) $totals->web_search_calls,
             'trackedSince' => DB::table('openai_request_usages')->min('occurred_at'),
         ];

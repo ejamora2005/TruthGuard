@@ -11,7 +11,10 @@ const capacityTone = {
 };
 
 export function DashboardUsageAndSubscription({ aiUsage, subscription }) {
-    const usageSeries = [{ name: 'AI Usage', data: [aiUsage.currentMonth, aiUsage.tokensUsed ?? 0, aiUsage.tokensRemaining ?? 0, aiUsage.usagePercent ?? 0] }];
+    const capacity = aiUsage.budgetCapacity;
+    const dollarMode = capacity?.basis === 'dollars';
+    const percent = capacity ? capacity.usagePercent : aiUsage.usagePercent;
+    const usageSeries = [{ name: 'AI Usage', data: dollarMode ? [aiUsage.currentMonth, aiUsage.tokensUsed ?? 0] : [aiUsage.currentMonth, aiUsage.tokensUsed ?? 0, aiUsage.tokensRemaining ?? 0, aiUsage.usagePercent ?? 0] }];
     const usageOptions = {
         chart: { type: 'bar' },
         colors: ['#2563EB'],
@@ -19,7 +22,7 @@ export function DashboardUsageAndSubscription({ aiUsage, subscription }) {
         dataLabels: { enabled: false },
         legend: { show: false },
         xaxis: {
-            categories: ['Runs', 'Used Tokens', 'Remaining', 'Budget %'],
+            categories: dollarMode ? ['Runs', 'Recorded Tokens'] : ['Runs', 'Used Tokens', 'Remaining', 'Budget %'],
             axisBorder: { show: false },
             axisTicks: { show: false },
         },
@@ -40,24 +43,24 @@ export function DashboardUsageAndSubscription({ aiUsage, subscription }) {
 
     return (
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
-            <Panel title="AI Capacity" description="Token budget status estimated from verification activity.">
+            <Panel title="AI Capacity" description={dollarMode ? 'Monthly spending target from recorded OpenAI billing.' : 'Recorded usage against the configured token target.'}>
                 <div className="truthguard-admin-capacity-card mb-5 rounded-[22px] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Monthly Token Budget</p>
-                            <p className="mt-2 text-2xl font-black text-slate-950">{aiUsage.monthlyTokenBudgetLabel ?? 'Not set'}</p>
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">{dollarMode ? 'Monthly API Budget' : 'Monthly Token Budget'}</p>
+                            <p className="mt-2 text-2xl font-black text-slate-950">{capacity?.budgetLabel ?? aiUsage.monthlyTokenBudgetLabel ?? 'Not set'}</p>
                         </div>
                         <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${capacityTone[aiUsage.status] ?? capacityTone.unknown}`}>
                             {aiUsage.statusLabel ?? 'Unknown'}
                         </span>
                     </div>
                     <div className="mt-4 h-3 overflow-hidden rounded-full bg-white">
-                        <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all" style={{ width: `${Math.min(Number(aiUsage.usagePercent ?? 0), 100)}%` }} />
+                        <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all" style={{ width: `${Math.min(Number(percent ?? 0), 100)}%` }} />
                     </div>
                     <div className="mt-3 flex flex-wrap justify-between gap-2 text-xs font-bold text-slate-500">
                         <span>{formatNumber(aiUsage.tokensUsed ?? 0)} tokens used</span>
-                        <span>{aiUsage.tokensRemainingLabel ?? 'Set budget'} remaining</span>
-                        <span>{aiUsage.usagePercent ?? 0}% used</span>
+                        <span>{capacity?.remainingLabel ?? aiUsage.tokensRemainingLabel ?? 'Unknown'} remaining</span>
+                        <span>{percent == null ? 'Billing status unknown' : `${percent}% used`}</span>
                     </div>
                 </div>
 
@@ -67,8 +70,8 @@ export function DashboardUsageAndSubscription({ aiUsage, subscription }) {
                         <p className="mt-2 text-xl font-black text-slate-950">{formatNumber(aiUsage.currentMonth)}</p>
                     </div>
                     <div className="truthguard-admin-insight-card rounded-[18px] px-4 py-4">
-                        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Token / Run</p>
-                        <p className="mt-2 text-xl font-black text-slate-950">{formatNumber(aiUsage.estimatedTokensPerRequest)}</p>
+                        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Avg / API Call</p>
+                        <p className="mt-2 text-xl font-black text-slate-950">{aiUsage.averageTokensPerResponse == null ? 'Not measured' : formatNumber(aiUsage.averageTokensPerResponse)}</p>
                     </div>
                     <div className="truthguard-admin-insight-card rounded-[18px] px-4 py-4">
                         <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Avg / Subscriber</p>

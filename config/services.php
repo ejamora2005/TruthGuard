@@ -116,6 +116,8 @@ return [
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
         'model' => env('OPENAI_MODEL', 'gpt-5.4'),
+        'extraction_model' => env('OPENAI_EXTRACTION_MODEL', env('OPENAI_MODEL', 'gpt-5.4')),
+        'planning_model' => env('OPENAI_PLANNING_MODEL', env('OPENAI_MODEL', 'gpt-5.4')),
         'analysis_enabled' => env('OPENAI_ANALYSIS_ENABLED', true),
         'claim_extraction_enabled' => env('OPENAI_CLAIM_EXTRACTION_ENABLED', true),
         'timeout' => env('OPENAI_TIMEOUT', 40),

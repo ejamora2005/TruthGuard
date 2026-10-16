@@ -29,7 +29,12 @@ export async function fetchAdminJson(endpoint) {
     }
 
     if (!response.ok) {
-        throw new Error('Unable to load admin data right now.');
+        const payload = await response.json().catch(() => ({}));
+        const message = payload?.code === 'ai_usage_storage_not_ready'
+            ? 'AI usage monitoring is not initialized on this server. Run the pending database migrations, then refresh this page.'
+            : `Unable to load admin data (HTTP ${response.status}). Please retry or check the app server logs.`;
+
+        throw new Error(message);
     }
 
     return response.json();

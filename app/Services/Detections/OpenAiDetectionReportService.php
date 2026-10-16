@@ -3,7 +3,6 @@
 namespace App\Services\Detections;
 
 use App\Services\Detections\Evidence\MediaEvidencePreparer;
-use App\Services\Detections\Evidence\ResponsesTransport;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -77,7 +76,7 @@ class OpenAiDetectionReportService
     public function extractClaimText(array $context, ?UploadedFile $uploadedFile = null): ?string
     {
         $this->extractionRecord = ['status' => 'unavailable', 'failure_reason' => null, 'http_status' => null,
-            'configured_model' => (string) config('services.openai.model', 'gpt-5.4'),
+            'configured_model' => (string) config('services.openai.extraction_model', config('services.openai.model', 'gpt-5.4')),
             'visible_text' => '', 'inferred_claim' => '', 'media_note' => ''];
         $this->mediaPreparation = [];
         if (! $this->isEnabled() || ! (bool) config('services.openai.claim_extraction_enabled', true)) {
@@ -110,19 +109,18 @@ class OpenAiDetectionReportService
                 ->timeout((int) config('services.openai.timeout', 40))
                 ->post('https://api.openai.com/v1/responses', $this->claimExtractionPayload($context, $mediaInputs));
 
+            // Even an incomplete or unusable response can consume tokens.
+            $this->extractionRecord['usage'] = (array) $response->json('usage', []);
+            $this->extractionRecord['response_model'] = $response->json('model');
+
             if (! $response->successful()) {
-                $reason = match (true) {
-                    in_array($response->status(), [401, 403], true) => 'authentication_failed',
-                    ResponsesTransport::quotaExhausted($response) => 'quota_exhausted',
-                    $response->status() === 429 => 'rate_limited',
-                    $response->status() >= 500 => 'provider_unavailable',
-                    default => 'http_error',
-                };
+                $reason = OpenAiExtractionFailure::reason($response);
                 $this->extractionRecord['failure_reason'] = $reason;
                 $this->extractionRecord['http_status'] = $response->status();
                 Log::warning('OpenAI claim extraction request failed; continuing without image text.', [
                     'analysis_id' => $context['analysis_id'] ?? null,
                     'status' => $response->status(), 'reason' => $reason, 'stage' => 'extraction',
+                    'configured_model' => $this->extractionRecord['configured_model'],
                 ]);
 
                 return null;
@@ -149,7 +147,7 @@ class OpenAiDetectionReportService
                 'status' => $visibleText === '' ? 'missing_text'
                     : ((($data['status'] ?? 'completed') === 'completed' && ($this->mediaPreparation['status'] ?? '') !== 'partial') ? 'completed' : 'incomplete'),
                 'failure_reason' => null, 'http_status' => $response->status(),
-                'configured_model' => (string) config('services.openai.model', 'gpt-5.4'),
+                'configured_model' => (string) config('services.openai.extraction_model', config('services.openai.model', 'gpt-5.4')),
                 'response_model' => is_string($data['model'] ?? null) ? $data['model'] : null,
                 'visible_text' => $visibleText, 'inferred_claim' => $claimText,
                 'media_note' => (string) ($report['synthetic_media_note'] ?? ''),
@@ -246,8 +244,11 @@ class OpenAiDetectionReportService
      */
     private function claimExtractionPayload(array $context, array $mediaInputs): array
     {
+        $model = (string) config('services.openai.extraction_model', config('services.openai.model', 'gpt-5.4'));
+
         return [
-            'model' => (string) config('services.openai.model', 'gpt-5.4'),
+            'model' => $model,
+            ...(preg_match('/^gpt-5\.[24](?:-|$)/', $model) ? ['reasoning' => ['effort' => 'none']] : []),
             'input' => [
                 [
                     'role' => 'system',

@@ -1,0 +1,15 @@
+{
+  "repository": "Bombek1/ai-image-detector-siglip-dinov2",
+  "revision": "6455cf791436ee914c9556ab71578cce9761fef7",
+  "sha256": "caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b",
+  "license": "MIT",
+  "weights_modified": false,
+  "source_url": "https://huggingface.co/Bombek1/ai-image-detector-siglip-dinov2/tree/6455cf791436ee914c9556ab71578cce9761fef7",
+  "backbone_configuration_source": "https://huggingface.co/google/siglip2-so400m-patch14-384",
+  "backbone_configuration_note": "Bundled bytes are frozen by the hashes below; the original download used main.",
+  "configuration_sha256": {
+    "config.json": "2eda88ac53c4445931edbc82bf3da7f2f3ce9034f6562047b4957462cd204ead",
+    "preprocessor_config.json": "9e30204d479cf4659f7fa4808c672a651427906b9eab48b67800abe52d6e6c6d",
+    "siglip_config.json": "cdc43ad6cffed7ab2ee3b8e4785931b94557d7c2c360bdc53b6b2ad74ac2e952"
+  }
+}

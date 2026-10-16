@@ -3826,7 +3826,7 @@ new class extends Component
                 this.drivePickerMessage = null;
                 this.dragActive = false;
 
-                window.alert(this.uploadError);
+                window.TruthGuardDialog.alert(this.uploadError, { title: 'File too large' });
                 return true;
             },
             rejectUnsupportedFile(file) {
@@ -4219,7 +4219,7 @@ new class extends Component
                 } catch (error) {
                     this.drivePickerError = error?.message || 'Could not import from Google Drive.';
                     if (error instanceof RangeError) {
-                        window.alert(this.drivePickerError);
+                        window.TruthGuardDialog.alert(this.drivePickerError, { title: 'Google Drive unavailable' });
                     }
                 } finally {
                     this.drivePickerLoading = false;

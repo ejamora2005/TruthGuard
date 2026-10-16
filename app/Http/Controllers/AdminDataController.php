@@ -8,6 +8,7 @@ use App\Services\Usage\OpenAiCostMonitor;
 use App\Services\Usage\OpenAiUsageRecorder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class AdminDataController extends Controller
@@ -194,6 +195,7 @@ class AdminDataController extends Controller
                 'providerEnabled' => $aiUsageSummary['modelConfig']['providerEnabled'],
                 'status' => $aiUsageSummary['capacity']['status'],
                 'statusLabel' => $aiUsageSummary['capacity']['label'],
+                'budgetCapacity' => $aiUsageSummary['capacity'],
             ],
             'alerts' => $alerts,
             'recentDetections' => $recentDetections->map(fn (Detection $detection) => $this->serializeDetection($detection))->all(),
@@ -317,6 +319,15 @@ class AdminDataController extends Controller
 
     public function aiUsage(): JsonResponse
     {
+        $missingTables = array_values(array_filter(['openai_request_usages', 'openai_cost_snapshots'],
+            fn ($table) => ! Schema::hasTable($table)));
+        if ($missingTables !== []) {
+            return response()->json([
+                'code' => 'ai_usage_storage_not_ready',
+                'message' => 'AI usage monitoring is not initialized on this server. Run the pending database migrations, then refresh this page.',
+                'missingTables' => $missingTables,
+            ], 503);
+        }
         $requestUsage = app(OpenAiUsageRecorder::class)->monthlySummary();
         $billing = app(OpenAiCostMonitor::class)->summary();
         $monthlyDetectionTrend = collect(range(1, 12))->map(function (int $month) {
@@ -336,6 +347,7 @@ class AdminDataController extends Controller
             currentMonthRequests: $currentMonthDetections,
             activeSubscribers: $activeSubscribers,
             averageFakeScore: $averageFakeScore,
+            billing: $billing,
         );
 
         $topContributors = User::query()
@@ -488,7 +500,7 @@ class AdminDataController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function buildAiUsageSummary(int $totalRequests, int $currentMonthRequests, int $activeSubscribers, int $averageFakeScore): array
+    private function buildAiUsageSummary(int $totalRequests, int $currentMonthRequests, int $activeSubscribers, int $averageFakeScore, ?array $billing = null): array
     {
         $providerEnabled = filled(config('services.openai.key'));
         $model = (string) config('services.openai.model', 'gpt-5.4');
@@ -517,6 +529,16 @@ class AdminDataController extends Controller
             tokensRemaining: $tokensRemaining,
             warningThreshold: $warningThreshold,
         );
+        $capacity = [
+            'status' => $capacityStatus, 'label' => $capacityLabel, 'description' => $capacityDescription,
+            'warningThreshold' => $warningThreshold, 'basis' => 'tokens',
+            'budgetLabel' => number_format($monthlyTokenBudget), 'remainingLabel' => $tokensRemaining === null ? 'Unknown' : number_format($tokensRemaining),
+            'usagePercent' => $monthlyTokenBudget > 0 ? $usagePercent : null,
+        ];
+        if ($monthlyTokenBudget <= 0) {
+            $billing ??= app(OpenAiCostMonitor::class)->summary();
+            $capacity = $this->dollarCapacity($providerEnabled, $billing);
+        }
 
         $dayOfMonth = max(1, now()->day);
         $daysInMonth = max(1, now()->daysInMonth);
@@ -540,18 +562,14 @@ class AdminDataController extends Controller
                 'tokensRemainingLabel' => $tokensRemaining === null ? 'Set budget' : number_format($tokensRemaining),
                 'usagePercent' => $usagePercent,
                 'estimatedTokensPerRequest' => $estimatedTokensPerRequest,
+                'averageTokensPerResponse' => $requestUsage['averageTokensPerResponse'],
                 'estimatedInputTokensPerRequest' => $estimatedInputTokens,
                 'estimatedOutputTokensPerRequest' => $estimatedOutputTokens,
                 'usageSource' => $usageSource,
                 'usageSourceLabel' => 'API response ledger',
                 'hasTokenCapacity' => $hasTokenCapacity,
             ],
-            'capacity' => [
-                'status' => $capacityStatus,
-                'label' => $capacityLabel,
-                'description' => $capacityDescription,
-                'warningThreshold' => $warningThreshold,
-            ],
+            'capacity' => $capacity,
             'modelConfig' => [
                 'provider' => 'OpenAI',
                 'providerEnabled' => $providerEnabled,
@@ -567,9 +585,41 @@ class AdminDataController extends Controller
                 'projectedRemaining' => $projectedRemaining,
                 'projectedRemainingLabel' => $projectedRemaining === null ? 'Set budget' : number_format($projectedRemaining),
             ],
-            'recommendations' => $this->aiUsageRecommendations($providerEnabled, $monthlyTokenBudget, $usagePercent, $projectedPercent, $usageSource),
+            'recommendations' => $monthlyTokenBudget > 0
+                ? $this->aiUsageRecommendations($providerEnabled, $monthlyTokenBudget, $usagePercent, $projectedPercent, $usageSource)
+                : [[
+                    'title' => match ($capacity['status']) {
+                        'healthy' => 'Dollar budget monitoring is active',
+                        'warning' => 'Monthly dollar budget is running low',
+                        'critical' => 'Monthly dollar budget reached',
+                        default => 'Check billing monitoring',
+                    },
+                    'detail' => $capacity['description'].' Alerts do not stop API requests.',
+                    'tone' => match ($capacity['status']) {
+                        'healthy' => 'success', 'critical', 'offline' => 'error', default => 'warning'
+                    },
+                ]],
             'usageNote' => 'Tokens are provider-reported counts captured by TruthGuard from monitoring start; earlier reports and external API use are excluded. '.$requestUsage['unmeasuredRequests'].' recorded responses have no token usage; their usage is unknown, not assumed zero. Dollar spending is synced separately from OpenAI billing.',
         ];
+    }
+
+    private function dollarCapacity(bool $providerEnabled, array $billing): array
+    {
+        [$status, $label, $description] = match (true) {
+            ! $providerEnabled => ['offline', 'OpenAI not configured', 'Add an OpenAI API key before relying on external AI analysis.'],
+            $billing['budget'] <= 0 => ['unknown', 'Dollar budget not set', 'Set OPENAI_MONTHLY_DOLLAR_BUDGET to monitor the monthly spending target.'],
+            $billing['status'] === 'not_configured' => ['unknown', 'Billing not connected', 'Connect the billing monitor to track spending against your '.$billing['budgetLabel'].' monthly budget.'],
+            $billing['used'] === null => ['unknown', 'Billing not synced', 'No spending total has been synced for this UTC month; remaining budget is unknown.'],
+            $billing['status'] !== 'synced' => ['unknown', 'Billing needs refresh', 'The last synced total was '.$billing['usedLabel'].' of '.$billing['budgetLabel'].'. Sync billing before relying on the remaining budget.'],
+            $billing['used'] >= $billing['budget'] => ['critical', 'Budget reached', 'Recorded spending has reached or exceeded your '.$billing['budgetLabel'].' monthly budget.'],
+            $billing['used'] * 100 >= $billing['budget'] * $billing['warningThreshold'] => ['warning', 'Budget running low', $billing['remainingLabel'].' remains in your '.$billing['budgetLabel'].' monthly budget, based on the latest billing sync.'],
+            default => ['healthy', 'Budget available', $billing['remainingLabel'].' remains in your '.$billing['budgetLabel'].' monthly budget, based on the latest billing sync.'],
+        };
+
+        return ['status' => $status, 'label' => $label, 'description' => $description,
+            'basis' => 'dollars', 'budgetLabel' => $billing['budgetLabel'], 'remainingLabel' => $billing['status'] === 'synced' ? $billing['remainingLabel'] : 'Unknown',
+            'usagePercent' => $billing['status'] === 'synced' ? $billing['usagePercent'] : null,
+            'warningThreshold' => $billing['warningThreshold']];
     }
 
     /**

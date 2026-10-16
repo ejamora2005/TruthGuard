@@ -5,12 +5,19 @@ namespace Tests\Feature;
 use App\Models\Detection;
 use App\Models\User;
 use App\Services\Detections\GoogleFactCheckFeedService;
+use App\Services\Detections\ReportAnswer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class UserDashboardDetectionIntegrationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => [], 'configured' => true]);
+    }
 
     public function test_user_dashboard_stays_clean_and_points_users_to_detection_center(): void
     {
@@ -42,13 +49,13 @@ class UserDashboardDetectionIntegrationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Dashboard Overview')
-            ->assertSee('A cleaner view of your detection workspace.')
+            ->assertViewIs('user.dashboard')
+            ->assertSee('Latest public claim reviews')
             ->assertSee(route('history'), false)
-            ->assertSee('Latest Scan')
+            ->assertSee(route('detections.create'), false)
             ->assertDontSee('Detection workspace')
             ->assertDontSee('Analyze text, links, images, videos, and PDFs right from the user dashboard.')
-            ->assertSee('Ready to review')
+            ->assertDontSee('Possible misinformation case')
             ->assertDontSee('TG-'.str_pad((string) $detection->id, 4, '0', STR_PAD_LEFT));
     }
 
@@ -58,6 +65,11 @@ class UserDashboardDetectionIntegrationTest extends TestCase
 
         $detection = Detection::query()->create([
             'user_id' => $user->id,
+            'fact_check_result' => ReportAnswer::complete(['schema_version' => 4, 'primary_task' => 'context',
+                'verdict' => 'OUT_OF_CONTEXT', 'summary' => 'The demonstration caption assigns an incorrect event to a historical scene.',
+                'sources' => [['id' => 's1', 'url' => 'https://example.gov/demonstration-scene',
+                    'used_for' => 'The simulated record establishes the original scene and date.']],
+                'answer_segments' => [['text' => 'The demonstration caption assigns an incorrect event to a historical scene.', 'source_ids' => ['s1']]]]),
             'source_kind' => 'upload',
             'platform' => 'web',
             'media_type' => 'image',
@@ -83,10 +95,12 @@ class UserDashboardDetectionIntegrationTest extends TestCase
         $response
             ->assertOk()
             ->assertSee('History')
-            ->assertSee('View and manage your detection history')
+            ->assertSee('Possible misinformation case')
+            ->assertSee('Out of Context')
+            ->assertDontSee('AI-generated media')
             ->assertSee('All History')
-            ->assertSee('Search by title or keyword...')
-            ->assertSee('Fact check result')
+            ->assertSee('Search your assessments')
+            ->assertSee('TG-01')
             ->assertDontSee('TG-'.str_pad((string) $detection->id, 4, '0', STR_PAD_LEFT))
             ->assertSee(route('detections.result', $detection), false);
     }
@@ -111,7 +125,7 @@ class UserDashboardDetectionIntegrationTest extends TestCase
         ]);
 
         $this->mock(GoogleFactCheckFeedService::class, function ($mock): void {
-            $mock->shouldReceive('latest')->once()->with(6)->andReturn(['items' => []]);
+            $mock->shouldReceive('latest')->andReturn(['items' => []]);
         });
 
         $response = $this
@@ -124,7 +138,9 @@ class UserDashboardDetectionIntegrationTest extends TestCase
             ->assertSee(route('detections.create'), false)
             ->assertDontSee('Go back to the previous page');
 
-        $this->assertSame(1, substr_count($response->getContent(), 'class="truthguard-shell-toggle shrink-0"'));
+        $dom = new \DOMDocument;
+        @$dom->loadHTML($response->getContent());
+        $this->assertSame(1, (new \DOMXPath($dom))->query('//a[@aria-label="Go back"]')->length);
     }
 
     public function test_admin_can_still_open_the_shared_detection_center(): void
@@ -139,7 +155,7 @@ class UserDashboardDetectionIntegrationTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Detection Center')
+            ->assertSee('Fact Check workspace')
             ->assertSee('Analyze');
     }
 }

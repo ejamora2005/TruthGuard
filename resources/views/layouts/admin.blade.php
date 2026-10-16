@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        @include('layouts.partials.appearance-preferences')
         @include('layouts.partials.global-loader-assets')
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -26,39 +27,9 @@
             $latestUnreadNotificationId = null;
 
             if ($user && \Illuminate\Support\Facades\Schema::hasTable('notifications')) {
-                $hasNotificationArchive = \Illuminate\Support\Facades\Schema::hasColumn('notifications', 'archived_at');
-                $formatNavNotification = static function ($notification): array {
-                    $data = $notification->data ?: [];
-                    $message = (string) data_get($data, 'message', 'Open TruthGuard to review the latest update.');
-
-                    if (preg_match('/TG-\d+/i', $message)) {
-                        $confidence = (int) data_get($data, 'confidence', 0);
-                        $message = ((string) data_get($data, 'category') === 'fact-check')
-                            ? ($confidence > 0
-                                ? "TruthGuard completed your latest fact check with {$confidence}% confidence."
-                                : 'TruthGuard completed your latest fact check.')
-                            : trim((string) preg_replace('/\s*TG-\d+\s*/i', ' ', $message));
-                    }
-
-                    return [
-                        'id' => (string) $notification->id,
-                        'title' => (string) data_get($data, 'title', 'TruthGuard notification'),
-                        'message' => $message,
-                        'category' => (string) data_get($data, 'category', 'system'),
-                        'actionUrl' => route('notifications.show', $notification->id, absolute: false),
-                        'actionLabel' => (string) data_get($data, 'action_label', 'Open'),
-                        'createdAt' => $notification->created_at?->diffForHumans() ?? '',
-                        'unread' => $notification->read_at === null,
-                    ];
-                };
-
-                $unreadNotificationQuery = $user->unreadNotifications();
-                $notificationQuickQuery = $user->notifications();
-
-                if ($hasNotificationArchive) {
-                    $unreadNotificationQuery->whereNull('archived_at');
-                    $notificationQuickQuery->whereNull('archived_at');
-                }
+                $formatNavNotification = \App\Services\Notifications\NotificationInbox::format(...);
+                $unreadNotificationQuery = \App\Services\Notifications\NotificationInbox::visible($user, unread: true);
+                $notificationQuickQuery = \App\Services\Notifications\NotificationInbox::visible($user);
 
                 $unreadNotificationCount = (clone $unreadNotificationQuery)->count();
                 $latestUnreadNotificationId = (clone $unreadNotificationQuery)->latest()->value('id');
@@ -456,6 +427,9 @@
                             </div>
 
                         <div class="ml-auto shrink-0">
+                            @include('layouts.partials.display-mode-toggle')
+                        </div>
+                        <div class="shrink-0">
                             @include('layouts.partials.notification-center')
                         </div>
 

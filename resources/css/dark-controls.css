@@ -1,0 +1,170 @@
+/* Interactive states need paired foreground/background colors in dark mode. */
+html[data-tg-workspace].dark body .text-blue-500 { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .truthguard-logout-decoration { background: var(--tg-night-surface) !important; }
+html[data-tg-workspace].dark body .tg-dialog-actions { border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-dialog-icon { background: #44301c !important; color: #fcd34d !important; }
+html[data-tg-workspace].dark body .tg-dialog[data-tone="danger"] .tg-dialog-icon { background: #482537 !important; color: #fda4af !important; }
+html[data-tg-workspace].dark body :is(button, a[href], summary, input, select, textarea, [role="button"]):focus-visible {
+    outline: 2px solid #93c5fd !important;
+    outline-offset: 3px !important;
+}
+
+html[data-tg-workspace].dark body :is(
+    [class~="hover:bg-white"], [class~="hover:bg-slate-50"], [class~="hover:bg-slate-100"],
+    [class~="hover:bg-gray-50"], [class~="hover:bg-gray-100"],
+    [class~="hover:bg-blue-50"], [class~="hover:bg-blue-100"],
+    .truthguard-mode-toggle, .truthguard-settings-modal-close, .truthguard-user-footer-link
+):hover {
+    background: var(--tg-night-raised) !important;
+    border-color: #7890ae !important;
+    color: var(--tg-night-ink) !important;
+}
+
+html[data-tg-workspace].dark body :is(
+    [class~="hover:text-blue-600"], [class~="hover:text-blue-700"], [class~="hover:text-blue-800"],
+    [class~="hover:text-indigo-600"], [class~="hover:text-sky-600"], .tg-notice-back
+):hover { color: #93c5fd !important; }
+
+html[data-tg-workspace].dark body :is([class~="hover:bg-rose-50"], [class~="hover:bg-rose-100/50"], [class~="hover:bg-red-50"]):hover {
+    background: #482537 !important; color: #fecdd3 !important; border-color: #96566a !important;
+}
+
+/* Preserve readable white labels on filled actions, including gradient endpoints. */
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(
+    .bg-blue-500, .bg-blue-600, .bg-blue-700, .bg-brand-500, .bg-brand-600,
+    .bg-indigo-500, .bg-indigo-600, .bg-sky-500, .bg-sky-600
+):not(:disabled):not([aria-disabled="true"]) {
+    background: #1d4ed8 !important;
+    color: #fff !important;
+    border-color: #608dce !important;
+}
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(
+    .bg-blue-500, .bg-blue-600, .bg-blue-700, .bg-brand-500, .bg-brand-600,
+    .bg-indigo-500, .bg-indigo-600, .bg-sky-500, .bg-sky-600
+):not(:disabled):not([aria-disabled="true"]):hover { background: #1e40af !important; }
+
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.bg-rose-500, .bg-rose-600, .bg-red-500, .bg-red-600):not(:disabled) {
+    background: #be123c !important; color: #fff !important; border-color: #fb7185 !important;
+}
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.bg-rose-500, .bg-rose-600, .bg-red-500, .bg-red-600):not(:disabled):hover { background: #9f1239 !important; }
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.bg-emerald-500, .bg-emerald-600, .bg-green-500, .bg-green-600):not(:disabled) {
+    background: #047857 !important; color: #fff !important; border-color: #34d399 !important;
+}
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.bg-emerald-500, .bg-emerald-600, .bg-green-500, .bg-green-600):not(:disabled):hover { background: #065f46 !important; }
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.bg-gradient-to-r, .bg-gradient-to-br, .bg-gradient-to-b).text-white:not(:disabled) {
+    background: linear-gradient(135deg, #1d4ed8, #155e75) !important;
+    color: #fff !important;
+}
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.from-rose-500, .from-rose-600, .from-red-500, .from-red-600).text-white:not(:disabled) {
+    background: linear-gradient(135deg, #be123c, #9f1239) !important;
+}
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.from-emerald-500, .from-emerald-600, .from-green-500).text-white:not(:disabled) {
+    background: linear-gradient(135deg, #047857, #065f46) !important;
+}
+html[data-tg-workspace].dark body :is(button, a, [role="button"]):is(.from-violet-500, .from-violet-600, .from-purple-500).text-white:not(:disabled) {
+    background: linear-gradient(135deg, #6d28d9, #5b21b6) !important;
+}
+html[data-tg-workspace].dark body :is(button, input[type="submit"]):disabled {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+    color: #a7b7cc !important;
+    opacity: 1 !important;
+    cursor: not-allowed;
+}
+
+/* Profile actions and recent-card arrows have custom light surfaces of their own. */
+html[data-tg-workspace].dark body .truthguard-profile-popover::before {
+    background: var(--tg-night-surface) !important;
+    filter: drop-shadow(0 -1px 0 var(--tg-night-line));
+}
+html[data-tg-workspace].dark body .truthguard-profile-popover::after { background: none !important; }
+html[data-tg-workspace].dark body .truthguard-profile-action {
+    background: var(--tg-night-surface) !important;
+    color: var(--tg-night-ink) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-profile-action:is(:hover, :focus-visible, :active) {
+    background: var(--tg-night-raised) !important;
+    border-color: #7890ae !important;
+}
+html[data-tg-workspace].dark body .truthguard-profile-action-icon {
+    background: #203858 !important;
+    color: #93c5fd !important;
+    border-color: #5276a3 !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-profile-action-danger .truthguard-profile-action-icon {
+    background: #482537 !important;
+    color: #fda4af !important;
+    border-color: #96566a !important;
+}
+html[data-tg-workspace].dark body .truthguard-profile-action-danger:is(:hover, :focus-visible, :active) {
+    background: #482537 !important;
+    color: #fecdd3 !important;
+    border-color: #96566a !important;
+}
+html[data-tg-workspace].dark body :is(.truthguard-recent-view-all, .truthguard-recent-card > .truthguard-recent-open) {
+    background: var(--tg-night-raised) !important;
+    color: #bfdbfe !important;
+    border-color: #5276a3 !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-recent-view-all:is(:hover, :focus-visible, :active),
+html[data-tg-workspace].dark body .truthguard-recent-card:is(:hover, :focus-visible, :active) > .truthguard-recent-open {
+    background: #1d4ed8 !important;
+    color: #fff !important;
+    border-color: #608dce !important;
+}
+
+/* React admin uses the same saved preference and custom glass surfaces. */
+html[data-tg-workspace].dark body.truthguard-admin-app { background: var(--tg-night-bg) !important; }
+html[data-tg-workspace].dark body :is(
+    .truthguard-admin-sidebar, .truthguard-admin-topbar, .truthguard-admin-panel,
+    .truthguard-admin-stat, .truthguard-admin-profile, .truthguard-admin-profile-popover,
+    .truthguard-admin-profile-capsule, .truthguard-admin-logout-card,
+    .truthguard-admin-dashboard-hero, .truthguard-admin-dashboard-readiness,
+    .truthguard-admin-hero, .truthguard-admin-tracker-hero,
+    .truthguard-admin-mobile-tabbar, .truthguard-admin-page-header,
+    .truthguard-admin-soft-card
+) { background: var(--tg-night-surface) !important; color: var(--tg-night-ink) !important; border-color: var(--tg-night-line) !important; box-shadow: none !important; }
+html[data-tg-workspace].dark body :is(
+    .truthguard-admin-brand-mark, .truthguard-admin-ops-card, .truthguard-admin-nav-icon,
+    .truthguard-admin-dashboard-kpi, .truthguard-admin-chart-frame, .truthguard-admin-insight-card,
+    .truthguard-admin-capacity-card, .truthguard-admin-subscription-summary,
+    .truthguard-admin-source-pill, .truthguard-admin-queue-item, .truthguard-admin-person-row,
+    .truthguard-admin-risk-row, .truthguard-admin-mini-card, .truthguard-admin-tracker-card,
+    .truthguard-admin-update-card, .truthguard-admin-focus-card, .truthguard-admin-action-row,
+    .truthguard-admin-capability-card, .truthguard-admin-sprint-card, .truthguard-admin-task-row,
+    .truthguard-admin-utility-strip, .truthguard-admin-clock-pill, .truthguard-admin-clock-icon,
+    .truthguard-admin-logout-account, .truthguard-admin-profile-action-icon
+) { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; box-shadow: none !important; }
+html[data-tg-workspace].dark body :is(
+    .truthguard-admin-action, .truthguard-admin-icon-button, .truthguard-admin-top-icon,
+    .truthguard-admin-shell-toggle, .truthguard-admin-profile-action, .truthguard-admin-logout-close,
+    .truthguard-admin-profile-button
+) { background: var(--tg-night-raised) !important; color: var(--tg-night-ink) !important; border-color: #7890ae !important; box-shadow: none !important; }
+html[data-tg-workspace].dark body :is(.truthguard-admin-status-pill, .truthguard-admin-live-badge) { background: var(--tg-night-raised) !important; color: var(--tg-night-ink) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-admin-action, .truthguard-admin-icon-button,
+    .truthguard-admin-top-icon, .truthguard-admin-shell-toggle, .truthguard-admin-profile-action,
+    .truthguard-admin-logout-close):hover { background: #29456b !important; color: #dbeafe !important; }
+html[data-tg-workspace].dark body :is(.truthguard-admin-action.is-primary, .truthguard-admin-mobile-tab-primary) {
+    background: #1d4ed8 !important; color: #fff !important; border-color: #608dce !important;
+}
+html[data-tg-workspace].dark body .truthguard-admin-action.is-primary:hover { background: #1e40af !important; }
+html[data-tg-workspace].dark body .truthguard-admin-logout-confirm { background: #be123c !important; color: #fff !important; border-color: #fb7185 !important; }
+html[data-tg-workspace].dark body .truthguard-admin-logout-confirm:hover { background: #9f1239 !important; }
+html[data-tg-workspace].dark body :is(.truthguard-admin-nav-item, .truthguard-admin-mobile-tab) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-admin-nav-item, .truthguard-admin-mobile-tab):is(:hover, .is-active) { background: #203858 !important; color: #bfdbfe !important; }
+html[data-tg-workspace].dark body :is(.truthguard-admin-sidebar, .truthguard-admin-topbar,
+    .truthguard-admin-profile-popover, .truthguard-admin-panel, .truthguard-admin-stat,
+    .truthguard-admin-dashboard-hero, .truthguard-admin-dashboard-readiness,
+    .truthguard-admin-tracker-hero, .truthguard-admin-profile-button)::before,
+html[data-tg-workspace].dark body :is(.truthguard-admin-clock-pill, .truthguard-admin-profile-popover,
+    .truthguard-admin-shell-toggle, .truthguard-admin-top-icon, .truthguard-admin-profile-button)::after { opacity: .08; }
+html[data-tg-workspace].dark body :is(.bg-error-50, .truthguard-admin-status-pill.is-missing) { background: #482537 !important; color: #fecdd3 !important; border-color: #96566a !important; }
+html[data-tg-workspace].dark body :is(.text-error-600, .text-error-700) { color: #fda4af !important; }
+html[data-tg-workspace].dark body :is(.bg-success-50, .truthguard-admin-status-pill.is-added) { background: #123c35 !important; color: #a7f3d0 !important; }
+html[data-tg-workspace].dark body :is(.text-success-600, .text-success-700) { color: #6ee7b7 !important; }
+html[data-tg-workspace].dark body :is(.bg-warning-50, .truthguard-admin-status-pill.is-partial) { background: #44301c !important; color: #fde68a !important; }
+html[data-tg-workspace].dark body :is(.text-warning-600, .text-warning-700) { color: #fcd34d !important; }

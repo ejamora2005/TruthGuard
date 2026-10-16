@@ -12,7 +12,7 @@ class OpenAiWebSearch
 
     public function discover(array $queries, RetrievalBudget $budget, string $cutoff): array
     {
-        $model = (string) config('fact_check.web_search.model', config('services.openai.model'));
+        $model = (string) config('fact_check.web_search.model', 'gpt-5.4-mini');
         $metadata = ['model' => $model, 'http_status' => null, 'content_type' => null,
             'response_status' => null, 'response_fields' => null, 'search_calls' => [], 'citation_annotations' => [],
             'consulted_sources' => [], 'research_messages' => [], 'request_attempts' => [], 'usage' => [], 'sanitized_error' => null];
@@ -41,9 +41,11 @@ class OpenAiWebSearch
             $budget->providerRequests++;
             $response = $this->transport->post([
                 'model' => $model,
+                ...(preg_match('/^gpt-5\.[24](?:-|$)/', $model) ? ['reasoning' => ['effort' => 'none']] : []),
                 'store' => false,
-                'tools' => [['type' => 'web_search', 'search_context_size' => 'medium', 'external_web_access' => true]],
-                'max_tool_calls' => max(1, min(5, (int) config('fact_check.web_search.max_tool_calls', 3))),
+                'tools' => [['type' => 'web_search', 'search_context_size' => in_array(config('fact_check.web_search.context_size'), ['low', 'medium', 'high'], true)
+                    ? config('fact_check.web_search.context_size') : 'low', 'external_web_access' => true]],
+                'max_tool_calls' => max(1, min(5, (int) config('fact_check.web_search.max_tool_calls', 1))),
                 'tool_choice' => 'required',
                 'include' => ['web_search_call.action.sources'],
                 'input' => [
@@ -51,7 +53,7 @@ class OpenAiWebSearch
                     ['role' => 'user', 'content' => json_encode(['queries' => $query, 'evidence_cutoff_utc' => $cutoff,
                         'research_context' => $budget->researchContext], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)],
                 ],
-                'max_output_tokens' => max(1, min((int) config('fact_check.web_search.max_output_tokens', 1400),
+                'max_output_tokens' => max(1, min((int) config('fact_check.web_search.max_output_tokens', 600),
                     (int) config('services.openai.max_completion_tokens', 1400))),
             ], $timeout, fn () => max(0, $budget->remaining() - 6));
             $metadata['request_attempts'] = $this->transport->attempts;

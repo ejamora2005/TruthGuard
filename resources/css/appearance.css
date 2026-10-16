@@ -1,0 +1,136 @@
+/* Reading preferences are limited to signed-in Blade workspaces. */
+html[data-tg-workspace] { --tg-text-scale: 1; }
+html[data-tg-workspace][data-text-size="large"] { font-size: 112.5%; --tg-text-scale: 1.125; }
+html[data-tg-workspace][data-text-size="extra-large"] { font-size: 125%; --tg-text-scale: 1.25; }
+html[data-tg-workspace] body { min-width: 0 !important; }
+
+html[data-tg-workspace].dark {
+    --tg-night-bg: #0f172a;
+    --tg-night-surface: #182235;
+    --tg-night-raised: #223047;
+    --tg-night-line: #3b4b63;
+    --tg-night-ink: #f1f5f9;
+    --tg-night-muted: #bbc8da;
+}
+html[data-tg-workspace].dark body {
+    --tg-body-bg: var(--tg-night-bg) !important;
+    --tg-shell-surface: var(--tg-night-surface) !important;
+    --tg-shell-header: var(--tg-night-surface) !important;
+    --tg-shell-border: var(--tg-night-line) !important;
+    background: var(--tg-night-bg) !important;
+    color: var(--tg-night-ink) !important;
+}
+html[data-tg-workspace].dark body :is(
+    [class*="bg-white"], [class*="bg-slate-50"], [class*="bg-gray-50"],
+    .truthguard-sidebar, .truthguard-topbar, .truthguard-profile-popover,
+    .truthguard-settings-hero, .truthguard-settings-overview, .truthguard-settings-launch-card,
+    .truthguard-settings-modal-dialog, .truthguard-settings-modal-header,
+    .truthguard-settings-modal-body, .truthguard-settings-modal-tab,
+    .truthguard-settings-modal-mark, .truthguard-settings-modal-close,
+    .truthguard-settings-action-footer, .truthguard-notification-popover,
+    .truthguard-notification-surface, .truthguard-notification-item,
+    .truthguard-profile-capsule, .tg-dialog, .tg-dialog-cancel,
+    .tg-result-card, .tg-result-all-details, .tg-result-source-cards > *,
+    .tg-result-verdict-tooltip, .tg-result-button,
+    .tg-report-card, .tg-source-card, .tg-related-card, .tg-notice-card,
+    .truthguard-history-tabs, .truthguard-history-control, .truthguard-history-panel,
+    .truthguard-history-toolbar, .truthguard-history-row, .truthguard-premium-action,
+    .truthguard-utility-strip, .truthguard-clock-pill, .truthguard-clock-icon,
+    .truthguard-top-icon, .truthguard-mobile-tabbar
+) {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    color: var(--tg-night-ink);
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body :is(.bg-slate-100, [class*="bg-slate-100/"], .bg-gray-100, [class*="bg-gray-100/"], .tg-result-media, .tg-result-record, .tg-result-claim, .tg-result-notice, .truthguard-profile-action:hover) {
+    background: var(--tg-night-raised) !important;
+}
+html[data-tg-workspace].dark body :is([class*="border-slate-"], [class*="border-gray-"], [class*="border-white"], .truthguard-notification-item) {
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body :is(.text-slate-950, .text-slate-900, .text-slate-800, .text-gray-950, .text-gray-900, .text-gray-800, .text-black) {
+    color: var(--tg-night-ink) !important;
+}
+html[data-tg-workspace].dark body :is(.text-slate-700, .text-slate-600, .text-slate-500, .text-slate-400, .text-gray-700, .text-gray-600, .text-gray-500, .text-gray-400) {
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark body :is(.text-blue-600, .text-blue-700, .text-blue-800, .text-indigo-600, .text-sky-600) { color: #93c5fd !important; }
+html[data-tg-workspace].dark body :is(.bg-blue-50, [class*="bg-blue-50/"], .bg-sky-50, [class*="bg-sky-50/"], .bg-indigo-50, [class*="bg-indigo-50/"], .truthguard-settings-modal-tab.is-active, .truthguard-notification-item.is-unread, .menu-item:not(.menu-item-inactive)) {
+    background: #203858 !important;
+    color: #bfdbfe !important;
+    border-color: #5276a3 !important;
+}
+html[data-tg-workspace].dark body :is(.bg-emerald-50, [class*="bg-emerald-50/"], .bg-green-50, .tg-result-action) { background: #123c35 !important; color: #a7f3d0 !important; }
+html[data-tg-workspace].dark body :is(.bg-amber-50, [class*="bg-amber-50/"], .bg-orange-50) { background: #44301c !important; color: #fde68a !important; }
+html[data-tg-workspace].dark body :is(.bg-violet-50, [class*="bg-violet-50/"], .bg-purple-50) { background: #33294c !important; color: #ddd6fe !important; }
+html[data-tg-workspace].dark body :is(.bg-rose-50, [class*="bg-rose-50/"], .bg-red-50) { background: #482537 !important; color: #fecdd3 !important; }
+html[data-tg-workspace].dark body :is([class*="text-emerald-"], [class*="text-green-"]) { color: #6ee7b7 !important; }
+html[data-tg-workspace].dark body :is([class*="text-amber-"], [class*="text-orange-"]) { color: #fcd34d !important; }
+html[data-tg-workspace].dark body :is([class*="text-violet-"], [class*="text-purple-"]) { color: #c4b5fd !important; }
+html[data-tg-workspace].dark body :is([class*="text-rose-"], [class*="text-red-"]) { color: #fda4af !important; }
+html[data-tg-workspace].dark body :is(input:not([type="checkbox"]):not([type="radio"]), textarea, select) {
+    background-color: var(--tg-night-bg) !important;
+    color: var(--tg-night-ink) !important;
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body :is(input, textarea)::placeholder { color: #a7b7cc !important; }
+html[data-tg-workspace].dark body :is(.truthguard-settings-page, .truthguard-settings-modal) {
+    --tg-settings-ink: var(--tg-night-ink) !important;
+    --tg-settings-muted: var(--tg-night-muted) !important;
+    --tg-settings-soft: #203858 !important;
+    --tg-settings-soft-strong: #29456b !important;
+    --tg-settings-line: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body :is(.truthguard-settings-modal-title, .truthguard-settings-panel h3, .truthguard-settings-panel h4, .truthguard-settings-panel label, .truthguard-settings-launch-card > span:nth-child(2)) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-modal-tab:not(.is-active) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-modal .truthguard-settings-panel section form { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-modal #truthguard-appearance-form { background: transparent !important; }
+html[data-tg-workspace].dark body .truthguard-settings-modal .tg-reading-preview > div { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; box-shadow: none !important; border-radius: 0 !important; }
+html[data-tg-workspace].dark body .truthguard-history-panel::before { background: none !important; }
+html[data-tg-workspace].dark body .truthguard-settings-modal .truthguard-appearance-main > .grid { background: transparent !important; box-shadow: none !important; }
+html[data-tg-workspace].dark body .truthguard-user-frame { background: var(--tg-night-bg) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-clock-pill, .truthguard-utility-strip)::before,
+html[data-tg-workspace].dark body :is(.truthguard-clock-pill, .truthguard-utility-strip)::after { opacity: .08; }
+html[data-tg-workspace].dark body :is(.truthguard-user-footer-copy, .truthguard-user-footer-link, .truthguard-user-footer-note) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body [aria-labelledby="tg-display-label"] [aria-pressed="true"] { background: #29456b !important; color: #dbeafe !important; }
+html[data-tg-workspace].dark body :is(.truthguard-settings-modal-subtitle, .truthguard-settings-hero-copy, .truthguard-settings-panel p, .truthguard-settings-launch-card > span:nth-child(3)) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-sidebar, .truthguard-topbar, .truthguard-settings-hero)::before,
+html[data-tg-workspace].dark body .truthguard-settings-hero::after { opacity: .1; }
+html[data-tg-workspace].dark body .truthguard-notification-popover::before { border-bottom-color: var(--tg-night-line); }
+html[data-tg-workspace].dark body .truthguard-notification-popover::after { border-bottom-color: var(--tg-night-surface); }
+html[data-tg-workspace].dark body :is(.tg-result-report, .tg-ai-report, .tg-notice-card) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body :is(.tg-result-report, .tg-ai-report) :is(h1, h2, h3, h4, p, li, summary) { color: inherit; }
+html[data-tg-workspace].dark body .tg-result-report :is(.tg-result-summary, .tg-result-claim-text, .tg-result-answer-copy, .tg-result-findings, .tg-result-source-purpose, .tg-result-limitations, .tg-result-muted, .tg-result-section-description, .tg-result-record, .tg-result-report-subtitle) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-result-report :is(.tg-result-source-link, .tg-result-text-button, .tg-result-file-link, .tg-result-report-links a) { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .tg-result-report { --result-tone: #cbd5e1; --result-tint: #223047; --result-border: #53647c; }
+html[data-tg-workspace].dark body .tg-result-report.tg-status-verified { --result-tone: #6ee7b7; --result-tint: #123c35; --result-border: #377864; }
+html[data-tg-workspace].dark body .tg-result-report.tg-status-adverse { --result-tone: #fda4af; --result-tint: #482537; --result-border: #96566a; }
+html[data-tg-workspace].dark body .tg-result-report.tg-status-context { --result-tone: #fcd34d; --result-tint: #44301c; --result-border: #8c713c; }
+html[data-tg-workspace].dark body .tg-result-report.tg-status-outdated { --result-tone: #93c5fd; --result-tint: #203858; --result-border: #5276a3; }
+html[data-tg-workspace].dark body .tg-result-report :is(.tg-result-source, .tg-result-submission-text, .tg-result-document, .tg-result-empty, .tg-result-all-details > summary, .tg-result-kind, .tg-result-count, .tg-result-source-type, .tg-result-source-relationship, .tg-result-cutoff-highlight) { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-result-expand { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .tg-result-report :is(.tg-result-eyebrow, .tg-result-report-id, .tg-result-report-id strong, .tg-result-record strong, .tg-result-record span, .tg-result-record time, .tg-result-filename, .tg-result-filename strong, .tg-result-source-domain, .tg-result-source-meta, .tg-result-confidence-note, .tg-result-confidence-score > span) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-dialog-content p { color: var(--tg-night-muted); }
+
+/* A real reading sample replaces the decorative, low-contrast preview. */
+html[data-tg-workspace] body .truthguard-settings-modal .tg-reading-preview {
+    background: #fff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+html[data-tg-workspace].dark body .truthguard-settings-modal .tg-reading-preview { background: var(--tg-night-surface) !important; color: var(--tg-night-ink) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace] body .truthguard-settings-modal .tg-reading-preview .tg-reading-sample { font-size: .9375rem !important; line-height: 1.8 !important; }
+html[data-tg-workspace] body .tg-text-size-options button { min-height: 4.5rem; overflow-wrap: anywhere; }
+
+/* Fixed-pixel report copy must honor the same reading preference as rem-based pages. */
+html[data-tg-workspace][data-text-size] body .tg-result-report :is(.tg-result-summary, .tg-result-answer-copy p, .tg-result-claim-text, .tg-result-source-link) { font-size: calc(14px * var(--tg-text-scale)) !important; }
+html[data-tg-workspace][data-text-size] body .tg-result-report :is(.tg-result-findings p, .tg-result-original-text) { font-size: calc(13px * var(--tg-text-scale)) !important; }
+html[data-tg-workspace][data-text-size] body .tg-result-report :is(.tg-result-source-purpose, .tg-result-limitations li, .tg-result-notice p, .tg-result-muted, .tg-result-report-subtitle) { font-size: calc(12px * var(--tg-text-scale)) !important; }
+html[data-tg-workspace][data-text-size] body .tg-notice-message { font-size: calc(16px * var(--tg-text-scale)) !important; }
+
+.truthguard-mode-toggle { display: inline-flex; justify-content: center; align-items: center; width: 44px; min-height: 44px; flex-shrink: 0; border: 1px solid #dbe3ef; border-radius: 50%; color: #475569; background: #fff; }
+.truthguard-mode-toggle svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.truthguard-mode-toggle .truthguard-mode-sun { display: none; }
+.truthguard-mode-toggle[aria-checked="true"] .truthguard-mode-sun { display: block; }
+.truthguard-mode-toggle[aria-checked="true"] .truthguard-mode-moon { display: none; }

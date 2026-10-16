@@ -24,6 +24,8 @@ public/vendor/tailadmin-app
 database/*.sqlite*
 automation/datasets
 automation/models/deepfake-cnn.keras
+automation/models/ai-origin-broad/pytorch_model.pt
+automation/models/ai-origin-siglip/model.safetensors
 automation/models/**/*.tmp
 automation/models/**/.cache
 **/__pycache__

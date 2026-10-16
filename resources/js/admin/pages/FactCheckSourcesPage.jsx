@@ -137,15 +137,15 @@ export default function FactCheckSourcesPage() {
     };
 
     const deleteSource = async (source) => {
-        if (!window.confirm(`Remove ${source.name} from custom sources?`)) {
-            return;
-        }
-
+        if (saving) return;
         setSaving(true);
-        setError('');
-        setNotice('');
 
         try {
+            if (!await window.TruthGuardDialog.confirm(`Remove ${source.name} from custom sources?`, { title: 'Remove source?', confirmLabel: 'Remove source', tone: 'danger' })) {
+                return;
+            }
+            setError('');
+            setNotice('');
             setData(await sendAdminJson(`/fact-check-sources/${source.id}`, { method: 'DELETE' }));
             if (form.id === source.id) {
                 setForm(blankForm);

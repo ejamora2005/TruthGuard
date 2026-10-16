@@ -163,6 +163,7 @@ class DetectionPipeline
             // answer boundary before it can be compared, saved or displayed.
             $analysis['fact_check_result'] = ReportAnswer::complete($analysis['fact_check_result']);
             $analysis = $this->mediaExplanation->apply($analysis);
+            $analysis['fact_check_result'] = ResultWording::ensure($analysis['fact_check_result'], $analysis['recommendation'] ?? '');
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
             // Older saved reports have not been admitted to this fresh cache.
             $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation')];
@@ -225,36 +226,36 @@ class DetectionPipeline
         $signals = $this->buildSignals($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType);
         $enhanced = (bool) config('fact_check.enhanced_enabled', true) || $mediaPrimary;
         $localNlpClassification = $enhanced ? null : $this->filipinoNewsClassifier->classify($captionText, $notes);
-        $deepfakeCnnClassification = ! $runMediaDetector && in_array($mediaType, ['image', 'video'], true)
-            ? ['status' => 'not_requested', 'media_type' => $mediaType,
+        $mediaClassification = null;
+        if (! $runMediaDetector && in_array($mediaType, ['image', 'video'], true)) {
+            $mediaClassification = ['status' => 'not_requested', 'media_type' => $mediaType,
                 'task' => $mediaType === 'image' ? 'AI-generation screening' : 'Sampled-frame synthetic-media screening',
                 'reason' => 'The requested factual or context analysis does not require media-origin screening.',
-                'label' => null, 'fake_probability' => null, 'model_version' => null]
-            : $this->deepfakeCnnClassifier->classify($uploadedFile, $mediaType);
+                'label' => null, 'fake_probability' => null, 'model_version' => null];
+        } elseif ($mediaType === 'image') {
+            $mediaClassification = $uploadedFile && config('services.ai_origin.enabled', false)
+                ? $this->aiOriginClassifier->classify($uploadedFile)
+                : ['status' => 'unavailable', 'media_type' => 'image', 'task' => 'AI-generation classification',
+                    'reason' => $uploadedFile ? 'disabled' : 'missing_media',
+                    'label' => null, 'fake_probability' => null, 'model_version' => null];
+        } elseif ($mediaType === 'video') {
+            $mediaClassification = $this->deepfakeCnnClassifier->classify($uploadedFile, $mediaType);
+        }
 
         if ($localNlpClassification !== null) {
             $signals = $this->attachLocalNlpSignal($signals, $localNlpClassification);
         }
 
-        if (($deepfakeCnnClassification['status'] ?? '') === 'completed') {
-            $signals = $this->attachDeepfakeCnnSignal($signals, $deepfakeCnnClassification);
-        }
-        if ($runMediaDetector && $mediaType === 'image' && $uploadedFile && config('services.ai_origin.enabled', false)) {
-            $specialist = $this->aiOriginClassifier->classify($uploadedFile);
-            $specialist['supporting_assessments'] = ['image_cnn' => $deepfakeCnnClassification];
-            $specialist['detector_disagreement'] = ($specialist['status'] ?? '') === 'completed'
-                && ($deepfakeCnnClassification['status'] ?? '') === 'completed'
-                && $specialist['label'] !== $deepfakeCnnClassification['label'];
-            // No averaging, relabeling or reuse: keep both actual model findings.
-            $deepfakeCnnClassification = $specialist;
+        if (($mediaClassification['status'] ?? '') === 'completed') {
+            $signals = $this->attachDeepfakeCnnSignal($signals, $mediaClassification);
         }
 
         // The legacy numeric column is media screening only on the evidence path.
         // It is never consumed by the factual assessment or presented as truth confidence.
-        $fakeScore = $enhanced ? (int) ($deepfakeCnnClassification['screening_score'] ?? 0) : $this->calculateFakeScore($signals);
+        $fakeScore = $enhanced ? (int) ($mediaClassification['screening_score'] ?? 0) : $this->calculateFakeScore($signals);
         if (! $enhanced) {
             $fakeScore = $this->applyLocalNlpRiskFloor($fakeScore, $localNlpClassification);
-            $fakeScore = $this->applyDeepfakeCnnRiskFloor($fakeScore, $deepfakeCnnClassification);
+            $fakeScore = $this->applyDeepfakeCnnRiskFloor($fakeScore, $mediaClassification);
         }
         $verdict = $this->determineVerdict($fakeScore);
         $verificationSources = $this->buildVerificationSources($sourceUrl, $captionText, $notes, $platform);
@@ -262,7 +263,7 @@ class DetectionPipeline
         return [
             'platform' => $platform,
             'media_type' => $mediaType,
-            'media_assessment' => $deepfakeCnnClassification,
+            'media_assessment' => $mediaClassification,
             'fake_score' => $fakeScore,
             'processing_status' => 'completed',
             'preprocessing_summary' => $this->buildPreprocessingSummary($uploadedFile, $sourceUrl, $mediaType, $platform, $captionText),
@@ -320,15 +321,20 @@ class DetectionPipeline
             'analysis_task' => $analysisTask,
             'request_context' => $requestContext,
             'reuse_version' => 'exact-submission-v1',
+            'wording_version' => ResultWording::VERSION,
             'inference_settings' => [
                 'enhanced' => config('fact_check.enhanced_enabled'),
                 'openai_enabled' => config('services.openai.analysis_enabled'),
                 'extraction_enabled' => config('services.openai.claim_extraction_enabled'),
+                'routine_models' => [config('services.openai.extraction_model'), config('services.openai.planning_model')],
+                'research_limits' => [config('fact_check.web_search'), config('fact_check.max_model_input_bytes'),
+                    config('fact_check.model_output_tokens'), config('fact_check.plan_output_tokens')],
                 'media_explanation' => [OpenAiMediaExplanation::VERSION,
                     config('services.openai.media_explanation_enabled', true), config('services.openai.media_explanation_max_tokens', 400),
                     config('services.openai.model')],
                 'deepfake' => Arr::except(config('services.deepfake_cnn', []), ['python_binary', 'timeout']),
                 'origin' => Arr::only(config('services.ai_origin', []), ['enabled', 'model_path']),
+                ...($mediaType === 'image' ? ['image_detector_policy' => 'primary-origin-only-v1'] : []),
                 'article_model' => Arr::except(config('services.filipino_news_classifier', []), ['timeout', 'connect_timeout']),
                 'artifacts' => $this->modelArtifactIdentity(),
             ],
@@ -843,7 +849,7 @@ class DetectionPipeline
         $screeningScore = max(0, min(100, (int) ($classification['screening_score'] ?? round($fakeProbability * 100))));
         $label = (string) ($classification['label'] ?? ($fakeProbability >= $threshold ? 'fake' : 'real'));
         $mediaType = (string) ($classification['media_type'] ?? 'image');
-        $modelLabel = $mediaType === 'video' ? 'Video CNN' : 'Image CNN';
+        $modelLabel = $classification['model_name'] ?? ($mediaType === 'video' ? 'Video CNN' : 'AI-origin detector');
         $displayProbability = number_format($fakeProbability, 6);
         $displayThreshold = number_format($threshold, 6);
         $weight = match (true) {
@@ -864,7 +870,7 @@ class DetectionPipeline
             'aggregation_method' => (string) ($classification['aggregation_method'] ?? ''),
             'frames_used' => (int) ($classification['frames_used'] ?? 0),
             'screening_score' => $screeningScore,
-            'summary' => (string) ($classification['summary'] ?? "CNN threshold was {$displayThreshold}."),
+            'summary' => (string) ($classification['summary'] ?? "The detector's decision threshold was {$displayThreshold}."),
         ];
 
         return $signals;

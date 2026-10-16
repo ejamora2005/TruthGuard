@@ -136,7 +136,7 @@
 
                 <label x-show="!isPwa" x-cloak style="display:none;" data-login-option="web" class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">
                     <input type="checkbox" x-model="rememberPassword" disabled x-bind:disabled="isPwa" class="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" style="width:20px;height:20px;min-height:20px;flex:none">
-                    <span>Remember password<span class="block text-xs text-slate-500">Let your browser offer to save your password.</span></span>
+                    <span>Remember password</span>
                 </label>
 
                 <div class="flex items-center justify-end text-sm">

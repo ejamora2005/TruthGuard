@@ -107,6 +107,7 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('dashboard/fact-check-feed', [DashboardController::class, 'factCheckFeed'])->name('dashboard.fact-check-feed');
         Route::get('dashboard/fact-checks/{factCheck}', [DashboardController::class, 'factCheck'])->name('dashboard.fact-check');
         Route::get('history', [DashboardController::class, 'history'])->name('history');
+        Route::patch('history/{detection}/archive', [DashboardController::class, 'archiveHistory'])->name('history.archive');
         Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::get('notifications/peek', [NotificationController::class, 'peek'])->name('notifications.peek');
         Route::get('notifications/{notification}', [NotificationController::class, 'show'])->whereUuid('notification')->name('notifications.show');

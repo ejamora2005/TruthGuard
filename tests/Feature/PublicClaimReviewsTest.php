@@ -46,7 +46,7 @@ class PublicClaimReviewsTest extends TestCase
     {
         $this->mockReviews();
         $this->get('/')->assertOk()->assertDontSee('Public evidence 1')->assertSee(route('reviews.index'))
-            ->assertSee("\u{20B1}49")->assertSee("\u{20B1}99")->assertSee('not yet available for purchase')
+            ->assertSee("\u{20B1}49")->assertSee("\u{20B1}99")->assertSee('Start Free. Keep It Affordable.')
             ->assertDontSee('Sarah Johnson')->assertDontSee('SLA guarantees')->assertDontSee('$29');
     }
 }

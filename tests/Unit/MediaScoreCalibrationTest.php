@@ -72,8 +72,9 @@ class MediaScoreCalibrationTest extends TestCase
 
     public function test_invalid_unvalidated_or_incompatible_artifacts_never_gain_confidence(): void
     {
-        foreach ([['status' => 'fitted_not_validated'], ['temperature' => 0], ['positive_class' => 'real'],
+        foreach ([['status' => 'fitted_not_validated'], ['status' => 'experimental_benchmark_only'], ['temperature' => 0], ['positive_class' => 'real'],
             ['model_identity' => ['model_version' => 'another-model']], ['model_identity' => ['processor_sha256' => 'changed']],
+            ['model_identity' => ['adapter_version' => 'broad-ai-origin-cuda-fp32-v1']],
             ['validation' => ['fit_used_test_data' => true]], ['validation' => ['held_out_improvement' => false]],
             ['counts' => ['test' => ['real' => 2]]], ['independent_group_counts' => ['test' => ['fake' => 1]]],
             ['population' => ['representative_of_deployment' => false]]] as $override) {

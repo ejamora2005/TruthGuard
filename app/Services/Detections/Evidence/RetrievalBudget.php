@@ -67,4 +67,19 @@ final class RetrievalBudget
             'elapsed_ms' => (int) round((microtime(true) - $this->started) * 1000),
             'time_budget_exhausted' => $this->remaining() < 1];
     }
+
+    public function openAiUsage(): array
+    {
+        $usage = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
+        foreach ($this->attempts as $attempt) {
+            if (($attempt['provider'] ?? '') !== 'openai_web_search') {
+                continue;
+            }
+            foreach (array_keys($usage) as $key) {
+                $usage[$key] += max(0, (int) ($attempt['web_search']['usage'][$key] ?? 0));
+            }
+        }
+
+        return $usage;
+    }
 }

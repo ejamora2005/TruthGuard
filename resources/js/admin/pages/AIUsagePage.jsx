@@ -34,7 +34,7 @@ const initialData = {
     mediaMix: [],
     usageNote: '',
     billing: { budgetLabel: '$6.00', usedLabel: 'Not synced', remainingLabel: 'Unknown', usagePercent: null, warningThreshold: 80, warningAmountLabel: '$4.80', status: 'unavailable', scopeLabel: '', setupRequired: false },
-    requestUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, webSearchCalls: 0, requests: 0, unmeasuredRequests: 0, trackedSince: null },
+    requestUsage: { inputTokens: 0, outputTokens: 0, totalTokens: 0, averageTokensPerResponse: null, webSearchCalls: 0, requests: 0, unmeasuredRequests: 0, trackedSince: null },
 };
 
 const capacityTone = {
@@ -54,6 +54,33 @@ const recommendationTone = {
 
 export default function AIUsagePage() {
     const { data, loading, error, load } = useAdminQuery('/ai-usage', initialData);
+    const hasLoadedData = data.summaryCards.length > 0;
+    const pageHeader = (
+        <PageHeader
+            eyebrow="TruthGuard AI"
+            title="AI Usage"
+            description="Monitor recorded API tokens, OpenAI-reported spending, and admin budget alerts."
+            actions={
+                <button onClick={load} disabled={loading} className="truthguard-admin-action disabled:cursor-wait disabled:opacity-60">
+                    {loading ? 'Refreshing…' : 'Refresh'}
+                </button>
+            }
+        />
+    );
+
+    if (!hasLoadedData) {
+        return (
+            <div className="space-y-6" aria-busy={loading}>
+                {pageHeader}
+                {error ? (
+                    <div role="alert" className="rounded-2xl border border-error-200 bg-error-50 px-5 py-4 text-sm text-error-600">
+                        <p className="font-semibold">{error}</p>
+                        <p className="mt-2">Usage and billing data could not be loaded. No token totals or connection status can be confirmed.</p>
+                    </div>
+                ) : <LoadingState label="Loading AI usage..." />}
+            </div>
+        );
+    }
 
     const monthlySeries = [{ name: 'Verification Runs', data: data.monthlyUsage.values }];
     const monthlyOptions = {
@@ -68,19 +95,9 @@ export default function AIUsagePage() {
 
     return (
         <div className="space-y-6">
-            <PageHeader
-                eyebrow="TruthGuard AI"
-                title="AI Usage"
-                description="Monitor recorded API tokens, OpenAI-reported spending, and admin budget alerts."
-                actions={
-                    <button onClick={load} className="truthguard-admin-action">
-                        Refresh
-                    </button>
-                }
-            />
+            {pageHeader}
 
-            {error ? <div className="rounded-2xl border border-error-200 bg-error-50 px-5 py-4 text-sm text-error-600">{error}</div> : null}
-            {loading && !data.summaryCards.length ? <LoadingState label="Loading AI usage..." /> : null}
+            {error ? <div role="alert" className="rounded-2xl border border-error-200 bg-error-50 px-5 py-4 text-sm text-error-600">{error} Showing the previously loaded data below.</div> : null}
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {data.summaryCards.map((card) => (
@@ -95,7 +112,7 @@ export default function AIUsagePage() {
                         <p className="mt-2 text-sm text-gray-600">Warning at {data.billing.warningAmountLabel} ({data.billing.warningThreshold}%). Limit alert at {data.billing.budgetLabel}.</p>
                     </div>
                     <span className={`rounded-full border px-3 py-1 text-sm font-semibold ${data.billing.status === 'synced' ? (Number(data.billing.usagePercent) >= 100 ? capacityTone.critical : Number(data.billing.usagePercent) >= data.billing.warningThreshold ? capacityTone.warning : capacityTone.healthy) : capacityTone.unknown}`}>
-                        {data.billing.status === 'synced' ? (Number(data.billing.usagePercent) >= 100 ? 'Budget reached' : Number(data.billing.usagePercent) >= data.billing.warningThreshold ? 'Running low' : 'Billing synced') : data.billing.status === 'stale' ? 'Stale billing data' : 'Billing not connected'}
+                        {data.billing.status === 'synced' ? (Number(data.billing.usagePercent) >= 100 ? 'Budget reached' : Number(data.billing.usagePercent) >= data.billing.warningThreshold ? 'Running low' : 'Billing synced') : data.billing.status === 'stale' ? 'Stale billing data' : data.billing.status === 'not_configured' ? 'Billing not configured' : 'Awaiting first billing sync'}
                     </span>
                 </div>
                 {data.billing.usagePercent !== null ? <div className="mt-5 h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${Math.min(data.billing.usagePercent, 100)}%` }} /></div> : null}
@@ -113,6 +130,10 @@ export default function AIUsagePage() {
                     <InfoRow label="Web search calls" value={formatNumber(data.requestUsage.webSearchCalls)} />
                 </div>
                 <p className="mt-4 text-sm leading-6 text-gray-500">{data.usageNote}</p>
+                <p className="mt-2 text-sm text-gray-600">
+                    Average per measured API response: <strong>{data.requestUsage.averageTokensPerResponse == null ? 'Not measured yet' : `${formatNumber(data.requestUsage.averageTokensPerResponse)} tokens`}</strong>.
+                    {' '}One review may make several API calls; this is not a fixed token amount per image or review.
+                </p>
                 <p className="mt-2 text-xs text-gray-500">First recorded response: {data.requestUsage.trackedSince ? `${data.requestUsage.trackedSince} UTC` : 'None yet'}. Reusing a saved result does not add an API request.</p>
             </Panel>
 
@@ -200,10 +221,10 @@ export default function AIUsagePage() {
                     <div className="grid gap-4 sm:grid-cols-3">
                         <ForecastMetric label="Daily Avg" value={data.forecast.dailyAverageRequests} note="runs/day" />
                         <ForecastMetric label="Projected Runs" value={data.forecast.projectedMonthlyRequests} note="this month" />
-                        <ForecastMetric label="Projected Tokens" value={data.forecast.projectedMonthlyTokens} note={`${data.forecast.projectedPercent}% of budget`} />
+                        <ForecastMetric label="Projected Tokens" value={data.forecast.projectedMonthlyTokens} note={data.tokenUsage.monthlyTokenBudget > 0 ? `${data.forecast.projectedPercent}% of token budget` : 'estimate; not dollar spending'} />
                     </div>
                     <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
-                        Projected remaining capacity: <span className="font-semibold text-gray-900">{data.forecast.projectedRemainingLabel}</span>
+                        {data.tokenUsage.monthlyTokenBudget > 0 ? <>Projected remaining tokens: <span className="font-semibold text-gray-900">{data.forecast.projectedRemainingLabel}</span></> : <>Monthly dollar budget: <span className="font-semibold text-gray-900">{data.billing.budgetLabel}</span>. Remaining budget is based on synced billing above.</>}
                     </div>
                 </Panel>
 

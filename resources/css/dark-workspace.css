@@ -1,0 +1,124 @@
+/* Component surfaces that use their own gradients or ID-scoped styles. */
+html[data-tg-workspace].dark body :is(.menu-item.menu-item-inactive, .truthguard-mobile-tab:not(.is-active), .truthguard-profile-action, .truthguard-shell-toggle) {
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark body .menu-item.menu-item-inactive:hover { background: var(--tg-night-raised) !important; color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-shell-toggle { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .truthguard-sidebar > div:first-child a p,
+html[data-tg-workspace].dark body .truthguard-mobile-top-logo :is(p, span) { background: none !important; color: var(--tg-night-ink) !important; -webkit-text-fill-color: currentColor !important; }
+html[data-tg-workspace].dark body :is(.truthguard-mobile-topbar, .truthguard-detection-mobile-topbar, .truthguard-mobile-tabbar)::before { opacity: .08; }
+
+/* Light decorative gradients must change with their text, rather than stay white. */
+html[data-tg-workspace].dark body :is(.from-white, [class*="from-white/"], .from-slate-50, [class*="from-slate-50/"], .from-blue-50, [class*="from-blue-50/"], .from-cyan-50, [class*="from-cyan-50/"], .from-violet-50, [class*="from-violet-50/"], .from-rose-50, [class*="from-rose-50/"], .from-emerald-50, [class*="from-emerald-50/"], .from-amber-50, [class*="from-amber-50/"]) {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+}
+
+/* Dashboard feed: these ID selectors deliberately outrank the light feed styles. */
+html[data-tg-workspace].dark #news-watch,
+html[data-tg-workspace].dark #news-watch :is(.tg-mobile-feed-head, .tg-feed-field, .tg-category-menu, .tg-feed-pagination-bar, .tg-feed-window) {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: none !important;
+    color: var(--tg-night-ink) !important;
+}
+html[data-tg-workspace].dark #news-watch :is(.tg-mobile-fact-media, .tg-feed-pagination-summary, .tg-feed-pagination-summary-icon, .tg-feed-window-icon, .tg-category-count, .tg-feed-window-live) {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark #news-watch :is(.tg-feed-heading h3, .tg-category-copy strong, .tg-feed-window-copy strong) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark #news-watch :is(.tg-feed-field-label, .tg-feed-window-copy > span, .tg-feed-pagination-summary, .tg-category-menu a) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark #news-watch :is(.tg-category-menu a:hover, .tg-category-menu a[aria-current]) { background: #203858 !important; color: #bfdbfe !important; }
+html[data-tg-workspace].dark #news-watch :is(.tg-category-count, .tg-feed-pagination-summary strong) { color: #93c5fd !important; }
+html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-danger { background: #482537; color: #fda4af; border-color: #96566a; }
+html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-warning { background: #44301c; color: #fcd34d; border-color: #8c713c; }
+html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background: #123c35; color: #6ee7b7; border-color: #377864; }
+html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-neutral { background: #223047; color: #cbd5e1; border-color: #53647c; }
+html[data-tg-workspace].dark #news-watch :is(.tg-feed-pagination a, .tg-feed-pagination span) { border-color: var(--tg-night-line); }
+
+/* Composer and upload surfaces. Leave evidence images and source logos intact. */
+html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field, .truthguard-recent-section, .truthguard-recent-skeleton, .truthguard-capability-pill, .truthguard-uploader-dropzone, .truthguard-uploader-head, .truthguard-prompt-hint, .truthguard-composer-hint) {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    color: var(--tg-night-muted) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-workspace-title { background: none !important; color: var(--tg-night-ink) !important; -webkit-text-fill-color: currentColor !important; }
+html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field)::before,
+html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field)::after { opacity: .08; }
+html[data-tg-workspace].dark body .truthguard-analyze-button { background: #2454c6 !important; border-color: #5276a3 !important; color: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-analyze-button:not(:disabled) .truthguard-analyze-text { color: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-analyze-button:disabled { background: var(--tg-night-raised) !important; }
+html[data-tg-workspace].dark body .truthguard-analyze-button:disabled .truthguard-analyze-text { color: var(--tg-night-muted) !important; }
+
+/* Current result cards (the saved-report view also has older markup variants). */
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-ai-surface, .tg-report-evidence, .tg-ai-hero, .tg-ai-source, .tg-ai-metric, .tg-verdict-help-popover, .tg-source-jump, .tg-details-claim-content, .tg-details-panel) {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    color: var(--tg-night-ink) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-ai-media, .tg-evidence-question, .tg-evidence-kind, .tg-verdict-score, .tg-report-metrics > div, .tg-report-method-summary, .tg-report-method-chevron) { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-report-reference, .tg-report-subtitle, .tg-card-eyebrow, .tg-evidence-meta, .tg-submission-question, .tg-interpretation-intro, .tg-details-coverage-copy, .tg-related-date, .tg-related-publisher, .tg-related-group) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body :is(.tg-related-headline, .tg-related-title) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body :is(.tg-related-summary, .tg-related-meta) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body :is(.tg-related-open, .tg-related-host) { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .tg-ai-report .tg-interpretation-action { background: #123c35 !important; border-color: #377864 !important; color: #d1fae5 !important; }
+html[data-tg-workspace].dark body .tg-ai-report .tg-verdict-help-popover::before { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body :is(.tg-image-preview, .tg-image-close) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; color: #93c5fd !important; }
+
+/* Activity inbox, notification details and linked article references. */
+html[data-tg-workspace].dark body :is(.truthguard-notifications-shell, .truthguard-notifications-hero, .truthguard-notifications-stat, .truthguard-notification-page-card, .tg-notice-heading, .tg-notice-icon) {
+    background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-ink) !important; box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-notifications-shell::before { opacity: .08; }
+html[data-tg-workspace].dark body .tg-notice { --notice-ink: var(--tg-night-ink); --notice-muted: var(--tg-night-muted); --notice-line: var(--tg-night-line); }
+html[data-tg-workspace].dark body .tg-public-article :is(section, article) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+
+/* Settings overview, account cards and modal contents share the same palette. */
+html[data-tg-workspace].dark body :is(.truthguard-settings-hero-summary, .truthguard-settings-metrics > div, .truthguard-settings-readiness-ring > span, .truthguard-settings-status-chip, .truthguard-settings-rail-card, .truthguard-settings-panel-header, .truthguard-photo-preview-card, .truthguard-password-strength-card, .truthguard-email-permission-card) { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-ink) !important; box-shadow: none !important; }
+html[data-tg-workspace].dark body :is(.truthguard-settings-metrics p, .truthguard-settings-modal-kicker, .truthguard-settings-panel-kicker) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-status-chip.is-success { color: #6ee7b7 !important; background: #123c35 !important; border-color: #377864 !important; }
+html[data-tg-workspace].dark body .truthguard-settings-save-button:not(:disabled) { background: #2454c6 !important; color: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-settings-save-button:disabled,
+html[data-tg-workspace].dark body .truthguard-push-button:disabled { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-modal .truthguard-settings-panel section > .grid > aside > div,
+html[data-tg-workspace].dark body .truthguard-settings-modal .truthguard-settings-panel section > .grid > div > div { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; box-shadow: none !important; }
+
+html[data-tg-workspace].dark body .truthguard-notification-badge { background: #be123c !important; color: #fff !important; box-shadow: none !important; }
+html[data-tg-workspace].dark body .truthguard-recent-view-all { background: var(--tg-night-surface) !important; color: #93c5fd !important; }
+html[data-tg-workspace].dark body .truthguard-analyze-button { background: #1e40af !important; }
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-empty, .tg-source-count, .tg-related-rating) { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-details-heading > strong { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .tg-details-heading > span { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-report-main-verdict { color: color-mix(in srgb, var(--tg-accent), white 55%) !important; }
+html[data-tg-workspace].dark body :is(.text-cyan-600, .text-cyan-700) { color: #67e8f9 !important; }
+html[data-tg-workspace].dark body .tg-public-article :is(h1, h2, h3, h4, summary) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-public-meta, .tg-related-meta) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-eyebrow { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .truthguard-settings-hero-summary p { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-report-metrics dt { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body :is(.tg-report-metrics dd, .tg-source-count strong) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .tg-public-article article > header { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-public-actions a { color: #93c5fd !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-public-actions a.tg-public-primary { background: #1e40af !important; color: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-settings-eyebrow { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .tg-source-popover-card { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-source-popover-card :is(p, span, strong, a) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-source-popover-card .tg-source-popover-heading { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark #news-watch .tg-feed-page-button:not(.is-current) { color: var(--tg-night-muted); }
+html[data-tg-workspace].dark body .tg-public-meta dt { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab.is-active > span:last-child { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab-primary { background: var(--tg-night-surface) !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab-primary > span:last-child { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab-dot { background: #be123c !important; color: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab::before { opacity: .08; }
+html[data-tg-workspace].dark body #notification-settings { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body #notification-settings :is(.truthguard-push-status, .truthguard-push-preference-row) { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-user-main, .truthguard-user-content-column) { background: var(--tg-night-bg) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-detection-composer, .truthguard-pre-result-form, .truthguard-composer-footer) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-read-result { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body [role="switch"] > span.bg-white { background: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-input-type { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .truthguard-ai-disclaimer { color: var(--tg-night-muted) !important; }

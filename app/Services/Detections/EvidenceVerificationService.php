@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v14';
+    public const VERSION = 'evidence-v15';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -144,7 +144,9 @@ class EvidenceVerificationService
                 ]);
             }
         }
-        $result = ReportAnswer::complete($result);
+        $wordingAction = data_get($result, 'diagnostics.outcome_reason') === 'extraction_unavailable'
+            ? OpenAiExtractionFailure::action($result['extraction'] ?? []) : ($analysis['recommendation'] ?? '');
+        $result = ResultWording::ensure(ReportAnswer::complete($result), $wordingAction);
         if (isset($result['diagnostics']) && is_array($result['diagnostics'])) {
             $result['diagnostics']['analysis_id'] = $context['analysis_id'];
         }
@@ -198,9 +200,7 @@ class EvidenceVerificationService
     {
         $started = microtime(true);
         $this->model->reset();
-        $this->judge->reviewScopes = [];
-        $this->judge->contextFindings = [];
-        $this->judge->contextualSources = [];
+        $this->judge->reset();
         $cutoff = $this->policy->date($context['evidence_cutoff'] ?? null) ?? now()->utc()->toIso8601String();
         $cutoff = ClaimPlanner::cutoff($context['question'] ?? '', $cutoff);
         $historicalCutoff = Carbon::parse($cutoff)->lt(now()->subMinute());
@@ -336,10 +336,15 @@ class EvidenceVerificationService
         $result = $this->report($claims, $records, $relationships, $extraction, $model, $cutoff, $plan['original_claim_date']);
         $result['media_assessment'] = $analysis['media_assessment'] ?? null;
         $usage = $this->model->usage;
+        $searchUsage = $budget->openAiUsage();
         foreach (array_keys($usage) as $key) {
-            $usage[$key] += max(0, (int) ($extraction['usage'][$key] ?? 0));
+            $usage[$key] += max(0, (int) ($extraction['usage'][$key] ?? 0)) + $searchUsage[$key];
         }
+        $usage['models'] = array_values(array_unique(array_filter(array_merge(array_values($this->model->models),
+            [$extraction['response_model'] ?? null], array_map(fn ($attempt) => $attempt['web_search']['model'] ?? null, $budget->attempts)))));
+        $usage['model'] = implode(' + ', $usage['models']);
         $result['diagnostics'] = $budget->diagnostics() + ['model_stages' => $this->model->stages, 'api_usage' => $usage,
+            'duplicate_reviews_skipped' => $this->judge->duplicateReviewsSkipped,
             'research_context' => $budget->researchContext,
             'model_request_attempts' => $this->model->requestAttempts,
             'analysis_elapsed_ms' => (int) round((microtime(true) - $started) * 1000), 'pipeline_version' => self::VERSION,
@@ -405,10 +410,12 @@ class EvidenceVerificationService
             $result['answer_segments'] = [['text' => $result['summary'], 'source_ids' => $contextSourceIds]];
             $result = ReportAnswer::complete($result);
         }
+        $result = ResultWording::attach($result, $this->judge->wordingCandidates);
         $result['source_snapshot_id'] = hash('sha256', json_encode($records, JSON_THROW_ON_ERROR));
         $key = hash('sha256', json_encode(['version' => self::VERSION, 'pipeline_identity' => EvidenceVerdictCalibration::identity(),
             'verdict_calibration' => config('fact_check.verdict_calibration.enabled', false) ? config('fact_check.verdict_calibration.sha256', '') : 'disabled',
             'score_version' => AssessmentScore::RUBRIC,
+            'wording_version' => ResultWording::VERSION,
             'request' => Arr::only($context, ['primary_task', 'question']), 'claim' => $result['claim'], 'claims' => $claims, 'cutoff' => $cutoff, 'snapshot' => $result['source_snapshot_id'],
             'analysis_model' => config('services.openai.model'), 'trained_model' => Arr::except($model, ['elapsed_ms']),
             'media' => $result['media_assessment']], JSON_THROW_ON_ERROR));
@@ -504,7 +511,8 @@ class EvidenceVerificationService
         };
         $claimLead = $this->claimLead($result['claims'] ?? []);
         $summary = match ($reason) {
-            'extraction_unavailable' => 'I could not read the submitted content because text extraction was unavailable. Retry or supply the statement as text; no factual conclusion was reached.',
+            'extraction_unavailable' => OpenAiExtractionFailure::explanation($result['extraction'])
+                ?? 'The submitted content could not be read because text extraction was unavailable. Retry or supply the statement as text; no factual conclusion was reached.',
             'unreadable_content' => 'No readable factual content could be extracted. Supply a clearer original or paste the statement to verify. This is an input limitation, not a finding that the content is false.',
             'analysis_failure' => 'The factual analysis could not finish because an analysis service failed or returned an unusable response. This is not a finding that the post is false or lacks context.',
             'retrieval_disabled' => 'I could not verify this statement because source discovery is disabled. No factual conclusion was reached.',
