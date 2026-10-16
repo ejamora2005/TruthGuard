@@ -55,6 +55,8 @@ class EvidenceInputBudgetTest extends TestCase
 
     public function test_supplied_claim_uses_link_as_evidence_without_checking_every_sentence_on_the_page(): void
     {
+        Http::preventStrayRequests();
+        config()->set('services.live_verification.enabled', true);
         $fetcher = $this->mock(SafeArticleFetcher::class);
         $fetcher->shouldReceive('fetch')->once()->andReturn(['status' => 'retrieved', 'text' => 'Another unrelated assertion on the same page.']);
         $result = app(SubmissionExtractor::class)->extract(['caption_text' => 'The agency name is Example Agency.',

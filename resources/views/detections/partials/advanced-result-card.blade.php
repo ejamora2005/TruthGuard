@@ -185,12 +185,14 @@
         || max((int) ($openAiUsage['total_tokens'] ?? 0), (int) ($openAiUsage['input_tokens'] ?? 0), (int) ($openAiUsage['output_tokens'] ?? 0)) > 0;
     $openAiModel = trim((string) ($openAiUsage['model'] ?? $openAiExtraction['response_model'] ?? $openAiExtraction['configured_model'] ?? ''));
     $openAiStages = collect(data_get($selectedDetection->fact_check_result, 'diagnostics.model_stages', []));
-    $openAiFailure = $openAiExtraction['failure_reason'] ?? ($openAiStages->contains('quota_exhausted') ? 'quota_exhausted' : null);
+    $openAiFailure = $openAiExtraction['failure_reason'] ?? data_get($signalGroups, 'media_explanation.0.failure_reason')
+        ?? ($openAiStages->contains('quota_exhausted') ? 'quota_exhausted' : null);
     $openAiFailureMessage = match ($openAiFailure) {
         'quota_exhausted' => 'OpenAI rejected this request because the API account had no remaining credits or had reached its billing limit. API billing must be restored before a new assessment can use OpenAI.',
         'authentication_failed' => 'OpenAI rejected the configured API credentials for this request. The API configuration needs attention before retrying.',
         'not_configured' => 'OpenAI analysis was disabled or its API key was missing when this report was created.',
         'rate_limited' => 'OpenAI temporarily rate-limited this request. A new assessment can be retried after the limit clears.',
+        'request_incomplete', 'request_or_validation_failed', 'input_budget_exhausted' => 'The optional OpenAI explanation could not complete. The saved detector verdict and its original explanation remain available.',
         'timeout', 'network_failure', 'provider_unavailable', 'http_error', 'request_exception' => 'The recorded OpenAI request could not complete. The saved local findings remain available; a new assessment is needed to retry.',
         default => null,
     };

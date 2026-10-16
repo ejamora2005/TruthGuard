@@ -120,6 +120,8 @@ return [
         'claim_extraction_enabled' => env('OPENAI_CLAIM_EXTRACTION_ENABLED', true),
         'timeout' => env('OPENAI_TIMEOUT', 40),
         'max_completion_tokens' => env('OPENAI_MAX_COMPLETION_TOKENS', 1400),
+        'media_explanation_enabled' => env('OPENAI_MEDIA_EXPLANATION_ENABLED', true),
+        'media_explanation_max_tokens' => env('OPENAI_MEDIA_EXPLANATION_MAX_TOKENS', 400),
         'image_context_enabled' => env('OPENAI_IMAGE_CONTEXT_ENABLED', true),
         'image_max_bytes' => env('OPENAI_IMAGE_MAX_BYTES', 4194304),
         'monthly_token_budget' => env('OPENAI_MONTHLY_TOKEN_BUDGET', 0),

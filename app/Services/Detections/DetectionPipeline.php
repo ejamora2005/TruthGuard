@@ -29,6 +29,7 @@ class DetectionPipeline
         private readonly FactCheckResultService $factCheckResultService,
         private readonly EvidenceVerificationService $evidenceVerificationService,
         private readonly AiOriginClassifier $aiOriginClassifier,
+        private readonly OpenAiMediaExplanation $mediaExplanation,
     ) {}
 
     /**
@@ -161,6 +162,7 @@ class DetectionPipeline
             // Every route, including the legacy fallback, crosses the same typed
             // answer boundary before it can be compared, saved or displayed.
             $analysis['fact_check_result'] = ReportAnswer::complete($analysis['fact_check_result']);
+            $analysis = $this->mediaExplanation->apply($analysis);
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
             // Older saved reports have not been admitted to this fresh cache.
             $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation')];
@@ -322,6 +324,9 @@ class DetectionPipeline
                 'enhanced' => config('fact_check.enhanced_enabled'),
                 'openai_enabled' => config('services.openai.analysis_enabled'),
                 'extraction_enabled' => config('services.openai.claim_extraction_enabled'),
+                'media_explanation' => [OpenAiMediaExplanation::VERSION,
+                    config('services.openai.media_explanation_enabled', true), config('services.openai.media_explanation_max_tokens', 400),
+                    config('services.openai.model')],
                 'deepfake' => Arr::except(config('services.deepfake_cnn', []), ['python_binary', 'timeout']),
                 'origin' => Arr::only(config('services.ai_origin', []), ['enabled', 'model_path']),
                 'article_model' => Arr::except(config('services.filipino_news_classifier', []), ['timeout', 'connect_timeout']),
@@ -385,6 +390,7 @@ class DetectionPipeline
             || ($result['schema_version'] ?? null) !== 4 || ($result['processing_status'] ?? null) !== 'completed'
             || in_array($result['verdict'] ?? '', ['ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS', 'CLARIFICATION_NEEDED'], true)
             || filled(data_get($candidate->signals, 'submission_extraction.0.failure_reason'))
+            || filled(data_get($candidate->signals, 'media_explanation.0.failure_reason'))
             || collect(data_get($result, 'diagnostics.model_stages', []))->contains(fn ($status) => $status !== 'completed')
             || in_array(data_get($result, 'claim_assessment.status'), ['partial', 'unavailable', 'failed'], true)) {
             return false;

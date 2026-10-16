@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v13';
+    public const VERSION = 'evidence-v14';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -359,6 +359,8 @@ class EvidenceVerificationService
         if ($result['verdict'] === 'MISLEADING') {
             $finding = collect($result['context_assessments'])->firstWhere('label', 'MISLEADING');
             if ($finding) {
+                $publisher = collect($result['sources'])->firstWhere('id', $finding['source_id']);
+                $result['summary'] = ReportAnswer::attributeSource($result['summary'], $publisher['name'] ?? '');
                 $result['answer_segments'] = [['text' => $result['summary'], 'source_ids' => [$finding['source_id']]]];
             }
         }
@@ -386,7 +388,8 @@ class EvidenceVerificationService
             $contextSourceIds = [];
             if ($finding && ! AssessmentVerdict::technical($result['verdict'])) {
                 $result['verdict'] = $finding['label'];
-                $result['summary'] = $finding['explanation'];
+                $publisher = collect($result['sources'])->firstWhere('id', $finding['source_id']);
+                $result['summary'] = ReportAnswer::attributeSource($finding['explanation'], $publisher['name'] ?? '');
                 $contextSourceIds = array_values(array_intersect([$finding['source_id']], array_column($result['sources'], 'id')));
             } elseif (! AssessmentVerdict::technical($result['verdict']) && $result['verdict'] !== 'MISSING_CONTEXT') {
                 $result['verdict'] = 'UNVERIFIED';

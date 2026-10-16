@@ -17,6 +17,10 @@ New submissions use the version 2 evidence pipeline: original text extraction, a
 
 ## API usage monitoring and saved-result reuse
 
+Fact-check explanations reuse the OpenAI evidence review's validated explanations and identify the reviewed publisher, avoiding a second prose-writing request. Completed media-origin checks can use one additional text-only explanation request (`OPENAI_MEDIA_EXPLANATION_ENABLED=true`, `OPENAI_MEDIA_EXPLANATION_MAX_TOKENS=400`). It receives compact detector findings, never another copy of the image, and has no search tools or automatic retries. It cannot change the verdict, score or sources; unavailable narration leaves the original explanation intact. Successful eligible duplicate submissions reuse the saved explanation before inference. Old reports remain unchanged and do not generate explanations when opened.
+
+The 400-token limit covers output for this narration request, not input tokens or the whole review. Claim extraction, evidence analysis and enabled research remain separate costs. The short narrator preserves the configured `OPENAI_MODEL`; it does not automatically switch models. Its token usage is included in the existing API ledger and report telemetry.
+
 The complete Dokploy environment template is `.env.production.example`. Replace its marked secret values and proxy CIDR on the server. Compose forwards billing, evidence, calibration, and reuse settings to the app, worker, and scheduler. Keep the existing deployed `APP_KEY` until a planned rotation, and update existing MySQL account passwords in MySQL when rotating database credentials.
 
 Set `OPENAI_MONTHLY_DOLLAR_BUDGET=6` and a server-only `OPENAI_ADMIN_API_KEY` for cost alerts at 80% and 100%. `OPENAI_USAGE_PROJECT_ID` and `OPENAI_USAGE_API_KEY_ID` optionally scope billing; leaving both blank monitors the whole OpenAI organization. Admin **AI Usage** shows provider-reported request tokens from monitoring start, separately from OpenAI-reported monthly costs. Missing telemetry and unavailable/stale cost data are identified explicitly. The budget is an alert threshold, not a hard spending stop or prepaid-credit balance.

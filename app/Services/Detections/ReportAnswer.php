@@ -77,6 +77,7 @@ class ReportAnswer
                     continue;
                 }
                 $seen[$key] = true;
+                $detail = self::attributeSource($detail, $source['name'] ?? '');
                 $segments[] = ['text' => $detail, 'source_ids' => [$source['id']]];
                 if (count($segments) >= 3) {
                     break;
@@ -121,6 +122,18 @@ class ReportAnswer
         $result['summary'] = implode(' ', array_column($segments, 'text'));
 
         return $result;
+    }
+
+    /** Attribute an already reviewed explanation without another model request. */
+    public static function attributeSource(string $explanation, string $publisher): string
+    {
+        $publisher = Str::limit(Str::squish(strip_tags($publisher)), 80, '');
+        if ($publisher === '' || $publisher === 'Publisher not recorded'
+            || Str::contains(Str::lower($explanation), Str::lower($publisher))) {
+            return $explanation;
+        }
+
+        return $publisher.' reports: '.$explanation;
     }
 
     /** Adapt a saved result for HTML or JSON without updating its historical record. */
