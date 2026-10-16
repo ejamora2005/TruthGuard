@@ -23,6 +23,22 @@ Only passing cells from a genuine `validated_on_supplied_population` artifact ca
 
 ## Image score calibration
 
+Run the read-only readiness audit before loading the model or spending time on a
+new capture. It checks original file hashes, recorded reviews and group counts,
+population declarations, pinned model files, complete predictions and the exact
+application adapter. It reports all blockers together and never fills review
+fields, relabels GPU scores, calls an API or changes live settings.
+
+```powershell
+python automation/evaluation/check_image_calibration_readiness.py --annotations path/to/labels.jsonl --predictions path/to/scores.jsonl --population path/to/population.json --output storage/tmp-calibration-readiness-v1.json
+```
+
+Exit code 2 means blocked; exit code 0 means **ready to fit**, not calibrated or
+approved for deployment. Passing the existing fitter and runtime artifact checks
+is still required. Use a new output filename for each immutable audit. The audit
+checks recorded declarations; it cannot prove an undocumented training history or
+perform independent human review by setting a field.
+
 ### Publisher-labeled benchmark experiment
 
 For a downloaded known-origin benchmark whose independent review or training
