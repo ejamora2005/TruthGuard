@@ -13,6 +13,7 @@ use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\LiveVerificationEvidenceService;
 use App\Services\Detections\OpenAiDetectionReportService;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\SubmissionInput;
 use App\Services\Detections\TrustedFactCheckVerdictResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class DetectionController extends Controller
@@ -130,7 +132,7 @@ class DetectionController extends Controller
         $claimMaxCharacters = (int) config('truthguard.claims.max_characters', 4000);
 
         $validated = $request->validate([
-            'source_url' => ['nullable', 'url', 'max:2048'],
+            'source_url' => ['nullable', 'string', 'url:http,https', 'max:2048'],
             'media_file' => ['nullable', 'file', "max:{$mediaMaxKb}", 'mimes:jpg,jpeg,png,webp,mp4,mov,webm,m4v,pdf'],
             'source_platform' => ['nullable', 'string', 'in:auto,facebook,instagram,tiktok,x,youtube,web,other'],
             'caption_text' => ['nullable', 'string', "max:{$claimMaxCharacters}"],
@@ -151,12 +153,10 @@ class DetectionController extends Controller
         /** @var UploadedFile|null $uploadedFile */
         $uploadedFile = $request->file('media_file');
 
-        if (! $uploadedFile && blank($validated['source_url'] ?? null) && blank($validated['caption_text'] ?? null)) {
-            return back()
-                ->withErrors([
-                    'media_file' => 'Add a file, link, or context before analyzing.',
-                ])
-                ->withInput();
+        if (! $uploadedFile && blank($validated['source_url'] ?? null) && ! SubmissionInput::hasEvidenceText($validated['caption_text'] ?? null)) {
+            throw ValidationException::withMessages([
+                'caption_text' => 'Enter the claim you want checked, paste a source link, or attach evidence. A guide question alone is not enough.',
+            ]);
         }
 
         if (config('fact_check.enhanced_enabled') && config('fact_check.queue_enabled')) {
@@ -225,14 +225,18 @@ class DetectionController extends Controller
     }
 
     /**
-     * @return array<string, string|null>
+     * @return array<string, mixed>
      */
     private function normalizeDetectionInputs(Request $request): array
     {
-        $sourceUrl = trim((string) $request->input('source_url', ''));
-        $captionText = trim((string) $request->input('caption_text', ''));
+        $sourceUrl = $request->input('source_url', '');
+        $captionText = $request->input('caption_text', '');
+        // Leave malformed types intact so validation returns 422 instead of
+        // raising an array-to-string error before the rules can run.
+        $sourceUrl = is_string($sourceUrl) ? trim($sourceUrl) : $sourceUrl;
+        $captionText = is_string($captionText) ? trim($captionText) : $captionText;
 
-        if ($sourceUrl === '' && $captionText !== '') {
+        if (($sourceUrl === '' || $sourceUrl === null) && is_string($captionText) && $captionText !== '') {
             $extractedUrl = $this->extractUrlFromText($captionText);
 
             if ($extractedUrl !== null) {

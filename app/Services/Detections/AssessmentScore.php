@@ -118,7 +118,8 @@ class AssessmentScore
             return ['title' => $text, 'description' => match ($score['type']) {
                 'confidence' => 'Calibrated on validation data',
                 'evidence_strength' => 'Provisional evidence assessment',
-                default => 'Uncalibrated model output',
+                default => ($score['validation'] ?? '') === 'calibrated_benchmark'
+                    ? 'Calibrated on benchmark images' : 'Uncalibrated model output',
             }, 'detail' => $score['explanation'], 'has_percentage' => true, 'type' => $score['type']];
         }
         // An inconclusive verdict can still have a valid raw detector output.

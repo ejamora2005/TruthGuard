@@ -158,21 +158,21 @@ new class extends Component
             'label' => 'Check for AI-made media',
             'task' => 'media',
             'hint' => 'Analyze this upload for AI or editing signs.',
-            'prompt' => 'Is this image or video AI-generated or manipulated?',
+            'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['media'],
         ],
         [
             'id' => 'claim',
             'label' => 'Fact-check this claim',
             'task' => 'claim',
             'hint' => 'Compare this claim with trusted sources.',
-            'prompt' => 'Is the claim in this post true?',
+            'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['claim'],
         ],
         [
             'id' => 'sources',
             'label' => 'Find matching fact-checks',
             'task' => 'claim',
             'hint' => 'Search related reviews and source ratings.',
-            'prompt' => 'Has this claim already been fact-checked, and what ratings did trusted sources give it?',
+            'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['sources'],
         ],
     ];
     $truthguardLogoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
@@ -3399,6 +3399,7 @@ new class extends Component
             promptGuides: @js($shortcutPrompts),
             selectedGuide: @js(in_array(old('analysis_task'), ['media', 'claim'], true) ? old('analysis_task') : null),
             selectedInputType: @js($oldSourceUrl !== '' ? 'link' : null),
+            linkModeExplicit: false,
             hasFile: false,
             inputNudge: false,
             drivePicker: @js($googleDrivePicker),
@@ -3484,7 +3485,7 @@ new class extends Component
                 }, 700);
             },
             canAnalyze() {
-                const hasEvidence = !!this.hasFile || this.composerEvidenceText().length > 0;
+                const hasEvidence = !!this.hasFile || this.hasComposerEvidence();
 
                 return hasEvidence
                     && ! this.isComposerOverLimit()
@@ -3534,6 +3535,8 @@ new class extends Component
 
                 if (this.composerUrl()) {
                     this.selectedInputType = 'link';
+                } else if (this.selectedInputType === 'link' && ! this.linkModeExplicit) {
+                    this.selectedInputType = null;
                 }
 
                 if (this.isComposerOverLimit()) {
@@ -3548,6 +3551,7 @@ new class extends Component
             },
             selectInputType(type) {
                 this.selectedInputType = type;
+                this.linkModeExplicit = type === 'link';
                 this.composerError = null;
 
                 if (type === 'image' || type === 'video') {
@@ -3562,6 +3566,7 @@ new class extends Component
                     .replace(/https?:\/\/[^\s<>]+/i, '')
                     .trim();
                 this.selectedInputType = null;
+                this.linkModeExplicit = false;
                 this.composerError = null;
 
                 if (this.$refs.composerInput) {
@@ -3574,8 +3579,8 @@ new class extends Component
                 });
             },
             validateComposer() {
-                if (! this.hasFile && ! this.composerEvidenceText()) {
-                    this.composerError = 'Enter a claim or attach evidence.';
+                if (! this.hasFile && ! this.hasComposerEvidence()) {
+                    this.composerError = 'Enter the claim you want checked, paste a source link, or attach evidence.';
                     return false;
                 }
 
@@ -4237,9 +4242,13 @@ new class extends Component
                 return this.promptGuides.find(guide => guide.id === this.selectedGuide) || null;
             },
             composerEvidenceText() {
-                const value = (this.composerValue || '').trim();
-                const guide = this.promptGuides.find(guide => value === guide.prompt || value.startsWith(guide.prompt + '\n\n'));
+                const value = (this.composerValue || '').replace(/\p{Cf}/gu, '').trim();
+                const guide = this.promptGuides.find(guide => value === guide.prompt
+                    || (value.startsWith(guide.prompt) && /^\s/.test(value.slice(guide.prompt.length))));
                 return guide ? value.slice(guide.prompt.length).trim() : value;
+            },
+            hasComposerEvidence() {
+                return /[\p{L}\p{N}]/u.test(this.composerEvidenceText());
             },
             usePrompt(task = 'auto', guideId = null) {
                 if (this.submitting) return;

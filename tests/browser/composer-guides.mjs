@@ -42,6 +42,22 @@ try {
         const guides = page.locator('.truthguard-guided-prompt-card');
         await page.waitForFunction(() => !!window.Alpine && !!document.querySelector('.truthguard-detection-shell')._x_dataStack);
         assert.equal(await page.getByRole('button', { name: 'Clear guide', exact: true }).count(), 0);
+        for (const invalid of ['', '\u00a0\u200b\ufeff', '... ??? !!!', '🤔🤔',
+            'Is the claim in this post true?', 'Is the claim in this post true?\n\n???',
+            'Is this image or video AI-generated or manipulated?',
+            'Has this claim already been fact-checked, and what ratings did trusted sources give it?']) {
+            await field.fill(invalid);
+            assert.equal(await page.evaluate(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).canAnalyze()), false, invalid);
+            assert.equal(await page.locator('.truthguard-analyze-button:visible').first().isDisabled(), true);
+        }
+        for (const valid of ['Totoo bang walang pasok bukas sa Maynila?', '水在标准大气压下于100°C沸腾。', '1 + 1 = 2']) {
+            await field.fill(valid);
+            assert.equal(await page.evaluate(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).validateComposer()), true, valid);
+        }
+        // Auto-detected link mode must not trap a replacement plain-text claim.
+        await field.fill('https://example.com/news');
+        await field.fill('Did the Riverside bridge reopen in May 2026?');
+        assert.equal(await page.evaluate(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).canAnalyze()), true);
         await field.fill('The Riverside bridge reopened in May 2026.');
         await page.getByRole('button', { name: /Fact-check this claim/ }).click();
         await page.waitForFunction(() => document.querySelector('[name=caption_text]').value.startsWith('Is the claim in this post true?'));

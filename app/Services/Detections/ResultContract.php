@@ -376,8 +376,13 @@ class ResultContract
             return AssessmentScore::unavailable(self::text($score['explanation'] ?? null) ?? 'No validated percentage was recorded for this assessment.');
         }
         $value = $score['value'] ?? null;
+        $benchmarkScore = ($score['type'] ?? '') === 'model_score'
+            && ($score['label'] ?? '') === 'Calibrated model score'
+            && ($score['validation'] ?? '') === 'calibrated_benchmark'
+            && ($score['method_version'] ?? '') === MediaScoreCalibration::PLATT_METHOD;
         if (! is_numeric($value) || ! is_finite((float) $value) || (float) $value < 0 || (float) $value > 1
-            || ! in_array($score['label'] ?? null, ['Model score', 'Evidence strength', 'Confidence'], true)
+            || ! in_array($score['label'] ?? null, ['Model score', 'Calibrated model score', 'Evidence strength', 'Confidence'], true)
+            || (! $benchmarkScore && (($score['label'] ?? '') === 'Calibrated model score' || ($score['validation'] ?? '') === 'calibrated_benchmark'))
             || (($score['type'] ?? '') === 'confidence' && ($score['validation'] ?? '') !== 'calibrated')) {
             return AssessmentScore::unavailable('The saved score has no valid method or value.');
         }
@@ -385,8 +390,8 @@ class ResultContract
         $score['explanation'] = self::text($score['explanation'] ?? null) ?? 'This percentage describes the recorded method, not overall system accuracy.';
         $score['method_version'] = self::text($score['method_version'] ?? null);
         $score['validation'] = in_array($score['validation'] ?? null,
-            ['calibrated', 'uncalibrated', 'provisional_unvalidated'], true) ? $score['validation'] : 'not_validated';
-        if ($score['method_version'] === null || ($score['type'] === 'model_score' && $score['validation'] !== 'uncalibrated')
+            ['calibrated', 'calibrated_benchmark', 'uncalibrated', 'provisional_unvalidated'], true) ? $score['validation'] : 'not_validated';
+        if ($score['method_version'] === null || ($score['type'] === 'model_score' && $score['validation'] !== 'uncalibrated' && ! $benchmarkScore)
             || ($score['type'] === 'evidence_strength' && $score['validation'] !== 'provisional_unvalidated')) {
             return AssessmentScore::unavailable('The saved percentage has no traceable method and validation status.');
         }

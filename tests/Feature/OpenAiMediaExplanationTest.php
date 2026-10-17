@@ -101,6 +101,32 @@ class OpenAiMediaExplanationTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_existing_narration_request_receives_saved_benchmark_calibration_status(): void
+    {
+        $this->fakeResponse();
+        $before = $this->analysis();
+        $before['fact_check_result']['score'] = [
+            'type' => 'model_score', 'value' => .91, 'label' => 'Calibrated model score',
+            'validation' => 'calibrated_benchmark', 'method_version' => 'binary-platt-logit-v1',
+        ];
+        $before['fact_check_result']['limitations'][0] = 'Calibrated on a balanced benchmark; other upload populations were not validated.';
+        $after = app(OpenAiMediaExplanation::class)->apply($before);
+        $this->assertSame($before['fact_check_result']['score'], $after['fact_check_result']['score']);
+        $this->assertSame($before['fact_check_result']['verdict'], $after['fact_check_result']['verdict']);
+        $this->assertSame($after, app(OpenAiMediaExplanation::class)->apply($after));
+        Http::assertSentCount(1);
+        Http::assertSent(function ($request) {
+            $body = $request->data();
+            $basis = json_decode($body['input'][1]['content'], true);
+
+            return $basis['score']['validation'] === 'calibrated_benchmark'
+                && $basis['score']['label'] === 'Calibrated model score'
+                && str_contains($body['input'][0]['content'], 'do not call a calibrated score uncalibrated')
+                && str_contains($body['input'][0]['content'], 'Do not output percentages')
+                && $body['max_output_tokens'] === 400 && ! isset($body['tools']);
+        });
+    }
+
     public function test_disabled_or_incomplete_detector_uses_existing_explanation_without_a_request(): void
     {
         config()->set('services.openai.media_explanation_enabled', false);

@@ -5,5 +5,5 @@
 @endphp
 <div class="tg-result-score" aria-label="Assessment score">
     <strong title="{{ $scoreExplanation }}">{{ ($scoreValue['type'] ?? 'unavailable') === 'unavailable' ? 'Confidence not available' : $scoreText }}</strong>
-    <span>{{ match($scoreValue['type'] ?? '') { 'evidence_strength' => 'Provisional evidence heuristic', 'model_score' => 'Uncalibrated model output', 'confidence' => 'Calibrated on validation data', default => 'No defensible percentage' } }}</span>
+    <span>{{ match($scoreValue['type'] ?? '') { 'evidence_strength' => 'Provisional evidence heuristic', 'model_score' => ($scoreValue['validation'] ?? '') === 'calibrated_benchmark' ? 'Calibrated on benchmark images' : 'Uncalibrated model output', 'confidence' => 'Calibrated on validation data', default => 'No defensible percentage' } }}</span>
 </div>

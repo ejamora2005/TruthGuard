@@ -65,7 +65,8 @@ class MediaAnalysisReport
         if ($uncertain) {
             $score = AssessmentScore::unavailable('The model output is insufficiently separated to support an origin finding.');
         }
-        if (($score['type'] ?? '') === 'confidence' && ($score['validation'] ?? '') === 'calibrated') {
+        if ((($score['type'] ?? '') === 'confidence' && ($score['validation'] ?? '') === 'calibrated')
+            || (($score['type'] ?? '') === 'model_score' && ($score['validation'] ?? '') === 'calibrated_benchmark')) {
             $limitations[0] = $score['explanation'];
         }
         if ($completed) {

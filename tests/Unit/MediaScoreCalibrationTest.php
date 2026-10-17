@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Services\Detections\AssessmentScore;
 use App\Services\Detections\MediaAnalysisReport;
+use App\Services\Detections\MediaScoreCalibration;
+use App\Services\Detections\ReportAnswer;
 use Tests\TestCase;
 
 /** Synthetic calibration artifacts test loading/math only, not model accuracy. */
@@ -49,6 +51,130 @@ class MediaScoreCalibrationTest extends TestCase
         ], $changes);
         file_put_contents($this->artifactPath, json_encode($artifact, JSON_THROW_ON_ERROR));
         config()->set('services.media_calibration.sha256', hash_file('sha256', $this->artifactPath));
+    }
+
+    private function plattArtifact(array $changes = []): void
+    {
+        $identity = array_intersect_key($this->media(), array_flip(['model_version', 'config_sha256', 'processor_sha256', 'adapter_version']));
+        $this->artifact(array_replace_recursive([
+            'method' => MediaScoreCalibration::PLATT_METHOD, 'intercept' => -log(3), 'slope' => 1,
+            'linear_predictor_clip' => 40, 'fit_model_identity' => $identity,
+            'validation' => ['evaluation_model_identity' => $identity],
+        ], $changes));
+    }
+
+    public function test_platt_mapping_preserves_raw_classes_and_supports_both_directions(): void
+    {
+        $this->plattArtifact();
+        foreach ([[$this->media(.9), .75], [$this->media(.1, 'real'), 27 / 28]] as [$media, $expected]) {
+            $score = AssessmentScore::media($media);
+            $this->assertSame('confidence', $score['type']);
+            $this->assertSame(MediaScoreCalibration::PLATT_METHOD, $score['method_version']);
+            $this->assertEqualsWithDelta($expected, $score['value'], 1e-12);
+            $this->assertSame($media['label'], $score['assigned_class']);
+            $this->assertSame($media['fake_probability'], $score['raw_positive_score']);
+            $this->assertSame('model_score', $score['raw_score']['type']);
+        }
+        foreach ([0.0, 1.0] as $p) {
+            $score = AssessmentScore::media($this->media($p, $p > .5 ? 'fake' : 'real'));
+            $this->assertTrue(is_finite($score['value']));
+            $this->assertGreaterThan(0, $score['value']);
+            $this->assertLessThan(1, $score['value']);
+        }
+    }
+
+    public function test_platt_transfer_requires_target_evaluation_and_preserves_fit_identity(): void
+    {
+        $transfer = ['fit_model_identity' => ['adapter_version' => 'fixture-cuda-adapter']];
+        $this->plattArtifact($transfer);
+        $this->assertSame('model_score', AssessmentScore::media($this->media())['type']);
+
+        $this->plattArtifact(array_replace_recursive($transfer, ['validation' => ['runtime_transfer_validated' => true]]));
+        $score = AssessmentScore::media($this->media());
+        $this->assertSame('confidence', $score['type']);
+        $this->assertSame('fixture-cuda-adapter', $score['calibration_fit_model_identity']['adapter_version']);
+
+        foreach ([['model_version' => 'other-weights'], ['config_sha256' => 'other-config'],
+            ['processor_sha256' => 'other-processor']] as $mismatch) {
+            $this->plattArtifact(array_replace_recursive($transfer, ['fit_model_identity' => $mismatch,
+                'validation' => ['runtime_transfer_validated' => true]]));
+            $this->assertSame('model_score', AssessmentScore::media($this->media())['type']);
+        }
+        $this->plattArtifact(array_replace_recursive($transfer, ['validation' => ['runtime_transfer_validated' => true,
+            'evaluation_model_identity' => ['adapter_version' => 'another-target']]]));
+        $this->assertSame('model_score', AssessmentScore::media($this->media())['type']);
+    }
+
+    public function test_platt_rejects_invalid_coefficients_and_unvalidated_artifacts(): void
+    {
+        foreach ([['slope' => 0], ['slope' => -1], ['slope' => true], ['slope' => '1'], ['slope' => 100],
+            ['intercept' => '0'], ['intercept' => false], ['intercept' => 41], ['linear_predictor_clip' => null],
+            ['fit_model_identity' => ['adapter_version' => '']], ['validation' => ['evaluation_model_identity' => null]],
+            ['validation' => ['passed' => false]], ['validation' => ['fit_used_test_data' => true]],
+            ['counts' => ['test' => ['fake' => 99]]], ['population' => ['training_overlap_checked' => false]],
+            ['population' => ['representative_of_deployment' => false]], ['status' => 'candidate_only']] as $invalid) {
+            $this->plattArtifact($invalid);
+            $this->assertSame('model_score', AssessmentScore::media($this->media())['type']);
+        }
+    }
+
+    public function test_reviewed_benchmark_mapping_is_a_calibrated_score_and_preserves_the_verdict(): void
+    {
+        $this->plattArtifact(['output_mode' => 'benchmark_model_score', 'grouping_method' => 'sha256-prompt-dhash64-v1',
+            'screened_group_counts' => ['calibration' => ['real' => 100, 'fake' => 100], 'test' => ['real' => 100, 'fake' => 100]],
+            'population' => [
+                'representative_of_deployment' => false, 'benchmark_reviewed' => true,
+                'review_sha256' => str_repeat('a', 64),
+            ]]);
+        $result = MediaAnalysisReport::result($this->media(), []);
+        $score = $result['score'];
+        $this->assertSame('model_score', $score['type']);
+        $this->assertSame('calibrated_benchmark', $score['validation']);
+        $this->assertSame('Calibrated model score: 75%', AssessmentScore::display($score));
+        $this->assertStringContainsString('does not establish confidence', $score['explanation']);
+        $this->assertStringNotContainsString('uncalibrated', $result['limitations'][0]);
+        $this->view('detections.partials.result-score', ['assessment' => $result])
+            ->assertSee('Calibrated model score: 75%')->assertSee('Calibrated on benchmark images')
+            ->assertDontSee('Confidence:')->assertDontSee('Uncalibrated model output');
+        $this->assertSame('Calibrated on benchmark images', AssessmentScore::badge($result)['description']);
+
+        config()->set('services.media_calibration.enabled', false);
+        $raw = MediaAnalysisReport::result($this->media(), []);
+        $this->assertSame($raw['verdict'], $result['verdict']);
+        $this->assertSame($raw['assessment_label'], $result['assessment_label']);
+        $this->assertSame($raw['score'], $score['raw_score']);
+        // Refreshing saved results must preserve their recorded score without
+        // reopening the calibration artifact or running a detector/AI request.
+        unlink($this->artifactPath);
+        $public = ReportAnswer::forPresentation(json_decode(json_encode($result), true));
+        $again = ReportAnswer::forPresentation($public);
+        $this->assertSame('calibrated_benchmark', $again['score']['validation']);
+        $this->assertSame($score['value'], $again['score']['value']);
+        $this->assertSame('Calibrated model score: 75%', $again['score_display']);
+
+        foreach ([['method_version' => 'unknown'], ['validation' => 'uncalibrated'], ['type' => 'confidence']] as $invalid) {
+            $changed = $result;
+            $changed['score'] = array_replace($score, $invalid);
+            $this->assertSame('unavailable', ReportAnswer::forPresentation($changed)['score']['type']);
+        }
+    }
+
+    public function test_benchmark_mode_still_requires_review_and_independent_validation(): void
+    {
+        $base = ['output_mode' => 'benchmark_model_score', 'grouping_method' => 'sha256-prompt-dhash64-v1',
+            'screened_group_counts' => ['calibration' => ['real' => 100, 'fake' => 100], 'test' => ['real' => 100, 'fake' => 100]],
+            'population' => [
+                'representative_of_deployment' => false, 'benchmark_reviewed' => true,
+                'review_sha256' => str_repeat('a', 64),
+            ]];
+        foreach ([['population' => ['benchmark_reviewed' => false]], ['population' => ['review_sha256' => '']],
+            ['population' => ['training_overlap_checked' => false]], ['validation' => ['passed' => false]],
+            ['validation' => ['fit_used_test_data' => true]], ['validation' => ['held_out_improvement' => false]],
+            ['screened_group_counts' => ['test' => ['fake' => 99]]], ['grouping_method' => 'unknown'], ['output_mode' => 'unknown'],
+            ['method' => MediaScoreCalibration::METHOD]] as $invalid) {
+            $this->plattArtifact(array_replace_recursive($base, $invalid));
+            $this->assertSame('uncalibrated', AssessmentScore::media($this->media())['validation']);
+        }
     }
 
     public function test_matching_pinned_validated_artifact_calibrates_both_class_directions(): void

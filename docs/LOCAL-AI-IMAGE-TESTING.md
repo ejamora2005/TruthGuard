@@ -18,10 +18,10 @@ After changing these settings, run `php artisan config:clear`. Restart a long-ru
 1. Open the local Fact Check workspace and choose **Check for AI-made media**.
 2. Upload an original image and submit the filled question. General fact-checking remains a separate requested task.
 3. Open **View details** on the new report. **Media detector** should identify **OpenFake SigLIP2 + DINOv2 AI-origin detector** with status **Completed**.
-4. Images use only this AI-origin detector. MobileNet image screening is no longer run or used as a fallback; video retains its separate face detector. A disabled or failed origin detector produces an unavailable result. Historical reports keep their original readings. The smaller `ai-origin-siglip` download is not used.
+4. Images use only this AI-origin detector. MobileNet image screening is no longer run or used as a fallback; video retains its separate face detector. A disabled or failed origin detector produces an unavailable result. Historical reports keep their original readings. The retired single-backbone SigLIP adapter and metadata have been removed; its previously downloaded weights are not loaded.
 5. Review several independently documented camera and AI-generation examples. Record wrong predictions and inconclusive results, plus latency. Do not use previous TruthGuard verdicts as labels. A few successful examples do not measure accuracy or calibrate confidence.
 
-The published classifier decision threshold and existing selective/inconclusive policy are unchanged. A class score remains uncalibrated. This model screens image origin; it does not verify a depicted event or a news caption. Video keeps the existing video detector.
+The published classifier decision threshold and existing selective/inconclusive policy are unchanged. Without a matching validated artifact, the class score remains uncalibrated. A reviewed Platt benchmark artifact displays **Calibrated model score** and its benchmark scope; it does not claim deployment-wide confidence. This model screens image origin; it does not verify a depicted event or a news caption. Video keeps the existing video detector.
 
 CPU inference can be slow, particularly with little free memory. Process one image at a time and avoid duplicate submissions while one is running. If analysis does not complete, inspect the saved detector status rather than treating failure as a real-image finding.
 
@@ -44,7 +44,7 @@ With reviewed manifests available, capture predictions offline and fit a new art
 .\.venv-ai-origin\Scripts\python.exe automation/evaluation/calibrate_image_scores.py --annotations path/to/reviewed-labels.jsonl --predictions path/to/new-scores.jsonl --population path/to/reviewed-population.json --output path/to/new-calibration.json
 ```
 
-Enable `MEDIA_CALIBRATION_ENABLED` only when the artifact reports `validated_on_supplied_population`, its model identity matches the deployed origin detector, and its SHA-256 is pinned in `MEDIA_CALIBRATION_SHA256`. Set `MEDIA_CALIBRATION_PATH` to that artifact. Failed validation leaves the raw model score uncalibrated. Do not repeatedly tune on the test set. Temperature calibration adjusts probabilities; it does not retrain the model or make incorrect classifications correct.
+Enable `MEDIA_CALIBRATION_ENABLED` only when the artifact reports `validated_on_supplied_population`, its model identity matches the deployed origin detector, and its SHA-256 is pinned in `MEDIA_CALIBRATION_SHA256`. Set `MEDIA_CALIBRATION_PATH` to that artifact. Failed validation leaves the raw model score uncalibrated. Do not repeatedly tune on the test set. Temperature and Platt calibration adjust scores; they do not retrain the model or change the existing verdict policy. Platt artifacts must preserve fitting and target runtime identities; benchmark-only validation uses the model-score label described in `ASSESSMENT-ACCURACY.md`.
 
 `php artisan truthguard:models:health` now reports `image_origin` rather than the retired `image_cnn` health entry. The optional `--load` probe uses the origin model for images and the existing face detector for video; it does not measure calibration or accuracy.
 
