@@ -88,6 +88,7 @@ return [
         'model_path' => env('AI_ORIGIN_MODEL_PATH', 'automation/models/ai-origin-broad'),
         'python_binary' => env('AI_ORIGIN_PYTHON_BINARY', PHP_OS_FAMILY === 'Windows' ? '.venv-ai-origin/Scripts/python.exe' : '.venv-ai-origin/bin/python'),
         'timeout' => (int) env('AI_ORIGIN_TIMEOUT', 240),
+        'cpu_threads' => max(1, (int) env('AI_ORIGIN_CPU_THREADS', 4)),
     ],
 
     'deepfake_cnn' => [

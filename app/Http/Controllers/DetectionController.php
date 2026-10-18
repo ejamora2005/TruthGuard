@@ -159,7 +159,7 @@ class DetectionController extends Controller
             ]);
         }
 
-        if (config('fact_check.enhanced_enabled') && config('fact_check.queue_enabled')) {
+        if (config('fact_check.queue_enabled')) {
             $detection = Detection::create([
                 'user_id' => $request->user()->id, 'source_kind' => $uploadedFile ? 'upload' : 'link',
                 'source_url' => $validated['source_url'] ?? null, 'caption_text' => $validated['caption_text'] ?? null,
@@ -167,6 +167,8 @@ class DetectionController extends Controller
                 'media_type' => $uploadedFile ? (str_starts_with((string) $uploadedFile->getMimeType(), 'video/') ? 'video' : ($uploadedFile->getMimeType() === 'application/pdf' ? 'document' : 'image')) : 'text',
                 'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0,
             ]);
+            // The worker reopens the persisted original; UploadedFile cannot be serialized.
+            unset($validated['media_file']);
             AnalyzeDetectionEvidence::dispatch($detection->id, $validated);
 
             return redirect()->route('detections.result', $detection);
@@ -208,15 +210,39 @@ class DetectionController extends Controller
             return redirect()->route('detections.result', $detection)->with('status', 'Analysis is already running for this report.');
         }
         try {
+            $detection->refresh();
+            if (in_array($detection->processing_status, ['queued', 'processing'], true)) {
+                return redirect()->route('detections.result', $detection)->with('status', 'Analysis is already running for this report.');
+            }
             $selectedMode = $detection->fact_check_result['request']['selected_mode'] ?? 'auto';
             if (! in_array($selectedMode, ['auto', 'media', 'claim', 'context', 'manipulation'], true)) {
                 $selectedMode = 'auto';
             }
-            $pipeline->run($detection->user, [
+            $context = [
                 'analysis_task' => $validated['analysis_task'] ?? $selectedMode,
                 'caption_text' => $detection->caption_text, 'notes' => $detection->notes,
                 'source_url' => $detection->source_url, 'source_platform' => $detection->platform,
-            ], $file, $detection);
+            ];
+            if (config('fact_check.queue_enabled')) {
+                $previousStatus = $detection->processing_status;
+                $previousSignals = $detection->signals;
+                $retryId = (string) Str::uuid();
+                $signals = $previousSignals ?? [];
+                unset($signals['analysis_progress']);
+                $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'queued'];
+                $detection->forceFill(['processing_status' => 'queued', 'signals' => $signals])->saveQuietly();
+                try {
+                    AnalyzeDetectionEvidence::dispatch($detection->id, $context, $retryId, $previousStatus);
+                } catch (\Throwable $error) {
+                    $detection->forceFill(['processing_status' => $previousStatus, 'signals' => $previousSignals])->saveQuietly();
+                    report($error);
+
+                    return redirect()->route('detections.result', $detection)->with('status', 'The retry could not be queued. Your saved result is unchanged. Please try again later.');
+                }
+
+                return redirect()->route('detections.result', $detection)->with('status', 'Assessment retry queued. Your saved result will be replaced after the new assessment finishes.');
+            }
+            $pipeline->run($detection->user, $context, $file, $detection);
         } finally {
             $lock->release();
         }

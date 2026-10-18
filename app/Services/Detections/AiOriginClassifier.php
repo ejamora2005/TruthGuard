@@ -33,7 +33,9 @@ class AiOriginClassifier
             $binary = base_path($binary);
         }
         $process = new Process([$binary, base_path('automation/deepfake-models/broad_ai_origin_adapter.py')], base_path());
+        $threads = (string) max(1, (int) config('services.ai_origin.cpu_threads', 4));
         $process->setEnv(['AI_ORIGIN_MODEL_PATH' => $modelPath, 'USE_TF' => '0', 'USE_FLAX' => '0',
+            'AI_ORIGIN_CPU_THREADS' => $threads, 'OMP_NUM_THREADS' => $threads, 'MKL_NUM_THREADS' => $threads,
             'HF_HUB_OFFLINE' => '1', 'TRANSFORMERS_OFFLINE' => '1', 'HF_HUB_DISABLE_TELEMETRY' => '1']
             + WindowsProcessEnvironment::variables());
         $process->setTimeout((int) config('services.ai_origin.timeout', 120));

@@ -60,6 +60,7 @@ x-app-environment: &app-environment
   AI_ORIGIN_MODEL_PATH: ${AI_ORIGIN_MODEL_PATH:-automation/models/ai-origin-broad}
   AI_ORIGIN_PYTHON_BINARY: ${AI_ORIGIN_PYTHON_BINARY:-.venv-ai-origin/bin/python}
   AI_ORIGIN_TIMEOUT: ${AI_ORIGIN_TIMEOUT:-240}
+  AI_ORIGIN_CPU_THREADS: ${AI_ORIGIN_CPU_THREADS:-1}
   MEDIA_CALIBRATION_ENABLED: ${MEDIA_CALIBRATION_ENABLED:-false}
   MEDIA_CALIBRATION_PATH: ${MEDIA_CALIBRATION_PATH:-automation/models/ai-origin-broad/calibration.json}
   MEDIA_CALIBRATION_SHA256: ${MEDIA_CALIBRATION_SHA256:-}
@@ -311,6 +312,21 @@ services:
     mem_limit: "${WORKER_MEMORY_LIMIT:-1g}"
     mem_reservation: "${WORKER_MEMORY_RESERVATION:-512m}"
     command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=300", "--max-time=3600"]
+    stop_grace_period: 330s
+
+  # One process consumes evidence jobs sequentially. Do not scale this service
+  # without budgeting another detector's peak memory on the shared host.
+  evidence-worker:
+    <<: *app
+    networks:
+      - truthguard-internal
+    user: www-data
+    scale: 1
+    cpus: "${EVIDENCE_WORKER_CPU_LIMIT:-1.0}"
+    mem_limit: "${EVIDENCE_WORKER_MEMORY_LIMIT:-4g}"
+    memswap_limit: "${EVIDENCE_WORKER_MEMORY_LIMIT:-4g}"
+    mem_reservation: "${EVIDENCE_WORKER_MEMORY_RESERVATION:-512m}"
+    command: ["php", "artisan", "queue:work", "evidence", "--queue=evidence", "--sleep=3", "--tries=1", "--timeout=300", "--max-time=3600"]
     stop_grace_period: 330s
 
   scheduler:

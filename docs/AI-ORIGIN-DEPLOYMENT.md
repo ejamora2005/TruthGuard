@@ -44,6 +44,7 @@ AI_ORIGIN_ENABLED=false
 AI_ORIGIN_MODEL_PATH=automation/models/ai-origin-broad
 AI_ORIGIN_PYTHON_BINARY=.venv-ai-origin/bin/python
 AI_ORIGIN_TIMEOUT=240
+AI_ORIGIN_CPU_THREADS=1
 MEDIA_CALIBRATION_ENABLED=false
 MEDIA_CALIBRATION_PATH=automation/models/ai-origin-broad/calibration.json
 MEDIA_CALIBRATION_SHA256=d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c
@@ -56,10 +57,16 @@ take precedence over the repository's defaults.
 ## Checks still required on the target server
 
 1. Build the new image and confirm the runtime import and checkpoint checks pass.
-2. Set a memory/concurrency budget before running image inference. The current
-   Compose app and worker defaults are 1 GiB each; the Windows detector run used
-   more than that. Measure Linux peak usage and allow for PHP, the other services,
-   and simultaneous requests. Host swap does not remove container memory limits.
+2. Set a memory/concurrency budget before running image inference. The web app
+   and general worker defaults are 1 GiB each. The dedicated `evidence-worker`
+   has a 4 GiB limit, one CPU, and one queue process. Set
+   `FACT_CHECK_QUEUE_ENABLED=true` only when this worker is deployed and the
+   database's `jobs` / `failed_jobs` tables and
+   `2026_10_13_010000_allow_pending_detection_assessments` migration are ready.
+   New submissions and media retries then run
+   on the `evidence` connection/queue, rather than in the web container. Keep one
+   evidence worker on the shared 8 GiB host; do not scale it without a new memory
+   budget. Host swap does not remove container memory limits.
 3. Confirm the actual model, preprocessing, parameter precision and predictions
    on the target Linux runtime. Build-time imports and a checksum verify
    packaging, not inference correctness or calibration transfer.
@@ -73,3 +80,41 @@ that verification is complete. Existing reports retain their saved scores.
 
 No OpenAI calls are needed for downloading, checking, or testing the detector
 offline. A normal website submission can still call OpenAI for its explanation.
+
+## Linux smoke test reported on 2026-10-18
+
+The operator ran the packaged model in an isolated container with one CPU,
+4 GiB RAM, no swap, no network, a read-only root, and one inference thread. The
+model loaded in **14.6 seconds**, scored a generated flat gray diagnostic image
+in **13.1 seconds**, and exited **0**. Reported peak container memory was
+**2,588.8 MiB** (process peak: 2,516.5 MiB). The model hash matched the pinned
+release; parameter dtypes matched the calibration capture (448 bfloat16 and
+506 float32 parameter tensors). These are operator-reported measurements, not
+a locally rerun Docker test.
+
+This establishes that the packaged model can load and infer within that limit.
+The synthetic diagnostic image establishes neither accuracy nor numerical
+agreement with the Windows evaluation. The real-image runtime comparison is
+still outstanding; do not mark Linux calibration verification complete from
+this smoke test.
+
+The evidence worker uses `memswap_limit` equal to `mem_limit`, matching the
+no-container-swap smoke test. The memory limit is a ceiling, not a preallocated
+4 GiB reservation. Its default reservation is 512 MiB. Other services can still
+consume host RAM; monitor the first real analysis under normal host load.
+
+```dotenv
+FACT_CHECK_QUEUE_ENABLED=true
+AI_ORIGIN_CPU_THREADS=1
+EVIDENCE_WORKER_CPU_LIMIT=1.0
+EVIDENCE_WORKER_MEMORY_LIMIT=4g
+EVIDENCE_WORKER_MEMORY_RESERVATION=512m
+```
+
+Queue preparation does not enable `AI_ORIGIN_ENABLED` or
+`MEDIA_CALIBRATION_ENABLED`. Keep those false until the target-runtime checks
+above are complete. A failed queued retry keeps the previous result and displays
+a retry failure notice. Refreshing the result page only reads saved status.
+
+Reference: [Docker Compose memory settings](https://docs.docker.com/reference/compose-file/services/#memswap_limit)
+and [Laravel worker timeouts](https://laravel.com/docs/13.x/queues#worker-timeouts).
