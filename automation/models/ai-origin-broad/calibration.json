@@ -28,7 +28,8 @@
     "Prompt/hash screening does not prove all scene overlap or training-image overlap absent.",
     "Equal-class, equal-shard benchmark sampling does not establish calibration for live-upload prevalence.",
     "Row-group bootstrap addresses collection clusters, not every possible content dependence.",
-    "Windows CPU runtime only; no video probability or other-runtime validation."
+    "Windows CPU evaluation plus a Linux CPU replay of the same benchmark; no video probability or validation for untested runtimes.",
+    "The Linux replay is not additional independent test data and did not pass Windows/Linux numerical equivalence; runtime drift is recorded in the supplemental review."
   ],
   "linear_predictor_clip": 40,
   "method": "binary-platt-logit-v1",
@@ -40,6 +41,7 @@
   },
   "output_mode": "benchmark_model_score",
   "population": {
+    "additional_runtime_review_sha256": "990aeb867ca2cb2e7d37e811b966d7b7e72624c62dc50f69ce0d3fd44f5c6296",
     "benchmark_reviewed": true,
     "class_prevalence_ai": 0.5,
     "evaluation_plan_sha256": "26a33ffe836bf6e1ec5bb5386141566293e721c805887239b9c2abf6e2bf1bd3",
@@ -52,7 +54,8 @@
       "Prompt/hash screening does not prove all scene overlap or training-image overlap absent.",
       "Equal-class, equal-shard benchmark sampling does not establish calibration for live-upload prevalence.",
       "Row-group bootstrap addresses collection clusters, not every possible content dependence.",
-      "Windows CPU runtime only; no video probability or other-runtime validation."
+      "Windows CPU evaluation plus a Linux CPU replay of the same benchmark; no video probability or validation for untested runtimes.",
+      "The Linux replay is not additional independent test data and did not pass Windows/Linux numerical equivalence; runtime drift is recorded in the supplemental review."
     ],
     "prior_population_review_sha256": "e0f3b88b865ac6cec5ac1d27d211c35c418a7bf43da4cb451c59ca0aa57babe5",
     "representative_of_deployment": false,
@@ -74,6 +77,10 @@
     "training_screen_sha256": "253e13c6e57fcdb2bfe0c6e4f579031290b465adb1e86620237a95f79fb34833"
   },
   "positive_class": "fake",
+  "revision": {
+    "change": "Add the completed Linux benchmark review and update runtime limitations. Calibration mathematics, model identity, thresholds and original Windows evaluation are unchanged.",
+    "previous_artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c"
+  },
   "schema_version": 1,
   "screened_group_counts": {
     "calibration": {
@@ -88,6 +95,76 @@
   "slope": 1.053185952572771,
   "status": "validated_on_supplied_population",
   "validation": {
+    "additional_runtime_evaluations": [
+      {
+        "calibrated_metrics": {
+          "auc": 0.9488694444444444,
+          "brier": 0.08810369334388354,
+          "ece_10_bins": 0.02695770747453129,
+          "log_loss": 0.2844864428349426
+        },
+        "checks": {
+          "brier_nonworse": true,
+          "ece_nonworse": true,
+          "group_bootstrap_upper_below_zero": true,
+          "image_bootstrap_upper_below_zero": true,
+          "mean_log_loss_improved": true
+        },
+        "completed": 1200,
+        "cross_platform_equivalence_passed": false,
+        "evaluated_artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+        "evidence_source": "operator_supplied_terminal_report",
+        "execution_environment": {
+          "cpu": {
+            "flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw perfctr_core ssbd perfmon_v2 ibrs ibpb stibp ibrs_enhanced vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves user_shstk avx512_bf16 clzero xsaveerptr wbnoinvd arat avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq la57 rdpid overflow_recov succor fsrm flush_l1d",
+            "model name": "AMD EPYC 9354P 32-Core Processor"
+          },
+          "float32_matmul_precision": "highest",
+          "libraries": {
+            "Pillow": "12.3.0",
+            "accelerate": "1.15.0",
+            "numpy": "2.2.6",
+            "peft": "0.17.1",
+            "timm": "1.0.30",
+            "torch": "2.14.1+cpu",
+            "torchvision": "0.29.1+cpu",
+            "transformers": "4.57.6"
+          },
+          "mkldnn_enabled": true,
+          "parameter_dtypes": {
+            "torch.bfloat16": 448,
+            "torch.float32": 506
+          },
+          "plan_sha256": "21051e8aa4b2821379a0ea61f98da34f02e4847b8f2a9fc1fd40ebde91a32d7a",
+          "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.36",
+          "python": "3.11.2",
+          "threads": 1,
+          "torch_build": "PyTorch built with:\n  - GCC 13.3\n  - C++ Version: 202002\n  - Intel(R) oneAPI Math Kernel Library Version 2024.2-Product Build 20240605 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.12.0 (Git Hash 80afa71049cd69a3df32adcccb623b12cd7baa22)\n  - OpenMP 201511 (a.k.a. OpenMP 4.5)\n  - LAPACK is enabled (usually provided by MKL)\n  - NNPACK is enabled\n  - CPU capability usage: AVX512\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=5c4886908584029761b579af026dcfb627c84070, CUDA_FLAGS= -DLIBCUDACXX_ENABLE_SIMPLIFIED_COMPLEX_OPERATIONS -Xfatbin -compress-all  -Wno-deprecated-gpu-targets --expt-extended-lambda -DCUB_WRAPPED_NAMESPACE=at_cuda_detail -DDISABLE_CUSPARSE_DEPRECATED -DCUDA_HAS_FP16=1 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -DC10_NODEPRECATED, CXX_COMPILER=/opt/rh/gcc-toolset-13/root/usr/bin/c++, CXX_FLAGS= -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DUSE_FBGEMM -DUSE_PYTORCH_QNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -O2 -fPIC -DC10_NODEPRECATED -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=range-loop-construct -Werror=bool-operation -Wnarrowing -Wno-missing-field-initializers -Wno-unknown-pragmas -Wno-unused-parameter -Wno-strict-overflow -Wno-strict-aliasing -Wno-stringop-overflow -Wsuggest-override -Wno-psabi -Wno-error=old-style-cast -faligned-new -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Wno-dangling-reference -Wno-error=dangling-reference -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.14.1, USE_CUDA=0, USE_CUDNN=OFF, USE_CUSPARSELT=OFF, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_HIPSPARSELT=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, USE_XCCL=OFF, USE_XPU=OFF, \n",
+          "weights_sha256": "caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b"
+        },
+        "independent_new_test_sample": false,
+        "numerical_checks_passed": true,
+        "plan_sha256": "21051e8aa4b2821379a0ea61f98da34f02e4847b8f2a9fc1fd40ebde91a32d7a",
+        "raw_metrics": {
+          "auc": 0.9488694444444444,
+          "brier": 0.09643352194163275,
+          "ece_10_bins": 0.05887187388468495,
+          "log_loss": 0.3027905774618233
+        },
+        "report_sha256": "492db17efeee5f1c9b9ab0dd0fce88e8e7c85c9f5fc422f79d022ae83e6c154e",
+        "review_sha256": "990aeb867ca2cb2e7d37e811b966d7b7e72624c62dc50f69ce0d3fd44f5c6296",
+        "runtime": "linux-cpu-one-thread-mixed-precision",
+        "scores_sha256": "6d84c1bbca7e3b4b1f8e7b8ad171b83857e77acccf6bb1b0a45fe9b9ebbe4b74",
+        "windows_linux_drift": {
+          "cases_outside_original_0_005_tolerance": 158,
+          "maximum_calibrated_difference": 0.036288060491115104,
+          "maximum_raw_difference": 0.029986262321472168,
+          "mean_absolute_raw_difference": 0.0018307646371734639,
+          "raw_class_changes": 1,
+          "selective_result_changes": 3
+        }
+      }
+    ],
     "bootstrap": {
       "group_seed": 173025,
       "image_seed": 173024,

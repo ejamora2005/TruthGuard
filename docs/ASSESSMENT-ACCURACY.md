@@ -61,4 +61,35 @@ Run the PHP feature/unit tests, `python -m unittest discover -s automation/evalu
 
 The unchanged 400-image Platt candidate passed the prespecified second and final activation look on 1,200 fresh originals (600/class), using the unchanged Windows CPU detector. The earlier failed 200-image test remains in the audit. Raw → calibrated log loss: 0.303175 → 0.284966; Brier: 0.096584 → 0.088253; ECE: 0.058062 → 0.024867. Both prespecified image and row-group bootstrap upper bounds were below zero. The two activation looks use a nominal total alpha budget of 0.05; bootstrap coverage remains approximate.
 
-The artifact is `automation/models/ai-origin-broad/calibration.json`, SHA-256 `d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c`. The detailed aggregate audit is `calibration-review.json` beside it. The result label is **Calibrated model score**, scoped to the balanced OpenFake benchmark. This does not establish deployment-wide confidence, all scene/training-image independence, video calibration, or other-runtime equivalence. No weights or verdict thresholds changed. Existing reports retain their saved scores. Local settings enable this exact artifact; production defaults stay disabled until its target runtime is verified.
+The original Windows artifact had SHA-256 `d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c`. The detailed aggregate audit is `calibration-review.json` beside it. The result label is **Calibrated model score**, scoped to the balanced OpenFake benchmark. This does not establish deployment-wide confidence, all scene/training-image independence, video calibration, or other-runtime equivalence. No weights or verdict thresholds changed. Existing reports retain their saved scores. The current artifact revision and Linux runtime review follow below.
+
+## Deployment CPU replay completed, 2026-10-19 UTC+8
+
+The existing 1,200-image benchmark was replayed in the deployed Linux CPU image,
+with the unchanged coefficients, original images and one inference thread.
+The supplied completed report passes all five numerical checks: raw → calibrated
+Brier **0.096434 → 0.088104**, log loss **0.302791 → 0.284486**, and ECE
+**0.058872 → 0.026958**. The image bootstrap log-loss-delta interval was
+**[-0.031816, -0.004380]** and the collection-group interval
+**[-0.027499, -0.009423]**. AUC remained **0.948869** within this Linux run.
+
+This is a replay of the same benchmark, not additional independent test data.
+The previously failed numerical-equivalence check remains failed: the full run
+recorded 158 cases beyond its original 0.005 score tolerance, one changed raw
+class and three changed selective results relative to Windows. Passing the
+runtime-specific score checks does not imply identical Windows and Linux outputs.
+No coefficient or verdict threshold was tuned against these results.
+
+The operator-supplied report, exact runtime, original artifact hash, score-file
+hash and limitations are preserved in `calibration-linux-review.json`. Local
+review checked report identities and consistency; it did not independently
+recompute the per-image Linux metrics. The recorded evidence supports benchmark
+model scores on this tested Linux setup, with the existing scope limitations.
+
+The current `automation/models/ai-origin-broad/calibration.json` hash is
+`53944a9bc9f4a302eafe6125977b061692afcc8c1e8b529b3bd901590f439cca`.
+This revision adds Linux review metadata and updates runtime limitations while
+preserving all calibration mathematics, model identities, thresholds and the
+original Windows evaluation. Local settings pin this revision. Production
+activation requires this artifact and matching hash in the recreated containers;
+the evaluation itself did not enable either production flag.

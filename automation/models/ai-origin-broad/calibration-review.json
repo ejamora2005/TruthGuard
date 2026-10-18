@@ -14,7 +14,7 @@
     "settings_or_database_changed": false,
     "verdicts_unchanged": true
   },
-  "artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+  "artifact_sha256": "53944a9bc9f4a302eafe6125977b061692afcc8c1e8b529b3bd901590f439cca",
   "evaluation": {
     "calibrated_metrics": {
       "auc": 0.9487,
@@ -200,6 +200,12 @@
       -0.009294021408538092
     ],
     "verifier_sha256": "d1bbe34e76a9cc5f8c74160264479a47c83862370f9abe95f7a65b93c8a3c78a"
+  },
+  "linux_runtime_review": {
+    "evaluated_artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+    "file": "calibration-linux-review.json",
+    "metadata_revision_only": true,
+    "sha256": "990aeb867ca2cb2e7d37e811b966d7b7e72624c62dc50f69ce0d3fd44f5c6296"
   },
   "previous_failed_200_test": {
     "calibrated_metrics": {

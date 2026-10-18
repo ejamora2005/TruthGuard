@@ -47,14 +47,14 @@ AI_ORIGIN_TIMEOUT=240
 AI_ORIGIN_CPU_THREADS=1
 MEDIA_CALIBRATION_ENABLED=false
 MEDIA_CALIBRATION_PATH=automation/models/ai-origin-broad/calibration.json
-MEDIA_CALIBRATION_SHA256=d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c
+MEDIA_CALIBRATION_SHA256=53944a9bc9f4a302eafe6125977b061692afcc8c1e8b529b3bd901590f439cca
 ```
 
 Use these as production preparation settings, not as replacements for the
 already enabled Windows development settings. Environment overrides in Dokploy
 take precedence over the repository's defaults.
 
-## Checks still required on the target server
+## Checks required for each target server
 
 1. Build the new image and confirm the runtime import and checkpoint checks pass.
 2. Set a memory/concurrency budget before running image inference. The web app
@@ -74,9 +74,11 @@ take precedence over the repository's defaults.
    then recreate the relevant containers with their final environment settings.
 
 The committed calibration passed a separate 1,200-image Windows CPU evaluation.
-Its label is **Calibrated model score**, scoped to that benchmark. The production
-Linux runtime has not yet been validated. Keep its calibration disabled until
-that verification is complete. Existing reports retain their saved scores.
+Its label is **Calibrated model score**, scoped to that benchmark. The tested
+Linux deployment also completed the full benchmark replay described below.
+That review applies to the recorded model, packages, precision and worker setup;
+it does not establish numerical equivalence for every runtime. Existing reports
+retain their saved scores.
 
 No OpenAI calls are needed for downloading, checking, or testing the detector
 offline. A normal website submission can still call OpenAI for its explanation.
@@ -94,9 +96,9 @@ a locally rerun Docker test.
 
 This establishes that the packaged model can load and infer within that limit.
 The synthetic diagnostic image establishes neither accuracy nor numerical
-agreement with the Windows evaluation. The real-image runtime comparison is
-still outstanding; do not mark Linux calibration verification complete from
-this smoke test.
+agreement with the Windows evaluation. At that stage the real-image comparison
+was still outstanding. The subsequent full Linux replay is recorded below;
+the smoke test alone was insufficient to approve calibration.
 
 The evidence worker uses `memswap_limit` equal to `mem_limit`, matching the
 no-container-swap smoke test. The memory limit is a ceiling, not a preallocated
@@ -118,3 +120,48 @@ a retry failure notice. Refreshing the result page only reads saved status.
 
 Reference: [Docker Compose memory settings](https://docs.docker.com/reference/compose-file/services/#memswap_limit)
 and [Laravel worker timeouts](https://laravel.com/docs/13.x/queues#worker-timeouts).
+
+## Completed Linux benchmark replay, 2026-10-19 UTC+8
+
+The operator supplied the completed report from
+`truthguard-linux-evaluation-1200-v1`. All 1,200 existing benchmark originals
+were processed on the deployment's AMD EPYC CPU with one inference thread,
+the pinned CPU packages and unchanged mixed-precision model. All five numerical
+checks passed. Raw → calibrated Brier score was **0.096434 → 0.088104**, log loss
+**0.302791 → 0.284486**, and 10-bin ECE **0.058872 → 0.026958**. Both recorded
+image and collection-group bootstrap upper bounds were below zero. Peak
+container memory was **3,270.9 MiB** under the 4 GiB limit; no paid API calls
+were made.
+
+The earlier 24-case numerical-equivalence check remains failed. Across the full
+replay, 158 cases exceeded its original 0.005 score tolerance, one raw class
+changed, and three selective results changed relative to Windows. No tolerance,
+coefficient, sample, precision or verdict rule was changed to obtain a pass.
+The replay reuses the existing benchmark and supplies runtime-specific evidence;
+it is not another independent 1,200-image study or a live-upload confidence claim.
+
+`automation/models/ai-origin-broad/calibration-linux-review.json` preserves the
+operator's report, provenance, metrics, drift and deployment conditions. Its
+per-image score file remains on the VPS; the report's metrics were not independently
+recomputed locally. The calibration artifact revision adds this review and updates
+runtime limitations. Its mathematical parameters and original Windows evaluation
+are unchanged. The original evaluated artifact hash remains in the audit.
+
+For this reviewed deployment, replace the existing Dokploy values with:
+
+```dotenv
+FACT_CHECK_QUEUE_ENABLED=true
+AI_ORIGIN_ENABLED=true
+MEDIA_CALIBRATION_ENABLED=true
+MEDIA_CALIBRATION_PATH=automation/models/ai-origin-broad/calibration.json
+MEDIA_CALIBRATION_SHA256=53944a9bc9f4a302eafe6125977b061692afcc8c1e8b529b3bd901590f439cca
+```
+
+Deploy the revision containing this artifact and recreate the app and worker
+containers after saving the environment. Keep one evidence worker, one inference
+thread, the 4 GiB memory/no-container-swap limit and the existing Linux Python
+path. An environment edit without container recreation can leave the old cached
+flags active. Check active configuration and model health after deployment.
+Activation changes future analyses; opening old reports does not rerun inference
+or recalibrate their saved scores. Repository defaults remain disabled for other,
+unreviewed deployments.

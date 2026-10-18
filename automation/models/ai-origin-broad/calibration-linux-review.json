@@ -1,0 +1,125 @@
+{
+  "basis": "Complete operator-supplied report from the pinned offline evaluation runner and unchanged 1200-image benchmark.",
+  "decision": "accepted_for_benchmark_model_scores_on_the_reported_linux_runtime",
+  "deployment_conditions": {
+    "evidence_worker_processes": 1,
+    "fact_check_queue_enabled": true,
+    "inference_threads": 1,
+    "model_identity": {
+      "adapter_version": "broad-ai-origin-v1",
+      "config_sha256": "2eda88ac53c4445931edbc82bf3da7f2f3ce9034f6562047b4957462cd204ead",
+      "model_version": "sha256:caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b",
+      "processor_sha256": "9e30204d479cf4659f7fa4808c672a651427906b9eab48b67800abe52d6e6c6d"
+    },
+    "scope": "Calibrated model score on the reviewed image benchmark; no video probability or deployment-wide confidence claim.",
+    "worker_cpu_limit": 1.0,
+    "worker_memory_bytes": 4294967296,
+    "worker_memory_swap_bytes": 4294967296
+  },
+  "evaluated_artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+  "evaluation": {
+    "automatic_activation": false,
+    "calibrated_metrics": {
+      "auc": 0.9488694444444444,
+      "brier": 0.08810369334388354,
+      "ece_10_bins": 0.02695770747453129,
+      "log_loss": 0.2844864428349426
+    },
+    "calibration_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+    "checks": {
+      "brier_nonworse": true,
+      "ece_nonworse": true,
+      "group_bootstrap_upper_below_zero": true,
+      "image_bootstrap_upper_below_zero": true,
+      "mean_log_loss_improved": true
+    },
+    "coefficients_modified": false,
+    "completed": 1200,
+    "independent_new_test_sample": false,
+    "limitations": [
+      "Same existing 1200-image benchmark replayed on Linux; not 1200 additional independent observations.",
+      "Runtime selected for deployment before this test; 24 Linux scores have already been inspected.",
+      "The original Windows evaluation and earlier failed 200-image test remain unchanged.",
+      "Intervals are descriptive runtime checks on the reused benchmark, not a new independent hypothesis-test guarantee.",
+      "Publisher labels and prompt/hash screens do not prove complete training-image or scene independence.",
+      "Balanced benchmark model scores do not establish confidence for live-upload prevalence or video-level results.",
+      "No inference that the original numerical-equivalence tolerance passed; drift is reported separately."
+    ],
+    "linux_benchmark_numerical_checks_passed": true,
+    "model_sha256": "caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b",
+    "model_weights_modified": false,
+    "original_24_case_equivalence_passed": false,
+    "paid_api_calls": 0,
+    "paired_image_bootstrap_95_percent_log_loss_delta": [
+      -0.03181617651653948,
+      -0.004380417859848363
+    ],
+    "paired_row_group_bootstrap_95_percent_log_loss_delta": [
+      -0.027498779126950083,
+      -0.009422803544036164
+    ],
+    "peak_container_mib": 3270.9,
+    "peak_process_mib": 2973.4,
+    "plan_sha256": "21051e8aa4b2821379a0ea61f98da34f02e4847b8f2a9fc1fd40ebde91a32d7a",
+    "policy": "truthguard-linux-existing-benchmark-1200-v1",
+    "production_configuration_changed": false,
+    "raw_metrics": {
+      "auc": 0.9488694444444444,
+      "brier": 0.09643352194163275,
+      "ece_10_bins": 0.05887187388468495,
+      "log_loss": 0.3027905774618233
+    },
+    "runtime": {
+      "cpu": {
+        "flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm rep_good nopl cpuid extd_apicid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw perfctr_core ssbd perfmon_v2 ibrs ibpb stibp ibrs_enhanced vmmcall fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves user_shstk avx512_bf16 clzero xsaveerptr wbnoinvd arat avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq la57 rdpid overflow_recov succor fsrm flush_l1d",
+        "model name": "AMD EPYC 9354P 32-Core Processor"
+      },
+      "float32_matmul_precision": "highest",
+      "libraries": {
+        "Pillow": "12.3.0",
+        "accelerate": "1.15.0",
+        "numpy": "2.2.6",
+        "peft": "0.17.1",
+        "timm": "1.0.30",
+        "torch": "2.14.1+cpu",
+        "torchvision": "0.29.1+cpu",
+        "transformers": "4.57.6"
+      },
+      "mkldnn_enabled": true,
+      "parameter_dtypes": {
+        "torch.bfloat16": 448,
+        "torch.float32": 506
+      },
+      "plan_sha256": "21051e8aa4b2821379a0ea61f98da34f02e4847b8f2a9fc1fd40ebde91a32d7a",
+      "platform": "Linux-6.8.0-147-generic-x86_64-with-glibc2.36",
+      "python": "3.11.2",
+      "threads": 1,
+      "torch_build": "PyTorch built with:\n  - GCC 13.3\n  - C++ Version: 202002\n  - Intel(R) oneAPI Math Kernel Library Version 2024.2-Product Build 20240605 for Intel(R) 64 architecture applications\n  - Intel(R) MKL-DNN v3.12.0 (Git Hash 80afa71049cd69a3df32adcccb623b12cd7baa22)\n  - OpenMP 201511 (a.k.a. OpenMP 4.5)\n  - LAPACK is enabled (usually provided by MKL)\n  - NNPACK is enabled\n  - CPU capability usage: AVX512\n  - Build settings: BLAS_INFO=mkl, BUILD_TYPE=Release, COMMIT_SHA=5c4886908584029761b579af026dcfb627c84070, CUDA_FLAGS= -DLIBCUDACXX_ENABLE_SIMPLIFIED_COMPLEX_OPERATIONS -Xfatbin -compress-all  -Wno-deprecated-gpu-targets --expt-extended-lambda -DCUB_WRAPPED_NAMESPACE=at_cuda_detail -DDISABLE_CUSPARSE_DEPRECATED -DCUDA_HAS_FP16=1 -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -DC10_NODEPRECATED, CXX_COMPILER=/opt/rh/gcc-toolset-13/root/usr/bin/c++, CXX_FLAGS= -fvisibility-inlines-hidden -DUSE_PTHREADPOOL -DNDEBUG -DUSE_KINETO -DUSE_FBGEMM -DUSE_PYTORCH_QNNPACK -DSYMBOLICATE_MOBILE_DEBUG_HANDLE -O2 -fPIC -DC10_NODEPRECATED -Wall -Wextra -Werror=return-type -Werror=non-virtual-dtor -Werror=range-loop-construct -Werror=bool-operation -Wnarrowing -Wno-missing-field-initializers -Wno-unknown-pragmas -Wno-unused-parameter -Wno-strict-overflow -Wno-strict-aliasing -Wno-stringop-overflow -Wsuggest-override -Wno-psabi -Wno-error=old-style-cast -faligned-new -Wno-maybe-uninitialized -fno-math-errno -fno-trapping-math -Werror=format -Wno-dangling-reference -Wno-error=dangling-reference -Wno-stringop-overflow, LAPACK_INFO=mkl, PERF_WITH_AVX=1, PERF_WITH_AVX2=1, TORCH_VERSION=2.14.1, USE_CUDA=0, USE_CUDNN=OFF, USE_CUSPARSELT=OFF, USE_GFLAGS=OFF, USE_GLOG=OFF, USE_GLOO=ON, USE_HIPSPARSELT=OFF, USE_MKL=ON, USE_MKLDNN=ON, USE_MPI=OFF, USE_NCCL=OFF, USE_NNPACK=ON, USE_OPENMP=ON, USE_ROCM=OFF, USE_ROCM_KERNEL_ASSERT=OFF, USE_XCCL=OFF, USE_XPU=OFF, \n",
+      "weights_sha256": "caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b"
+    },
+    "scores_sha256": "6d84c1bbca7e3b4b1f8e7b8ad171b83857e77acccf6bb1b0a45fe9b9ebbe4b74",
+    "thresholds_modified": false,
+    "updated_at": "2026-10-18T18:41:14.765537+00:00",
+    "windows_linux_drift": {
+      "cases_outside_original_0_005_tolerance": 158,
+      "maximum_calibrated_difference": 0.036288060491115104,
+      "maximum_raw_difference": 0.029986262321472168,
+      "mean_absolute_raw_difference": 0.0018307646371734639,
+      "raw_class_changes": 1,
+      "selective_result_changes": 3
+    }
+  },
+  "preserved_coefficients": {
+    "intercept": -0.8115536886459523,
+    "slope": 1.053185952572771
+  },
+  "reviewed_at": "2026-10-18T19:39:32.222568+00:00",
+  "schema_version": 1,
+  "source": {
+    "attachment_sha256": "12828cfd6246a6b1743d7fd61490a40aacf73cf9384a0635b1aae0b47e3fc370",
+    "kind": "operator_supplied_terminal_report",
+    "note": "All five checks are consistent with the supplied metrics and intervals. Per-image Linux scores remain on the VPS; local review did not rerun inference or reconstruct those metrics.",
+    "report_sha256_canonical_json": "492db17efeee5f1c9b9ab0dd0fce88e8e7c85c9f5fc422f79d022ae83e6c154e",
+    "scores_independently_recomputed_locally": false
+  }
+}

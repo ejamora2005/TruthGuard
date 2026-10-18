@@ -177,6 +177,37 @@ class MediaScoreCalibrationTest extends TestCase
         }
     }
 
+    public function test_committed_linux_reviewed_artifact_applies_recorded_scores_without_changing_verdicts(): void
+    {
+        $path = base_path('automation/models/ai-origin-broad/calibration.json');
+        $hash = '53944a9bc9f4a302eafe6125977b061692afcc8c1e8b529b3bd901590f439cca';
+        $this->assertSame($hash, hash_file('sha256', $path));
+        $artifact = json_decode(file_get_contents($path), true, 64, JSON_THROW_ON_ERROR);
+        $reviewPath = base_path('automation/models/ai-origin-broad/calibration-linux-review.json');
+        $review = json_decode(file_get_contents($reviewPath), true, 64, JSON_THROW_ON_ERROR);
+        $this->assertSame(hash_file('sha256', $reviewPath), $artifact['population']['additional_runtime_review_sha256']);
+        $this->assertSame(1200, $review['evaluation']['completed']);
+        $this->assertFalse($review['evaluation']['original_24_case_equivalence_passed']);
+        $this->assertFalse($review['evaluation']['independent_new_test_sample']);
+        config()->set(['services.media_calibration.path' => $path, 'services.media_calibration.sha256' => $hash]);
+
+        // Replay reported numbers through PHP only; do not call the detector or AI.
+        foreach ([[.9065289497375488, .8293821072737214], [.83543860912323, .7108527581559477]] as [$raw, $expected]) {
+            $media = array_replace($this->media($raw), $artifact['model_identity']);
+            $media['origin_policy'] = ['inconclusive' => max($raw, 1 - $raw) < .9];
+            $score = AssessmentScore::media($media);
+            $this->assertSame('calibrated_benchmark', $score['validation']);
+            $this->assertSame('model_score', $score['type']);
+            $this->assertEqualsWithDelta($expected, $score['value'], 1e-12);
+            $this->assertSame($raw, $score['raw_positive_score']);
+            $calibratedResult = MediaAnalysisReport::result($media, []);
+            config()->set('services.media_calibration.enabled', false);
+            $rawResult = MediaAnalysisReport::result($media, []);
+            $this->assertSame($rawResult['verdict'], $calibratedResult['verdict']);
+            config()->set('services.media_calibration.enabled', true);
+        }
+    }
+
     public function test_matching_pinned_validated_artifact_calibrates_both_class_directions(): void
     {
         $this->artifact();
