@@ -1,0 +1,167 @@
+{
+  "counts": {
+    "calibration": {
+      "fake": 200,
+      "real": 200
+    },
+    "test": {
+      "fake": 600,
+      "real": 600
+    }
+  },
+  "epsilon": 1e-06,
+  "fit_model_identity": {
+    "adapter_version": "broad-ai-origin-cuda-fp32-v1",
+    "config_sha256": "2eda88ac53c4445931edbc82bf3da7f2f3ce9034f6562047b4957462cd204ead",
+    "model_version": "sha256:caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b",
+    "processor_sha256": "9e30204d479cf4659f7fa4808c672a651427906b9eab48b67800abe52d6e6c6d"
+  },
+  "grouping_method": "sha256-prompt-dhash64-v1",
+  "input_transform": "logit-clipped-1e-6-v1",
+  "intercept": -0.8115536886459523,
+  "label_mapping": [
+    "real",
+    "fake"
+  ],
+  "limitations": [
+    "Publisher labels, not exhaustive independent human reannotation.",
+    "Prompt/hash screening does not prove all scene overlap or training-image overlap absent.",
+    "Equal-class, equal-shard benchmark sampling does not establish calibration for live-upload prevalence.",
+    "Row-group bootstrap addresses collection clusters, not every possible content dependence.",
+    "Windows CPU runtime only; no video probability or other-runtime validation."
+  ],
+  "linear_predictor_clip": 40,
+  "method": "binary-platt-logit-v1",
+  "model_identity": {
+    "adapter_version": "broad-ai-origin-v1",
+    "config_sha256": "2eda88ac53c4445931edbc82bf3da7f2f3ce9034f6562047b4957462cd204ead",
+    "model_version": "sha256:caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b",
+    "processor_sha256": "9e30204d479cf4659f7fa4808c672a651427906b9eab48b67800abe52d6e6c6d"
+  },
+  "output_mode": "benchmark_model_score",
+  "population": {
+    "benchmark_reviewed": true,
+    "class_prevalence_ai": 0.5,
+    "evaluation_plan_sha256": "26a33ffe836bf6e1ec5bb5386141566293e721c805887239b9c2abf6e2bf1bd3",
+    "exhaustive_human_label_or_scene_review_performed": false,
+    "grouping_method": "sha256-prompt-dhash64-v1",
+    "image_level_training_exclusion_proven": false,
+    "input_review_sha256": "7ebbf90d49c0b25b33251ece06802ae43a8edc69b70b0e134ce01dcd0c82d12e",
+    "limitations": [
+      "Publisher labels, not exhaustive independent human reannotation.",
+      "Prompt/hash screening does not prove all scene overlap or training-image overlap absent.",
+      "Equal-class, equal-shard benchmark sampling does not establish calibration for live-upload prevalence.",
+      "Row-group bootstrap addresses collection clusters, not every possible content dependence.",
+      "Windows CPU runtime only; no video probability or other-runtime validation."
+    ],
+    "prior_population_review_sha256": "e0f3b88b865ac6cec5ac1d27d211c35c418a7bf43da4cb451c59ca0aa57babe5",
+    "representative_of_deployment": false,
+    "review_sha256": "91a046766cf34847317982ec81b553f52591eed862f4c2a08d15bbd6a2ae64ef",
+    "scene_session_independence_proven": false,
+    "scope": "Balanced original OpenFake core/test still images, including extracted video frames; fixed 400-image fit and 1200 fresh CPU evaluation images across 26 source row groups.",
+    "screened_group_counts": {
+      "calibration": {
+        "fake": 200,
+        "real": 200
+      },
+      "test": {
+        "fake": 600,
+        "real": 600
+      }
+    },
+    "training_overlap_checked": true,
+    "training_overlap_method": "Published training protocol and archived 136215 legacy prompt records screened; exact training-image exclusion is not proved.",
+    "training_screen_sha256": "253e13c6e57fcdb2bfe0c6e4f579031290b465adb1e86620237a95f79fb34833"
+  },
+  "positive_class": "fake",
+  "schema_version": 1,
+  "screened_group_counts": {
+    "calibration": {
+      "fake": 200,
+      "real": 200
+    },
+    "test": {
+      "fake": 600,
+      "real": 600
+    }
+  },
+  "slope": 1.053185952572771,
+  "status": "validated_on_supplied_population",
+  "validation": {
+    "bootstrap": {
+      "group_seed": 173025,
+      "image_seed": 173024,
+      "percentile_indexes_zero_based": [
+        249,
+        9749
+      ],
+      "resamples": 10000,
+      "sampling": "Paired image resampling and, additionally, paired row-group cluster resampling; both upper bounds must be below zero."
+    },
+    "calibrated_metrics": {
+      "auc": 0.9487,
+      "brier": 0.0882529744387893,
+      "ece_10_bins": 0.02486730597181204,
+      "log_loss": 0.2849662764764277
+    },
+    "candidate_sha256": "0e6946bafced9b0fced33b099d7027b42d19fa78351e67a9f58ec1d88883e696",
+    "error_accounting": {
+      "first_look_nominal_one_sided_alpha": 0.025,
+      "method": "Bonferroni union bound over these two activation looks; percentile bootstrap coverage is approximate, not a finite-sample guarantee.",
+      "second_look_nominal_one_sided_alpha": 0.025,
+      "total_nominal_alpha_bound": 0.05
+    },
+    "evaluation_model_identity": {
+      "adapter_version": "broad-ai-origin-v1",
+      "config_sha256": "2eda88ac53c4445931edbc82bf3da7f2f3ce9034f6562047b4957462cd204ead",
+      "model_version": "sha256:caae0c005d8e37e7aa086aa241d1c9445d296ef77649004655c14f5c81130d4b",
+      "processor_sha256": "9e30204d479cf4659f7fa4808c672a651427906b9eab48b67800abe52d6e6c6d"
+    },
+    "evaluation_plan_sha256": "26a33ffe836bf6e1ec5bb5386141566293e721c805887239b9c2abf6e2bf1bd3",
+    "evaluation_report_sha256": "2827217335fe874f87c7cd249d864e2913b9b87d1cd1033e9879005ced04064b",
+    "execution_environment": {
+      "libraries": {
+        "Pillow": "12.3.0",
+        "accelerate": "1.15.0",
+        "numpy": "2.2.6",
+        "peft": "0.17.1",
+        "timm": "1.0.30",
+        "torch": "2.14.1+cpu",
+        "torchvision": "0.29.1+cpu",
+        "transformers": "4.57.6"
+      },
+      "platform": "Windows-10-10.0.26300-SP0",
+      "python": "3.10.6"
+    },
+    "finite_interior_fit": true,
+    "fit_manifest_sha256": "3b1360693e22c936fdd596bbc12a4a3c2173bdf5db97ca08e70937ff32dfe00a",
+    "fit_scores_sha256": "e24d2d3e7e31c755b182a41fc882077d149eadaa16f82f7ad1f121d2ddfffcbc",
+    "fit_used_test_data": false,
+    "held_out_improvement": true,
+    "metric_reproduction_sha256": "8b8e79255e866529211d788eded6490902b2b02b4336483ac26420df1d72b2a2",
+    "paired_image_bootstrap_95_percent_log_loss_delta": [
+      -0.03174198873568365,
+      -0.004281041431608459
+    ],
+    "paired_row_group_bootstrap_95_percent_log_loss_delta": [
+      -0.02744490425839928,
+      -0.009294021408538092
+    ],
+    "passed": true,
+    "planned_look_number": 2,
+    "previous_failed_test_preserved": true,
+    "previous_failed_test_sha256": "01302580132045bdbd7ed2320070b0c3a26ecc98c8ece0400b53a88da56eb9fc",
+    "raw_metrics": {
+      "auc": 0.9487,
+      "brier": 0.09658441432638988,
+      "ece_10_bins": 0.05806173126538245,
+      "log_loss": 0.3031749883085787
+    },
+    "runtime_transfer_validated": true,
+    "sufficient_data": true,
+    "test_manifest_sha256": "fed07cca48097d7a2b6d8739749de30a57e02d44405cab3a44ccb5c7a3843f7d",
+    "test_scores_sha256": "265e13562aebbf644ca65f7c626b42f2fd326e68ad271679993fff825e2912f1"
+  },
+  "verdict_thresholds_modified": false,
+  "weights_modified": false
+}

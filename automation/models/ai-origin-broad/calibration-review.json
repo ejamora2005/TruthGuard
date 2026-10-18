@@ -1,0 +1,336 @@
+{
+  "application_replay": {
+    "artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+    "assigned_class_counts": {
+      "fake": 642,
+      "real": 558
+    },
+    "badge_rendered": true,
+    "maximum_python_php_difference": 0,
+    "new_inferences": 0,
+    "paid_api_calls": 0,
+    "recorded_scores_replayed": 1200,
+    "saved_scores_reused_when_calibration_disabled": true,
+    "settings_or_database_changed": false,
+    "verdicts_unchanged": true
+  },
+  "artifact_sha256": "d6f9cf0eaeb6dd2464259cf6305f8f00ba23df4a7a3ae7a33782d28cd8034c6c",
+  "evaluation": {
+    "calibrated_metrics": {
+      "auc": 0.9487,
+      "brier": 0.0882529744387893,
+      "ece_10_bins": 0.02486730597181184,
+      "log_loss": 0.2849662764764277
+    },
+    "candidate_sha256": "0e6946bafced9b0fced33b099d7027b42d19fa78351e67a9f58ec1d88883e696",
+    "checks": {
+      "brier_nonworse": true,
+      "complete_600_per_class": true,
+      "ece_nonworse": true,
+      "frozen_candidate": true,
+      "group_bootstrap_upper_below_zero": true,
+      "image_bootstrap_upper_below_zero": true,
+      "mean_log_loss_improved": true
+    },
+    "fit_used_these_test_cases": false,
+    "limitations": [
+      "Publisher labels, not exhaustive independent human reannotation.",
+      "Prompt/hash screening does not prove all scene overlap or training-image overlap absent.",
+      "Equal-class, equal-shard benchmark sampling does not establish calibration for live-upload prevalence.",
+      "Row-group bootstrap addresses collection clusters, not every possible content dependence.",
+      "Windows CPU runtime only; no video probability or other-runtime validation."
+    ],
+    "numerical_gate_passed": true,
+    "paid_api_calls": 0,
+    "paired_image_bootstrap_95_percent_log_loss_delta": [
+      -0.03174198873568365,
+      -0.004281041431608461
+    ],
+    "paired_row_group_bootstrap_95_percent_log_loss_delta": [
+      -0.02744490425839928,
+      -0.009294021408538094
+    ],
+    "plan_sha256": "26a33ffe836bf6e1ec5bb5386141566293e721c805887239b9c2abf6e2bf1bd3",
+    "previous_failed_test_preserved": true,
+    "raw_metrics": {
+      "auc": 0.9487,
+      "brier": 0.09658441432638988,
+      "ece_10_bins": 0.058061731265382444,
+      "log_loss": 0.3031749883085787
+    },
+    "scores_sha256": "265e13562aebbf644ca65f7c626b42f2fd326e68ad271679993fff825e2912f1",
+    "test_count": 1200,
+    "test_manifest_sha256": "fed07cca48097d7a2b6d8739749de30a57e02d44405cab3a44ccb5c7a3843f7d",
+    "total_inference_seconds": 72082.39142629952,
+    "weights_modified": false
+  },
+  "evaluation_plan": {
+    "adapter_version": "broad-ai-origin-v1",
+    "bootstrap": {
+      "group_seed": 173025,
+      "image_seed": 173024,
+      "percentile_indexes_zero_based": [
+        249,
+        9749
+      ],
+      "resamples": 10000,
+      "sampling": "Paired image resampling and, additionally, paired row-group cluster resampling; both upper bounds must be below zero."
+    },
+    "candidate_sha256": "0e6946bafced9b0fced33b099d7027b42d19fa78351e67a9f58ec1d88883e696",
+    "capture_script_sha256": "f71c6480f2c6637b965ad485da9562b411189e5aa2c86167f125f2a2d5215c44",
+    "config": "core",
+    "dataset": "ComplexDataLab/OpenFake",
+    "eligibility": "Exclude all prior 600 IDs, original byte hashes, normalized nonempty prompts, and dHash64 Hamming distance <=4. Apply same screens between new images. Exclude matching normalized legacy-training prompts. Skip an entire group before scoring if either quota cannot be filled.",
+    "error_accounting": {
+      "first_look_nominal_one_sided_alpha": 0.025,
+      "method": "Bonferroni union bound over these two activation looks; percentile bootstrap coverage is approximate, not a finite-sample guarantee.",
+      "second_look_nominal_one_sided_alpha": 0.025,
+      "total_nominal_alpha_bound": 0.05
+    },
+    "expected_parameter_dtypes": {
+      "torch.bfloat16": 448,
+      "torch.float32": 506
+    },
+    "failure_policy": "Stop without enabling or choosing another sample, coefficient, threshold, seed, or runtime. Resume infrastructure failures only under the same plan.",
+    "fit_data": "Original 400 GPU scores only; coefficients remain unchanged",
+    "further_test_extension_allowed": false,
+    "libraries": {
+      "Pillow": "12.3.0",
+      "accelerate": "1.15.0",
+      "numpy": "2.2.6",
+      "peft": "0.17.1",
+      "timm": "1.0.30",
+      "torch": "2.14.1+cpu",
+      "torchvision": "0.29.1+cpu",
+      "transformers": "4.57.6"
+    },
+    "limitations": [
+      "Publisher labels, not exhaustive independent human reannotation.",
+      "Prompt/hash screening does not prove all scene overlap or training-image overlap absent.",
+      "Equal-class, equal-shard benchmark sampling does not establish calibration for live-upload prevalence.",
+      "Row-group bootstrap addresses collection clusters, not every possible content dependence.",
+      "Windows CPU runtime only; no video probability or other-runtime validation."
+    ],
+    "look_number": 2,
+    "new_counts": {
+      "ai": 600,
+      "real": 600
+    },
+    "no_interim_performance_peeking": true,
+    "numerical_gate": [
+      "600 complete untouched originals per class",
+      "Fixed finite positive-slope candidate",
+      "Mean calibrated log loss lower",
+      "Paired image bootstrap 97.5th percentile delta below zero",
+      "Paired row-group cluster bootstrap 97.5th percentile delta below zero",
+      "Brier and ECE no worse than raw"
+    ],
+    "output_mode_if_passes": "benchmark_model_score",
+    "planned_looks": 2,
+    "platform": "Windows-10-10.0.26300-SP0",
+    "policy": "fixed-confirmatory-openfake-1200-v1",
+    "previously_seen_images": 600,
+    "prior_failed_report_sha256": "01302580132045bdbd7ed2320070b0c3a26ecc98c8ece0400b53a88da56eb9fc",
+    "python": "3.10.6",
+    "representative_of_deployment": false,
+    "revision": "3247b942f18d39d1fd476b1077852af033d35d8c",
+    "sample_size_planning": {
+      "chosen_n": 1200,
+      "limitation": "Pilot effect and independent-image approximation are uncertain; no guarantee of passing, particularly under cluster dependence.",
+      "normal_approx_independent_n_for_80_percent_power": 1039,
+      "pilot_images": 200,
+      "pilot_mean_log_loss_delta": -0.02028387359416937,
+      "pilot_sd": 0.2333743539509459
+    },
+    "scope": "Balanced original OpenFake core/test still images, including extracted video frames; fixed 400-image fit and 1200 fresh CPU evaluation images across 26 source row groups.",
+    "selection": "All 13 source shards; two SHA256-ranked eligible row groups per shard. Each group contributes 23 originals/class; the first two groups contribute 24/class. Rows are SHA256-ranked within group. No predictions used.",
+    "selection_seed": "TruthGuard-confirmatory-20261017-v1",
+    "source_limits": {
+      "max_download_bytes": 6442450944,
+      "max_image_column_bytes": 335544320,
+      "minimum_free_disk_bytes": 2147483648
+    },
+    "source_sha256": {
+      "automation/deepfake-models/broad_ai_origin.py": "6ee58e077a7dce70c1cedef5066b8e2ef0a558d1d39445694b1ed4d59934d48b",
+      "automation/deepfake-models/broad_ai_origin_adapter.py": "d249b7be96e3384de6aa5fdcf9e9aea7d5fd1c0ca6c44c120cb2ab084bca916a",
+      "automation/models/ai-origin-broad/config.json": "2eda88ac53c4445931edbc82bf3da7f2f3ce9034f6562047b4957462cd204ead",
+      "automation/models/ai-origin-broad/preprocessor_config.json": "9e30204d479cf4659f7fa4808c672a651427906b9eab48b67800abe52d6e6c6d",
+      "automation/models/ai-origin-broad/siglip_config.json": "cdc43ad6cffed7ab2ee3b8e4785931b94557d7c2c360bdc53b6b2ad74ac2e952",
+      "automation/models/ai-origin-broad/source.json": "0873ba0d751b281e53311664f08782f22e7aa939a6f36cad17c3f91b6a2c408b"
+    },
+    "split": "test",
+    "support_script_sha256": {
+      "collect_independent_images.py": "8dfb06de77c9511bc88cd906fab696fdf2b9632dca7dc63f9bc8bf7f2f4e4f8b",
+      "provenance/check_training_metadata.py": "48fe57f4e85027c66b0927593e5d79060f191774aa6734633ff94cdab712726f",
+      "reproduce_oof.py": "c146bc5f0412acf0756a584e0fa7a41774e2ebdebcfd077db871cb78b11c250f"
+    }
+  },
+  "independent_metric_reproduction": {
+    "calibrated_metrics": {
+      "auc": 0.9487,
+      "brier": 0.0882529744387893,
+      "ece_10_bins": 0.02486730597181204,
+      "log_loss": 0.2849662764764277
+    },
+    "checks": {
+      "brier_nonworse": true,
+      "complete_600_per_class": true,
+      "ece_nonworse": true,
+      "frozen_candidate": true,
+      "group_bootstrap_upper_below_zero": true,
+      "image_bootstrap_upper_below_zero": true,
+      "mean_log_loss_improved": true
+    },
+    "evaluation_report_sha256": "2827217335fe874f87c7cd249d864e2913b9b87d1cd1033e9879005ced04064b",
+    "image_hashes_and_screens_rechecked": true,
+    "image_interval": [
+      -0.03174198873568365,
+      -0.004281041431608459
+    ],
+    "numerical_gate_passed": true,
+    "raw_metrics": {
+      "auc": 0.9487,
+      "brier": 0.09658441432638988,
+      "ece_10_bins": 0.05806173126538245,
+      "log_loss": 0.3031749883085787
+    },
+    "records_verified": 1200,
+    "row_group_interval": [
+      -0.02744490425839928,
+      -0.009294021408538092
+    ],
+    "verifier_sha256": "d1bbe34e76a9cc5f8c74160264479a47c83862370f9abe95f7a65b93c8a3c78a"
+  },
+  "previous_failed_200_test": {
+    "calibrated_metrics": {
+      "auc": 0.9525,
+      "brier": 0.08226746978081546,
+      "ece_10_bins": 0.06721140462495442,
+      "log_loss": 0.27469924588500055
+    },
+    "calibrated_minus_raw_log_loss": -0.020283873594169374,
+    "calibrated_reliability_bins": [
+      {
+        "count": 65,
+        "lower": 0.0,
+        "mean_probability": 0.030973200639654714,
+        "observed_ai_fraction": 0.046153846153846156,
+        "upper": 0.1
+      },
+      {
+        "count": 14,
+        "lower": 0.1,
+        "mean_probability": 0.14655505675597907,
+        "observed_ai_fraction": 0.2857142857142857,
+        "upper": 0.2
+      },
+      {
+        "count": 12,
+        "lower": 0.2,
+        "mean_probability": 0.23707600201305676,
+        "observed_ai_fraction": 0.16666666666666666,
+        "upper": 0.3
+      },
+      {
+        "count": 6,
+        "lower": 0.3,
+        "mean_probability": 0.35337820014974347,
+        "observed_ai_fraction": 0.0,
+        "upper": 0.4
+      },
+      {
+        "count": 7,
+        "lower": 0.4,
+        "mean_probability": 0.45935284226469264,
+        "observed_ai_fraction": 0.7142857142857143,
+        "upper": 0.5
+      },
+      {
+        "count": 5,
+        "lower": 0.5,
+        "mean_probability": 0.5566628922348229,
+        "observed_ai_fraction": 0.2,
+        "upper": 0.6
+      },
+      {
+        "count": 7,
+        "lower": 0.6,
+        "mean_probability": 0.639515037849517,
+        "observed_ai_fraction": 0.5714285714285714,
+        "upper": 0.7
+      },
+      {
+        "count": 7,
+        "lower": 0.7,
+        "mean_probability": 0.7538346386964083,
+        "observed_ai_fraction": 0.8571428571428571,
+        "upper": 0.8
+      },
+      {
+        "count": 13,
+        "lower": 0.8,
+        "mean_probability": 0.8501139142405351,
+        "observed_ai_fraction": 1.0,
+        "upper": 0.9
+      },
+      {
+        "count": 64,
+        "lower": 0.9,
+        "mean_probability": 0.9816562822161083,
+        "observed_ai_fraction": 0.96875,
+        "upper": 1.0
+      }
+    ],
+    "candidate_sha256": "0e6946bafced9b0fced33b099d7027b42d19fa78351e67a9f58ec1d88883e696",
+    "deployment_validation_passed": false,
+    "fit_used_these_test_cases": false,
+    "limitations": [
+      "Prefix/quota sample, not a representative random sample of all TruthGuard uploads.",
+      "dHash is a near-duplicate screening heuristic, not proof that all scene overlaps are excluded.",
+      "Publisher source metadata does not independently prove exclusion from the detector training set.",
+      "Still images only, including frames tagged video; no video confidence validation.",
+      "Candidate fit used CUDA FP32; this tests transfer to the current Windows mixed-precision CPU path.",
+      "Bootstrap units are screened images; complete scene-level independence is not proven.",
+      "Production currently supports temperature artifacts, not this Platt candidate."
+    ],
+    "numerical_checks": {
+      "brier_nonworse": true,
+      "ece_nonworse": true,
+      "frozen_positive_slope_candidate": true,
+      "mean_log_loss_improved": true,
+      "paired_bootstrap_log_loss_upper_below_zero": false,
+      "test_count_100_per_class": true
+    },
+    "numerical_gate_passed": false,
+    "paid_api_calls": 0,
+    "paired_image_bootstrap_95_percent_log_loss_delta": [
+      -0.052456562445119044,
+      0.016383608395491946
+    ],
+    "plan_sha256": "2ea81bf9a91b5cf0e862d82d1c202b58bebd0d5a8c2364cee083f77a7b2bb205",
+    "production_calibration_enabled": false,
+    "raw_classifier_at_0_5": {
+      "ai_flagged_real": 9,
+      "correct": 173,
+      "real_flagged_ai": 18
+    },
+    "raw_metrics": {
+      "auc": 0.9525,
+      "brier": 0.09175390188074636,
+      "ece_10_bins": 0.06761618611519224,
+      "log_loss": 0.2949831194791699
+    },
+    "scores_sha256": "7f82d2cff6abbccb624c46707dcce9b74b1700f6722353b09619c0421f0a3a32",
+    "status": "frozen_candidate_evaluated",
+    "test_count": 200,
+    "test_manifest_sha256": "0c3e96de9d2b3bd7ae9f22be5df4252b33e6cdabb5edea45d8189285a1c2d5f7",
+    "total_inference_seconds": 4870.691847800277,
+    "weights_modified": false
+  },
+  "software_checks": {
+    "filter": "MediaScoreCalibrationTest|ResultContractTest|OpenAiMediaExplanationTest|AssessmentScoreTest|AssessmentScoreBadgeTest|CompactHistoryTest",
+    "paid_api_calls": 0,
+    "passed": true,
+    "pint_passed": true
+  }
+}
