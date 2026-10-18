@@ -13,6 +13,8 @@ AI_ORIGIN_TIMEOUT=240
 
 After changing these settings, run `php artisan config:clear`. Restart a long-running local worker if one is running. The production template remains disabled until deployment dependencies, memory and model delivery are prepared.
 
+The Dockerfile now packages the isolated CPU runtime and downloads the pinned checkpoint in a separate build stage. See [Image-origin deployment](AI-ORIGIN-DEPLOYMENT.md) for build verification and the remaining memory and Linux-runtime checks before production activation.
+
 ## Try an upload
 
 1. Open the local Fact Check workspace and choose **Check for AI-made media**.

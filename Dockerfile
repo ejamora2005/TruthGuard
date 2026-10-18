@@ -7,6 +7,13 @@ COPY public ./public
 COPY vite.config.js tailwind.config.js postcss.config.js ./
 RUN npm run build && npm prune --omit=dev
 
+# Cache the verified checkpoint independently of application and UI changes.
+FROM python:3.11-slim-bookworm AS ai-origin-weights
+WORKDIR /model-build
+COPY automation/deepfake-models/install_ai_origin.py ./automation/deepfake-models/install_ai_origin.py
+COPY automation/models/ai-origin-broad/source.json automation/models/ai-origin-broad/config.json automation/models/ai-origin-broad/preprocessor_config.json automation/models/ai-origin-broad/siglip_config.json ./automation/models/ai-origin-broad/
+RUN python -u automation/deepfake-models/install_ai_origin.py
+
 FROM php:8.4-apache-bookworm AS app
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public \
     PLAYWRIGHT_BROWSERS_PATH=/opt/playwright \
@@ -26,12 +33,26 @@ COPY automation/deepfake-models/requirements.txt ./automation/deepfake-models/re
 RUN python3 -m venv /opt/truthguard-deepfake-venv \
     && /opt/truthguard-deepfake-venv/bin/python -m pip install --no-cache-dir --upgrade pip \
     && /opt/truthguard-deepfake-venv/bin/python -m pip install --no-cache-dir -r automation/deepfake-models/requirements.txt
+# Keep the image-origin detector's pinned CPU packages separate from TensorFlow.
+COPY automation/deepfake-models/requirements-ai-origin.txt ./automation/deepfake-models/requirements-ai-origin.txt
+RUN python3 -m venv /var/www/html/.venv-ai-origin \
+    && /var/www/html/.venv-ai-origin/bin/python -m pip install --no-cache-dir --upgrade pip \
+    && /var/www/html/.venv-ai-origin/bin/python -m pip install \
+        --no-cache-dir \
+        --extra-index-url https://download.pytorch.org/whl/cpu \
+        -r automation/deepfake-models/requirements-ai-origin.txt \
+    && /var/www/html/.venv-ai-origin/bin/python -m pip check \
+    && /var/www/html/.venv-ai-origin/bin/python -c \
+        "import torch, torchvision, timm, peft; from transformers import SiglipImageProcessor, SiglipVisionModel; assert torch.version.cuda is None; print('AI-origin CPU runtime ready')"
 COPY --from=frontend /app/node_modules ./node_modules
 RUN node node_modules/playwright/cli.js install --with-deps chromium \
     && chmod -R a+rX /opt/playwright && rm -rf /var/lib/apt/lists/*
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 COPY . .
+COPY --from=ai-origin-weights /model-build/automation/models/ai-origin-broad/pytorch_model.pt ./automation/models/ai-origin-broad/pytorch_model.pt
+# Recheck the packaged weights against the application image's bundled configs.
+RUN /var/www/html/.venv-ai-origin/bin/python automation/deepfake-models/install_ai_origin.py
 # Fail the image build if Git LFS objects were not present in the checkout.
 # The model contents are unchanged; this prevents a misleading healthy image
 # with tiny LFS pointer files in place of the trained artifacts.
