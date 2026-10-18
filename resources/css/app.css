@@ -159,6 +159,7 @@
     to { transform: rotate(360deg); }
 }
 .tg-auth-backdrop__tile {
+    --tile-tint: 104, 195, 230;
     position: absolute;
     width: clamp(76px, 8vw, 116px);
     aspect-ratio: 1;
@@ -166,21 +167,23 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
     border: 1px solid rgba(255, 255, 255, .95);
     border-radius: 26%;
-    background: linear-gradient(145deg, rgba(255, 255, 255, .85), rgba(255, 255, 255, .24));
-    box-shadow: 0 20px 45px -18px rgba(63, 111, 184, .3), inset 0 0 0 5px rgba(255, 255, 255, .18);
+    background:
+        radial-gradient(circle at 78% 85%, rgba(var(--tile-tint), .25), transparent 65%),
+        linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(255, 255, 255, .48));
+    box-shadow: 0 22px 42px -18px rgba(63, 111, 184, .34),
+        0 5px 0 -2px rgba(var(--tile-tint), .17),
+        inset 0 0 0 5px rgba(255, 255, 255, .28);
     color: #589dd2;
     rotate: var(--tile-tilt, -10deg);
     animation: tg-auth-decoration-drift 16s ease-in-out infinite alternate;
 }
 .tg-auth-backdrop__tile svg {
-    width: 43%;
-    stroke: currentColor;
-    stroke-width: 1.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    position: relative;
+    width: 80%;
+    height: 80%;
+    filter: drop-shadow(0 4px 3px rgba(47, 70, 123, .12));
 }
 .tg-auth-backdrop__tile::before {
     content: "";
@@ -201,18 +204,10 @@
     opacity: .4;
     box-shadow: 0 0 0 3px rgba(255, 255, 255, .7);
 }
-.tg-auth-backdrop__tile-lines {
-    width: 40%;
-    height: 4px;
-    border-radius: 4px;
-    background: currentColor;
-    opacity: .25;
-    box-shadow: 0 7px 0 -1px currentColor;
-}
 .tg-auth-backdrop__tile--media { left: 9%; top: 23%; }
-.tg-auth-backdrop__tile--play { left: 20%; bottom: 20%; --tile-tilt: 12deg; color: #7b84d6; animation-delay: -8s; }
-.tg-auth-backdrop__tile--globe { right: 10%; top: 20%; --tile-tilt: 12deg; color: #6392d7; animation-delay: -5s; }
-.tg-auth-backdrop__tile--search { right: 18%; bottom: 18%; --tile-tilt: -12deg; color: #9880d4; animation-delay: -12s; }
+.tg-auth-backdrop__tile--play { left: 20%; bottom: 20%; --tile-tilt: 12deg; --tile-tint: 139, 147, 230; color: #7b84d6; animation-delay: -8s; }
+.tg-auth-backdrop__tile--globe { right: 10%; top: 20%; --tile-tilt: 12deg; --tile-tint: 109, 167, 232; color: #6392d7; animation-delay: -5s; }
+.tg-auth-backdrop__tile--search { right: 18%; bottom: 18%; --tile-tilt: -12deg; --tile-tint: 172, 139, 228; color: #9880d4; animation-delay: -12s; }
 .tg-auth-backdrop__orbit {
     position: absolute;
     width: clamp(22rem, 48vw, 54rem);
@@ -268,7 +263,7 @@
     .tg-auth-backdrop__symbol--check { right: 3%; bottom: 8%; }
     .tg-auth-backdrop__particle--three { display: none; }
     .tg-auth-backdrop__halo { width: 135vw; }
-    .tg-auth-backdrop__tile { width: 70px; gap: 7px; }
+    .tg-auth-backdrop__tile { width: 70px; }
     .tg-auth-backdrop__tile--media { left: -18px; top: 12%; }
     .tg-auth-backdrop__tile--globe { right: -18px; top: 5%; }
     .tg-auth-backdrop__tile--play { left: -15px; bottom: 6%; }

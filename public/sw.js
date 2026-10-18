@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'truthguard-static';
-const CACHE_VERSION = '2026-10-10.3';
+const CACHE_VERSION = '2026-10-18.1';
 const STATIC_CACHE = `${CACHE_PREFIX}-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 

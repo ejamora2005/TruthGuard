@@ -20,6 +20,8 @@
     }
 
     body {
+      min-height: 100vh;
+      min-height: 100dvh;
       display: grid;
       place-items: center;
       padding: 1.25rem;
@@ -35,6 +37,7 @@
 
     main {
       width: min(100%, 29rem);
+      overflow-wrap: anywhere;
       border: 1px solid rgba(191, 219, 254, 0.94);
       border-radius: 1.4rem;
       background: rgba(255, 255, 255, 0.92);
@@ -44,6 +47,7 @@
 
     .brand {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 0.8rem;
       margin-bottom: 1.3rem;
