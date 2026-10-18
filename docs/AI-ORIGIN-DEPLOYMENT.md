@@ -24,6 +24,13 @@ Incorrect weights or configuration files fail the build. The checkpoint remains
 excluded from Git and the local Docker build context. It is downloaded during
 the image build, not during an upload or container startup.
 
+The three configuration JSON files retain their audited CRLF bytes through
+explicit `-text` rules in `.gitattributes`. Normalizing them to LF changes their
+SHA-256 hashes even when the JSON settings are identical. Keep the byte-preserving
+rules and the original manifest/calibration hashes together. The installer tests
+exercise Git staging and both Linux-style and Windows-style checkouts to check
+that packaged configuration bytes still match the calibration identity.
+
 The first build needs network access to the package indexes and Hugging Face,
 plus disk space for dependencies, the checkpoint, and Docker's build layers.
 Cache reuse depends on the builder retaining those layers; a clean build can

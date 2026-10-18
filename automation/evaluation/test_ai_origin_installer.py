@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -122,6 +123,53 @@ class ImageOriginInstallerTests(unittest.TestCase):
         self.assertEqual(self.target.read_bytes(), self.weights)
         self.assertFalse(self.partial.exists())
         self.network.assert_not_called()
+
+
+class ImageOriginPackagingTests(unittest.TestCase):
+    def test_git_roundtrip_preserves_audited_configuration_bytes(self):
+        output = ROOT / 'output/validation'
+        output.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='ai-origin-packaging-', dir=output) as temporary:
+            directory = Path(temporary).resolve()
+            self.assertEqual(directory.parent, output.resolve())
+            repository = directory / 'repository'
+            repository.mkdir()
+            relative = Path('automation/models/ai-origin-broad')
+            bundled = ROOT / relative
+            source = json.loads((bundled / 'source.json').read_text(encoding='utf-8'))
+            names = [*source['configuration_sha256'], 'source.json', 'calibration.json']
+            (repository / relative).mkdir(parents=True)
+            (repository / '.gitattributes').write_bytes((ROOT / '.gitattributes').read_bytes())
+            for name in names:
+                (repository / relative / name).write_bytes((bundled / name).read_bytes())
+
+            def git(*args):
+                return subprocess.check_output([
+                    'git', '-C', str(repository), '-c', 'core.safecrlf=false', *args],
+                    stderr=subprocess.PIPE)
+
+            git('init', '-q')
+            git('-c', 'core.autocrlf=input', 'add', '.gitattributes', relative.as_posix())
+            for name, expected in source['configuration_sha256'].items():
+                stored = git('show', ':' + (relative / name).as_posix())
+                self.assertEqual(hashlib.sha256(stored).hexdigest(), expected,
+                                 f'Git changed the audited bytes: {name}')
+
+            # Verify both Linux-style and Windows-style checkouts of the same index.
+            for autocrlf in ('false', 'true'):
+                with self.subTest(autocrlf=autocrlf):
+                    checkout = directory / ('checkout-' + autocrlf)
+                    checkout.mkdir()
+                    git('-c', 'core.autocrlf=' + autocrlf, 'checkout-index', '--all',
+                        '--prefix=' + checkout.as_posix() + '/')
+                    for name, expected in source['configuration_sha256'].items():
+                        packaged = (checkout / relative / name).read_bytes()
+                        self.assertEqual(hashlib.sha256(packaged).hexdigest(), expected)
+                    calibration_bytes = (checkout / relative / 'calibration.json').read_bytes()
+                    self.assertEqual(calibration_bytes, (bundled / 'calibration.json').read_bytes())
+                    identity = json.loads(calibration_bytes)['model_identity']
+                    self.assertEqual(identity['config_sha256'], source['configuration_sha256']['config.json'])
+                    self.assertEqual(identity['processor_sha256'], source['configuration_sha256']['preprocessor_config.json'])
 
 
 if __name__ == '__main__':

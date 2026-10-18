@@ -8,6 +8,10 @@
 /automation/models/*.keras filter=lfs diff=lfs merge=lfs -text
 /automation/models/filipino-transformer/best_model/*.safetensors filter=lfs diff=lfs merge=lfs -text
 /automation/models/filipino-transformer/best_model/*.bin filter=lfs diff=lfs merge=lfs -text
+# Preserve the exact CRLF bytes pinned by source.json and the calibration identity.
+/automation/models/ai-origin-broad/config.json -text whitespace=cr-at-eol
+/automation/models/ai-origin-broad/preprocessor_config.json -text whitespace=cr-at-eol
+/automation/models/ai-origin-broad/siglip_config.json -text whitespace=cr-at-eol
 /.github export-ignore
 CHANGELOG.md export-ignore
 .styleci.yml export-ignore
