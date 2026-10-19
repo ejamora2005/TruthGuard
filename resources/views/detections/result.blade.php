@@ -17,11 +17,6 @@
         @if (data_get($selectedDetection->signals, 'analysis_retry.status') === 'failed' && $selectedDetection->fact_check_result !== null)
             <p role="status" class="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">The retry could not be completed. The previous saved result is shown below.</p>
         @endif
-        @if (in_array($selectedDetection->processing_status, ['queued', 'processing'], true)
-            || ($selectedDetection->processing_status === 'failed' && data_get($selectedDetection->fact_check_result, 'verdict') !== 'ANALYSIS_UNAVAILABLE'))
-            @include('detections.partials.pending-result', ['selectedDetection' => $selectedDetection])
-        @else
-            @include('detections.partials.advanced-result-card', ['selectedDetection' => $selectedDetection])
-        @endif
+        @include('detections.partials.advanced-result-card', ['selectedDetection' => $selectedDetection])
     </div>
 @endsection

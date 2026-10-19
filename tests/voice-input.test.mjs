@@ -13,6 +13,7 @@ const values = new Map([
     ["in_array(old('analysis_task'), ['media', 'claim'], true) ? old('analysis_task') : null", 'null'],
     ["$oldSourceUrl !== '' ? 'link' : null", 'null'],
     ['$googleDrivePicker', '{ enabled: false }'], ['(bool) $activeDetection', 'false'],
+    ['$pendingResultUrl', 'null'], ['$pendingMediaType', 'null'],
 ]);
 const opening = source.slice(start, source.indexOf('\n        <div', start))
     .replace(/@js\((.*)\),/g, (_, expression) => {

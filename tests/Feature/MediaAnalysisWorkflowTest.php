@@ -188,8 +188,9 @@ class MediaAnalysisWorkflowTest extends TestCase
             $job->failed($error);
         }
         $this->assertSame('failed', $detection->fresh()->processing_status);
-        $this->get(route('detections.result', $detection))->assertOk()->assertDontSee('Missing Context')
-            ->assertSee('No verdict was produced');
+        $this->get(route('detections.result', $detection))
+            ->assertRedirect(route('detections.create', ['pending' => $detection->id]));
+        $this->getJson(route('detections.result', $detection))->assertJsonPath('processing_status', 'failed');
         Http::assertNothingSent();
     }
 

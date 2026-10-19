@@ -12,6 +12,10 @@ new class extends Component
 {
     public ?int $selectedDetectionId = null;
 
+    public ?string $pendingResultUrl = null;
+
+    public ?string $pendingMediaType = null;
+
     /** @var array<int, array<string, mixed>> */
     public array $recentFactChecks = [];
 
@@ -19,9 +23,11 @@ new class extends Component
 
     public ?string $recentFactChecksError = null;
 
-    public function mount(?int $selectedDetectionId = null): void
+    public function mount(?int $selectedDetectionId = null, ?string $pendingResultUrl = null, ?string $pendingMediaType = null): void
     {
         $this->selectedDetectionId = $selectedDetectionId ? (int) $selectedDetectionId : null;
+        $this->pendingResultUrl = $pendingResultUrl;
+        $this->pendingMediaType = $pendingMediaType;
 
         if (! $this->selectedDetectionId && Auth::check()) {
             $this->loadRecentFactChecks();
@@ -3381,6 +3387,11 @@ new class extends Component
             submitting: false,
             progressHidden: false,
             progressMinimized: false,
+            pendingResultUrl: @js($pendingResultUrl),
+            pendingMediaType: @js($pendingMediaType),
+            progressMessage: null,
+            progressTimer: null,
+            progressDisposed: false,
             previewUrl: null,
             previewName: null,
             previewKind: null,
@@ -3456,6 +3467,15 @@ new class extends Component
                 this.setupVoiceInput();
                 window.addEventListener('resize', () => this.updateViewportOffset());
                 this.$watch('hasFile', () => this.updateScrollLock());
+
+                if (this.pendingResultUrl && !this.submitting) {
+                    this.previewKind = this.pendingMediaType === 'document' ? 'pdf' : this.pendingMediaType;
+                    this.trackPendingResult(this.pendingResultUrl);
+                }
+            },
+            destroy() {
+                this.progressDisposed = true;
+                window.clearTimeout(this.progressTimer);
             },
             createRipple(event) {
                 const button = event.currentTarget;
@@ -3679,11 +3699,70 @@ new class extends Component
                         return;
                     }
 
+                    if (response.status === 202) {
+                        const payload = await response.json();
+                        if (!payload.result_url) throw new Error('Missing report URL');
+                        this.trackPendingResult(payload.result_url);
+                        return;
+                    }
+
                     window.location.assign(response.url || form.action);
                 } catch (error) {
                     this.composerError = 'The fact check could not be submitted. Try again.';
                     this.submitting = false;
                 }
+            },
+            trackPendingResult(url) {
+                window.clearTimeout(this.progressTimer);
+                this.pendingResultUrl = url;
+                this.submitting = true;
+                this.composerError = null;
+                this.progressMessage = 'Your analysis is starting. You can hide this card.';
+                this.refreshPendingResult();
+            },
+            async refreshPendingResult() {
+                const url = this.pendingResultUrl;
+                if (!url || this.progressDisposed) return;
+                try {
+                    const response = await fetch(url, {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json' },
+                    });
+                    if (this.progressDisposed) return;
+                    if ([401, 403, 404, 419].includes(response.status) || response.redirected) {
+                        this.stopPendingResult('This report could not be opened. Sign in again or check your History.');
+                        return;
+                    }
+                    if (!response.ok) throw new Error('Status unavailable');
+                    const data = await response.json();
+                    if (this.progressDisposed) return;
+                    if (data.processing_status === 'failed') {
+                        this.stopPendingResult('The analysis could not be completed. No verdict was produced. Please try again.');
+                        return;
+                    }
+                    if (data.verdict) {
+                        window.clearTimeout(this.progressTimer);
+                        this.pendingResultUrl = null;
+                        window.location.assign(url);
+                        return;
+                    }
+                    this.progressMessage = data.processing_status === 'queued'
+                        ? 'Your analysis is starting. You can hide this card.'
+                        : (data.stage || 'Your analysis is running. You can hide this card.');
+                } catch (error) {
+                    this.progressMessage = 'Reconnecting to your analysis. You can hide this card and check History later.';
+                } finally {
+                    if (this.pendingResultUrl && !this.progressDisposed) {
+                        this.progressTimer = window.setTimeout(() => this.refreshPendingResult(), 5000);
+                    }
+                }
+            },
+            stopPendingResult(message) {
+                window.clearTimeout(this.progressTimer);
+                this.pendingResultUrl = null;
+                this.progressMessage = null;
+                this.submitting = false;
+                this.composerError = message;
             },
             requestLocation() {
                 if (this.locationRequestInFlight || this.locationStatus === 'requesting') {
@@ -4959,7 +5038,7 @@ new class extends Component
 
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
-                    <p class="truthguard-verify-copy">You can hide this card. Your analysis will continue.</p>
+                    <p class="truthguard-verify-copy" x-text="progressMessage || 'You can hide this card. Your analysis will continue.'">You can hide this card. Your analysis will continue.</p>
                     <div class="truthguard-verify-progress" aria-hidden="true"></div>
                 </div>
             </div>

@@ -24,7 +24,11 @@
 @section('content')
     <div class="truthguard-mobile-page truthguard-mobile-check mx-auto w-full max-w-[1120px]">
         <div class="w-full">
-            <livewire:detections.ai-composer :selected-detection-id="$selectedDetectionId" />
+            <livewire:detections.ai-composer
+                :selected-detection-id="$selectedDetectionId"
+                :pending-result-url="isset($pendingDetection) ? route('detections.result', $pendingDetection) : null"
+                :pending-media-type="($pendingDetection ?? null)?->media_type"
+            />
         </div>
     </div>
 @endsection

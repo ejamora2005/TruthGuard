@@ -33,7 +33,8 @@ class DetectionController extends Controller
             $retentionService->archiveExpired($request->user()->id);
         }
 
-        $selectedDetectionId = $request->integer('detection');
+        $pendingDetectionId = $request->integer('pending');
+        $selectedDetectionId = $pendingDetectionId ?: $request->integer('detection');
 
         if ($selectedDetectionId > 0) {
             $selectedDetectionQuery = Detection::query()->whereKey($selectedDetectionId);
@@ -45,7 +46,18 @@ class DetectionController extends Controller
 
             $selectedDetection = $selectedDetectionQuery->first();
 
+            abort_if($pendingDetectionId > 0 && ! $selectedDetection, 404);
+
             if ($selectedDetection) {
+                if (in_array($selectedDetection->processing_status, ['queued', 'processing'], true)
+                    || ($selectedDetection->processing_status === 'failed'
+                        && data_get($selectedDetection->fact_check_result, 'verdict') !== 'ANALYSIS_UNAVAILABLE')) {
+                    return view('detections.create', [
+                        'selectedDetection' => null,
+                        'pendingDetection' => $selectedDetection,
+                    ]);
+                }
+
                 return redirect()->route('detections.result', $selectedDetection);
             }
         }
@@ -62,7 +74,7 @@ class DetectionController extends Controller
         LiveVerificationEvidenceService $liveVerificationEvidenceService,
         OpenAiDetectionReportService $openAiDetectionReportService,
         GoogleFactCheckFeedService $factCheckFeedService,
-    ): View|JsonResponse {
+    ): View|JsonResponse|RedirectResponse {
         if (! $request->user()->isAdmin()) {
             $retentionService->archiveExpired($request->user()->id);
         }
@@ -94,6 +106,11 @@ class DetectionController extends Controller
                 ]);
             }
 
+            if ($selectedDetection->processing_status !== 'failed'
+                || data_get($selectedDetection->fact_check_result, 'verdict') !== 'ANALYSIS_UNAVAILABLE') {
+                return redirect()->route('detections.create', ['pending' => $selectedDetection->id]);
+            }
+
             return view('detections.result', [
                 'selectedDetection' => $selectedDetection,
                 'userReportNumber' => $userReportNumber,
@@ -121,7 +138,7 @@ class DetectionController extends Controller
         DetectionRetentionService $retentionService,
         DetectionPipeline $pipeline,
         RelatedPostScraper $relatedPostScraper,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         if (! $request->user()->isAdmin()) {
             $retentionService->archiveExpired($request->user()->id);
         }
@@ -171,7 +188,14 @@ class DetectionController extends Controller
             unset($validated['media_file']);
             AnalyzeDetectionEvidence::dispatch($detection->id, $validated);
 
-            return redirect()->route('detections.result', $detection);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'processing_status' => 'queued',
+                    'result_url' => route('detections.result', $detection),
+                ], 202);
+            }
+
+            return redirect()->route('detections.create', ['pending' => $detection->id]);
         }
 
         $detection = $pipeline->run($request->user(), $validated, $uploadedFile);
