@@ -15,7 +15,8 @@ output
 **/node_modules
 admin-frontend
 storage
-bootstrap/cache/*.php
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
 public/build
 public/hot
 public/storage

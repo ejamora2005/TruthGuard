@@ -1,11 +1,13 @@
-FROM node:24-bookworm-slim AS frontend
+FROM node:24-bookworm-slim AS node-dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
+
+FROM node-dependencies AS frontend
 COPY resources ./resources
 COPY public ./public
 COPY vite.config.js tailwind.config.js postcss.config.js ./
-RUN npm run build && npm prune --omit=dev
+RUN npm run build
 
 # Cache the verified checkpoint independently of application and UI changes.
 FROM python:3.11-slim-bookworm AS ai-origin-weights
@@ -44,13 +46,20 @@ RUN python3 -m venv /var/www/html/.venv-ai-origin \
     && /var/www/html/.venv-ai-origin/bin/python -m pip check \
     && /var/www/html/.venv-ai-origin/bin/python -c \
         "import torch, torchvision, timm, peft; from transformers import SiglipImageProcessor, SiglipVisionModel; assert torch.version.cuda is None; print('AI-origin CPU runtime ready')"
-COPY --from=frontend /app/node_modules ./node_modules
+# Scraping only needs these packages. Keep browser installation independent of UI
+# builds, and leave React/Firebase/Vite dependencies in the frontend build stage.
+COPY --from=node-dependencies /app/node_modules/playwright ./node_modules/playwright
+COPY --from=node-dependencies /app/node_modules/playwright-core ./node_modules/playwright-core
+COPY --from=node-dependencies /app/node_modules/dotenv ./node_modules/dotenv
 RUN node node_modules/playwright/cli.js install --with-deps chromium \
     && chmod -R a+rX /opt/playwright && rm -rf /var/lib/apt/lists/*
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
-COPY . .
+# Large artifacts must stay ahead of application/UI copies. COPY . . would add
+# these files to a new layer again whenever a Blade, CSS or JS file changes.
+COPY automation/models ./automation/models
 COPY --from=ai-origin-weights /model-build/automation/models/ai-origin-broad/pytorch_model.pt ./automation/models/ai-origin-broad/pytorch_model.pt
+COPY automation/deepfake-models/install_ai_origin.py ./automation/deepfake-models/install_ai_origin.py
 # Recheck the packaged weights against the application image's bundled configs.
 RUN /var/www/html/.venv-ai-origin/bin/python automation/deepfake-models/install_ai_origin.py
 # Fail the image build if Git LFS objects were not present in the checkout.
@@ -59,6 +68,21 @@ RUN /var/www/html/.venv-ai-origin/bin/python automation/deepfake-models/install_
 RUN test "$(wc -c < automation/models/truthguard_image_model.keras)" -gt 1000000 \
     && test "$(wc -c < automation/models/truthguard_video_face_model.keras)" -gt 1000000 \
     && test "$(wc -c < automation/models/filipino-transformer/best_model/model.safetensors)" -gt 100000000
+
+# Copy runtime source explicitly so UI updates cannot duplicate model layers.
+COPY artisan package.json package-lock.json ./
+COPY app ./app
+COPY bootstrap ./bootstrap
+COPY config ./config
+COPY database ./database
+COPY routes ./routes
+COPY automation/deepfake-models ./automation/deepfake-models
+COPY automation/evidence ./automation/evidence
+COPY automation/evaluation ./automation/evaluation
+COPY automation/nlp ./automation/nlp
+COPY automation/playwright ./automation/playwright
+COPY resources ./resources
+COPY public ./public
 COPY --from=frontend /app/public/build ./public/build
 RUN mkdir -p bootstrap/cache/views storage/app/public storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/framework/views-runtime storage/logs \
     && composer dump-autoload --no-dev --classmap-authoritative --no-interaction \

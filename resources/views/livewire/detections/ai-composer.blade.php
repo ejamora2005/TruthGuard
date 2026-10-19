@@ -3359,10 +3359,62 @@ new class extends Component
             body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-pre-result-workspace .truthguard-pre-result-form {
                 bottom: 0 !important;
             }
+            /* Float the compact guides above the mobile input panel. */
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form {
+                overflow: visible !important;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-toolbar {
+                min-height: 0;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompts {
+                position: absolute;
+                bottom: calc(100% + 0.5rem);
+                left: 0.75rem;
+                right: 0.75rem;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-row {
+                gap: 0.5rem !important;
+                padding: 0.25rem 0.125rem !important;
+                scroll-padding-inline: 0.125rem;
+                scrollbar-width: none;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-row::-webkit-scrollbar {
+                display: none;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card {
+                min-height: 2.25rem !important;
+                padding: 0.375rem 0.625rem !important;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(4) {
+                font-size: 0.72rem !important;
+                line-height: 1rem !important;
+            }
+            html.dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card {
+                background: #1e293b !important;
+                border-color: #475569 !important;
+            }
+            html.dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(4) {
+                color: #e2e8f0 !important;
+            }
+            html.dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card.truthguard-guided-prompt-active {
+                background: #1e3a5f !important;
+                border-color: #60a5fa !important;
+                box-shadow: inset 0 0 0 1px #60a5fa !important;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form > .truthguard-detection-composer {
+                padding: 0.375rem !important;
+            }
+            body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-field {
+                min-height: 3.5rem !important;
+                padding: 0.25rem !important;
+                gap: 0.375rem !important;
+            }
             body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-detection-textarea {
-                height: 3rem !important;
-                min-height: 3rem !important;
-                max-height: 3rem !important;
+                display: block;
+                height: 2.5rem !important;
+                min-height: 2.5rem !important;
+                max-height: 2.5rem !important;
+                padding-block: 0.25rem !important;
             }
         }
         @media (min-width: 641px) and (max-height: 740px) {
@@ -3427,8 +3479,14 @@ new class extends Component
             locationRequestInFlight: false,
             voiceSupported: false,
             voiceListening: false,
+            voiceStarting: false,
+            voiceFinishing: false,
+            voiceModalOpen: false,
             voiceError: null,
             voiceRecognition: null,
+            voiceSessionId: 0,
+            voiceFinalText: '',
+            voiceInterimText: '',
             voiceTranscriptBuffer: '',
             voiceLastTranscriptAt: 0,
             hasResult: @js((bool) $activeDetection),
@@ -3476,6 +3534,7 @@ new class extends Component
             destroy() {
                 this.progressDisposed = true;
                 window.clearTimeout(this.progressTimer);
+                this.cancelVoiceInput();
             },
             createRipple(event) {
                 const button = event.currentTarget;
@@ -4351,13 +4410,11 @@ new class extends Component
                 });
             },
             setupVoiceInput() {
+                this.voiceSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+            },
+            createVoiceRecognition() {
+                const sessionId = this.voiceSessionId;
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                this.voiceSupported = !!SpeechRecognition;
-
-                if (! this.voiceSupported || this.voiceRecognition) {
-                    return;
-                }
-
                 const recognition = new SpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = true;
@@ -4365,16 +4422,38 @@ new class extends Component
                 this.configureVoicePhrases(recognition);
 
                 recognition.onstart = () => {
+                    if (this.voiceSessionId !== sessionId || !this.voiceRecognition) return;
+                    this.voiceStarting = false;
                     this.voiceListening = true;
                     this.voiceError = null;
                 };
 
                 recognition.onend = () => {
+                    if (this.voiceSessionId !== sessionId || !this.voiceRecognition) return;
+                    this.voiceRecognition = null;
+                    this.voiceStarting = false;
                     this.voiceListening = false;
+                    this.voiceFinishing = false;
+                    this.voiceInterimText = '';
+                    if (this.voiceError) return;
+                    if (this.voiceFinalText.trim()) {
+                        this.insertVoiceText(this.voiceFinalText);
+                        this.closeVoiceDialog();
+                    } else {
+                        this.voiceError = 'No speech was detected. Speak closer to the microphone and try again.';
+                    }
                 };
 
                 recognition.onerror = (event) => {
+                    if (this.voiceSessionId !== sessionId || !this.voiceRecognition) return;
+                    this.voiceStarting = false;
                     this.voiceListening = false;
+                    this.voiceFinishing = false;
+                    this.voiceInterimText = '';
+                    if (event?.error === 'aborted') {
+                        this.cancelVoiceInput();
+                        return;
+                    }
                     const messages = {
                         'not-allowed': 'Microphone access was denied. Allow it in the browser site settings, then tap the microphone again.',
                         'service-not-allowed': 'This browser has blocked its speech recognition service. Check browser settings or try another browser.',
@@ -4384,12 +4463,11 @@ new class extends Component
                         'language-not-supported': 'The speech recognition service does not support the selected language. You can type or paste your claim instead.',
                         'phrases-not-supported': 'The speech recognition service rejected the voice hints. Reload the page and try again.',
                     };
-                    this.voiceError = event?.error === 'aborted'
-                        ? null
-                        : (messages[event?.error] || 'Speech recognition is unavailable. Tap the microphone to retry, or type your claim.');
+                    this.voiceError = messages[event?.error] || 'Speech recognition is unavailable. Try again, or type your claim.';
                 };
 
                 recognition.onresult = (event) => {
+                    if (this.voiceSessionId !== sessionId || !this.voiceRecognition || this.voiceError) return;
                     let finalTranscript = '';
 
                     for (let index = event.resultIndex; index < event.results.length; index += 1) {
@@ -4405,32 +4483,88 @@ new class extends Component
 
                         if (transcript) {
                             this.rememberVoiceTranscript(transcript);
-                            this.insertVoiceText(transcript);
+                            this.voiceFinalText = `${this.voiceFinalText} ${transcript}`.trim();
                         }
                     }
+                    // Interim results are replaced as recognition refines them.
+                    this.voiceInterimText = Array.from(event.results)
+                        .filter((result) => !result.isFinal)
+                        .map((result) => result[0]?.transcript || '')
+                        .join(' ').trim();
                 };
 
-                this.voiceRecognition = recognition;
+                return recognition;
             },
             toggleVoiceInput() {
-                if (! this.voiceSupported || ! this.voiceRecognition) {
+                if (this.voiceListening || this.voiceStarting || this.voiceFinishing) {
+                    this.stopVoiceInput();
+                    return;
+                }
+                this.startVoiceInput();
+            },
+            startVoiceInput() {
+                if (this.submitting) return;
+                if (!this.voiceSupported) {
                     this.voiceError = 'Voice input is not supported in this browser. Use Chrome or Edge.';
                     return;
                 }
-
-                if (this.voiceListening) {
-                    this.voiceRecognition.stop();
-                    return;
-                }
-
+                if (this.voiceStarting || this.voiceListening || this.voiceFinishing) return;
+                // A fresh recognizer prevents late events from a cancelled session
+                // from inserting text or closing a newly opened dialog.
+                const previous = this.voiceRecognition;
+                this.voiceRecognition = null;
+                this.voiceSessionId += 1;
+                try { previous?.abort(); } catch (error) {}
+                this.voiceError = null;
+                this.voiceFinalText = '';
+                this.voiceInterimText = '';
+                this.voiceTranscriptBuffer = '';
+                this.voiceLastTranscriptAt = 0;
+                this.voiceStarting = true;
+                this.voiceModalOpen = true;
+                if (!this.$refs.voiceDialog?.open) this.$refs.voiceDialog?.showModal();
                 try {
-                    this.voiceError = null;
-                    this.voiceTranscriptBuffer = '';
-                    this.voiceLastTranscriptAt = 0;
+                    this.voiceRecognition = this.createVoiceRecognition();
                     this.voiceRecognition.start();
                 } catch (error) {
-                    this.voiceError = 'Voice input is already starting. Try again.';
+                    const recognition = this.voiceRecognition;
+                    this.voiceRecognition = null;
+                    try { recognition?.abort(); } catch (abortError) {}
+                    this.voiceStarting = false;
+                    this.voiceError = 'The microphone could not start. Check browser permissions and try again.';
                 }
+            },
+            stopVoiceInput() {
+                if (!this.voiceRecognition || this.voiceFinishing) return;
+                this.voiceStarting = false;
+                this.voiceListening = false;
+                this.voiceFinishing = true;
+                try {
+                    this.voiceRecognition.stop();
+                } catch (error) {
+                    const recognition = this.voiceRecognition;
+                    this.voiceRecognition = null;
+                    try { recognition?.abort(); } catch (abortError) {}
+                    this.voiceFinishing = false;
+                    this.voiceError = 'Dictation could not finish. Please try again.';
+                }
+            },
+            cancelVoiceInput() {
+                const recognition = this.voiceRecognition;
+                this.voiceRecognition = null;
+                this.voiceSessionId += 1;
+                try { recognition?.abort(); } catch (error) {}
+                this.voiceStarting = false;
+                this.voiceListening = false;
+                this.voiceFinishing = false;
+                this.voiceFinalText = '';
+                this.voiceInterimText = '';
+                this.voiceError = null;
+                this.closeVoiceDialog();
+            },
+            closeVoiceDialog() {
+                this.voiceModalOpen = false;
+                if (this.$refs.voiceDialog?.open) this.$refs.voiceDialog.close();
             },
             voiceRecognitionLanguage() {
                 const pageLanguage = (document.documentElement.lang || navigator.language || 'en-PH').toLowerCase();
@@ -4741,6 +4875,7 @@ new class extends Component
         @dragleave.prevent="dragActive = false"
         @drop.prevent="handleDrop($event)"
         @paste="handlePaste($event)"
+        @pagehide.window="cancelVoiceInput()"
         @keydown.escape.window="menuOpen = false; closePreview()"
     >
         <div
@@ -4753,6 +4888,8 @@ new class extends Component
                 <p class="mt-1 text-xs text-slate-500">Images, videos, and PDFs up to {{ $mediaUploadMaxMb }}MB.</p>
             </div>
         </div>
+
+        @include('detections.partials.voice-input-dialog')
 
         <div @class([
             'relative',
@@ -5552,6 +5689,8 @@ new class extends Component
                             :disabled="!voiceSupported"
                             :aria-disabled="!voiceSupported ? 'true' : 'false'"
                             :aria-pressed="voiceListening ? 'true' : 'false'"
+                            aria-haspopup="dialog"
+                            :aria-expanded="voiceModalOpen"
                             :title="voiceSupported ? (voiceListening ? 'Stop voice input' : 'Speak to type') : 'Voice input is not supported in this browser'"
                             @click="toggleVoiceInput()"
                         >
@@ -5608,16 +5747,15 @@ new class extends Component
                     </div>
 
                     <div
-                        x-show="voiceListening || voiceError"
+                        x-show="!!voiceError && !voiceModalOpen"
                         x-cloak
-                        x-transition.opacity
                         class="mt-2 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold shadow-sm"
                         :class="voiceError ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-blue-100 bg-blue-50 text-blue-700'"
                         role="status"
                         aria-live="polite"
                     >
                         <span class="inline-flex h-2 w-2 rounded-full" :class="voiceError ? 'bg-rose-500' : 'animate-pulse bg-blue-500'" aria-hidden="true"></span>
-                        <span x-text="voiceError || 'Listening... speak now'"></span>
+                        <span x-text="voiceError"></span>
                     </div>
 
                     <div

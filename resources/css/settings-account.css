@@ -1,0 +1,85 @@
+.tg-settings-account {
+    --account-surface: #fff;
+    --account-soft: #f7f9fc;
+    --account-line: #e0e7ef;
+    --account-ink: #19263a;
+    --account-muted: #586980;
+    --account-link: #2858c5;
+    --account-verified: #08745b;
+    border: 1px solid var(--account-line);
+    border-radius: 16px;
+    background: var(--account-surface);
+    color: var(--account-ink);
+    box-shadow: 0 2px 6px rgb(15 23 42 / 3%);
+}
+html.dark .tg-settings-account {
+    --account-surface: #182235;
+    --account-soft: #223047;
+    --account-line: #3b4b63;
+    --account-ink: #f1f5f9;
+    --account-muted: #bbc8da;
+    --account-link: #93c5fd;
+    --account-verified: #6ee7b7;
+}
+.tg-settings-account svg { width: 18px; height: 18px; flex: 0 0 18px; }
+.tg-settings-account button:focus-visible { outline: 2px solid var(--account-link); outline-offset: 4px; }
+.tg-settings-account-main { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 1.25rem; padding: 1.75rem; }
+.tg-settings-account .tg-settings-account-avatar { position: relative; width: 76px; height: 76px; padding: 3px; border: 1px solid var(--account-line); border-radius: 50%; background: var(--account-soft); }
+.tg-settings-account-avatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.tg-settings-account-camera { position: absolute; bottom: -2px; right: -3px; display: grid; place-items: center; width: 27px; height: 27px; border: 2px solid var(--account-surface); border-radius: 50%; background: var(--account-soft); color: var(--account-link); }
+.tg-settings-account-camera svg { width: 14px; height: 14px; }
+.tg-settings-account-identity { min-width: 0; }
+.tg-settings-account .tg-settings-account-label { margin: 0 0 .35rem; font-size: .75rem; color: var(--account-muted); font-weight: 550; }
+.tg-settings-account .tg-settings-account-identity h1 { margin: 0; font-size: clamp(1.375rem, 2vw, 1.875rem); font-weight: 650; line-height: 1.3; letter-spacing: -.025em; color: var(--account-ink); overflow-wrap: anywhere; }
+.tg-settings-account .tg-settings-account-email { margin: .4rem 0 0; font-size: .875rem; line-height: 1.5; color: var(--account-muted); overflow-wrap: anywhere; }
+.tg-settings-account .tg-settings-account-edit { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; padding: .5rem .875rem; border: 1px solid var(--account-line); border-radius: 9px; background: var(--account-surface); color: var(--account-ink); font-size: .8125rem; font-weight: 600; white-space: nowrap; }
+.tg-settings-account-meta { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem 1.25rem; padding: .875rem 1.75rem; border-top: 1px solid var(--account-line); color: var(--account-muted); }
+.tg-settings-account .tg-settings-account-meta > span { display: inline-flex; align-items: center; gap: .375rem; font-size: .75rem; line-height: 1.5; }
+.tg-settings-account .tg-settings-account-role { padding: .2rem .5rem; border-radius: 5px; background: var(--account-soft); color: var(--account-ink); font-weight: 550; }
+.tg-settings-account .tg-settings-account-verification.is-verified { color: var(--account-verified); }
+.tg-settings-account-member { margin-left: auto; }
+@media (hover: hover) {
+    .tg-settings-account-edit:hover { background: var(--account-soft); border-color: var(--account-muted); }
+    .tg-settings-account-avatar:hover { border-color: var(--account-link); }
+}
+@media (max-width: 639px) {
+    .tg-settings-account-main { grid-template-columns: 60px minmax(0, 1fr); align-items: start; gap: .875rem; padding: 1.125rem; }
+    .tg-settings-account .tg-settings-account-avatar { width: 60px; height: 60px; }
+    .tg-settings-account .tg-settings-account-label { font-size: .6875rem !important; }
+    .tg-settings-account .tg-settings-account-identity h1 { font-size: 1.25rem !important; }
+    .tg-settings-account .tg-settings-account-email { font-size: .8125rem !important; }
+    .tg-settings-account .tg-settings-account-edit { grid-column: 1 / -1; font-size: .8125rem !important; }
+    .tg-settings-account-meta { padding: .875rem 1.125rem; gap: .625rem 1rem; }
+    .tg-settings-account .tg-settings-account-meta > span { font-size: .6875rem !important; }
+    .tg-settings-account-member { flex-basis: 100%; margin-left: 0; }
+}
+.tg-settings-section-heading { margin: 1.75rem 0 1rem; }
+.truthguard-settings-page .tg-settings-section-heading h2 { color: var(--tg-settings-ink, #1c2a40); font-size: 1.125rem !important; font-weight: 600; line-height: 1.4 !important; letter-spacing: -.025em; }
+.truthguard-settings-page .tg-settings-section-heading p { margin-top: .375rem; color: var(--tg-settings-muted, #5a6b82); font-size: .8125rem !important; line-height: 1.7 !important; }
+.tg-settings-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .875rem; }
+.tg-settings-option { display: grid; grid-template-columns: 44px minmax(0, 1fr) 18px; align-items: start; gap: 1rem; min-width: 0; padding: 1.25rem; border: 1px solid #e0e6ef; border-radius: 12px; background: #fff; color: #1c2a40; text-align: left; box-shadow: 0 2px 8px rgb(28 42 64 / 2%); transition: border-color 150ms ease, background-color 150ms ease; }
+.tg-settings-option:hover { border-color: #9bb5e5; background: #fafcff; }
+.tg-settings-option:focus-visible { outline: 3px solid #2858c5; outline-offset: 3px; }
+.tg-settings-option-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: #edf3ff; color: #2858c5; }
+.tg-settings-option-icon svg { width: 21px; height: 21px; }
+.tg-settings-option-copy { display: grid; gap: .25rem; min-width: 0; }
+.truthguard-settings-page .tg-settings-option-copy strong { font-size: .875rem !important; font-weight: 600; line-height: 1.5 !important; }
+.truthguard-settings-page .tg-settings-option-copy > span { color: #5a6b82; font-size: .75rem !important; line-height: 1.6 !important; }
+.truthguard-settings-page .tg-settings-option-copy .tg-settings-option-value { margin-top: .375rem; color: #435a7c; font-size: .6875rem !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tg-settings-option-arrow { align-self: center; width: 18px; height: 18px; color: #617593; }
+html.dark .tg-settings-option { border-color: #3b4b63; background: #182235; color: #f1f5f9; box-shadow: none; }
+html.dark .tg-settings-option:hover { border-color: #7c9dc9; background: #1c2b42; }
+html.dark .tg-settings-option-icon { background: #203858; color: #a6caff; }
+html.dark .truthguard-settings-page .tg-settings-option-copy > span,
+html.dark .truthguard-settings-page .tg-settings-option-copy .tg-settings-option-value,
+html.dark .tg-settings-option-arrow { color: #bbc8da; }
+@media (min-width: 1600px) { .tg-settings-options { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 639px) {
+    .tg-settings-options { grid-template-columns: minmax(0, 1fr); gap: 0; border: 1px solid #e0e6ef; border-radius: 14px; overflow: hidden; }
+    .tg-settings-option { grid-template-columns: 40px minmax(0, 1fr) 16px; gap: .75rem; padding: 1rem; border: 0; border-radius: 0; box-shadow: none; }
+    .tg-settings-option + .tg-settings-option { border-top: 1px solid #e0e6ef; }
+    .tg-settings-option-icon { width: 40px; height: 40px; }
+    .tg-settings-option:focus-visible { outline-offset: -3px; }
+    .tg-settings-option-value { display: none; }
+    html.dark .tg-settings-options, html.dark .tg-settings-option + .tg-settings-option { border-color: #3b4b63; }
+}

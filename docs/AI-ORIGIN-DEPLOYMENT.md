@@ -1,7 +1,9 @@
 # Image-origin detector packaging for Dokploy
 
 The production Dockerfile packages the image-origin detector in the shared app,
-worker and scheduler image. It does not enable the detector or calibration.
+general worker, evidence worker and scheduler image. Only the `app` service
+builds this shared image; the other services reuse it. Packaging does not enable
+the detector or calibration.
 
 ## What the build does
 
@@ -16,6 +18,9 @@ worker and scheduler image. It does not enable the detector or calibration.
 - Copies the verified checkpoint into
   `/var/www/html/automation/models/ai-origin-broad/pytorch_model.pt` and verifies
   it again against the final image's configuration files.
+- Places the runtime dependencies, browser installation and model copies before
+  application/UI source, so UI-only edits do not invalidate those cached layers.
+  Cache retention and disk checks are described in [deployment operations](DEPLOYMENT.md#build-once-and-reuse-the-heavy-layers).
 
 The installer requires release `6455cf791436ee914c9556ab71578cce9761fef7`,
 size **2,105,483,083 bytes**, and SHA-256

@@ -1,6 +1,6 @@
 # TruthGuard production deployment
 
-The Docker image contains PHP 8.4, Apache, compiled Vite assets, Node 24 and Playwright Chromium. Compose runs the web app, a database queue worker, one scheduler, and MySQL 8.4. Application uploads and MySQL data use separate named volumes. No host source code or development secrets are mounted into the image.
+The Docker image contains PHP 8.4, Apache, compiled Vite assets, Node 24, Playwright Chromium, and the packaged media detector runtimes. Compose runs the web app, general and evidence queue workers, one scheduler, an internal NLP service, and MySQL 8.4. Application uploads and MySQL data use separate named volumes. No host source code or development secrets are mounted into the image.
 
 ## Configure
 
@@ -42,6 +42,39 @@ Do not run the default database seeder in production: it contains demo accounts 
 
 ## Updates and operations
 
+### Build once and reuse the heavy layers
+
+Only `app` builds `truthguard:${IMAGE_TAG:-local}`. `worker`, `evidence-worker`, and
+`scheduler` use that same local image; they must not inherit a separate `build`
+entry. `nlp` has its own image and build. Build `app` before starting a worker by
+itself on a new host or with a new image tag.
+
+The Dockerfile installs Python packages, the Playwright browser, and verified
+model files before copying application code and UI assets. Ordinary Blade, CSS,
+or JavaScript changes can reuse those large layers. Runtime Node dependencies
+are limited to Playwright and dotenv; frontend dependencies stay in the build
+stage. Keep build caching enabled in Dokploy. The first build after a Dockerfile
+or dependency change can still be slow, and clearing the cache requires those
+layers to be built again. See [Docker's cache guidance](https://docs.docker.com/build/cache/optimize/).
+
+An export error containing `no space left on device` requires checking free
+disk space and inodes before retrying. An image needs space for build cache and
+unpacked layers as well as the existing running release:
+
+```sh
+df -h /
+df -i /
+docker system df
+```
+
+Inspect reclaimable build cache first. On a shared server, cache cleanup affects
+future builds of other applications too. Do not remove database/storage volumes,
+calibration audit files, or files inside Docker/containerd's storage directories
+to make room. Avoid automatic prune steps during every deployment; they discard
+the reusable layers that make UI updates faster.
+
+### Deploy the prepared image
+
 Back up the database and the storage volume before updating. Keep encrypted off-host backups of `.env.production`, especially `APP_KEY`, and test restoring all three. Never use `docker compose down -v` on a production installation: it deletes persistent volumes.
 
 For a single-server deployment with downtime:
@@ -49,9 +82,9 @@ For a single-server deployment with downtime:
 ```sh
 docker compose --env-file .env.production build --pull
 docker compose --env-file .env.production exec --user www-data app php artisan down --retry=60
-docker compose --env-file .env.production stop worker scheduler
+docker compose --env-file .env.production stop worker evidence-worker scheduler
 docker compose --env-file .env.production run --rm --user www-data app php artisan migrate --force
-docker compose --env-file .env.production up -d --force-recreate app worker scheduler
+docker compose --env-file .env.production up -d --force-recreate app worker evidence-worker scheduler
 docker compose --env-file .env.production exec --user www-data app php artisan up
 ```
 
@@ -59,7 +92,7 @@ Retain the previous image with a release-specific `IMAGE_TAG` and a tested backu
 
 Monitor `/up` for application boot health, plus database connectivity, disk space, failed jobs (`php artisan queue:failed`), email delivery and worker/scheduler operation separately. `/up` alone is not a dependency or functional readiness check. Container logs rotate; retain operational logs externally as needed. Playwright's dedicated file logs reside in the storage volume and also need retention monitoring.
 
-The optional Python deepfake model is disabled in this image. Enabling it requires a separate image extension with Python, the model's dependencies and a mounted model file. Review provider budgets and mail delivery before enabling scheduled public-review notifications, which run every thirty minutes.
+The image includes the Python detector dependencies and model artifacts. Keep the deployed enablement flags and validated calibration configuration; see [image-origin deployment](AI-ORIGIN-DEPLOYMENT.md) for the runtime checks. Review provider budgets and mail delivery before enabling scheduled public-review notifications, which run every thirty minutes.
 
 ## AI Usage monitoring setup
 

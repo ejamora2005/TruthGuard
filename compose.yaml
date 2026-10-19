@@ -231,7 +231,8 @@ x-app-environment: &app-environment
 
 x-app: &app
   image: truthguard:${IMAGE_TAG:-local}
-  build: .
+  # Only app builds this shared image. Consumers must not export/unpack it again.
+  pull_policy: never
   environment:
     <<: *app-environment
   restart: unless-stopped
@@ -284,6 +285,7 @@ services:
 
   app:
     <<: *app
+    build: .
     networks:
       - truthguard-internal
       - dokploy-network

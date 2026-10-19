@@ -16,114 +16,15 @@
 @section('page_title', 'Notifications')
 @section('page_subtitle', 'Alerts, system updates, and account activity')
 
-@once
-    <style>
-        .truthguard-notifications-shell {
-            position: relative;
-            isolation: isolate;
-            border-color: rgba(203, 213, 225, 0.86);
-            background: #fff;
-            box-shadow:
-                0 28px 72px rgba(15, 23, 42, 0.08),
-                0 1px 0 rgba(255, 255, 255, 0.95) inset;
-        }
-
-        .truthguard-notifications-shell::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            z-index: -1;
-            background:
-                radial-gradient(circle at 14% 8%, rgba(37, 99, 235, 0.11), transparent 30%),
-                radial-gradient(circle at 90% 6%, rgba(124, 58, 237, 0.08), transparent 24%),
-                linear-gradient(rgba(37, 99, 235, 0.035) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(37, 99, 235, 0.035) 1px, transparent 1px);
-            background-size: auto, auto, 28px 28px, 28px 28px;
-        }
-
-        .truthguard-notifications-hero {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.95));
-        }
-
-        .truthguard-notifications-hero::after {
-            content: '';
-            position: absolute;
-            right: 2rem;
-            top: 1rem;
-            height: 4.75rem;
-            width: 4.75rem;
-            border-radius: 9999px;
-            border: 1px solid rgba(147, 197, 253, 0.45);
-            background:
-                linear-gradient(135deg, rgba(219, 234, 254, 0.72), rgba(255, 255, 255, 0.86));
-            box-shadow: 0 20px 45px rgba(37, 99, 235, 0.12);
-            opacity: 0.55;
-        }
-
-        .truthguard-notifications-stat {
-            border: 1px solid rgba(226, 232, 240, 0.9);
-            background: rgba(255, 255, 255, 0.86);
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.045);
-            backdrop-filter: blur(12px);
-        }
-
-        .truthguard-notifications-tab {
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
-        }
-
-        .truthguard-notifications-tab.is-active {
-            border-color: rgba(37, 99, 235, 0.78);
-            background: linear-gradient(180deg, #eff6ff, #ffffff);
-            color: #1d4ed8;
-            box-shadow: 0 14px 30px rgba(37, 99, 235, 0.13);
-        }
-
-        .truthguard-notification-page-card {
-            position: relative;
-            overflow: hidden;
-            background: rgba(255, 255, 255, 0.96);
-        }
-
-        .truthguard-notification-page-card::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            top: 0;
-            width: 3px;
-            background: transparent;
-        }
-
-        .truthguard-notification-page-card.is-unread {
-            border-color: rgba(147, 197, 253, 0.9);
-            box-shadow:
-                0 18px 42px rgba(37, 99, 235, 0.08),
-                0 0 0 1px rgba(239, 246, 255, 0.9) inset;
-        }
-
-        .truthguard-notification-page-card.is-unread::before {
-            background: linear-gradient(180deg, #2563eb, #7c3aed);
-        }
-
-        .truthguard-empty-notifications {
-            background:
-                linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.96)),
-                linear-gradient(rgba(37, 99, 235, 0.04) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(37, 99, 235, 0.04) 1px, transparent 1px);
-            background-size: auto, 30px 30px, 30px 30px;
-        }
-    </style>
-@endonce
-
 @section('content')
     <div
-        class="truthguard-mobile-page truthguard-mobile-notifications mx-auto w-full max-w-[1280px] space-y-5"
+        class="tg-inbox"
         x-data="{
             activeTab: 'all',
             notifications: @js($notifications),
             pendingArchives: [],
+            pendingReads: [],
+            markingAll: false,
             errorMessage: '',
             csrfToken: @js(csrf_token()),
             markAllUrl: @js(route('notifications.mark-all-read', absolute: false)),
@@ -144,50 +45,45 @@
 
                 return this.notifications.filter((item) => item.category === tab).length;
             },
-            tone(category) {
-                return {
-                    'welcome': 'bg-blue-50 text-blue-700 ring-blue-100',
-                    'fact-check': 'bg-violet-50 text-violet-700 ring-violet-100',
-                    'news': 'bg-cyan-50 text-cyan-700 ring-cyan-100',
-                    'security': 'bg-rose-50 text-rose-700 ring-rose-100',
-                    'system': 'bg-slate-100 text-slate-700 ring-slate-200',
-                }[category] || 'bg-slate-100 text-slate-700 ring-slate-200';
+            categoryLabel(category) {
+                return { 'fact-check': 'Fact check', news: 'News', security: 'Security', system: 'System', welcome: 'Welcome' }[category] || 'Update';
             },
             async markAsRead(id) {
                 const item = this.notifications.find((notification) => notification.id === id);
-                if (!item || !item.unread) return;
-
-                item.unread = false;
-
-                await fetch(this.readUrlTemplate.replace('__ID__', id), {
-                    method: 'POST',
-                    keepalive: true,
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': this.csrfToken,
-                    },
-                }).catch(() => {
-                    item.unread = true;
-                });
+                if (!item || !item.unread || this.pendingReads.includes(id) || this.markingAll) return;
+                this.pendingReads.push(id);
+                this.errorMessage = '';
+                try {
+                    const response = await fetch(this.readUrlTemplate.replace('__ID__', id), {
+                        method: 'POST', keepalive: true,
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': this.csrfToken },
+                    });
+                    if (!response.ok) throw new Error('Read update failed.');
+                    item.unread = false;
+                    window.dispatchEvent(new CustomEvent('truthguard:notification'));
+                } catch (error) {
+                    this.errorMessage = 'Could not mark this notification as read. Please try again.';
+                } finally {
+                    this.pendingReads = this.pendingReads.filter((pending) => pending !== id);
+                }
             },
             async markAllAsRead() {
-                const previouslyUnread = this.notifications.filter((item) => item.unread);
-                this.notifications = this.notifications.map((item) => ({ ...item, unread: false }));
-
-                await fetch(this.markAllUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': this.csrfToken,
-                    },
-                }).catch(() => {
-                    previouslyUnread.forEach((item) => {
-                        const current = this.notifications.find((notification) => notification.id === item.id);
-                        if (current) current.unread = true;
+                if (this.markingAll || this.pendingReads.length || !this.countFor('unread')) return;
+                this.markingAll = true;
+                this.errorMessage = '';
+                try {
+                    const response = await fetch(this.markAllUrl, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': this.csrfToken },
                     });
-                });
+                    if (!response.ok) throw new Error('Read update failed.');
+                    this.notifications = this.notifications.map((item) => ({ ...item, unread: false }));
+                    window.dispatchEvent(new CustomEvent('truthguard:notification'));
+                } catch (error) {
+                    this.errorMessage = 'Could not mark your notifications as read. Please try again.';
+                } finally {
+                    this.markingAll = false;
+                }
             },
             async archiveNotification(id) {
                 if (this.pendingArchives.includes(id)) return;
@@ -214,147 +110,92 @@
         }"
         @truthguard:notification-archived.window="notifications = notifications.filter((notification) => notification.id !== $event.detail.id)"
     >
-        <p x-show="errorMessage" x-cloak x-text="errorMessage" role="status" class="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600"></p>
-        <section class="truthguard-notifications-shell overflow-hidden rounded-[24px] border">
-            <div class="truthguard-notifications-hero border-b border-slate-200/80 px-5 py-5 sm:px-6">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                        <span class="tg-inbox-emblem"><x-notification-icon /></span>
-                        <h1 class="text-2xl font-bold tracking-tight text-slate-950">Activity inbox</h1>
-                        <p class="mt-1 max-w-2xl text-sm leading-6 text-slate-500">Fact checks, news, security, and account updates.</p>
-                    </div>
+        <header class="tg-inbox-header">
+            <div class="tg-inbox-heading">
+                <div class="tg-inbox-title-line">
+                    <h1>Notifications</h1>
+                    <span class="tg-inbox-unread-count" x-show="countFor('unread') > 0" x-cloak x-text="countFor('unread') + ' unread'"></span>
+                </div>
+                <p>Fact checks, news and account activity.</p>
+            </div>
+            <div class="tg-inbox-header-actions">
+                <button type="button" class="tg-inbox-button" @click="markAllAsRead()"
+                    :disabled="markingAll || pendingReads.length > 0 || countFor('unread') === 0" :aria-busy="markingAll">
+                    <x-notification-icon category="check" />
+                    <span x-text="markingAll ? 'Marking read…' : 'Mark all as read'">Mark all as read</span>
+                </button>
+                <a href="{{ route('profile', ['section' => 'notifications']) }}" class="tg-inbox-button tg-inbox-preferences" aria-label="Notification settings" title="Notification settings">
+                    <x-notification-icon category="settings" /><span>Settings</span>
+                </a>
+            </div>
+        </header>
 
-                    <div class="truthguard-notifications-actions relative z-10 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
-                        <div class="truthguard-notifications-stats grid grid-cols-3 gap-2">
-                            <div class="truthguard-notifications-stat rounded-2xl px-3 py-2">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Total</p>
-                                <p class="mt-0.5 text-sm font-bold text-slate-950" x-text="countFor('all')">{{ $counts['all'] ?? 0 }}</p>
+        <p x-show="errorMessage" x-cloak x-text="errorMessage" role="alert" class="tg-inbox-error"></p>
+
+        <section class="tg-inbox-panel" aria-label="Notification inbox">
+            <nav class="tg-inbox-filters" aria-label="Filter notifications">
+                @foreach ($tabs as $tab)
+                    <button type="button" @click="activeTab = '{{ $tab['id'] }}'"
+                        :aria-pressed="activeTab === '{{ $tab['id'] }}'" class="tg-inbox-filter">
+                        {{ $tab['label'] }}
+                        <span x-text="countFor('{{ $tab['id'] }}')">{{ $tab['count'] }}</span>
+                    </button>
+                @endforeach
+            </nav>
+            <div class="tg-inbox-list-heading">
+                <h2 x-text="activeTab === 'all' ? 'Latest updates' : activeTab === 'unread' ? 'Unread updates' : categoryLabel(activeTab) + ' updates'">Latest updates</h2>
+                <span>Newest first</span>
+            </div>
+
+            <template x-if="filteredNotifications.length === 0">
+                <div class="tg-inbox-empty" role="status">
+                    <span class="tg-inbox-empty-icon"><x-notification-icon category="all" /></span>
+                    <h2 x-text="activeTab === 'unread' ? 'You’re all caught up' : 'No notifications here'"></h2>
+                    <p x-text="activeTab === 'unread' ? 'You’ve read all your updates. New ones will appear here.' : 'New updates will appear here when there’s something to share.'"></p>
+                    <button type="button" class="tg-inbox-button" x-show="activeTab !== 'all'" @click="activeTab = 'all'">View all notifications</button>
+                </div>
+            </template>
+
+            <div class="tg-inbox-list">
+                <template x-for="notification in filteredNotifications" :key="notification.id">
+                    <article class="tg-inbox-row" :class="{ 'is-unread': notification.unread }" :data-notification-id="notification.id">
+                        <div class="tg-inbox-media" :data-category="notification.category">
+                            <template x-if="notification.imageUrl">
+                                <img :src="notification.imageUrl" alt="" loading="lazy" x-on:error="$el.hidden = true">
+                            </template>
+                            <x-notification-icon expression="notification.category" />
+                        </div>
+                        <div class="tg-inbox-copy">
+                            <div class="tg-inbox-meta">
+                                <span x-text="categoryLabel(notification.category)"></span>
+                                <span aria-hidden="true">·</span>
+                                <span x-text="notification.createdAt"></span>
+                                <span class="tg-inbox-unread-dot" x-show="notification.unread" role="img" aria-label="Unread"></span>
                             </div>
-                            <div class="truthguard-notifications-stat rounded-2xl px-3 py-2">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Unread</p>
-                                <p class="mt-0.5 text-sm font-bold text-blue-700" x-text="countFor('unread')">{{ $counts['unread'] ?? 0 }}</p>
-                            </div>
-                            <div class="truthguard-notifications-stat rounded-2xl px-3 py-2">
-                                <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">News</p>
-                                <p class="mt-0.5 text-sm font-bold text-cyan-700" x-text="countFor('news')">{{ $counts['news'] ?? 0 }}</p>
+                            <h3><a :href="notification.actionUrl" @click="markAsRead(notification.id)" x-text="notification.title"></a></h3>
+                            <p x-text="notification.message"></p>
+                        </div>
+                        <div class="tg-inbox-row-actions">
+                            <a :href="notification.actionUrl" @click="markAsRead(notification.id)" class="tg-inbox-open">
+                                <span x-text="notification.actionLabel"></span><x-notification-icon category="arrow" />
+                            </a>
+                            <div class="tg-inbox-tools">
+                                <button type="button" class="tg-inbox-icon-button" x-show="notification.unread" @click="markAsRead(notification.id)"
+                                    :disabled="markingAll || pendingReads.includes(notification.id)" :aria-busy="pendingReads.includes(notification.id)"
+                                    :aria-label="'Mark as read: ' + notification.title" title="Mark as read">
+                                    <x-notification-icon category="check" />
+                                </button>
+                                <button type="button" class="tg-inbox-icon-button" @click="archiveNotification(notification.id)"
+                                    :disabled="pendingArchives.includes(notification.id)" :aria-busy="pendingArchives.includes(notification.id)"
+                                    :aria-label="'Archive ' + notification.title" title="Archive notification">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="5" rx="1.5"/><path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8M10 12h4"/></svg>
+                                </button>
                             </div>
                         </div>
-
-                        <button
-                            type="button"
-                            @click="markAllAsRead()"
-                            class="inline-flex w-fit items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 hover:shadow-[0_14px_28px_rgba(37,99,235,0.12)] focus:outline-none focus:ring-4 focus:ring-blue-100"
-                        >
-                            <x-notification-icon category="check" /> Mark all as read
-                        </button>
-                        <a href="{{ route('profile', ['section' => 'notifications']) }}" class="tg-inbox-settings"><x-notification-icon category="settings" /> Settings</a>
-                    </div>
-                </div>
-
-                <div class="truthguard-notifications-tabs mt-5 flex gap-2 overflow-x-auto pb-1">
-                    @foreach ($tabs as $tab)
-                        <button
-                            type="button"
-                            @click="activeTab = '{{ $tab['id'] }}'"
-                            :aria-pressed="activeTab === '{{ $tab['id'] }}'"
-                            class="truthguard-notifications-tab inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus:outline-none focus:ring-4 focus:ring-blue-100"
-                            :class="activeTab === '{{ $tab['id'] }}' ? 'is-active' : 'border-slate-200 bg-white text-slate-600 hover:-translate-y-0.5 hover:border-blue-200 hover:text-slate-950'"
-                        >
-                            <x-notification-icon :category="$tab['id']" /> {{ $tab['label'] }}
-                            <span class="rounded-full bg-white px-2 py-0.5 text-xs ring-1 ring-slate-200" x-text="countFor('{{ $tab['id'] }}')">{{ $tab['count'] }}</span>
-                        </button>
-                    @endforeach
-                </div>
-            </div>
-
-            <div class="truthguard-notifications-list p-4 sm:p-5">
-                <template x-if="filteredNotifications.length === 0">
-                    <div class="truthguard-empty-notifications flex min-h-[340px] flex-col items-center justify-center rounded-[22px] border border-dashed border-slate-200 px-6 py-12 text-center">
-                        <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-blue-600 shadow-sm ring-1 ring-slate-200">
-                            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 12.5 11 15l4.5-5"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a8.7 8.7 0 0 0 7-8.5V6.25L12 3.75 5 6.25v6.25A8.7 8.7 0 0 0 12 21Z"></path>
-                            </svg>
-                        </span>
-                        <h2 class="mt-4 text-lg font-bold text-slate-950">No notifications here</h2>
-                        <p class="mt-2 max-w-md text-sm leading-6 text-slate-500">When TruthGuard has something new for this category, it will appear here.</p>
-                    </div>
+                    </article>
                 </template>
-
-                <div class="space-y-3">
-                    <template x-for="notification in filteredNotifications" :key="notification.id">
-                        <article
-                            class="truthguard-notification-page-card group rounded-[22px] border p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-[0_18px_42px_rgba(15,23,42,0.09)]"
-                            :class="notification.unread ? 'is-unread' : 'border-slate-200'"
-                        >
-                            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                <div class="flex min-w-0 gap-4">
-                                    <template x-if="notification.imageUrl">
-                                        <img
-                                            :src="notification.imageUrl"
-                                            :alt="notification.title"
-                                            class="h-20 w-24 shrink-0 rounded-2xl border border-slate-200 object-cover shadow-sm"
-                                            loading="lazy"
-                                        >
-                                    </template>
-
-                                    <span
-                                        x-show="!notification.imageUrl"
-                                        class="mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1"
-                                        :class="tone(notification.category)" :data-notice-category="notification.category"
-                                    >
-                                        <x-notification-icon expression="notification.category" />
-                                    </span>
-
-                                    <div class="min-w-0">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <h2 class="text-sm font-bold text-slate-950" x-text="notification.title"></h2>
-                                            <span x-show="notification.unread" class="h-2 w-2 rounded-full bg-blue-600"></span>
-                                        </div>
-                                        <p class="mt-1 text-sm leading-6 text-slate-500" x-text="notification.message"></p>
-                                        <div class="mt-3 flex flex-wrap items-center gap-2">
-                                            <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1" :class="tone(notification.category)" :data-notice-category="notification.category" x-text="notification.category.replace('-', ' ')"></span>
-                                            <span class="text-xs font-medium text-slate-400" x-text="notification.createdAt"></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="truthguard-notification-card-actions flex shrink-0 items-center gap-2">
-                                    <button
-                                        type="button"
-                                        @click="archiveNotification(notification.id)"
-                                        :disabled="pendingArchives.includes(notification.id)"
-                                        :aria-busy="pendingArchives.includes(notification.id)"
-                                        class="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-600 transition hover:-translate-y-0.5 hover:bg-rose-50 hover:text-rose-700"
-                                        :aria-label="'Archive ' + notification.title"
-                                        title="Archive notification"
-                                    >
-                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5h10.5M9 7.5V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7.5m-7.25 0 .7 11.2A1.5 1.5 0 0 0 9.95 20h4.1a1.5 1.5 0 0 0 1.5-1.3l.7-11.2M10.5 11v5M13.5 11v5"></path>
-                                        </svg>
-                                        Archive
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        x-show="notification.unread"
-                                        @click="markAsRead(notification.id)"
-                                        class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
-                                    >
-                                        <x-notification-icon category="check" /> Mark read
-                                    </button>
-
-                                    <a
-                                        :href="notification.actionUrl"
-                                        @click="markAsRead(notification.id)"
-                                        class="rounded-full bg-slate-950 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_12px_24px_rgba(37,99,235,0.18)]"
-                                    ><span x-text="notification.actionLabel"></span><x-notification-icon category="arrow" /></a>
-                                </div>
-                            </div>
-                        </article>
-                    </template>
-                </div>
             </div>
         </section>
+        <p class="tg-inbox-footnote">Choose the updates you receive in <a href="{{ route('profile', ['section' => 'notifications']) }}">notification settings</a>.</p>
     </div>
 @endsection

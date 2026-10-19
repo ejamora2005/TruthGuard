@@ -1,0 +1,231 @@
+/* Signed-in user workspace. Component scopes keep admin and public pages intact. */
+body.tg-polished-workspace {
+    --workspace-bg: #f5f7fa;
+    --workspace-surface: #ffffff;
+    --workspace-soft: #f0f4f9;
+    --workspace-line: #e0e6ef;
+    --workspace-ink: #1c2a40;
+    --workspace-muted: #5a6b82;
+    --workspace-accent: #2858c5;
+    --workspace-selected: #edf3ff;
+    --workspace-shadow: 0 3px 14px rgb(28 42 64 / 3%);
+    background: var(--workspace-bg) !important;
+}
+html.dark body.tg-polished-workspace {
+    --workspace-bg: #0f172a;
+    --workspace-surface: #182235;
+    --workspace-soft: #223047;
+    --workspace-line: #3b4b63;
+    --workspace-ink: #f1f5f9;
+    --workspace-muted: #bbc8da;
+    --workspace-accent: #a6caff;
+    --workspace-selected: #203858;
+    --workspace-shadow: none;
+}
+
+/* A quieter frame leaves the emphasis on the evidence and the next action. */
+html body.tg-polished-workspace .truthguard-sidebar {
+    background: var(--workspace-surface) !important;
+    border-color: var(--workspace-line) !important;
+    backdrop-filter: none;
+}
+html body.tg-polished-workspace :is(.truthguard-sidebar, .truthguard-topbar, .truthguard-mobile-tabbar)::before,
+html body.tg-polished-workspace :is(.truthguard-topbar, .truthguard-mobile-tabbar)::after { display: none !important; }
+html body.tg-polished-workspace .truthguard-sidebar > div:first-child { padding-block: 1.5rem; }
+html body.tg-polished-workspace .truthguard-sidebar > div:first-child a p {
+    background: none !important; color: var(--workspace-ink) !important;
+    -webkit-text-fill-color: currentColor !important; font-size: 1.125rem; letter-spacing: -.035em;
+}
+html body.tg-polished-workspace .truthguard-sidebar nav h2 { font-size: .625rem; letter-spacing: .12em; color: var(--workspace-muted); }
+html body.tg-polished-workspace .menu-item {
+    min-height: 46px; border-radius: 10px !important; font-size: .875rem;
+    font-weight: 500; box-shadow: none !important; transition: background-color 150ms ease, color 150ms ease;
+}
+html body.tg-polished-workspace .menu-item:not(.menu-item-inactive) { background: var(--workspace-selected) !important; color: var(--workspace-accent) !important; font-weight: 600; }
+html body.tg-polished-workspace .menu-item::before { width: 3px; border-radius: 3px; }
+html body.tg-polished-workspace .menu-item svg { width: 20px; height: 20px; animation: none; }
+html body.tg-polished-workspace .truthguard-topbar {
+    background: var(--workspace-surface) !important; border-color: var(--workspace-line) !important;
+    box-shadow: none !important; border-radius: 0 !important;
+}
+html body.tg-polished-workspace .truthguard-topbar > div { min-height: 72px; padding-block: .75rem; }
+html body.tg-polished-workspace .truthguard-topbar > div {
+    width: 100% !important; max-width: none !important; margin: 0 !important;
+    border: 0 !important; border-radius: 0 !important;
+    background: transparent !important; box-shadow: none !important; backdrop-filter: none;
+}
+html body.tg-polished-workspace .truthguard-shell-toggle {
+    width: 40px; height: 40px; min-height: 40px; border-radius: 10px;
+    background: var(--workspace-surface) !important; border: 1px solid var(--workspace-line);
+    color: var(--workspace-muted); box-shadow: none !important;
+}
+html body.tg-polished-workspace .truthguard-shell-toggle::after { display: none; }
+html body.tg-polished-workspace .truthguard-utility-strip { background: transparent !important; border: 0 !important; box-shadow: none !important; gap: .25rem; }
+html body.tg-polished-workspace .truthguard-clock-pill { border: 0; border-radius: 9px; background: var(--workspace-soft) !important; box-shadow: none; }
+.tg-workspace-location { display: flex; align-items: center; gap: .75rem; color: var(--workspace-muted); font-size: .75rem; }
+.tg-workspace-location strong { color: var(--workspace-ink); font-weight: 550; }
+html body.tg-polished-workspace .truthguard-user-main { max-width: 1440px; padding: 1.75rem clamp(1rem, 2.5vw, 2.5rem); }
+html body.tg-polished-workspace .truthguard-user-content-column { background: var(--workspace-bg) !important; }
+html body.tg-polished-workspace :is(.tg-history, .tg-inbox, .truthguard-mobile-settings) { max-width: 1240px; }
+html body.tg-polished-workspace .truthguard-user-footer-inner { border-color: var(--workspace-line); padding-block: 1.25rem; }
+html body.tg-polished-workspace .truthguard-user-footer { max-width: 1440px; padding-inline: clamp(1rem, 2.5vw, 2.5rem); }
+html body.tg-polished-workspace .truthguard-user-footer :is(p, a) { font-size: .6875rem; font-weight: 450; color: var(--workspace-muted); }
+
+.tg-workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; margin-bottom: 1.75rem; }
+html body.tg-polished-workspace .tg-workspace-heading h1 { margin: 0; color: var(--workspace-ink); font-size: 1.75rem !important; line-height: 1.3 !important; font-weight: 650; letter-spacing: -.04em; }
+html body.tg-polished-workspace .tg-workspace-heading p { margin-top: .375rem; color: var(--workspace-muted); font-size: .875rem !important; line-height: 1.6 !important; }
+.tg-workspace-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; flex-shrink: 0; min-height: 44px; padding: .625rem 1rem; border: 1px solid #2858c5; border-radius: 10px; color: #fff !important; background: #2858c5; font-size: .8125rem; font-weight: 600; box-shadow: 0 2px 4px rgb(28 42 64 / 8%); }
+.tg-workspace-primary svg { width: 18px; height: 18px; }
+html body.tg-polished-workspace .tg-workspace-primary span { font-size: inherit !important; font-weight: inherit !important; }
+.tg-workspace-primary:hover { background: #204bac; }
+.tg-workspace-primary:focus-visible { outline: 3px solid var(--workspace-accent); outline-offset: 3px; }
+
+/* Publisher reviews use one editorial row, with a clear title and quieter metadata. */
+html body.tg-polished-workspace #news-watch { border: 1px solid var(--workspace-line) !important; border-radius: 16px !important; background: var(--workspace-surface) !important; box-shadow: var(--workspace-shadow) !important; overflow: visible; }
+html body.tg-polished-workspace #news-watch .tg-mobile-feed-head { padding: 1.5rem !important; border-radius: 16px 16px 0 0; background: var(--workspace-surface) !important; }
+html body.tg-polished-workspace #news-watch .tg-feed-heading h3 { color: var(--workspace-ink); font-size: 1.25rem !important; line-height: 1.4 !important; font-weight: 600; letter-spacing: -.025em; }
+html body.tg-polished-workspace #news-watch .tg-feed-controls { margin-top: .25rem; padding-top: 1rem; border-color: var(--workspace-line); }
+html body.tg-polished-workspace #news-watch .tg-feed-field { background: var(--workspace-surface) !important; box-shadow: none !important; border-color: var(--workspace-line); border-radius: 9px; }
+html body.tg-polished-workspace #news-watch .tg-feed-window { background: var(--workspace-soft) !important; box-shadow: none; border-color: var(--workspace-line); }
+html body.tg-polished-workspace #news-watch .tg-mobile-feed-list { padding-inline: 1.5rem !important; }
+html body.tg-polished-workspace #news-watch .tg-fact-feed-row { padding-block: 1.5rem !important; gap: 1.5rem !important; border-color: var(--workspace-line) !important; }
+html body.tg-polished-workspace #news-watch .tg-mobile-fact-media { border-radius: 10px !important; border-color: var(--workspace-line); background: var(--workspace-soft); }
+html body.tg-polished-workspace #news-watch .tg-mobile-fact-copy h4 { color: var(--workspace-ink); font-size: 1.125rem !important; font-weight: 600 !important; line-height: 1.55 !important; }
+html body.tg-polished-workspace #news-watch .tg-mobile-fact-copy > p { color: var(--workspace-muted); font-size: .875rem !important; line-height: 1.75 !important; }
+html body.tg-polished-workspace #news-watch .tg-mobile-fact-labels { gap: .375rem .5rem; font-size: .625rem !important; letter-spacing: .035em; }
+html body.tg-polished-workspace #news-watch .tg-rating-meta-chip { font-size: .6875rem !important; font-weight: 600; padding: .25rem .5rem; border-radius: 5px; }
+
+/* History and inbox keep their compact actions and original filter behavior. */
+html body.tg-polished-workspace :is(.tg-history-panel, .tg-inbox-panel) { border-color: var(--workspace-line); border-radius: 14px; box-shadow: var(--workspace-shadow); }
+html body.tg-polished-workspace .tg-history-tabs { background: transparent; border: 0; border-radius: 0; padding: 0 0 .25rem; gap: .375rem; }
+html body.tg-polished-workspace .tg-history-tabs a { border-radius: 8px; min-height: 42px; padding-inline: .75rem; }
+html body.tg-polished-workspace .tg-history-tabs a[aria-current] { background: var(--workspace-selected); color: var(--workspace-accent); box-shadow: none; }
+html body.tg-polished-workspace .tg-history-table th { font-size: .625rem; letter-spacing: .07em; font-weight: 550; padding-block: .875rem; }
+html body.tg-polished-workspace .tg-history-table td { padding-block: 1rem; }
+html body.tg-polished-workspace .tg-history-title { font-weight: 600; }
+html body.tg-polished-workspace .tg-inbox-header { margin-bottom: 1.75rem; }
+html body.tg-polished-workspace .tg-inbox .tg-inbox-title-line h1 { font-size: 1.75rem !important; font-weight: 650; }
+html body.tg-polished-workspace .tg-inbox-filters { min-height: 52px; }
+
+/* Fact Check: one calm working surface, with secondary material below its heading. */
+html body.tg-polished-workspace .truthguard-workspace-hero { border: 1px solid var(--workspace-line) !important; border-radius: 16px !important; background: var(--workspace-surface) !important; box-shadow: var(--workspace-shadow) !important; padding: 1.5rem !important; }
+html body.tg-polished-workspace .truthguard-workspace-hero::before,
+html body.tg-polished-workspace .truthguard-workspace-hero::after,
+html body.tg-polished-workspace .truthguard-workspace-hero-glint { display: none !important; }
+html body.tg-polished-workspace .truthguard-workspace-title { margin-top: .75rem; font-size: 1.875rem !important; line-height: 1.25 !important; font-weight: 650; letter-spacing: -.035em; }
+html body.tg-polished-workspace .truthguard-workspace-intro > p { color: var(--workspace-muted); font-size: .875rem !important; line-height: 1.7 !important; }
+html body.tg-polished-workspace .truthguard-agent-pill { color: var(--workspace-accent) !important; background: var(--workspace-selected) !important; border: 0 !important; box-shadow: none !important; border-radius: 6px; font-size: .6875rem !important; font-weight: 600; padding: .375rem .625rem; }
+html body.tg-polished-workspace .truthguard-workspace-orb { width: 100px; height: 100px; opacity: .8; box-shadow: none; }
+html body.tg-polished-workspace .truthguard-recent-section { background: transparent !important; padding: .25rem 0 !important; border: 0 !important; }
+html body.tg-polished-workspace .truthguard-recent-heading h2 { font-size: 1rem !important; font-weight: 600 !important; }
+html body.tg-polished-workspace .truthguard-recent-view-all { background: transparent; border: 0; box-shadow: none; font-size: .75rem !important; font-weight: 550; }
+html body.tg-polished-workspace .truthguard-recent-card { background: var(--workspace-surface) !important; border-color: var(--workspace-line) !important; border-radius: 12px !important; box-shadow: none !important; }
+html body.tg-polished-workspace .truthguard-composer-field { border: 1px solid var(--workspace-line) !important; background: var(--workspace-surface) !important; border-radius: 14px !important; box-shadow: 0 4px 16px rgb(28 42 64 / 4%) !important; }
+html body.tg-polished-workspace .truthguard-composer-field:focus-within { border-color: var(--workspace-accent) !important; box-shadow: 0 0 0 3px rgb(40 88 197 / 12%) !important; }
+html body.tg-polished-workspace .truthguard-composer-field::before,
+html body.tg-polished-workspace .truthguard-composer-field::after { display: none !important; }
+html body.tg-polished-workspace .truthguard-detection-composer { background: var(--workspace-surface) !important; border: 1px solid var(--workspace-line) !important; box-shadow: none !important; }
+html body.tg-polished-workspace .truthguard-detection-composer::before,
+html body.tg-polished-workspace .truthguard-detection-composer::after { display: none !important; }
+
+/* Results stay evidence-led. Improve reading measure without changing saved wording. */
+html body.tg-polished-workspace .tg-ai-report :is(.tg-ai-surface, .tg-report-evidence, .tg-ai-hero) { border-radius: 14px; box-shadow: var(--workspace-shadow) !important; background: var(--workspace-surface) !important; }
+html body.tg-polished-workspace .tg-report-header { padding-block: .25rem 1.25rem; }
+html body.tg-polished-workspace .tg-report-title :is(h1, h2) { font-size: 1.75rem !important; font-weight: 650; line-height: 1.3 !important; }
+html body.tg-polished-workspace .tg-ai-report :is(.tg-report-evidence h3, .tg-interpretation-header h3) { font-weight: 600 !important; }
+html body.tg-polished-workspace .tg-verdict-explanation > p { font-size: .9375rem !important; line-height: 1.85 !important; text-align: left; hyphens: none; max-width: 72ch; }
+html body.tg-polished-workspace :is(.tg-interpretation-intro, .tg-interpretation-text, .tg-submission-question) { font-size: .875rem !important; line-height: 1.8 !important; }
+html body.tg-polished-workspace :is(.tg-interpretation-header, .tg-interpretation-layout) { padding: 1.25rem; }
+html body.tg-polished-workspace .tg-evidence-question { background: var(--workspace-soft) !important; border-color: var(--workspace-line); }
+html body.tg-polished-workspace .tg-notice-heading { border-radius: 14px; box-shadow: var(--workspace-shadow); }
+html body.tg-polished-workspace :is(.tg-notice-card, .tg-public-article article, .tg-public-article section) { box-shadow: var(--workspace-shadow); border-color: var(--workspace-line); border-radius: 14px; }
+
+/* Settings: consistent with the account header and the new option list. */
+html body.tg-polished-workspace .truthguard-settings-page::before { display: none; }
+html body.tg-polished-workspace .truthguard-settings-modal-header { background: var(--workspace-surface) !important; }
+html body.tg-polished-workspace .truthguard-settings-modal-dialog { border: 1px solid var(--workspace-line); border-radius: 18px; box-shadow: 0 24px 80px rgb(0 0 0 / 22%); }
+html body.tg-polished-workspace .truthguard-settings-modal-tab { border-radius: 8px; box-shadow: none !important; font-weight: 550; }
+html body.tg-polished-workspace .truthguard-settings-modal-tab.is-active { background: var(--workspace-selected) !important; color: var(--workspace-accent) !important; border-color: var(--workspace-line) !important; }
+
+@media (min-width: 1024px) {
+    html body.tg-polished-workspace #news-watch .tg-fact-feed-row { grid-template-columns: minmax(11rem, 22%) minmax(0, 1fr) !important; }
+    html body.tg-polished-workspace .truthguard-mobile-page-title { display: none !important; }
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+    html body.tg-polished-workspace.truthguard-fact-check-create-route .truthguard-user-main { padding-bottom: .5rem !important; }
+    html body.tg-polished-workspace.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-hero { min-height: 0 !important; padding: .875rem 1.25rem !important; }
+    html body.tg-polished-workspace.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-workspace-title { font-size: 1.75rem !important; line-height: 1.15 !important; }
+    html body.tg-polished-workspace .truthguard-recent-section { padding: 0 !important; }
+}
+@media (max-width: 1023px) {
+    .tg-workspace-location { display: none; }
+    html body.tg-polished-workspace .truthguard-topbar { width: 100% !important; margin: 0 !important; top: 0 !important; border-width: 0 0 1px !important; }
+    html body.tg-polished-workspace .truthguard-topbar > div { min-height: 64px; padding: .625rem 1rem !important; gap: .625rem; }
+    html body.tg-polished-workspace .truthguard-mobile-page-title { display: block; color: var(--workspace-ink) !important; font-size: 1rem !important; font-weight: 600; letter-spacing: -.025em; }
+    html body.tg-polished-workspace .truthguard-mobile-top-logo { width: 36px; height: 36px; min-width: 36px; border: 0; background: transparent; box-shadow: none; }
+    html body.tg-polished-workspace .truthguard-mobile-top-logo img { width: 32px; height: 32px; }
+    html body.tg-polished-workspace .truthguard-mobile-tabbar {
+        left: max(.75rem, env(safe-area-inset-left)); right: max(.75rem, env(safe-area-inset-right));
+        bottom: max(.625rem, env(safe-area-inset-bottom)); width: auto !important; max-width: 560px;
+        height: auto !important; min-height: 64px; margin-inline: auto; padding: .375rem !important;
+        border: 1px solid var(--workspace-line) !important; border-radius: 18px !important;
+        background: var(--workspace-surface) !important; box-shadow: 0 6px 24px rgb(15 23 42 / 12%) !important;
+        display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .25rem !important;
+        overflow: visible; transform: none !important;
+    }
+    html body.tg-polished-workspace .truthguard-mobile-tab,
+    html body.tg-polished-workspace .truthguard-mobile-tab-primary {
+        min-width: 0; min-height: 52px; height: auto; padding: .25rem .125rem !important;
+        margin: 0 !important; border: 0 !important; border-radius: 11px !important;
+        background: transparent !important; color: var(--workspace-muted) !important;
+        box-shadow: none !important; transform: none !important; filter: none !important;
+        font-size: .625rem !important; font-weight: 500 !important; gap: .125rem;
+    }
+    html body.tg-polished-workspace .truthguard-mobile-tab::before,
+    html body.tg-polished-workspace .truthguard-mobile-tab::after { display: none !important; }
+    html body.tg-polished-workspace .truthguard-mobile-tab .truthguard-mobile-tab-icon {
+        width: 26px !important; height: 26px !important; min-height: 26px !important;
+        border: 0 !important; border-radius: 0 !important; color: inherit !important;
+        background: transparent !important; box-shadow: none !important; transform: none !important;
+    }
+    html body.tg-polished-workspace .truthguard-mobile-tab-icon svg { width: 21px !important; height: 21px !important; stroke-width: 1.8; filter: none !important; animation: none !important; }
+    html body.tg-polished-workspace .truthguard-mobile-tab.is-active { background: var(--workspace-selected) !important; color: var(--workspace-accent) !important; font-weight: 600 !important; }
+    html body.tg-polished-workspace .truthguard-mobile-tab span:last-child { font-size: inherit !important; }
+    html body.tg-polished-workspace .truthguard-user-main { padding: 1.25rem 1rem calc(6rem + env(safe-area-inset-bottom)) !important; }
+    html body.tg-polished-workspace.truthguard-fact-check-create-route .truthguard-user-main { padding-bottom: 0 !important; }
+    html body.tg-polished-workspace .truthguard-user-footer { padding-bottom: 6rem; }
+}
+@media (max-width: 639px) {
+    html body.tg-polished-workspace .tg-workspace-heading { gap: .875rem; margin-bottom: 1.25rem; align-items: flex-start; flex-wrap: wrap; }
+    html body.tg-polished-workspace .tg-workspace-heading h1 { font-size: 1.5rem !important; }
+    html body.tg-polished-workspace .tg-workspace-heading p { font-size: .8125rem !important; }
+    html body.tg-polished-workspace .tg-workspace-primary { min-height: 44px; font-size: .8125rem !important; padding: .5rem .75rem; }
+    html body.tg-polished-workspace #news-watch .tg-mobile-feed-head { padding: 1rem !important; }
+    html body.tg-polished-workspace #news-watch .tg-feed-heading h3 { font-size: 1.0625rem !important; }
+    html body.tg-polished-workspace #news-watch .tg-mobile-feed-list { padding-inline: 1rem !important; }
+    html body.tg-polished-workspace #news-watch .tg-fact-feed-row { padding-block: 1.125rem !important; gap: .875rem !important; }
+    html body.tg-polished-workspace #news-watch .tg-mobile-fact-copy h4 { font-size: 1rem !important; line-height: 1.55 !important; }
+    html body.tg-polished-workspace #news-watch .tg-mobile-fact-copy > p { font-size: .8125rem !important; }
+    html body.tg-polished-workspace #news-watch .tg-mobile-fact-labels { font-size: .625rem !important; }
+    html body.tg-polished-workspace .tg-history-card { padding: 1rem; }
+    html body.tg-polished-workspace .tg-history-title { font-size: .875rem !important; line-height: 1.55 !important; }
+    html body.tg-polished-workspace .tg-history-meta { font-size: .6875rem !important; }
+    html body.tg-polished-workspace .tg-inbox .tg-inbox-title-line h1 { font-size: 1.5rem !important; }
+    html body.tg-polished-workspace .truthguard-workspace-hero { padding: 1.125rem !important; border-radius: 14px !important; }
+    html body.tg-polished-workspace .truthguard-workspace-title { font-size: 1.5rem !important; }
+    html body.tg-polished-workspace .truthguard-workspace-intro > p { font-size: .8125rem !important; }
+    html body.tg-polished-workspace .truthguard-recent-heading h2 { font-size: .9375rem !important; }
+    html body.tg-polished-workspace .truthguard-recent-card .truthguard-recent-claim { font-size: .8125rem !important; line-height: 1.55 !important; font-weight: 600 !important; }
+    html body.tg-polished-workspace .truthguard-recent-card .truthguard-recent-meta { font-size: .625rem !important; line-height: 1.5 !important; font-weight: 500 !important; }
+    html body.tg-polished-workspace .truthguard-mobile-evidence-summary { background: var(--workspace-soft) !important; border: 1px solid var(--workspace-line) !important; box-shadow: none !important; border-radius: 7px; }
+    html body.tg-polished-workspace .truthguard-mobile-evidence-list,
+    html body.tg-polished-workspace .truthguard-mobile-evidence-list span { color: var(--workspace-muted) !important; font-size: .6875rem !important; }
+    html body.tg-polished-workspace .tg-report-title :is(h1, h2) { font-size: 1.375rem !important; }
+    html body.tg-polished-workspace .tg-verdict-explanation > p { font-size: .875rem !important; line-height: 1.8 !important; }
+    html body.tg-polished-workspace .tg-report-overview { gap: 1rem; }
+    html body.tg-polished-workspace .tg-ai-report :is(.tg-ai-hero, .tg-report-evidence) { padding: 1rem; }
+    html body.tg-polished-workspace .truthguard-settings-modal-dialog { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body.tg-polished-workspace :is(.tg-settings-option, .tg-workspace-primary, .menu-item) { transition: none; }
+}

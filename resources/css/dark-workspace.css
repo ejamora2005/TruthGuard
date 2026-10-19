@@ -16,26 +16,25 @@ html[data-tg-workspace].dark body :is(.from-white, [class*="from-white/"], .from
 
 /* Dashboard feed: these ID selectors deliberately outrank the light feed styles. */
 html[data-tg-workspace].dark #news-watch,
-html[data-tg-workspace].dark #news-watch :is(.tg-mobile-feed-head, .tg-feed-field, .tg-category-menu, .tg-feed-pagination-bar, .tg-feed-window) {
+html[data-tg-workspace].dark #news-watch :is(.tg-mobile-feed-head, .tg-feed-field, .tg-category-menu, .tg-feed-window) {
     background: var(--tg-night-surface) !important;
     border-color: var(--tg-night-line) !important;
     box-shadow: none !important;
     color: var(--tg-night-ink) !important;
 }
-html[data-tg-workspace].dark #news-watch :is(.tg-mobile-fact-media, .tg-feed-pagination-summary, .tg-feed-pagination-summary-icon, .tg-feed-window-icon, .tg-category-count, .tg-feed-window-live) {
+html[data-tg-workspace].dark #news-watch :is(.tg-mobile-fact-media, .tg-feed-window-icon, .tg-category-count, .tg-feed-window-live) {
     background: var(--tg-night-raised) !important;
     border-color: var(--tg-night-line) !important;
     color: var(--tg-night-muted) !important;
 }
 html[data-tg-workspace].dark #news-watch :is(.tg-feed-heading h3, .tg-category-copy strong, .tg-feed-window-copy strong) { color: var(--tg-night-ink) !important; }
-html[data-tg-workspace].dark #news-watch :is(.tg-feed-field-label, .tg-feed-window-copy > span, .tg-feed-pagination-summary, .tg-category-menu a) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark #news-watch :is(.tg-feed-field-label, .tg-feed-window-copy > span, .tg-category-menu a) { color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark #news-watch :is(.tg-category-menu a:hover, .tg-category-menu a[aria-current]) { background: #203858 !important; color: #bfdbfe !important; }
-html[data-tg-workspace].dark #news-watch :is(.tg-category-count, .tg-feed-pagination-summary strong) { color: #93c5fd !important; }
+html[data-tg-workspace].dark #news-watch .tg-category-count { color: #93c5fd !important; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-danger { background: #482537; color: #fda4af; border-color: #96566a; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-warning { background: #44301c; color: #fcd34d; border-color: #8c713c; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background: #123c35; color: #6ee7b7; border-color: #377864; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-neutral { background: #223047; color: #cbd5e1; border-color: #53647c; }
-html[data-tg-workspace].dark #news-watch :is(.tg-feed-pagination a, .tg-feed-pagination span) { border-color: var(--tg-night-line); }
 
 /* Composer and upload surfaces. Leave evidence images and source logos intact. */
 html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field, .truthguard-recent-section, .truthguard-recent-skeleton, .truthguard-capability-pill, .truthguard-uploader-dropzone, .truthguard-uploader-head, .truthguard-prompt-hint, .truthguard-composer-hint) {
@@ -68,11 +67,10 @@ html[data-tg-workspace].dark body .tg-ai-report .tg-interpretation-action { back
 html[data-tg-workspace].dark body .tg-ai-report .tg-verdict-help-popover::before { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body :is(.tg-image-preview, .tg-image-close) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; color: #93c5fd !important; }
 
-/* Activity inbox, notification details and linked article references. */
-html[data-tg-workspace].dark body :is(.truthguard-notifications-shell, .truthguard-notifications-hero, .truthguard-notifications-stat, .truthguard-notification-page-card, .tg-notice-heading, .tg-notice-icon) {
+/* Notification details and linked article references. The inbox owns its theme. */
+html[data-tg-workspace].dark body :is(.tg-notice-heading, .tg-notice-icon) {
     background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-ink) !important; box-shadow: none !important;
 }
-html[data-tg-workspace].dark body .truthguard-notifications-shell::before { opacity: .08; }
 html[data-tg-workspace].dark body .tg-notice { --notice-ink: var(--tg-night-ink); --notice-muted: var(--tg-night-muted); --notice-line: var(--tg-night-line); }
 html[data-tg-workspace].dark body .tg-public-article :is(section, article) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
 
@@ -107,7 +105,6 @@ html[data-tg-workspace].dark body .truthguard-settings-eyebrow { color: #93c5fd 
 html[data-tg-workspace].dark body .tg-source-popover-card { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body .tg-source-popover-card :is(p, span, strong, a) { color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark body .tg-source-popover-card .tg-source-popover-heading { color: var(--tg-night-ink) !important; }
-html[data-tg-workspace].dark #news-watch .tg-feed-page-button:not(.is-current) { color: var(--tg-night-muted); }
 html[data-tg-workspace].dark body .tg-public-meta dt { color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark body .truthguard-mobile-tab.is-active > span:last-child { color: #93c5fd !important; }
 html[data-tg-workspace].dark body .truthguard-mobile-tab-primary { background: var(--tg-night-surface) !important; }
@@ -122,3 +119,14 @@ html[data-tg-workspace].dark body .tg-read-result { background: var(--tg-night-r
 html[data-tg-workspace].dark body [role="switch"] > span.bg-white { background: #fff !important; }
 html[data-tg-workspace].dark body .truthguard-input-type { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body .truthguard-ai-disclaimer { color: var(--tg-night-muted) !important; }
+
+/* Progress is teleported to body, outside the page's normal card surfaces. */
+html[data-tg-workspace].dark body .truthguard-processing-blur { background: rgb(2 6 23 / 65%); }
+html[data-tg-workspace].dark body .truthguard-inline-progress { background: var(--tg-night-surface); border-color: var(--tg-night-line); box-shadow: 0 16px 48px rgb(0 0 0 / 35%); }
+html[data-tg-workspace].dark body :is(.truthguard-progress-label, .truthguard-verify-title) { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-verify-copy { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-progress-control { background: var(--tg-night-raised); color: var(--tg-night-ink); }
+html[data-tg-workspace].dark body .truthguard-progress-control:hover { background: #203858; color: #a6caff; }
+html[data-tg-workspace].dark body .truthguard-progress-restore { background: #203858; color: #a6caff; }
+html[data-tg-workspace].dark body :is(.truthguard-progress-control, .truthguard-progress-restore):focus-visible { outline-color: #93c5fd; }
+html[data-tg-workspace].dark body .truthguard-verify-progress { background: var(--tg-night-raised); }

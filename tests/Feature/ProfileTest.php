@@ -35,7 +35,8 @@ class ProfileTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Settings modules')
+            ->assertSee('Make TruthGuard yours')
+            ->assertSee('Open Notifications settings')
             ->assertSee('Notifications')
             ->assertSee('Enable TruthGuard Notifications')
             ->assertDontSee('@include(\'notifications.settings\')', false);

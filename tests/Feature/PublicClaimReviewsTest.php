@@ -28,7 +28,7 @@ class PublicClaimReviewsTest extends TestCase
     {
         $this->mockReviews();
         $this->get('/claim-reviews')->assertOk()->assertSee('Public evidence 1')
-            ->assertDontSee('Public evidence 15')->assertSee('Page 1 of 2')
+            ->assertDontSee('Public evidence 15')->assertSee('1 / 2')->assertSee('Go to page')
             ->assertSee(route('home').'#features')->assertSee(route('home').'#pricing')
             ->assertSee('Toggle menu')->assertSee('All rights reserved.');
         $this->get('/claim-reviews?page=2')->assertOk()->assertSee('Public evidence 15');

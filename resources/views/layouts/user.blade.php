@@ -95,7 +95,8 @@
             $rawPageTitle = trim($__env->yieldContent('page_title', ''));
             $rawBrowserTitle = trim($__env->yieldContent('title', ''));
             $truthGuardPageTitle = $formatTruthGuardPageTitle($rawPageTitle !== '' ? $rawPageTitle : $rawBrowserTitle, 'Workspace');
-            $mobileTopbarTitle = request()->routeIs('dashboard') ? 'TruthGuard' : trim((string) strip_tags($rawPageTitle !== '' ? $rawPageTitle : $rawBrowserTitle));
+            $workspacePageLabel = trim((string) strip_tags($rawPageTitle !== '' ? $rawPageTitle : $rawBrowserTitle)) ?: 'Workspace';
+            $mobileTopbarTitle = request()->routeIs('dashboard') ? 'TruthGuard' : $workspacePageLabel;
 
             if ($mobileTopbarTitle === '') {
                 $mobileTopbarTitle = 'Workspace';
@@ -272,6 +273,11 @@
                     inset 0 -1px 0 rgba(148, 163, 184, 0.08);
                 backdrop-filter: blur(14px) saturate(1.1);
                 transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, color 180ms ease;
+            }
+
+            .truthguard-mobile-mode-toggle .truthguard-mode-toggle {
+                width: 2.75rem;
+                height: 2.75rem;
             }
 
             .truthguard-top-icon::after {
@@ -772,7 +778,7 @@
     </head>
     <body
         @class([
-            'truthguard-user-app truthguard-animated-icons overflow-x-hidden bg-[var(--tg-body-bg)] text-gray-900',
+            'truthguard-user-app tg-polished-workspace overflow-x-hidden bg-[var(--tg-body-bg)] text-gray-900',
             'truthguard-fact-check-route' => $isDetectionPage,
             'truthguard-result-route' => request()->routeIs('detections.result'),
             'truthguard-fact-check-create-route' => $hideUserFooter,
@@ -915,7 +921,7 @@
                                     :class="sidebarExpanded ? 'justify-start' : 'lg:justify-center'"
                                 >
                                     <template x-if="sidebarExpanded || window.innerWidth < 1024">
-                                        <span>Menu</span>
+                                        <span>Workspace</span>
                                     </template>
                                     <template x-if="!sidebarExpanded && window.innerWidth >= 1024">
                                         <span class="inline-flex items-center justify-center">
@@ -1089,7 +1095,8 @@
                         @endif
 
                         <div class="min-w-0 flex-1">
-                            <h1 class="truthguard-mobile-page-title">{{ $mobileTopbarTitle }}</h1>
+                            <span class="truthguard-mobile-page-title">{{ $mobileTopbarTitle }}</span>
+                            <div class="tg-workspace-location" aria-label="Current page"><span>Workspace</span><span aria-hidden="true">/</span><strong>{{ $workspacePageLabel }}</strong></div>
                         </div>
 
                         <div class="hidden items-center gap-3 xl:flex">
@@ -1135,6 +1142,10 @@
                                     </svg>
                                 </a>
                             </div>
+                        </div>
+
+                        <div class="truthguard-mobile-mode-toggle flex shrink-0 lg:hidden">
+                            @include('layouts.partials.display-mode-toggle')
                         </div>
 
                         <div class="relative shrink-0" x-data="{ profileOpen: false }">

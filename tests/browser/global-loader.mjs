@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 
 const js = readFileSync('resources/js/global-loader.js', 'utf8');
 const css = readFileSync('resources/css/global-loader.css', 'utf8');
+const appearance = readFileSync('resources/views/layouts/partials/appearance-preferences.blade.php', 'utf8');
 const markup = readFileSync('resources/views/layouts/partials/app-splash.blade.php', 'utf8')
     .replace(/@once|@endonce/g, '').replace(/\{\{--[\s\S]*?--\}\}/g, '')
     .replace(/\{\{ asset\('[^']+'\) \}\}/g, '/logo.png');
@@ -17,7 +18,7 @@ const server = createServer((req, res) => {
     }
     const render = () => {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style><script>${js}</script></head><body>${markup}
+        res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">${appearance}<style>${css}</style><script>${js}</script></head><body>${markup}
             <main><h1>Usable page</h1><a id="next" href="/slow">Next</a><a id="hash" href="#section">Section</a>
             <a id="cancel" href="/slow" onclick="event.preventDefault()">Canceled</a>
             <form action="/slow"><input name="draft" aria-label="Draft"><button>Sign in</button></form><div id="section">Section</div></main>
@@ -159,13 +160,13 @@ try {
     await page.keyboard.press('Escape');
     await hidden();
 
-    // The restored white splash remains consistent across OS and app themes.
+    // System mode follows the OS on initial load and subsequent navigation.
     for (const colorScheme of ['light', 'dark']) {
         await page.emulateMedia({ colorScheme });
         await page.goto(base + '/hold');
         await visible();
         assert.equal(await page.locator('html').getAttribute('data-tg-loader-initial'), '');
-        assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(248, 251, 255)');
+        assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), colorScheme === 'dark' ? 'rgb(15, 23, 42)' : 'rgb(248, 251, 255)');
         await page.evaluate(() => ends.pop()());
         await hidden();
         await page.evaluate(() => TruthGuardLoader.begin({ immediate: true }));
@@ -176,11 +177,22 @@ try {
         await hidden();
     }
     await page.emulateMedia({ colorScheme: 'light' });
-    await page.evaluate(() => { document.documentElement.classList.add('dark'); TruthGuardLoader.begin({ immediate: true }); });
-    assert.equal(await page.locator('.tg-loader-status').evaluate(el => getComputedStyle(el).color), 'rgb(100, 116, 139)');
+    await page.evaluate(() => { TruthGuardAppearance.set({ mode: 'dark' }); TruthGuardLoader.begin({ immediate: true }); });
+    assert.equal(await page.locator('.tg-loader-status').evaluate(el => getComputedStyle(el).color), 'rgb(187, 200, 218)');
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(15, 23, 42)');
     await page.keyboard.press('Escape');
     await hidden();
-    await page.evaluate(() => document.documentElement.classList.remove('dark'));
+    await page.goto(base + '/hold');
+    await visible();
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(15, 23, 42)');
+    await page.evaluate(() => ends.pop()());
+    await hidden();
+    // An explicit light choice wins over a dark OS preference.
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.evaluate(() => { TruthGuardAppearance.set({ mode: 'light' }); TruthGuardLoader.begin({ immediate: true }); });
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(248, 251, 255)');
+    await page.keyboard.press('Escape');
+    await hidden();
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.evaluate(() => TruthGuardLoader.begin({ immediate: true }));
     assert.equal(await page.locator('.tg-loader-ring').evaluate(el => getComputedStyle(el).animationName), 'none');

@@ -1,0 +1,88 @@
+/* One compact pager for history, dashboard reviews, and public reviews. */
+.tg-pagination {
+    --tg-page-line: #e2e8f0;
+    --tg-page-surface: #fff;
+    --tg-page-muted: #64748b;
+    --tg-page-active: #eff6ff;
+    --tg-page-ink: #1d4ed8;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--tg-page-line);
+}
+.tg-pagination .tg-pagination-count {
+    margin: 0;
+    color: var(--tg-page-muted);
+    font-size: 12px !important;
+    line-height: 18px !important;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.tg-pagination .tg-pagination-count > span { font-size: inherit !important; }
+.tg-pagination-controls {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+    padding: 2px;
+    border: 1px solid var(--tg-page-line);
+    border-radius: 999px;
+    background: var(--tg-page-surface);
+}
+.tg-pagination .tg-pagination-arrow {
+    display: inline-flex;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--tg-page-muted);
+}
+.tg-pagination a.tg-pagination-arrow:hover {
+    background: var(--tg-page-active);
+    color: var(--tg-page-ink);
+}
+.tg-pagination-arrow[aria-disabled="true"] { opacity: .4; }
+.tg-pagination svg { width: 16px; height: 16px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.tg-pagination-picker { position: relative; display: flex; margin: 0; }
+.tg-pagination .tg-pagination-select {
+    appearance: none;
+    height: 36px;
+    min-width: 76px;
+    max-width: 140px;
+    margin: 0;
+    padding: 0 26px 0 12px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--tg-page-active);
+    color: var(--tg-page-ink);
+    font-size: 12px !important;
+    font-weight: 600;
+    line-height: 18px !important;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+.tg-pagination-picker > svg { position: absolute; right: 7px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; color: var(--tg-page-ink); pointer-events: none; }
+.tg-pagination :is(a, select):focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+html.dark .tg-pagination {
+    --tg-page-line: #3b4c65;
+    --tg-page-surface: #182235;
+    --tg-page-muted: #b8c5d6;
+    --tg-page-active: #203858;
+    --tg-page-ink: #bfdbfe;
+}
+html[data-tg-workspace].dark body .tg-pagination .tg-pagination-picker .tg-pagination-select {
+    background: var(--tg-page-active) !important;
+    color: var(--tg-page-ink) !important;
+}
+@media (max-width: 640px) {
+    .tg-pagination { padding: 8px 12px; }
+    .tg-pagination .tg-pagination-arrow { flex-basis: 44px; width: 44px; height: 44px; min-height: 44px; }
+    .tg-pagination .tg-pagination-select { height: 44px; }
+}

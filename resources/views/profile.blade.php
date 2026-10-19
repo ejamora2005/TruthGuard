@@ -25,14 +25,6 @@
     $emailVerified = filled($user?->email_verified_at);
     $createdDate = $user?->created_at?->format('M j, Y') ?? 'Not recorded';
     $lastLogin = $user?->last_login_at?->format('M j, Y g:i A') ?? 'Not recorded';
-    $completionItems = [
-        filled($user?->name),
-        filled($user?->email),
-        filled($user?->username),
-        filled($user?->email_verified_at),
-        ! (bool) ($user?->uses_starter_profile_avatar ?? true),
-    ];
-    $profileCompletion = (int) round((collect($completionItems)->filter()->count() / count($completionItems)) * 100);
     $validSections = ['personal', 'photo', 'appearance', 'security', 'notifications', 'account'];
     $requestedSection = (string) request()->query('section', 'personal');
     $initialSection = in_array($requestedSection, $validSections, true) ? $requestedSection : 'personal';
@@ -109,7 +101,6 @@
             profileEmail: @js((string) ($user?->email ?? '')),
             profileAvatarUrl: @js($profileAvatarUrl),
             profileThemeKey: @js($themeKey),
-            profileCompletion: @js($profileCompletion),
             sectionQuery: '',
             returnFocus: null,
             sections: @js(collect($settingsSections)->mapWithKeys(fn ($section) => [$section['id'] => [
@@ -262,166 +253,6 @@
                 pointer-events: none;
             }
 
-            .truthguard-settings-hero {
-                position: relative;
-                isolation: isolate;
-                border-color: rgba(147, 197, 253, 0.78) !important;
-                background:
-                    radial-gradient(circle at 82% 8%, rgba(56, 189, 248, 0.18), transparent 26%),
-                    radial-gradient(circle at 12% 92%, rgba(37, 99, 235, 0.12), transparent 30%),
-                    linear-gradient(135deg, #ffffff 0%, #f8fbff 48%, var(--tg-settings-soft) 100%) !important;
-                color: var(--tg-settings-ink);
-                box-shadow: 0 24px 58px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
-                backdrop-filter: none !important;
-            }
-
-            .truthguard-settings-hero::before {
-                content: '';
-                position: absolute;
-                inset: 0;
-                z-index: -1;
-                background-image:
-                    linear-gradient(rgba(37, 99, 235, 0.055) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(37, 99, 235, 0.055) 1px, transparent 1px);
-                background-size: 28px 28px;
-                mask-image: linear-gradient(90deg, rgb(255, 255, 255), transparent 92%);
-                -webkit-mask-image: linear-gradient(90deg, rgb(255, 255, 255), transparent 92%);
-                pointer-events: none;
-            }
-
-            .truthguard-settings-hero::after {
-                content: '';
-                position: absolute;
-                top: -5rem;
-                right: 12%;
-                z-index: -1;
-                width: 15rem;
-                height: 15rem;
-                border: 1px solid rgba(147, 197, 253, 0.42);
-                border-radius: 9999px;
-                box-shadow: 0 0 0 2.4rem rgba(219, 234, 254, 0.28), 0 0 0 5rem rgba(239, 246, 255, 0.55);
-                pointer-events: none;
-            }
-
-            .truthguard-settings-eyebrow {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.55rem;
-                border: 1px solid rgba(147, 197, 253, 0.82);
-                border-radius: 9999px;
-                background: rgba(239, 246, 255, 0.86);
-                padding: 0.42rem 0.75rem;
-                color: var(--tg-settings-blue-600);
-                font-size: 0.69rem;
-                font-weight: 800;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
-            }
-
-            .truthguard-settings-eyebrow > span:first-child {
-                width: 0.45rem;
-                height: 0.45rem;
-                border-radius: 9999px;
-                background: #22d3ee;
-                box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12), 0 0 16px rgba(34, 211, 238, 0.65);
-            }
-
-            .truthguard-settings-avatar-shell {
-                position: relative;
-                display: grid;
-                width: 5.5rem;
-                height: 5.5rem;
-                flex: 0 0 5.5rem;
-                place-items: center;
-                border: 1px solid rgba(147, 197, 253, 0.78);
-                border-radius: 1.65rem;
-                background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(219, 234, 254, 0.7));
-                box-shadow: 0 18px 42px rgba(37, 99, 235, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.94);
-            }
-
-            .truthguard-settings-avatar-shell img {
-                width: 4.55rem !important;
-                height: 4.55rem !important;
-                border-radius: 1.25rem !important;
-                box-shadow: none !important;
-                --tw-ring-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92) !important;
-            }
-
-            .truthguard-settings-avatar-shell .truthguard-settings-presence {
-                position: absolute;
-                right: -0.15rem;
-                bottom: -0.15rem;
-                width: 1.2rem;
-                height: 1.2rem;
-                border: 4px solid #ffffff;
-                border-radius: 9999px;
-                background: #34d399;
-                box-shadow: 0 0 16px rgba(52, 211, 153, 0.6);
-            }
-
-            .truthguard-settings-hero h1 {
-                color: var(--tg-settings-ink) !important;
-                font-size: clamp(2rem, 3vw, 3rem) !important;
-                letter-spacing: 0 !important;
-                line-height: 1.02;
-            }
-
-            .truthguard-settings-hero-copy {
-                color: #64748b !important;
-            }
-
-            .truthguard-settings-status-chip {
-                display: inline-flex;
-                align-items: center;
-                gap: 0.4rem;
-                border: 1px solid rgba(191, 219, 254, 0.82) !important;
-                border-radius: 9999px;
-                background: rgba(255, 255, 255, 0.88) !important;
-                padding: 0.42rem 0.72rem;
-                color: #475569 !important;
-                font-size: 0.7rem;
-                font-weight: 750;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
-            }
-
-            .truthguard-settings-status-chip.is-success {
-                border-color: rgba(52, 211, 153, 0.34) !important;
-                background: rgba(236, 253, 245, 0.92) !important;
-                color: #047857 !important;
-            }
-
-            .truthguard-settings-hero-summary {
-                border-color: rgba(191, 219, 254, 0.86) !important;
-                background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.84)) !important;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 22px 50px rgba(37, 99, 235, 0.1) !important;
-                backdrop-filter: blur(18px) !important;
-            }
-
-            .truthguard-settings-readiness-ring {
-                --completion: 0;
-                display: grid;
-                width: 5.25rem;
-                height: 5.25rem;
-                flex: 0 0 5.25rem;
-                place-items: center;
-                border-radius: 9999px;
-                background: conic-gradient(var(--tg-settings-blue) calc(var(--completion) * 1%), rgba(191, 219, 254, 0.8) 0);
-                box-shadow: 0 0 32px rgba(34, 211, 238, 0.12);
-            }
-
-            .truthguard-settings-readiness-ring > span {
-                display: grid;
-                width: 4.25rem;
-                height: 4.25rem;
-                place-items: center;
-                border-radius: inherit;
-                background: #ffffff;
-                color: var(--tg-settings-blue-600);
-                font-size: 1.2rem;
-                font-weight: 900;
-            }
-
             .truthguard-settings-save-button {
                 border: 1px solid rgba(255, 255, 255, 0.18);
                 background: linear-gradient(135deg, #38bdf8, #2563eb 58%, #4f46e5) !important;
@@ -434,33 +265,6 @@
                 background: #e0f2fe !important;
                 color: #64748b !important;
                 box-shadow: none !important;
-            }
-
-            .truthguard-settings-metrics > div {
-                position: relative;
-                overflow: hidden;
-                border-color: rgba(191, 219, 254, 0.74) !important;
-                background: rgba(255, 255, 255, 0.82) !important;
-                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
-            }
-
-            .truthguard-settings-metrics > div::after {
-                content: '';
-                position: absolute;
-                top: 0;
-                right: 0;
-                width: 3rem;
-                height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.055));
-                pointer-events: none;
-            }
-
-            .truthguard-settings-metrics p:first-child {
-                color: #64748b !important;
-            }
-
-            .truthguard-settings-metrics p:last-child {
-                color: var(--tg-settings-ink) !important;
             }
 
             .truthguard-settings-rail,
@@ -769,55 +573,9 @@
                 min-height: 0 !important;
             }
 
-            @media (max-width: 1023px) {
-                .truthguard-settings-hero-summary {
-                    width: 100% !important;
-                }
-            }
-
             @media (max-width: 640px) {
                 .truthguard-settings-page::before {
                     display: none;
-                }
-
-                .truthguard-settings-hero {
-                    padding: 1rem !important;
-                }
-
-                .truthguard-settings-avatar-shell {
-                    width: 4.2rem;
-                    height: 4.2rem;
-                    flex-basis: 4.2rem;
-                    border-radius: 1.2rem;
-                }
-
-                .truthguard-settings-avatar-shell img {
-                    width: 3.45rem !important;
-                    height: 3.45rem !important;
-                    border-radius: 0.9rem !important;
-                }
-
-                .truthguard-settings-hero h1 {
-                    font-size: 1.35rem !important;
-                }
-
-                .truthguard-settings-eyebrow > span:nth-child(n+3) {
-                    display: none;
-                }
-
-                .truthguard-settings-eyebrow > span:nth-child(2) {
-                    white-space: nowrap;
-                }
-
-                .truthguard-settings-hero-copy,
-                .truthguard-settings-hero-summary,
-                .truthguard-settings-metrics {
-                    display: none !important;
-                }
-
-                .truthguard-settings-status-chip {
-                    padding: 0.35rem 0.55rem;
-                    font-size: 0.62rem;
                 }
 
                 .truthguard-settings-panel > [x-show] {
@@ -933,7 +691,6 @@
                     padding-left: 0.75rem;
                 }
 
-                .truthguard-settings-hero,
                 .truthguard-settings-overview,
                 .truthguard-settings-launch-card {
                     width: 100%;
@@ -1312,144 +1069,46 @@
             }
         </style>
 
-        <section class="truthguard-settings-hero overflow-hidden rounded-[28px] border px-5 py-5 sm:px-6 sm:py-6">
-            <div class="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-                <div class="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
-                    <div class="truthguard-settings-avatar-shell">
-                        <img
-                            src="{{ $profileAvatarUrl }}"
-                            alt="Profile avatar"
-                            x-bind:src="profileAvatarUrl"
-                            class="object-cover ring-2 ring-white/20"
-                        >
-                        <span class="truthguard-settings-presence" aria-label="Account active"></span>
-                    </div>
+        @include('profile.partials.account-header')
 
-                    <div class="min-w-0">
-                        <div class="truthguard-settings-eyebrow">
-                            <span aria-hidden="true"></span>
-                            <span>TruthGuard</span>
-                            <span class="text-slate-500">/</span>
-                            <span>System preferences</span>
-                        </div>
-                        <h1 class="mt-4 font-black">Settings control center</h1>
-                        <p class="truthguard-settings-hero-copy mt-2 max-w-2xl text-sm leading-6 sm:text-base">
-                            One secure workspace for your identity, interface, privacy, and account protection.
-                        </p>
-
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <span class="truthguard-settings-status-chip is-success">
-                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>{{ $statusLabel }}
-                            </span>
-                            <span class="truthguard-settings-status-chip">{{ $roleLabel }} access</span>
-                            <span @class(['truthguard-settings-status-chip', 'is-success' => $emailVerified])>
-                                {{ $emailVerified ? 'Identity verified' : 'Verification pending' }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="truthguard-settings-hero-summary w-full rounded-[24px] border p-4 xl:w-[390px]">
-                    <div class="flex items-center gap-4">
-                        <div class="truthguard-settings-readiness-ring" style="--completion: {{ $profileCompletion }}">
-                            <span>{{ $profileCompletion }}%</span>
-                        </div>
-
-                        <div class="min-w-0 flex-1">
-                            <p class="text-[11px] font-bold uppercase tracking-[0.16em] text-blue-600/70">Profile health</p>
-                            <p class="mt-1 text-base font-black text-slate-700">Workspace ready</p>
-                            <p class="mt-1 text-xs leading-5 text-slate-500">Complete your identity for stronger account recovery.</p>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 flex items-center justify-between gap-3 border-t border-blue-100 pt-4">
-                        <div class="min-w-0">
-                            <p class="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-500">Quick setup</p>
-                            <p class="mt-1 truncate text-sm font-bold text-slate-700">Review your identity profile</p>
-                        </div>
-                        <button
-                            type="button"
-                            @click="openSettings('personal')"
-                            class="truthguard-settings-save-button inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-sky-400/20 disabled:cursor-not-allowed disabled:transform-none"
-                        >
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12.75 10.5 18 19 6"></path>
-                            </svg>
-                            Open profile
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="truthguard-settings-metrics mt-5 grid gap-3 sm:grid-cols-3">
-                <div class="rounded-xl border px-4 py-3">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.15em]">Interface profile</p>
-                    <p class="mt-1.5 truncate text-sm font-bold">{{ $themeLabels[$themeKey] }}</p>
-                </div>
-                <div class="rounded-xl border px-4 py-3">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.15em]">Member since</p>
-                    <p class="mt-1.5 truncate text-sm font-bold">{{ $createdDate }}</p>
-                </div>
-                <div class="rounded-xl border px-4 py-3">
-                    <p class="text-[10px] font-bold uppercase tracking-[0.15em]">Last secure access</p>
-                    <p class="mt-1.5 truncate text-sm font-bold">{{ $lastLogin }}</p>
-                </div>
-            </div>
-        </section>
-
-        <section class="truthguard-settings-overview">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <section class="tg-settings-overview">
+            <div class="tg-settings-section-heading">
                 <div>
-                    <p class="text-[11px] font-black uppercase tracking-[0.16em] text-blue-600">Settings modules</p>
-                    <h2 class="mt-1 text-xl font-black tracking-tight text-slate-800 sm:text-2xl">Choose what you want to manage</h2>
-                    <p class="mt-1 text-sm text-slate-500">Changes open in a focused window, keeping the main settings page clean.</p>
+                    <h2>Make TruthGuard yours</h2>
+                    <p>Manage your profile, reading preferences, and privacy.</p>
                 </div>
-                <span class="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
-                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                    {{ count($settingsSections) }} modules available
-                </span>
             </div>
 
-            <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div class="tg-settings-options">
                 @foreach ($settingsSections as $section)
                     @php
-                        $overview = match ($section['id']) {
-                            'personal' => ['value' => $fullName, 'meta' => (string) ($user?->email ?? ''), 'tone' => 'bg-blue-50 text-blue-700 ring-blue-100'],
-                            'photo' => ['value' => (bool) ($user?->uses_starter_profile_avatar ?? true) ? 'Starter avatar' : 'Custom photo', 'meta' => 'Profile image and preview', 'tone' => 'bg-cyan-50 text-cyan-700 ring-cyan-100'],
-                            'appearance' => ['value' => $themeLabels[$themeKey], 'meta' => 'Current interface theme', 'tone' => 'bg-violet-50 text-violet-700 ring-violet-100'],
-                            'security' => ['value' => 'Password protected', 'meta' => 'Last access '.$lastLogin, 'tone' => 'bg-emerald-50 text-emerald-700 ring-emerald-100'],
-                            'notifications' => ['value' => 'Push alerts', 'meta' => 'Device and category controls', 'tone' => 'bg-sky-50 text-sky-700 ring-sky-100'],
-                            default => ['value' => $statusLabel.' account', 'meta' => 'Member since '.$createdDate, 'tone' => 'bg-amber-50 text-amber-700 ring-amber-100'],
+                        $overviewValue = match ($section['id']) {
+                            'personal' => $fullName,
+                            'photo' => (bool) ($user?->uses_starter_profile_avatar ?? true) ? 'Starter avatar' : 'Custom photo',
+                            'appearance' => $themeLabels[$themeKey],
+                            'security' => 'Password and sign-in',
+                            'notifications' => 'Push alerts',
+                            default => $statusLabel.' account',
                         };
                     @endphp
 
                     <button
                         type="button"
                         @click="openSettings('{{ $section['id'] }}')"
-                        class="truthguard-settings-launch-card group flex flex-col"
+                        class="tg-settings-option group"
                         aria-label="Open {{ $section['label'] }} settings"
                     >
-                        <span class="flex items-start justify-between gap-3">
-                            <span class="inline-flex h-11 w-11 items-center justify-center rounded-2xl {{ $overview['tone'] }} ring-1">
+                            <span class="tg-settings-option-icon">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="{{ $section['icon'] }}"></path>
                                 </svg>
                             </span>
-                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{{ $section['status'] }}</span>
+                        <span class="tg-settings-option-copy">
+                            <strong>{{ $section['label'] }}</strong>
+                            <span>{{ $section['description'] }}</span>
+                            <span class="tg-settings-option-value" @if ($section['id'] === 'personal') x-text="profileName" @endif>{{ $overviewValue }}</span>
                         </span>
-
-                        <span class="mt-4 block text-base font-black text-slate-800">{{ $section['label'] }}</span>
-                        <span class="mt-1 block text-xs leading-5 text-slate-500">{{ $section['description'] }}</span>
-
-                        <span class="mt-auto block pt-4">
-                            <span class="block truncate text-xs font-bold text-slate-800">{{ $overview['value'] }}</span>
-                            <span class="mt-1 flex items-center justify-between gap-2 text-[11px] text-slate-400">
-                                <span class="truncate">{{ $overview['meta'] }}</span>
-                                <svg class="h-4 w-4 shrink-0 text-blue-600 transition group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"></path>
-                                </svg>
-                            </span>
-                        </span>
+                        <svg class="tg-settings-option-arrow" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></svg>
                     </button>
                 @endforeach
             </div>

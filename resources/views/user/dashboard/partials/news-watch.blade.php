@@ -85,9 +85,6 @@
     $feedItems = $allFeedItems->forPage($feedCurrentPage, $feedPerPage)->values();
     $feedFirstItem = $feedTotal > 0 ? (($feedCurrentPage - 1) * $feedPerPage) + 1 : 0;
     $feedLastItem = $feedTotal > 0 ? min($feedFirstItem + $feedItems->count() - 1, $feedTotal) : 0;
-    $feedPageNumbers = collect(range(1, $feedTotalPages))
-        ->filter(fn (int $page): bool => $page === 1 || $page === $feedTotalPages || abs($page - $feedCurrentPage) <= 1)
-        ->values();
     $feedRoute = $reviewListRoute ?? 'dashboard';
     $feedFilterUrl = function (array $overrides = []) use ($feedRoute, $feedPageName, $feedSearchParameter, $feedCategoryParameter): string {
         $query = array_merge(request()->query(), $overrides);
@@ -384,120 +381,6 @@
             display: none;
         }
 
-        #news-watch .tg-feed-pagination-bar {
-            border-top: 1px solid rgba(203, 213, 225, 0.78);
-            background:
-                radial-gradient(circle at 92% 0%, rgba(219, 234, 254, 0.7), transparent 34%),
-                linear-gradient(180deg, #ffffff, #f8fafc);
-            padding: 1rem 1.25rem;
-        }
-
-        #news-watch .tg-feed-pagination-summary {
-            display: flex;
-            min-width: 0;
-            align-items: center;
-            gap: 0.7rem;
-            color: #64748b;
-            font-size: 0.75rem;
-            font-weight: 650;
-        }
-
-        #news-watch .tg-feed-pagination-summary-icon {
-            display: inline-flex;
-            width: 2rem;
-            height: 2rem;
-            flex: 0 0 2rem;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #dbeafe;
-            border-radius: 0.65rem;
-            background: #eff6ff;
-            color: #2563eb;
-        }
-
-        #news-watch .tg-feed-pagination-summary strong {
-            color: #0f172a;
-            font-weight: 900;
-        }
-
-        #news-watch .tg-feed-page-status {
-            display: inline-flex;
-            flex: 0 0 auto;
-            align-items: center;
-            border: 1px solid #e2e8f0;
-            border-radius: 9999px;
-            background: #fff;
-            padding: 0.32rem 0.6rem;
-            color: #475569;
-            font-size: 0.68rem;
-            font-weight: 800;
-            box-shadow: 0 5px 14px rgba(15, 23, 42, 0.045);
-        }
-
-        #news-watch .tg-feed-pagination {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            border: 1px solid #dbe3ee;
-            border-radius: 0.95rem;
-            background: rgba(255, 255, 255, 0.92);
-            padding: 0.3rem;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07), inset 0 1px 0 #fff;
-        }
-
-        #news-watch .tg-feed-page-button {
-            display: inline-flex;
-            min-width: 2.35rem;
-            height: 2.35rem;
-            align-items: center;
-            justify-content: center;
-            gap: 0.35rem;
-            border: 1px solid transparent;
-            border-radius: 0.7rem;
-            background: transparent;
-            padding: 0 0.65rem;
-            color: #475569;
-            font-size: 0.75rem;
-            font-weight: 850;
-            line-height: 1;
-            transition: transform 180ms ease, border-color 180ms ease, background-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
-        }
-
-        #news-watch a.tg-feed-page-button:hover {
-            transform: translateY(-1px);
-            border-color: #bfdbfe;
-            background: #eff6ff;
-            color: #1d4ed8;
-            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.1);
-        }
-
-        #news-watch .tg-feed-page-button.is-current {
-            border-color: #2563eb;
-            background: linear-gradient(135deg, #2563eb, #4f46e5);
-            color: #fff;
-            box-shadow: 0 9px 20px rgba(37, 99, 235, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-        }
-
-        #news-watch .tg-feed-page-button.is-disabled {
-            color: #cbd5e1;
-            cursor: not-allowed;
-        }
-
-        #news-watch .tg-feed-page-edge {
-            min-width: auto;
-        }
-
-        #news-watch .tg-feed-page-ellipsis {
-            display: inline-flex;
-            min-width: 1.5rem;
-            height: 2.35rem;
-            align-items: center;
-            justify-content: center;
-            color: #94a3b8;
-            font-size: 0.8rem;
-            font-weight: 900;
-        }
-
         @media (max-width: 640px) {
             #news-watch .tg-feed-monitor-title-row {
                 flex: 1 1 100%;
@@ -550,40 +433,6 @@
                 white-space: nowrap;
             }
 
-            #news-watch .tg-feed-pagination-bar {
-                padding: 0.75rem;
-            }
-
-            #news-watch .tg-feed-pagination-summary {
-                width: 100%;
-                font-size: 0.68rem;
-            }
-
-            #news-watch .tg-feed-pagination {
-                width: 100%;
-                max-width: 100%;
-                justify-content: flex-start;
-                overflow-x: auto;
-                scrollbar-width: none;
-            }
-
-            #news-watch .tg-feed-pagination::-webkit-scrollbar {
-                display: none;
-            }
-
-            #news-watch .tg-feed-page-button {
-                flex: 0 0 auto;
-            }
-
-            #news-watch .tg-feed-page-edge span {
-                position: absolute;
-                width: 1px;
-                height: 1px;
-                margin: -1px;
-                overflow: hidden;
-                clip: rect(0, 0, 0, 0);
-                white-space: nowrap;
-            }
         }
         #news-watch { border-radius: 12px; box-shadow: 0 4px 20px rgb(15 23 42 / 0.035); }
         #news-watch .tg-mobile-feed-head { background: #fff; }
@@ -724,7 +573,8 @@
 
         @media (min-width: 768px) {
             #news-watch .tg-feed-search {
-                grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr);
+                grid-template-columns: minmax(14rem, 16rem) minmax(0, 26rem);
+                justify-content: start;
             }
         }
 
@@ -1130,78 +980,15 @@
             @endforeach
         </div>
 
-        <div class="tg-feed-pagination-bar">
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div class="tg-feed-pagination-summary">
-                    <span class="tg-feed-pagination-summary-icon" aria-hidden="true">
-                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 4.5h10.5A2.25 2.25 0 0 1 19.5 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H6.75a2.25 2.25 0 0 1-2.25-2.25V6.75A2.25 2.25 0 0 1 6.75 4.5Z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9h7.5M8.25 12h7.5M8.25 15h4.5"></path>
-                        </svg>
-                    </span>
-                    <span class="min-w-0">
-                        Showing <strong>{{ $feedFirstItem }}–{{ $feedLastItem }}</strong> of <strong>{{ $feedTotal }}</strong>
-                        {{ $feedLookbackDays > 0 ? 'verified reviews' : 'latest reviews' }}
-                    </span>
-                    <span class="tg-feed-page-status">Page {{ $feedCurrentPage }} of {{ $feedTotalPages }}</span>
-                </div>
-
-                @if ($feedTotalPages > 1)
-                    <nav class="tg-feed-pagination" aria-label="Latest fact-check pagination">
-                        @if ($feedCurrentPage > 1)
-                            <a href="{{ $feedPageUrl($feedCurrentPage - 1) }}" class="tg-feed-page-button tg-feed-page-edge" rel="prev" aria-label="Previous page">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m15 6-6 6 6 6"></path>
-                                </svg>
-                                <span>Previous</span>
-                            </a>
-                        @else
-                            <span class="tg-feed-page-button tg-feed-page-edge is-disabled" aria-disabled="true">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m15 6-6 6 6 6"></path>
-                                </svg>
-                                <span>Previous</span>
-                            </span>
-                        @endif
-
-                        @php $previousFeedPage = null; @endphp
-                        @foreach ($feedPageNumbers as $pageNumber)
-                            @if ($previousFeedPage !== null && $pageNumber - $previousFeedPage > 1)
-                                <span class="tg-feed-page-ellipsis" aria-hidden="true">•••</span>
-                            @endif
-
-                            @if ($pageNumber === $feedCurrentPage)
-                                <span class="tg-feed-page-button is-current" aria-current="page" aria-label="Page {{ $pageNumber }}, current page">
-                                    {{ $pageNumber }}
-                                </span>
-                            @else
-                                <a href="{{ $feedPageUrl($pageNumber) }}" class="tg-feed-page-button" aria-label="Go to page {{ $pageNumber }}">
-                                    {{ $pageNumber }}
-                                </a>
-                            @endif
-
-                            @php $previousFeedPage = $pageNumber; @endphp
-                        @endforeach
-
-                        @if ($feedCurrentPage < $feedTotalPages)
-                            <a href="{{ $feedPageUrl($feedCurrentPage + 1) }}" class="tg-feed-page-button tg-feed-page-edge" rel="next" aria-label="Next page">
-                                <span>Next</span>
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"></path>
-                                </svg>
-                            </a>
-                        @else
-                            <span class="tg-feed-page-button tg-feed-page-edge is-disabled" aria-disabled="true">
-                                <span>Next</span>
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6"></path>
-                                </svg>
-                            </span>
-                        @endif
-                    </nav>
-                @endif
-            </div>
-        </div>
+        <x-pagination
+            :current-page="$feedCurrentPage"
+            :last-page="$feedTotalPages"
+            :total="$feedTotal"
+            :first-item="$feedFirstItem"
+            :last-item="$feedLastItem"
+            :page-url="$feedPageUrl"
+            label="Latest fact-check pages"
+        />
     @else
         <div class="m-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center sm:m-6">
             @if ($feedSearch !== '' || $feedCategory !== 'all')

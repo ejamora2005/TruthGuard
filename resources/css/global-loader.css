@@ -55,6 +55,25 @@ html.tg-loading { background-color: #f8fbff; }
     background: linear-gradient(90deg, #2563eb, #14b8a6);
     animation: tg-loader-progress 1400ms ease-in-out infinite;
 }
+/* The appearance preference is applied in the head before the first paint. */
+html.dark.tg-loading { background-color: #0f172a; }
+html.dark .tg-loader {
+    color: #f1f5f9;
+    background:
+        linear-gradient(90deg, #93c5fd0a 1px, transparent 1px),
+        linear-gradient(#93c5fd0a 1px, transparent 1px), #0f172a;
+    background-size: 34px 34px, 34px 34px, auto;
+}
+html.dark .tg-loader-status { color: #bbc8da; }
+html.dark .tg-loader-ring {
+    border-color: #3b4b63;
+    background: conic-gradient(from 0deg, #60a5fa00, #60a5fafa, #22d3eeeb, #22d3ee94, #60a5fa00), #182235;
+    box-shadow: 0 26px 70px #2563eb24, 0 0 0 12px #18223580, inset 0 1px 0 #3b4b63;
+}
+html.dark .tg-loader-ring::before { background: #0f172a; }
+html.dark .tg-loader-ring::after { border-color: #3b4b63; background: #182235; }
+html.dark .tg-loader-progress { background: #223047; }
+html.dark .tg-loader-progress span { background: linear-gradient(90deg, #60a5fa, #2dd4bf); }
 .tg-blinking .tg-loader-logo { animation: none; }
 .tg-blinking .tg-loader-ring, .tg-blinking .tg-loader-progress span,
 .tg-fading .tg-loader-ring, .tg-fading .tg-loader-logo, .tg-fading .tg-loader-progress span,
