@@ -3,7 +3,6 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
-use App\Services\Detections\ActiveDetectionManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,8 +11,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class SessionTimeoutManager
 {
-    public function __construct(private readonly ActiveDetectionManager $activeDetections) {}
-
     public const LAST_ACTIVITY_KEY = 'auth_last_activity_at';
 
     public const EXPIRED_MESSAGE = 'Your session expired due to inactivity. Please sign in again.';
@@ -101,10 +98,6 @@ class SessionTimeoutManager
 
     public function logoutAndInvalidate(Request $request): void
     {
-        if ($request->user()) {
-            $this->activeDetections->cancelForUser($request->user()->id, 'session_expired');
-        }
-
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

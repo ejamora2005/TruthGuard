@@ -87,7 +87,7 @@ class PendingReportJsonTest extends TestCase
         $this->assertNotSame($older->id, $latest->id);
     }
 
-    public function test_logout_stops_only_the_signed_in_users_unfinished_assessments(): void
+    public function test_logout_leaves_unfinished_assessments_running_for_the_worker(): void
     {
         $user = User::factory()->create();
         $other = User::factory()->create();
@@ -100,12 +100,10 @@ class PendingReportJsonTest extends TestCase
 
         $this->actingAs($user)->post(route('logout'))->assertRedirect(route('login', absolute: false));
 
-        foreach ([$queued, $processing] as $stopped) {
-            $stopped->refresh();
-            $this->assertSame('failed', $stopped->processing_status);
-            $this->assertSame('signed_out', data_get($stopped->signals, 'analysis_cancellation.reason'));
-            $this->assertSame('ANALYSIS_UNAVAILABLE', data_get($stopped->fact_check_result, 'verdict'));
-        }
+        $this->assertSame('queued', $queued->fresh()->processing_status);
+        $this->assertSame('processing', $processing->fresh()->processing_status);
+        $this->assertNull($queued->fresh()->fact_check_result);
+        $this->assertNull($processing->fresh()->fact_check_result);
         $this->assertSame('queued', $otherQueued->fresh()->processing_status);
         $this->assertGuest();
     }

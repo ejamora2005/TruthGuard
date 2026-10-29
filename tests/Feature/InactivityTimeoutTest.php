@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Detection;
 use App\Models\User;
 use App\Services\Auth\SessionTimeoutManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -117,6 +118,14 @@ class InactivityTimeoutTest extends TestCase
     public function test_expire_endpoint_logs_out_and_redirects_with_message(): void
     {
         $user = User::factory()->create(['is_admin' => false]);
+        $detection = Detection::create([
+            'user_id' => $user->id,
+            'source_kind' => 'link',
+            'media_type' => 'text',
+            'processing_status' => 'processing',
+            'verdict' => 'review',
+            'fake_score' => 0,
+        ]);
 
         $response = $this
             ->actingAs($user)
@@ -130,5 +139,6 @@ class InactivityTimeoutTest extends TestCase
             ->assertSessionHas('auth_error', SessionTimeoutManager::EXPIRED_MESSAGE);
 
         $this->assertGuest();
+        $this->assertSame('processing', $detection->fresh()->processing_status);
     }
 }
