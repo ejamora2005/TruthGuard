@@ -52,7 +52,7 @@
             $themeBadgeClasses = collect($themePresets)->mapWithKeys(fn (array $preset, string $key) => [$key => $preset['badge']])->all();
             $hideUserFooter = request()->routeIs('detections.create');
             $isDetectionPage = request()->routeIs('detections.*');
-            $hideMobileNav = request()->routeIs('detections.create');
+            $hideMobileNav = false;
             $mobileNavActiveIndex = match (true) {
                 request()->routeIs('dashboard') || request()->routeIs('dashboard.*') => 0,
                 request()->routeIs('history') => 1,
@@ -1489,19 +1489,23 @@
                         <span>History</span>
                     </a>
 
-                    <a href="{{ route('detections.create') }}" class="truthguard-mobile-tab truthguard-mobile-tab-primary {{ request()->routeIs('detections.*') ? 'is-active' : '' }}">
-                        <span class="truthguard-mobile-tab-icon">
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 4H5.75A1.75 1.75 0 0 0 4 5.75V7"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 4h1.25A1.75 1.75 0 0 1 20 5.75V7"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 20H5.75A1.75 1.75 0 0 1 4 18.25V17"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h1.25A1.75 1.75 0 0 0 20 18.25V17"></path>
-                                <circle cx="10.75" cy="10.75" r="3.2"></circle>
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m13.25 13.25 2.75 2.75"></path>
-                            </svg>
-                        </span>
-                        <span>Check</span>
-                    </a>
+                    <span class="truthguard-mobile-primary-slot">
+                        <a href="{{ route('detections.create') }}"
+                           class="truthguard-mobile-tab truthguard-mobile-tab-primary {{ request()->routeIs('detections.*') ? 'is-active' : '' }}"
+                           @if (request()->routeIs('detections.*')) aria-current="page" @endif>
+                            <span class="truthguard-mobile-tab-icon">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 4H5.75A1.75 1.75 0 0 0 4 5.75V7"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 4h1.25A1.75 1.75 0 0 1 20 5.75V7"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 20H5.75A1.75 1.75 0 0 1 4 18.25V17"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h1.25A1.75 1.75 0 0 0 20 18.25V17"></path>
+                                    <circle cx="10.75" cy="10.75" r="3.2"></circle>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m13.25 13.25 2.75 2.75"></path>
+                                </svg>
+                            </span>
+                            <span>Check</span>
+                        </a>
+                    </span>
 
                     <a href="{{ route('notifications.index') }}" class="truthguard-mobile-tab {{ request()->routeIs('notifications.*') ? 'is-active' : '' }}">
                         <span class="truthguard-mobile-tab-icon relative">

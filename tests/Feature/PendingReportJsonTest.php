@@ -15,6 +15,27 @@ class PendingReportJsonTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_first_visit_with_no_submission_does_not_start_or_resume_analysis(): void
+    {
+        Queue::fake();
+        $this->mock(GoogleFactCheckFeedService::class)
+            ->shouldReceive('latest')
+            ->once()
+            ->andReturn(['items' => []]);
+
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get(route('detections.create'))
+            ->assertOk()
+            ->assertViewHas('selectedDetection', null)
+            ->assertViewMissing('pendingDetection');
+
+        $this->assertDatabaseCount('detections', 0);
+        Queue::assertNothingPushed();
+        Http::assertNothingSent();
+    }
+
     public function test_queued_submission_returns_a_poll_url_without_redirecting_or_repeating_analysis(): void
     {
         Queue::fake();
