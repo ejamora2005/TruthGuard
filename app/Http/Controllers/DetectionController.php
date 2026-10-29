@@ -14,6 +14,7 @@ use App\Services\Detections\LiveVerificationEvidenceService;
 use App\Services\Detections\OpenAiDetectionReportService;
 use App\Services\Detections\ReportAnswer;
 use App\Services\Detections\SubmissionInput;
+use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Detections\TrustedFactCheckVerdictResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -27,10 +28,15 @@ use Illuminate\View\View;
 
 class DetectionController extends Controller
 {
-    public function create(Request $request, DetectionRetentionService $retentionService): View|RedirectResponse
+    public function create(
+        Request $request,
+        DetectionRetentionService $retentionService,
+        ActiveDetectionManager $activeDetectionManager,
+    ): View|RedirectResponse
     {
         if (! $request->user()->isAdmin()) {
             $retentionService->archiveExpired($request->user()->id);
+            $activeDetectionManager->expireStaleForUser($request->user()->id);
         }
 
         $pendingDetectionId = $request->integer('pending');

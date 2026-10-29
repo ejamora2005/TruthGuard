@@ -108,6 +108,33 @@ class PendingReportJsonTest extends TestCase
         $this->assertNotSame($older->id, $latest->id);
     }
 
+    public function test_stale_background_assessment_does_not_reopen_the_analysis_modal(): void
+    {
+        config()->set('fact_check.pending_stale_minutes', 10);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->andReturn(['items' => []]);
+        $user = User::factory()->create();
+        $detection = Detection::create([
+            'user_id' => $user->id,
+            'source_kind' => 'upload',
+            'media_type' => 'image',
+            'media_path' => 'detections/abandoned-image.jpg',
+            'processing_status' => 'processing',
+            'verdict' => 'review',
+            'fake_score' => 0,
+        ]);
+        $this->travel(11)->minutes();
+
+        $this->actingAs($user)
+            ->get(route('detections.create'))
+            ->assertOk()
+            ->assertViewMissing('pendingDetection');
+
+        $detection->refresh();
+        $this->assertSame('failed', $detection->processing_status);
+        $this->assertSame('ANALYSIS_UNAVAILABLE', data_get($detection->fact_check_result, 'verdict'));
+        $this->assertNull(data_get($detection->signals, 'analysis_progress'));
+    }
+
     public function test_logout_leaves_unfinished_assessments_running_for_the_worker(): void
     {
         $user = User::factory()->create();

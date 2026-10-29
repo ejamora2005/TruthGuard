@@ -8,6 +8,9 @@ return [
     ],
     'enhanced_enabled' => env('FACT_CHECK_ENHANCED_ENABLED', true),
     'queue_enabled' => env('FACT_CHECK_QUEUE_ENABLED', false),
+    // A queued/processing record that has not changed beyond this window is no
+    // longer an active job and must not reopen the analysis modal indefinitely.
+    'pending_stale_minutes' => (int) env('FACT_CHECK_PENDING_STALE_MINUTES', 10),
     'result_reuse' => [
         'enabled' => env('FACT_CHECK_RESULT_REUSE_ENABLED', true),
         'generation' => env('FACT_CHECK_RESULT_REUSE_GENERATION', 'fresh-start-2026-10-16-v2'),
