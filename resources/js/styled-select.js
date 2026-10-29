@@ -6,7 +6,7 @@ function enhanceSelect(select) {
     mounted.add(select);
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'tg-select-trigger';
+    button.className = ['tg-select-trigger', select.dataset.tgSelectTriggerClass || ''].filter(Boolean).join(' ');
     button.setAttribute('aria-label', select.getAttribute('aria-label') || 'Choose an option');
     button.setAttribute('aria-haspopup', 'listbox');
     button.setAttribute('aria-expanded', 'false');

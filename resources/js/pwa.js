@@ -15,16 +15,14 @@ try {
     knownInstalled = localStorage.getItem(INSTALLED_KEY) === '1';
 } catch { /* Storage may be unavailable in private browsing. */ }
 const INSTALL_UNAVAILABLE_MESSAGE =
-    'Install prompt needs HTTPS. You can still use your browser menu to add TruthGuard to your home screen.';
+    'Use your browser install icon or menu if the automatic prompt is unavailable.';
 
 const boundInstallButtons = new WeakSet();
 
 const isStandalone = () =>
     window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
-
-const canShowInstall = () => isMobileViewport() && !isStandalone() && !knownInstalled;
+const canShowInstall = () => !isStandalone() && !knownInstalled;
 
 const rememberInstalled = (installed) => {
     knownInstalled = installed;

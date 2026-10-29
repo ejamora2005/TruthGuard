@@ -130,11 +130,11 @@ class MediaScoreCalibrationTest extends TestCase
         $score = $result['score'];
         $this->assertSame('model_score', $score['type']);
         $this->assertSame('calibrated_benchmark', $score['validation']);
-        $this->assertSame('Calibrated model score: 75%', AssessmentScore::display($score));
+        $this->assertSame('Assessment score: 75%', AssessmentScore::display($score));
         $this->assertStringContainsString('does not establish confidence', $score['explanation']);
         $this->assertStringNotContainsString('uncalibrated', $result['limitations'][0]);
         $this->view('detections.partials.result-score', ['assessment' => $result])
-            ->assertSee('Calibrated model score: 75%')->assertSee('Calibrated on benchmark images')
+            ->assertSee('Assessment score: 75%')->assertSee('Calibrated on benchmark images')
             ->assertDontSee('Confidence:')->assertDontSee('Uncalibrated model output');
         $this->assertSame('Calibrated on benchmark images', AssessmentScore::badge($result)['description']);
 
@@ -150,7 +150,7 @@ class MediaScoreCalibrationTest extends TestCase
         $again = ReportAnswer::forPresentation($public);
         $this->assertSame('calibrated_benchmark', $again['score']['validation']);
         $this->assertSame($score['value'], $again['score']['value']);
-        $this->assertSame('Calibrated model score: 75%', $again['score_display']);
+        $this->assertSame('Assessment score: 75%', $again['score_display']);
 
         foreach ([['method_version' => 'unknown'], ['validation' => 'uncalibrated'], ['type' => 'confidence']] as $invalid) {
             $changed = $result;

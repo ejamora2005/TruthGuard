@@ -62,6 +62,23 @@ class DetectionController extends Controller
             }
         }
 
+        // Navigating elsewhere only closes the browser-side poller. The queued
+        // analysis keeps running, so reconnect the composer when its owner returns.
+        if ($selectedDetectionId <= 0) {
+            $pendingDetection = Detection::query()
+                ->where('user_id', $request->user()->id)
+                ->whereIn('processing_status', ['queued', 'processing'])
+                ->latest('id')
+                ->first();
+
+            if ($pendingDetection) {
+                return view('detections.create', [
+                    'selectedDetection' => null,
+                    'pendingDetection' => $pendingDetection,
+                ]);
+            }
+        }
+
         return view('detections.create', [
             'selectedDetection' => null,
         ]);

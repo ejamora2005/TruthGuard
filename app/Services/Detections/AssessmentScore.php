@@ -105,7 +105,11 @@ class AssessmentScore
         }
         $percent = $value > .995 ? '>99' : ($value > 0 && $value < .005 ? '<1' : (string) round($value * 100));
 
-        return $score['label'].': '.$percent.'%';
+        $label = ($score['label'] ?? '') === 'Calibrated model score'
+            ? 'Assessment score'
+            : $score['label'];
+
+        return $label.': '.$percent.'%';
     }
 
     /** Read-only badge: measured outputs and evidence status have distinct labels. */

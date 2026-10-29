@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\Auth\PostLoginDestination;
 use App\Services\Auth\SessionTimeoutManager;
+use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Notifications\TruthGuardNotificationManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -66,8 +67,12 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, ActiveDetectionManager $activeDetections): RedirectResponse
     {
+        if ($request->user()) {
+            $activeDetections->cancelForUser($request->user()->id);
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

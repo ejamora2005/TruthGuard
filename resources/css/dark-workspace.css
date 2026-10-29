@@ -29,6 +29,12 @@ html[data-tg-workspace].dark #news-watch :is(.tg-mobile-fact-media, .tg-feed-win
 }
 html[data-tg-workspace].dark #news-watch :is(.tg-feed-heading h3, .tg-category-copy strong, .tg-feed-window-copy strong) { color: var(--tg-night-ink) !important; }
 html[data-tg-workspace].dark #news-watch :is(.tg-feed-field-label, .tg-feed-window-copy > span, .tg-category-menu a) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body #news-watch .tg-feed-search-input input#truthguard-feed-search {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+}
 html[data-tg-workspace].dark #news-watch :is(.tg-category-menu a:hover, .tg-category-menu a[aria-current]) { background: #203858 !important; color: #bfdbfe !important; }
 html[data-tg-workspace].dark #news-watch .tg-category-count { color: #93c5fd !important; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-danger { background: #482537; color: #fda4af; border-color: #96566a; }
@@ -37,7 +43,7 @@ html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background:
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-neutral { background: #223047; color: #cbd5e1; border-color: #53647c; }
 
 /* Composer and upload surfaces. Leave evidence images and source logos intact. */
-html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field, .truthguard-recent-section, .truthguard-recent-skeleton, .truthguard-capability-pill, .truthguard-uploader-dropzone, .truthguard-uploader-head, .truthguard-prompt-hint, .truthguard-composer-hint) {
+html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field, .truthguard-recent-skeleton, .truthguard-capability-pill, .truthguard-uploader-dropzone, .truthguard-uploader-head, .truthguard-prompt-hint, .truthguard-composer-hint) {
     background: var(--tg-night-surface) !important;
     border-color: var(--tg-night-line) !important;
     color: var(--tg-night-muted) !important;
@@ -46,6 +52,26 @@ html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-co
 html[data-tg-workspace].dark body .truthguard-workspace-title { background: none !important; color: var(--tg-night-ink) !important; -webkit-text-fill-color: currentColor !important; }
 html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field)::before,
 html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field)::after { opacity: .08; }
+html[data-tg-workspace].dark body .truthguard-workspace-orb {
+    opacity: 1;
+    background: #182235;
+    border: 1px solid var(--tg-night-line);
+    box-shadow: 0 12px 28px rgb(0 0 0 / 24%);
+}
+html[data-tg-workspace].dark body .truthguard-workspace-orb::before {
+    background: conic-gradient(from 24deg, #22d3ee, transparent 28%, #818cf8, transparent 62%, #38bdf8, transparent 100%);
+    opacity: .72;
+}
+html[data-tg-workspace].dark body .truthguard-workspace-orb::after {
+    background: linear-gradient(135deg, #1d4ed8, #0891b2 54%, #6d28d9);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%);
+}
+html[data-tg-workspace].dark body .truthguard-workspace-orb-core {
+    background: #dbeafe;
+    box-shadow: 0 8px 18px rgb(0 0 0 / 24%);
+}
+html[data-tg-workspace].dark body .truthguard-workspace-orb-core::before { display: none; }
+html[data-tg-workspace].dark body .truthguard-workspace-orb img { filter: none; }
 html[data-tg-workspace].dark body .truthguard-analyze-button { background: #2454c6 !important; border-color: #5276a3 !important; color: #fff !important; }
 html[data-tg-workspace].dark body .truthguard-analyze-button:not(:disabled) .truthguard-analyze-text { color: #fff !important; }
 html[data-tg-workspace].dark body .truthguard-analyze-button:disabled { background: var(--tg-night-raised) !important; }
@@ -84,6 +110,14 @@ html[data-tg-workspace].dark body .truthguard-push-button:disabled { background:
 html[data-tg-workspace].dark body .truthguard-settings-modal .truthguard-settings-panel section > .grid > aside > div,
 html[data-tg-workspace].dark body .truthguard-settings-modal .truthguard-settings-panel section > .grid > div > div { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; box-shadow: none !important; }
 
+html[data-tg-workspace].dark body .truthguard-profile-appearance { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .truthguard-profile-appearance > div:first-child > span:last-child { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-profile-mode-option { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-profile-mode-option:is(:hover, .is-active) { background: #203858 !important; border-color: #5276a3 !important; color: #bfdbfe !important; }
+html[data-tg-workspace].dark body .truthguard-desktop-appearance { background: var(--tg-night-raised) !important; }
+html[data-tg-workspace].dark body .truthguard-desktop-mode-option { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-desktop-mode-option:is(:hover, .is-active) { background: var(--tg-night-surface) !important; color: #bfdbfe !important; box-shadow: none !important; }
+
 html[data-tg-workspace].dark body .truthguard-notification-badge { background: #be123c !important; color: #fff !important; box-shadow: none !important; }
 html[data-tg-workspace].dark body .truthguard-recent-view-all { background: var(--tg-night-surface) !important; color: #93c5fd !important; }
 html[data-tg-workspace].dark body .truthguard-analyze-button { background: #1e40af !important; }
@@ -114,7 +148,18 @@ html[data-tg-workspace].dark body .truthguard-mobile-tab::before { opacity: .08;
 html[data-tg-workspace].dark body #notification-settings { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body #notification-settings :is(.truthguard-push-status, .truthguard-push-preference-row) { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body :is(.truthguard-user-main, .truthguard-user-content-column) { background: var(--tg-night-bg) !important; }
-html[data-tg-workspace].dark body :is(.truthguard-detection-composer, .truthguard-pre-result-form, .truthguard-composer-footer) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-detection-composer, .truthguard-composer-footer) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body :is(.truthguard-recent-section, .truthguard-pre-result-form, .truthguard-guided-prompts) {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body #truthguard-composer textarea#truthguard-message.truthguard-detection-textarea {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: 0 !important;
+}
 html[data-tg-workspace].dark body .tg-read-result { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-ink) !important; }
 html[data-tg-workspace].dark body [role="switch"] > span.bg-white { background: #fff !important; }
 html[data-tg-workspace].dark body .truthguard-input-type { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }

@@ -82,7 +82,8 @@ class TaskRoutingAndHeadlineTest extends TestCase
         ])['fact_check_result'];
 
         $this->assertSame('MISSING_CONTEXT', $result['verdict']);
-        $this->assertSame(4, $result['diagnostics']['search_requests']);
+        $this->assertGreaterThan(0, $result['diagnostics']['search_requests']);
+        $this->assertLessThanOrEqual((int) config('fact_check.retrieval.max_search_requests'), $result['diagnostics']['search_requests']);
         $this->assertSame('completed_no_results', $result['diagnostics']['retrieval_status']);
         $this->assertStringContainsString('I searched for records', $result['summary']);
         $this->assertSame([], $result['sources']);

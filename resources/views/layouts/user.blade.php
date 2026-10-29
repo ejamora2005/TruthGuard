@@ -167,6 +167,51 @@
                 z-index: 1;
             }
 
+            .truthguard-sidebar-collapse {
+                position: relative;
+                isolation: isolate;
+                display: inline-flex;
+                height: 2.15rem;
+                width: 2.15rem;
+                flex: 0 0 2.15rem;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                border: 0;
+                border-radius: .78rem;
+                color: #3b82f6;
+                background: transparent;
+                box-shadow: none;
+                transition: color 180ms ease, transform 180ms ease, filter 180ms ease;
+            }
+
+            .truthguard-sidebar-collapse::before {
+                display: none;
+            }
+
+            .truthguard-sidebar-collapse::after {
+                display: none;
+            }
+
+            .truthguard-sidebar-collapse:hover {
+                color: #6366f1;
+                background: transparent;
+                box-shadow: none;
+                filter: drop-shadow(0 4px 7px rgba(59, 130, 246, .35));
+                transform: translateY(-1px) scale(1.08);
+            }
+
+            .truthguard-sidebar-collapse[data-collapsed='true'] {
+                color: #06b6d4;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .truthguard-sidebar-collapse:focus-visible {
+                outline: 3px solid rgba(59, 130, 246, .28);
+                outline-offset: 2px;
+            }
+
             .truthguard-animated-icons .menu-item > span[class*="menu-item-icon-"] {
                 position: relative;
                 display: inline-flex;
@@ -673,6 +718,78 @@
                 transform: translateX(100%);
             }
 
+            .truthguard-profile-appearance {
+                border: 1px solid rgba(226, 232, 240, .92);
+                border-radius: 1rem;
+                padding: .7rem;
+                background: rgba(248, 250, 252, .72);
+            }
+
+            .truthguard-profile-mode-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: .35rem;
+                margin-top: .55rem;
+            }
+
+            .truthguard-profile-mode-option {
+                display: flex;
+                min-width: 0;
+                min-height: 2.55rem;
+                align-items: center;
+                justify-content: center;
+                gap: .3rem;
+                border: 1px solid rgba(203, 213, 225, .9);
+                border-radius: .75rem;
+                color: #64748b;
+                background: rgba(255, 255, 255, .78);
+                font-size: .67rem;
+                font-weight: 800;
+                transition: border-color 160ms ease, color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+            }
+
+            .truthguard-profile-mode-option:hover {
+                border-color: #93c5fd;
+                color: #2563eb;
+                background: #eff6ff;
+            }
+
+            .truthguard-profile-mode-option.is-active {
+                border-color: #3b82f6;
+                color: #1d4ed8;
+                background: #dbeafe;
+                box-shadow: inset 0 0 0 1px rgba(59, 130, 246, .18);
+            }
+
+            .truthguard-desktop-appearance {
+                display: inline-flex;
+                align-items: center;
+                gap: .15rem;
+                padding: .2rem;
+                border-radius: 999px;
+                background: rgba(241, 245, 249, .78);
+            }
+
+            .truthguard-desktop-mode-option {
+                display: inline-flex;
+                width: 2.15rem;
+                height: 2.15rem;
+                align-items: center;
+                justify-content: center;
+                border: 0;
+                border-radius: 999px;
+                color: #64748b;
+                background: transparent;
+                transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+            }
+
+            .truthguard-desktop-mode-option:hover { color: #2563eb; transform: translateY(-1px); }
+            .truthguard-desktop-mode-option.is-active {
+                color: #2563eb;
+                background: #fff;
+                box-shadow: 0 3px 10px rgba(15, 23, 42, .1);
+            }
+
             .truthguard-profile-action-icon {
                 display: inline-flex;
                 height: 1.95rem;
@@ -803,6 +920,10 @@
             profileAvatarUrl: @js($profilePhotoUrl),
             usesSampleProfile: @js($usesSampleProfile),
             init() {
+                try {
+                    this.sidebarExpanded = window.localStorage.getItem('truthguard-sidebar-expanded') !== 'false';
+                } catch (error) {}
+
                 this.updateClock();
                 this.clockTimer = window.setInterval(() => this.updateClock(), 1000);
 
@@ -856,6 +977,9 @@
             toggleSidebar() {
                 if (this.isDesktop) {
                     this.sidebarExpanded = !this.sidebarExpanded;
+                    try {
+                        window.localStorage.setItem('truthguard-sidebar-expanded', String(this.sidebarExpanded));
+                    } catch (error) {}
                 } else {
                     this.userSidebarOpen = !this.userSidebarOpen;
                 }
@@ -892,18 +1016,37 @@
                 ]"
                 :style="isDesktop || userSidebarOpen ? 'transform: translateX(0);' : 'transform: translateX(calc(-100% - 1rem));'"
             >
-                <div class="flex items-center justify-between px-4 py-6 sm:px-5 sm:py-7" :class="sidebarExpanded ? 'lg:justify-start' : 'lg:justify-center'">
-                    <a href="{{ route('dashboard') }}" class="flex items-center gap-3 overflow-hidden">
+                <div class="flex items-center justify-between gap-2 px-4 py-6 sm:px-5 sm:py-7" :class="sidebarExpanded ? '' : 'lg:px-2'">
+                    <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 overflow-hidden">
                         @if ($logoUrl !== '')
-                            <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-8 w-8 object-contain">
+                            <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-8 w-8 shrink-0 object-contain" width="32" height="32">
                         @else
-                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-sm font-semibold text-white">TG</span>
+                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-sm font-semibold text-white">TG</span>
                         @endif
 
                         <div x-show="sidebarExpanded || window.innerWidth < 1024" x-cloak>
                             <p class="font-semibold text-gray-800 text-theme-xl">TruthGuard</p>
                         </div>
                     </a>
+
+                    <button
+                        type="button"
+                        class="truthguard-sidebar-collapse hidden lg:inline-flex"
+                        @click="toggleSidebar()"
+                        :aria-label="sidebarExpanded ? 'Minimize sidebar' : 'Expand sidebar'"
+                        :title="sidebarExpanded ? 'Minimize sidebar' : 'Expand sidebar'"
+                        :aria-expanded="sidebarExpanded.toString()"
+                        :data-collapsed="(!sidebarExpanded).toString()"
+                    >
+                        <svg x-show="sidebarExpanded" class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="3.5" y="4" width="17" height="16" rx="3"></rect>
+                            <path stroke-linecap="round" d="M9 4v16m7-11-3 3 3 3"></path>
+                        </svg>
+                        <svg x-show="!sidebarExpanded" x-cloak class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <rect x="3.5" y="4" width="17" height="16" rx="3"></rect>
+                            <path stroke-linecap="round" d="M9 4v16m4-11 3 3-3 3"></path>
+                        </svg>
+                    </button>
 
                     <button type="button" class="text-gray-500 lg:hidden" @click="userSidebarOpen = false" aria-label="Close sidebar">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1082,16 +1225,6 @@
                                 @endif
                             </a>
 
-                            <button
-                                @click="toggleSidebar()"
-                                class="truthguard-shell-toggle hidden shrink-0 lg:inline-flex"
-                                :class="(isDesktop ? sidebarExpanded : userSidebarOpen) ? 'truthguard-toggle-active' : ''"
-                                aria-label="Toggle sidebar"
-                            >
-                                <svg width="16" height="12" viewBox="0 0 16 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    <path fill-rule="evenodd" clip-rule="evenodd" d="M0.583252 1C0.583252 0.585788 0.919038 0.25 1.33325 0.25H14.6666C15.0808 0.25 15.4166 0.585786 15.4166 1C15.4166 1.41421 15.0808 1.75 14.6666 1.75L1.33325 1.75C0.919038 1.75 0.583252 1.41422 0.583252 1ZM0.583252 11C0.583252 10.5858 0.919038 10.25 1.33325 10.25L14.6666 10.25C15.0808 10.25 15.4166 10.5858 15.4166 11C15.4166 11.4142 15.0808 11.75 14.6666 11.75L1.33325 11.75C0.919038 11.75 0.583252 11.4142 0.583252 11ZM1.33325 5.25C0.919038 5.25 0.583252 5.58579 0.583252 6C0.583252 6.41421 0.919038 6.75 1.33325 6.75L7.99992 6.75C8.41413 6.75 8.74992 6.41421 8.74992 6C8.74992 5.58579 8.41413 5.25 7.99992 5.25L1.33325 5.25Z" fill="currentColor"/>
-                                </svg>
-                            </button>
                         @endif
 
                         <div class="min-w-0 flex-1">
@@ -1142,10 +1275,6 @@
                                     </svg>
                                 </a>
                             </div>
-                        </div>
-
-                        <div class="truthguard-mobile-mode-toggle flex shrink-0 lg:hidden">
-                            @include('layouts.partials.display-mode-toggle')
                         </div>
 
                         <div class="relative shrink-0" x-data="{ profileOpen: false }">
@@ -1208,6 +1337,38 @@
                                     </div>
 
                                     <div class="mt-1.5 grid gap-1.5">
+                                        <div
+                                            class="truthguard-profile-appearance lg:hidden"
+                                            x-data="{ displayMode: window.TruthGuardAppearance?.preferences.mode || 'system', appearanceOpen: false }"
+                                            @truthguard-appearance-updated.window="displayMode = $event.detail?.mode || 'system'"
+                                        >
+                                            <button type="button" class="flex w-full items-center gap-2 px-1 text-left" @click="appearanceOpen = !appearanceOpen" :aria-expanded="appearanceOpen.toString()">
+                                                <span class="truthguard-profile-action-icon shrink-0 text-blue-600">
+                                                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                                        <circle cx="12" cy="12" r="4"></circle>
+                                                        <path stroke-linecap="round" d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"></path>
+                                                    </svg>
+                                                </span>
+                                                <span class="min-w-0 flex-1 text-xs font-black text-slate-700">Appearance</span>
+                                                <span class="text-[10px] font-bold capitalize text-slate-500" x-text="displayMode === 'system' ? 'Device' : displayMode"></span>
+                                                <svg class="h-3.5 w-3.5 text-slate-400 transition-transform" :class="appearanceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"></path></svg>
+                                            </button>
+                                            <div x-show="appearanceOpen" x-collapse x-cloak class="truthguard-profile-mode-grid" role="radiogroup" aria-label="Display mode">
+                                                <button type="button" class="truthguard-profile-mode-option" :class="displayMode === 'light' ? 'is-active' : ''" :aria-checked="displayMode === 'light'" role="radio" @click="window.TruthGuardAppearance.set({ mode: 'light' })" title="Always use light mode">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path stroke-linecap="round" d="M12 2v2m0 16v2M2 12h2m16 0h2"></path></svg>
+                                                    <span>Light</span>
+                                                </button>
+                                                <button type="button" class="truthguard-profile-mode-option" :class="displayMode === 'dark' ? 'is-active' : ''" :aria-checked="displayMode === 'dark'" role="radio" @click="window.TruthGuardAppearance.set({ mode: 'dark' })" title="Always use dark mode">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"></path></svg>
+                                                    <span>Dark</span>
+                                                </button>
+                                                <button type="button" class="truthguard-profile-mode-option" :class="displayMode === 'system' ? 'is-active' : ''" :aria-checked="displayMode === 'system'" role="radio" @click="window.TruthGuardAppearance.set({ mode: 'system' })" title="Follow this device's appearance setting">
+                                                    <svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"></rect><path stroke-linecap="round" d="M8 21h8m-4-4v4"></path></svg>
+                                                    <span>Device</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
                                         <a href="{{ route('profile') }}" class="truthguard-profile-action group flex items-center gap-3 rounded-2xl border border-slate-100 px-3 py-2.5 text-sm font-bold text-slate-700 transition hover:border-blue-100 hover:bg-blue-50/80 hover:text-blue-700">
                                             <span class="truthguard-profile-action-icon shrink-0 text-blue-600">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9">

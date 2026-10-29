@@ -5,10 +5,9 @@ html.tg-loading { background-color: #f8fbff; }
     place-items: center; isolation: isolate; color: #0f172a;
     padding: max(1.25rem, env(safe-area-inset-top, 0px)) max(1.25rem, env(safe-area-inset-right, 0px))
         max(1.25rem, env(safe-area-inset-bottom, 0px)) max(1.25rem, env(safe-area-inset-left, 0px));
-    background:
-        linear-gradient(90deg, #2563eb0e 1px, transparent 1px),
-        linear-gradient(#2563eb0e 1px, transparent 1px), #f8fbff;
-    background-size: 34px 34px, 34px 34px, auto;
+    background: rgb(248 251 255 / 10%);
+    -webkit-backdrop-filter: blur(10px) saturate(.9);
+    backdrop-filter: blur(10px) saturate(.9);
     opacity: 0; visibility: hidden; pointer-events: none; touch-action: none; outline: none;
     transition: opacity 240ms ease, visibility 0s linear 240ms;
 }
@@ -59,10 +58,7 @@ html.tg-loading { background-color: #f8fbff; }
 html.dark.tg-loading { background-color: #0f172a; }
 html.dark .tg-loader {
     color: #f1f5f9;
-    background:
-        linear-gradient(90deg, #93c5fd0a 1px, transparent 1px),
-        linear-gradient(#93c5fd0a 1px, transparent 1px), #0f172a;
-    background-size: 34px 34px, 34px 34px, auto;
+    background: rgb(15 23 42 / 18%);
 }
 html.dark .tg-loader-status { color: #bbc8da; }
 html.dark .tg-loader-ring {

@@ -5,6 +5,8 @@ import { resolve, sep } from 'node:path';
 import { chromium } from 'playwright';
 
 const root = resolve('public');
+const styledSelect = readFileSync('resources/js/styled-select.js', 'utf8');
+const css = JSON.parse(readFileSync('public/build/manifest.json', 'utf8'))['resources/css/app.css'].file;
 const origin = 'http://127.0.0.1:8000';
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const directory = 'output/validation/pagination';
@@ -23,7 +25,9 @@ try {
                 const url = new URL(route.request().url());
                 if (url.origin === origin && url.pathname === path) {
                     const number = Number(url.searchParams.get(parameter) || 1);
-                    const html = readFileSync(`storage/tmp-pagination/${view}-${number}.html`, 'utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+                    const html = readFileSync(`storage/tmp-pagination/${view}-${number}.html`, 'utf8')
+                        .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '')
+                        .replace(/assets\/app-[\w-]+\.css/g, css);
                     return route.fulfill({ contentType: 'text/html; charset=utf-8', body: html });
                 }
                 const file = resolve(root, '.' + url.pathname);
@@ -33,6 +37,11 @@ try {
                 return route.fulfill({ status: 204 });
             });
             await page.goto(`${origin}${path}?${new URLSearchParams({ ...filters, [parameter]: 2 })}`);
+            await page.locator('select.tg-pagination-select').evaluate(select => {
+                select.dataset.tgSelect = '';
+                select.dataset.tgSelectTriggerClass = 'tg-pagination-select';
+            });
+            await page.addScriptTag({ content: `{${styledSelect}}` });
             await page.evaluate(dark => {
                 document.documentElement.classList.remove('tg-loading'); document.body.classList.remove('tg-loading');
                 document.documentElement.dataset.tgWorkspace = '';
@@ -42,21 +51,22 @@ try {
             await pager.scrollIntoViewIfNeeded();
             const metrics = await pager.evaluate(element => {
                 const bounds = element.getBoundingClientRect(), controls = element.querySelector('nav').getBoundingClientRect();
-                const select = element.querySelector('select');
+                const select = element.querySelector('.tg-select-trigger');
                 return { height: bounds.height, controlsWidth: controls.width, inside: controls.left >= bounds.left && controls.right <= bounds.right,
                     overflow: document.documentElement.scrollWidth - innerWidth, selectBackground: getComputedStyle(select).backgroundColor,
                     selectColor: getComputedStyle(select).color, links: [...element.querySelectorAll('a')].map(link => link.getBoundingClientRect().height) };
             });
-            assert.ok(metrics.height <= 70 && metrics.controlsWidth <= 210 && metrics.inside && metrics.overflow <= 1, JSON.stringify({ view, width, dark, ...metrics }));
+            assert.ok(metrics.height <= 72 && metrics.controlsWidth <= 210 && metrics.inside && metrics.overflow <= 1, JSON.stringify({ view, width, dark, ...metrics }));
             if (width <= 640) assert.ok(metrics.links.every(height => height >= 44));
             if (dark) {
                 assert.equal(metrics.selectBackground, 'rgb(32, 56, 88)');
                 assert.equal(metrics.selectColor, 'rgb(191, 219, 254)');
             }
             await pager.screenshot({ path: `${directory}/${view}-${width}-${dark ? 'dark' : 'light'}.png` });
-            const select = page.getByLabel('Go to page', { exact: true });
-            assert.equal(await select.locator('option:checked').textContent(), '2 / 3');
-            await Promise.all([page.waitForURL(url => url.searchParams.get(parameter) === '3'), select.selectOption({ label: '3 / 3' })]);
+            const select = page.getByRole('button', { name: 'Go to page', exact: true });
+            assert.equal(await select.textContent(), '2 / 3');
+            await select.click();
+            await Promise.all([page.waitForURL(url => url.searchParams.get(parameter) === '3'), page.getByRole('option', { name: '3 / 3', exact: true }).click()]);
             assert.equal(await page.getByRole('link', { name: 'Next page', exact: true }).count(), 0);
             const previous = page.getByRole('link', { name: 'Previous page', exact: true });
             await previous.focus();

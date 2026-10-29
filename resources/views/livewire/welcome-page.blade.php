@@ -80,7 +80,7 @@
                 'Explainable confidence scoring',
                 'Case history for accountability',
             ],
-            'image' => 'welcome/usecase-community-fact-checking.jpg',
+            'image' => 'welcome/usecase-community-fact-checking-v2.png',
         ],
         'sales' => [
             'title' => 'Election Monitoring',
@@ -91,7 +91,7 @@
                 'Read the publisher\'s rating',
                 'Open the original source',
             ],
-            'image' => 'welcome/usecase-election-monitoring.jpg',
+            'image' => 'welcome/usecase-election-monitoring-v2.png',
         ],
         'data-analysis' => [
             'title' => 'Newsroom Verification',
@@ -102,7 +102,7 @@
                 'Evidence-backed editorial decisions',
                 'Consistent score-based triage',
             ],
-            'image' => 'welcome/usecase-newsroom-verification.jpg',
+            'image' => 'welcome/usecase-newsroom-verification-v2.png',
         ],
         'hr' => [
             'title' => 'Campus Monitoring',
@@ -113,7 +113,7 @@
                 'Reliable case documentation',
                 'Reduced false alarm spread',
             ],
-            'image' => 'welcome/usecase-campus-monitoring.jpg',
+            'image' => 'welcome/usecase-campus-monitoring-v2.png',
         ],
         'legal' => [
             'title' => 'Everyday Media Literacy',
@@ -124,7 +124,7 @@
                 'Understand confidence indicators',
                 'Revisit saved check results',
             ],
-            'image' => 'welcome/usecase-policy-review.jpg',
+            'image' => 'welcome/usecase-media-literacy-v2.png',
         ],
         'operations' => [
             'title' => 'Public Advisory Checks',
@@ -135,7 +135,7 @@
                 'Inspect the original evidence',
                 'Confirm urgent details with official sources',
             ],
-            'image' => 'welcome/usecase-government-response.jpg',
+            'image' => 'welcome/usecase-public-advisory-v2.png',
         ],
     ];
 
@@ -280,7 +280,14 @@
             .tg-hero-section {
                 min-height: calc(100svh - 5.75rem);
                 display: flex;
+                flex-direction: column;
                 align-items: center;
+                justify-content: center;
+            }
+
+            .tg-hero-section > * {
+                flex: 0 0 auto;
+                width: 100%;
             }
         }
 
@@ -735,6 +742,147 @@
                 box-shadow: 0 0 0 0.45rem rgba(16, 185, 129, 0);
             }
         }
+
+        .truthguard-partner-marquee {
+            --partner-gap: 1rem;
+            max-width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            -webkit-mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+            mask-image: linear-gradient(to right, transparent, black 7%, black 93%, transparent);
+        }
+
+        .truthguard-partner-track {
+            display: flex;
+            gap: var(--partner-gap);
+            width: max-content;
+            animation: truthguardPartnerSlide 24s linear infinite;
+        }
+
+        .truthguard-partner-marquee:hover .truthguard-partner-track,
+        .truthguard-partner-marquee:focus-within .truthguard-partner-track {
+            animation-play-state: paused;
+        }
+
+        .truthguard-partner-card {
+            align-items: center;
+            background: transparent;
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+            flex: 0 0 16rem;
+            gap: 0.35rem;
+            min-height: 6.5rem;
+            padding: 0.65rem 0.85rem;
+        }
+
+        .truthguard-partner-card img {
+            height: 5rem;
+            object-fit: contain;
+            width: 6rem;
+        }
+
+        .truthguard-partner-card img.truthguard-partner-logo-wide {
+            width: 11rem;
+        }
+
+        .truthguard-partner-card img.truthguard-partner-logo-square {
+            border-radius: 0.5rem;
+        }
+
+        .truthguard-partner-name {
+            color: rgb(71 85 105);
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        @media (min-width: 641px) and (max-width: 1023px) {
+            .truthguard-partner-card {
+                flex-basis: 14rem;
+                min-height: 6rem;
+            }
+
+            .truthguard-partner-card img {
+                height: 4.5rem;
+                width: 5.5rem;
+            }
+
+            .truthguard-partner-card img.truthguard-partner-logo-wide {
+                width: 9.5rem;
+            }
+        }
+
+        @keyframes truthguardPartnerSlide {
+            to {
+                transform: translateX(calc(-50% - (var(--partner-gap) / 2)));
+            }
+        }
+
+        @media (max-width: 640px) {
+            .truthguard-partner-marquee {
+                --partner-gap: 0.5rem;
+                -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+                mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+            }
+
+            .truthguard-partner-card {
+                flex-basis: 10.5rem;
+                min-height: 5rem;
+                padding: 0.45rem 0.5rem;
+            }
+
+            .truthguard-partner-card img {
+                height: 3.5rem;
+                width: 4.25rem;
+            }
+
+            .truthguard-partner-card img.truthguard-partner-logo-wide {
+                width: 7.5rem;
+            }
+
+            .truthguard-partner-name {
+                font-size: 0.68rem;
+                max-width: 9.5rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .truthguard-partner-marquee {
+                overflow-x: auto;
+                -webkit-mask-image: none;
+                mask-image: none;
+                scrollbar-width: thin;
+            }
+
+            .truthguard-partner-track {
+                animation: none;
+            }
+
+            .truthguard-partner-track [aria-hidden="true"] {
+                display: none;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .tg-welcome #pricing .tg-plan-card-highlighted {
+                position: relative;
+                z-index: 10;
+                transform: scale(1.07);
+            }
+
+            .tg-welcome #pricing .tg-plan-card-highlighted:hover {
+                transform: translateY(-6px) scale(1.07);
+            }
+        }
     </style>
     @include('layouts.partials.public-header')
 
@@ -787,6 +935,35 @@
                     <p class="mt-5 text-center text-sm leading-7 tracking-[0.01em] text-slate-500">
                         Watch the workflow: submit evidence, compare sources, and understand the result.
                     </p>
+                </div>
+            </div>
+
+            <div class="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6 md:mt-16 lg:mt-20 lg:px-8" aria-labelledby="capstone-partners-title">
+                <h2 id="capstone-partners-title" class="mb-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Capstone Project Partners</h2>
+                <div class="truthguard-partner-marquee" aria-label="Capstone project partner logos">
+                    <div class="truthguard-partner-track">
+                        @foreach ([false, true] as $duplicatePartnerSet)
+                            <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
+                                <img class="truthguard-partner-logo-wide" src="{{ asset('images/partners/southern-leyte-logo.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'Southern Leyte State University logo' }}">
+                                <p class="truthguard-partner-name">Southern Leyte State University</p>
+                            </div>
+
+                            <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
+                                <img class="truthguard-partner-logo-square" src="{{ asset('images/partners/bitsconnect-logo.jpg') }}" alt="{{ $duplicatePartnerSet ? '' : 'BITS department logo' }}">
+                                <p class="truthguard-partner-name">BITS</p>
+                            </div>
+
+                            <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
+                                <img src="{{ asset('images/partners/radyo-pilipinas-logo.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'RP Radyo Pilipinas logo' }}">
+                                <p class="truthguard-partner-name">Radyo Pilipinas</p>
+                            </div>
+
+                            <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
+                                <img src="{{ asset('images/truthguard-logo-transparent.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'TruthGuard logo' }}">
+                                <p class="truthguard-partner-name">TruthGuard</p>
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </section>
@@ -860,7 +1037,7 @@
                                 </a>
                             </div>
                             <div class="flex items-center justify-center bg-slate-100 p-6 sm:p-8 lg:w-1/2">
-                                <img src="{{ asset($case['image']) }}" alt="{{ $case['title'] }}" class="h-auto max-w-full rounded-2xl shadow-md">
+                                <img src="{{ asset($case['image']) }}" alt="{{ $case['title'] }}" loading="lazy" class="aspect-[4/3] w-full rounded-2xl object-cover shadow-md">
                             </div>
                         </div>
                     </div>
@@ -868,49 +1045,48 @@
             </div>
         </section>
 
-        <section id="testimonials" class="reveal border-b border-slate-200 bg-gradient-to-b from-white to-slate-50 py-16 md:py-20">
+        <section id="testimonials" class="reveal relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-slate-50 via-white to-blue-50 py-16 md:py-24">
+            <div aria-hidden="true" class="absolute -left-24 top-10 h-64 w-64 rounded-full bg-blue-200/30 blur-3xl"></div>
+            <div aria-hidden="true" class="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-violet-200/30 blur-3xl"></div>
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="mx-auto mb-14 max-w-3xl text-center">
-                    <h2 class="text-3xl font-bold md:text-4xl">Before You Share</h2>
-                    <p class="mt-4 text-lg leading-8 text-slate-600">Use the explanation and source context together. A lower risk score is not the same as official confirmation.</p>
+                <div class="relative mx-auto mb-12 max-w-3xl text-center">
+                    <span class="inline-flex rounded-full border border-blue-100 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-blue-700 shadow-sm">A 30-second safety check</span>
+                    <h2 class="mt-4 bg-gradient-to-r from-slate-950 via-blue-800 to-violet-800 bg-clip-text text-3xl font-black tracking-tight text-transparent md:text-5xl">Before You Share</h2>
+                    <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">Pause, review the evidence, and confirm important details. TruthGuard supports your judgment—it does not replace it.</p>
                 </div>
 
-                <div class="tg-testimonial-stage relative mx-auto max-w-4xl">
+                <div class="relative mx-auto grid max-w-6xl gap-5 md:grid-cols-3 md:gap-6">
                     @foreach ($testimonials as $i => $testimonial)
-                        <article
-                            :class="currentTestimonial === {{ $i }} ? 'is-active' : 'is-hidden'"
-                            :aria-hidden="currentTestimonial !== {{ $i }}"
-                            class="tg-testimonial-card rounded-2xl border border-slate-200 bg-white p-8 shadow-lg md:p-12"
-                        >
-                            <p class="mb-8 text-lg leading-relaxed text-slate-800 md:text-xl">{{ $testimonial['quote'] }}</p>
-                            <div class="flex items-center">
-                                <span class="mr-4 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 font-bold text-blue-700 shadow-sm shadow-blue-100/60">{{ $i + 1 }}</span>
-                                <div>
-                                    <h4 class="text-lg font-bold">{{ $testimonial['author'] }}</h4>
-                                    <p class="text-slate-600">{{ $testimonial['title'] }}</p>
-                                </div>
+                        <article class="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-lg shadow-blue-100/40 backdrop-blur transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-100/60 md:p-7">
+                            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 to-violet-600 opacity-70 transition group-hover:opacity-100"></div>
+                            <div class="mb-5 flex items-center justify-between">
+                                <span class="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-sm font-black text-white shadow-md shadow-blue-200">0{{ $i + 1 }}</span>
+                                <svg class="h-6 w-6 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    @if ($i === 0)
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 12h4l2-6 4 12 2-6h4 M12 3v2 M12 19v2" />
+                                    @elseif ($i === 1)
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2 M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2" />
+                                    @else
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3 19 6v5c0 5-3.5 9-7 10-3.5-1-7-5-7-10V6l7-3Z M9 12l2 2 4-4" />
+                                    @endif
+                                </svg>
                             </div>
+                            <h3 class="text-lg font-bold text-slate-950 md:text-xl">{{ $testimonial['author'] }}</h3>
+                            <p class="mt-2 text-sm font-medium leading-6 text-blue-700">{{ $testimonial['title'] }}</p>
+                            <p class="mt-4 flex-1 text-sm leading-7 text-slate-600 md:text-base">{{ $testimonial['quote'] }}</p>
                         </article>
                     @endforeach
+                </div>
 
-                    <div class="mt-8 flex justify-center gap-4">
-                        <button @click="prevTestimonial(true)" class="rounded-full border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Previous review tip">
-                            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6" />
-                            </svg>
-                        </button>
-
-                        <div class="flex items-center gap-2">
-                            @foreach ($testimonials as $i => $testimonial)
-                                <button type="button" @click="goToTestimonial({{ $i }})" :aria-current="currentTestimonial === {{ $i }} ? 'true' : 'false'" class="tg-carousel-dot" aria-label="Go to review tip {{ $i + 1 }}"></button>
-                            @endforeach
-                        </div>
-
-                        <button @click="nextTestimonial(true)" class="rounded-full border border-slate-300 bg-white p-2 text-slate-700 transition hover:bg-slate-100" aria-label="Next review tip">
-                            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6" />
-                            </svg>
-                        </button>
+                <div class="relative mx-auto mt-8 flex max-w-6xl flex-col items-start gap-4 rounded-2xl border border-amber-200 bg-amber-50/90 p-5 sm:flex-row sm:items-center sm:p-6">
+                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4 M12 17h.01 M10.3 4.4 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0Z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <h3 class="font-bold text-amber-950">When the stakes are high, verify twice.</h3>
+                        <p class="mt-1 text-sm leading-6 text-amber-900/80">For safety, health, elections, emergencies, or financial decisions, confirm the information directly with the responsible official source.</p>
                     </div>
                 </div>
             </div>
@@ -932,7 +1108,7 @@
                     </div>
                 </div>
 
-                <div class="grid gap-8 md:grid-cols-3">
+                <div class="grid gap-8 md:grid-cols-3 lg:gap-10">
                     @foreach ($plans as $plan)
                         @php
                             $isHighlighted = (bool) ($plan['highlighted'] ?? false);
@@ -950,7 +1126,7 @@
                             <div @class(['tg-plan-status flex items-center justify-between gap-3 px-5 py-3 text-xs font-black', 'bg-blue-600 text-white' => $isHighlighted, 'bg-blue-50 text-blue-700' => ! $isHighlighted])>
                                 <span>{{ $plan['status'] }}</span>
                                 @if ($isHighlighted)
-                                    <span class="rounded-full bg-white/20 px-2.5 py-1 text-[10px] font-black tracking-[0.08em] text-white">RECOMMENDED</span>
+                                    <span class="rounded-full border border-white/30 bg-white/20 px-3 py-1.5 text-[10px] font-black tracking-[0.1em] text-white shadow-sm">MOST VALUABLE</span>
                                 @endif
                             </div>
 

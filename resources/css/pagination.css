@@ -69,6 +69,7 @@
     cursor: pointer;
 }
 .tg-pagination-picker > svg { position: absolute; right: 7px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; color: var(--tg-page-ink); pointer-events: none; }
+.tg-pagination-picker:has(.tg-select-trigger) > svg { display: none; }
 .tg-pagination :is(a, select):focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
 html.dark .tg-pagination {
     --tg-page-line: #3b4c65;

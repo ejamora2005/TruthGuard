@@ -9,6 +9,7 @@ const html = readFileSync('storage/tmp-history-compact.html', 'utf8')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, script => script.includes('const allowedModes') ? script : '')
     .replace(/assets\/app-[\w-]+\.css/g, css);
 const alpine = readFileSync('node_modules/alpinejs/dist/cdn.min.js', 'utf8');
+const styledSelect = readFileSync('resources/js/styled-select.js', 'utf8');
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
 const checks = [];
 try {
@@ -37,6 +38,8 @@ try {
             const mount = async () => {
                 await page.evaluate(() => document.querySelector('#truthguard-app-splash')?.remove());
                 await page.addScriptTag({ content: alpine });
+                await page.locator('select[name="sort"]').evaluate(select => { select.dataset.tgSelect = ''; });
+                await page.addScriptTag({ content: `{${styledSelect}}` });
                 await page.locator('.tg-history').waitFor();
                 await page.evaluate(() => {
                     const bell = document.querySelector('[x-ref="notificationBell"]');
@@ -75,7 +78,8 @@ try {
             await page.waitForURL(url => url.searchParams.get('date_from') === '2026-10-12' && url.searchParams.get('date_to') === '2026-10-16');
             await mount();
             await page.getByRole('searchbox', { name: 'Search history' }).fill('original photo');
-            await page.getByRole('combobox', { name: 'Sort history' }).selectOption('oldest');
+            await page.getByRole('button', { name: 'Sort history', exact: true }).click();
+            await page.getByRole('option', { name: 'Oldest first', exact: true }).click();
             await page.waitForURL(url => url.searchParams.get('sort') === 'oldest' && url.searchParams.get('search') === 'original photo');
             await mount();
             await scope.getByRole('button', { name: 'More actions for TG-03', exact: true }).click();

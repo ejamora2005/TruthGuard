@@ -195,6 +195,19 @@ class DetectionPipeline
             ];
 
             if ($pending) {
+                $pending->refresh();
+
+                // Logout/session expiry can cancel a running worker. Never let a
+                // late provider response overwrite the cancellation record.
+                if ($pending->processing_status !== 'processing') {
+                    Log::info('TruthGuard analysis result discarded after cancellation.', [
+                        'analysis_id' => $analysisId,
+                        'detection_id' => $pending->id,
+                    ]);
+
+                    return $pending;
+                }
+
                 $pending->fill($attributes)->save();
                 Log::info('TruthGuard analysis persisted.', ['analysis_id' => $analysisId, 'detection_id' => $pending->id, 'source_count' => count($analysis['fact_check_result']['sources'] ?? [])]);
 
@@ -475,10 +488,20 @@ class DetectionPipeline
             'verdict' => $reusableDetection->verdict,
         ];
 
+        // Keep the saved facts, verdict, citations, and assessment date, while
+        // presenting the cached answer with fresh wording at zero token cost.
+        $analysis['fact_check_result'] = ResultWording::varyForReuse(
+            $analysis['fact_check_result'],
+            implode('|', [$requestFingerprint, $user->id, now()->timestamp]),
+        );
+        $analysis['analysis_summary'] = $analysis['explanation_summary']
+            = $analysis['fact_check_result']['summary'];
+
         $analysis['signals']['result_reuse'] = ['source_detection_id' => $sourceDetection->id,
             'original_assessed_at' => $reusableDetection->analyzed_at?->toIso8601String(),
             'original_openai_usage' => $analysis['signals']['openai_usage'] ?? [],
-            'original_usage_aliases' => Arr::only($analysis['signals'], ['ai_usage', 'token_usage', 'usage']), 'new_api_tokens' => 0];
+            'original_usage_aliases' => Arr::only($analysis['signals'], ['ai_usage', 'token_usage', 'usage']),
+            'wording_refreshed_locally' => true, 'new_api_tokens' => 0];
         // Preserve historical usage above, but never bill/count it again on a cache hit.
         $analysis['signals']['openai_usage'] = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
         unset($analysis['signals']['analysis_progress'], $analysis['signals']['ai_usage'], $analysis['signals']['token_usage'], $analysis['signals']['usage']);

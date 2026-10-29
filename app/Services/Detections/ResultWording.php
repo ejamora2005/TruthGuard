@@ -9,11 +9,11 @@ use Illuminate\Support\Str;
 /** Saved presentation copy; never determines a verdict, score, or citation. */
 final class ResultWording
 {
-    public const VERSION = 'result-wording-v1';
+    public const VERSION = 'result-wording-v2';
 
     public static function instructions(): string
     {
-        return 'Write the presentation wording together in this response, using only the supplied evidence and preserving the finding and its uncertainty. explanation: one natural paragraph, approximately 80–120 words, identifying the claim or media-origin question, the relevant evidence and why it supports, contradicts or fails to resolve it. Mention missing context only when material. result_summary: 25–40 words in one or two sentences summarizing that explanation, its main reason and any essential limitation; no new evidence. recommended_action: one short, specific next-step sentence based on the finding. Use simple language, no search narration, internal matching terminology, lengthy quotations, repetition, invented facts or confidence percentages. Use fewer words when evidence is limited; never pad. source_ids lists only supplied sources used in this wording, empty for a detector-only finding.';
+        return 'Write a ready-to-share answer inside this same evidence-review response; never request a separate wording call. Preserve the validated finding and uncertainty. explanation: 45–75 words in one short paragraph. The FIRST sentence must directly answer the claim in plain language: Yes, No, Misleading, Not verified, or Not enough context. Then state the decisive reason and what the cited evidence establishes. For questions using latest, current, today, now, still, or recent, begin with the evaluation cutoff date and do not imply knowledge after it. result_summary: 15–25 words giving the direct answer and main reason. recommended_action: one short, specific sharing or checking step. Use simple words; no search narration, internal terminology, long quotations, repetition, invented facts, confidence percentages, greetings, or follow-up questions. source_ids lists only supplied sources used in this wording, empty for detector-only findings.';
     }
 
     public static function schema(array $verdicts): array
@@ -77,6 +77,41 @@ final class ResultWording
         return $result;
     }
 
+    /**
+     * Give a cached assessment fresh presentation copy without another model call.
+     * The evidence-backed result remains untouched; only already-approved wording
+     * is reframed, and the normal wording contract validates the result again.
+     */
+    public static function varyForReuse(array $result, string $seed): array
+    {
+        $saved = self::saved($result);
+        if (! $saved) {
+            return $result;
+        }
+
+        $hasSources = ($saved['source_ids'] ?? []) !== [];
+        $introductions = $hasSources ? [
+            'Taken together, the cited evidence supports this finding: ',
+            'Based on the cited evidence, the assessment is clear: ',
+            'The available evidence leads to this conclusion: ',
+        ] : [
+            'Taken together, the available analysis supports this finding: ',
+            'Based on the completed analysis, the assessment is: ',
+            'The available analysis leads to this conclusion: ',
+        ];
+        $index = abs((int) crc32($seed)) % count($introductions);
+        $candidate = $saved;
+        unset($candidate['version']);
+        $candidate['explanation'] = $introductions[$index].lcfirst($candidate['explanation']);
+
+        $accepted = self::accept($result, $candidate);
+        if ($accepted) {
+            $result['generated_wording'] = $accepted;
+        }
+
+        return $result;
+    }
+
     /** Generation-time fallback when no usable final AI copy exists. No requests. */
     public static function ensure(array $result, string $recommendation = ''): array
     {
@@ -94,6 +129,10 @@ final class ResultWording
         if (($result['primary_task'] ?? '') !== 'media' && $claim && Str::wordCount($claim) <= 40
             && ! str_contains(Str::lower($explanation), Str::lower($claim))) {
             $explanation = 'The submitted claim is: '.$claim.(preg_match('/[.!?]$/u', $claim) ? ' ' : '. ').$explanation;
+        }
+        $lead = self::readyLead($result);
+        if ($lead !== '' && ! Str::startsWith(Str::lower($explanation), Str::lower($lead))) {
+            $explanation = $lead.' '.$explanation;
         }
         if ($explanation === '' || Str::wordCount($explanation) > 160 || mb_strlen($explanation) > 2200) {
             $explanation = ReportAnswer::interpretationSummary($result, $explanation);
@@ -123,5 +162,35 @@ final class ResultWording
         $result['generated_wording'] = ['version' => self::VERSION] + $copy;
 
         return $result;
+    }
+
+    /** A concise local lead sentence; this never makes a model request. */
+    private static function readyLead(array $result): string
+    {
+        $question = (string) data_get($result, 'request.question', '');
+        $current = preg_match('/\b(?:latest|current|currently|today|now|still|recent)\b/iu', $question) === 1;
+        $date = null;
+        if ($current && filled($result['evidence_cutoff'] ?? null)) {
+            try {
+                $date = \Illuminate\Support\Carbon::parse($result['evidence_cutoff'])->format('F j, Y');
+            } catch (\Throwable) {
+                $date = null;
+            }
+        }
+
+        $lead = match ($result['verdict'] ?? '') {
+            'TRUE' => 'Yes. The reviewed evidence supports the claim.',
+            'FALSE' => 'No. The reviewed evidence contradicts the claim.',
+            'MISLEADING' => 'Misleading. The claim uses real information but gives the wrong overall impression.',
+            'PARTLY_TRUE', 'MIXED' => 'Partly true. Some parts are supported, but other important parts are not.',
+            'OUTDATED' => 'Outdated. The claim no longer matches the latest reviewed information.',
+            'OUT_OF_CONTEXT' => 'Out of context. The content is presented with the wrong setting, date, or meaning.',
+            'UNVERIFIED' => 'Not verified. The reviewed evidence does not establish that the claim is true.',
+            'MISSING_CONTEXT' => 'Not enough context. The available information does not support a reliable answer.',
+            'CONFLICTING_EVIDENCE' => 'Unresolved. Reliable sources disagree, so no firm conclusion is supported.',
+            default => '',
+        };
+
+        return $date && $lead !== '' ? 'As of '.$date.', '.lcfirst($lead) : $lead;
     }
 }

@@ -63,9 +63,10 @@ class GeneratedResultWordingTest extends TestCase
                     'locations' => [], 'quantities' => [], 'qualifiers' => [], 'requires_context' => false, 'context_reason' => '',
                     'searches' => ['fictional municipal library record'], 'references' => []]], 'original_claim_date' => null, 'date_quote' => ''];
             } else {
-                $this->assertSame(3000, $request['max_output_tokens']);
+                $this->assertSame((int) config('fact_check.model_output_tokens'), $request['max_output_tokens']);
                 $this->assertArrayNotHasKey('tools', $request->data());
-                $this->assertSame(1, substr_count($request['input'][0]['content'], 'approximately 80–120 words'));
+                $this->assertSame(1, substr_count($request['input'][0]['content'], '45–75 words'));
+                $this->assertStringContainsString('FIRST sentence must directly answer', $request['input'][0]['content']);
                 $this->assertCount(1, $input['sources']);
                 $data = ['context_findings' => [], 'relationships' => [[
                     'claim_id' => $input['claims'][0]['id'], 'source_id' => 's1', 'stance' => 'supporting',

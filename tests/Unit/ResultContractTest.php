@@ -5,10 +5,25 @@ namespace Tests\Unit;
 use App\Models\Detection;
 use App\Services\Detections\AssessmentScore;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\ResultWording;
 use Tests\TestCase;
 
 class ResultContractTest extends TestCase
 {
+    public function test_local_ready_answer_leads_with_verdict_and_dates_current_questions_without_a_request(): void
+    {
+        $result = ReportAnswer::complete($this->fixture([
+            'verdict' => 'UNVERIFIED',
+            'request' => ['question' => 'Is this still the latest official schedule?', 'tasks' => ['claim']],
+            'evidence_cutoff' => '2026-10-29T12:00:00+08:00',
+        ]));
+
+        $worded = ResultWording::ensure($result);
+
+        $this->assertStringStartsWith('As of October 29, 2026, not verified.', $worded['generated_wording']['explanation']);
+        $this->assertSame(ResultWording::VERSION, $worded['generated_wording']['version']);
+    }
+
     public function test_interpretation_action_omits_only_complete_repeated_summary_sentences(): void
     {
         $summary = 'The wording is incomplete. The visible text does not identify a specific assertion.';

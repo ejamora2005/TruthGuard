@@ -45,4 +45,24 @@ class ResultWordingTest extends TestCase
         $stored['verdict'] = 'LIKELY_AI_GENERATED';
         $this->assertNull(ResultWording::saved($stored));
     }
+
+    public function test_reused_result_gets_fresh_wording_without_changing_its_facts(): void
+    {
+        Http::preventStrayRequests();
+        $result = ResultWording::ensure([
+            'verdict' => 'TRUE', 'primary_task' => 'claim',
+            'summary' => 'The official record confirms that the election was postponed.',
+            'sources' => [['id' => 'official-1']], 'contextual_sources' => [],
+        ]);
+        $original = ResultWording::saved($result);
+        $varied = ResultWording::varyForReuse($result, 'second-submission');
+        $copy = ResultWording::saved($varied);
+
+        $this->assertNotSame($original['explanation'], $copy['explanation']);
+        $this->assertStringContainsString(lcfirst($original['explanation']), $copy['explanation']);
+        $this->assertSame($result['verdict'], $varied['verdict']);
+        $this->assertSame($result['summary'], $varied['summary']);
+        $this->assertSame($result['sources'], $varied['sources']);
+        Http::assertNothingSent();
+    }
 }

@@ -319,7 +319,7 @@
         class="truthguard-notification-popover absolute z-[99999] rounded-[20px] border p-1.5"
     >
         <div class="truthguard-notification-surface overflow-hidden rounded-2xl">
-        <div class="shrink-0 border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] px-3 py-3">
+        <div class="truthguard-notification-header shrink-0 border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff,#f8fbff)] px-3 py-3">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <p class="text-xs font-bold uppercase tracking-[0.16em] text-blue-600">Notifications</p>
@@ -338,7 +338,7 @@
         </div>
 
         <p x-show="errorMessage" x-cloak x-text="errorMessage" role="status" class="shrink-0 px-4 py-2 text-xs text-rose-600"></p>
-        <div class="min-h-0 max-h-[18rem] overflow-y-auto bg-white p-1.5">
+        <div class="flex min-h-0 max-h-[18rem] flex-col gap-1 overflow-y-auto bg-white p-1.5">
             <template x-if="notifications.length === 0">
                 <div class="px-4 py-8 text-center">
                     <p class="text-sm font-semibold text-slate-900">No notifications yet</p>

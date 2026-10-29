@@ -72,10 +72,16 @@ class StoredResultReuseTest extends TestCase
         $this->assertSame($first->id, $second->reused_from_detection_id);
         $this->assertSame($first->id, $third->reused_from_detection_id);
         $this->assertSame($other->id, $second->user_id);
-        $this->assertSame($first->fact_check_result, $second->fact_check_result);
+        $this->assertSame($first->fact_check_result['verdict'], $second->fact_check_result['verdict']);
+        $this->assertSame($first->fact_check_result['summary'], $second->fact_check_result['summary']);
+        $this->assertNotSame(
+            $first->fact_check_result['generated_wording']['explanation'],
+            $second->fact_check_result['generated_wording']['explanation'],
+        );
         $this->assertTrue($second->analyzed_at->eq($first->analyzed_at));
         $this->assertNotSame($first->media_path, $second->media_path);
         $this->assertSame(0, $second->signals['openai_usage']['total_tokens']);
+        $this->assertTrue($second->signals['result_reuse']['wording_refreshed_locally']);
         $this->assertSame(120, $second->signals['result_reuse']['original_openai_usage']['total_tokens']);
         $this->assertSame($snapshot, $first->fresh()->getRawOriginal());
         Storage::disk('public')->assertExists($second->media_path);

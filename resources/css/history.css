@@ -38,7 +38,9 @@ html.dark .tg-history { --history-bg: #182235; --history-soft: #223047; --histor
 .tg-history-search { display: flex; align-items: center; flex: 1 1 16rem; max-width: 24rem; min-width: 0; border: 1px solid var(--history-line); border-radius: 9px; background: var(--history-bg); }
 .tg-history-search input { flex: 1; min-width: 0; width: 100%; min-height: 44px; padding: .5rem .75rem; border: 0; border-radius: 9px; background: transparent; color: var(--history-ink); font-size: .875rem; }
 .tg-history-search button { display: grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px; border-radius: 8px; color: var(--history-muted); }
-.tg-history-toolbar select { min-height: 44px; max-width: 100%; border: 1px solid var(--history-line); border-radius: 9px; background-color: var(--history-bg); color: var(--history-ink); padding: .5rem 2rem .5rem .75rem; font-size: .8125rem; }
+.tg-history-toolbar :is(select, .tg-select-trigger) { min-height: 44px; max-width: 100%; border: 1px solid var(--history-line); border-radius: 9px; background-color: var(--history-bg); color: var(--history-ink); padding: .5rem .75rem; font-size: .8125rem; }
+.tg-history-toolbar > .tg-select-trigger { width: 15rem; box-shadow: 0 4px 14px rgb(15 23 42 / 5%); }
+.tg-history-toolbar > .tg-select-trigger[aria-expanded="true"] { border-color: var(--history-link); box-shadow: 0 0 0 3px rgb(59 130 246 / 16%); }
 .tg-history-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .tg-history-table th { padding: .75rem 1rem; border-bottom: 1px solid var(--history-line); background: var(--history-soft); color: var(--history-muted); font-size: .6875rem; font-weight: 650; text-align: left; text-transform: uppercase; letter-spacing: .07em; }
 .tg-history-table th span { display: block; font-size: .625rem; white-space: nowrap; }
@@ -109,5 +111,5 @@ html.dark .tg-history-tone-red { background: #482537; color: #fda4af; border-col
     .tg-history-search-form { flex-basis: 100%; }
     .tg-history-search { max-width: none; }
     .tg-history-search input { font-size: 1rem; }
-    .tg-history-toolbar select { flex: 1; min-width: 0; width: calc(100% - 52px); }
+    .tg-history-toolbar :is(select, .tg-select-trigger) { flex: 1; min-width: 0; width: calc(100% - 52px); }
 }

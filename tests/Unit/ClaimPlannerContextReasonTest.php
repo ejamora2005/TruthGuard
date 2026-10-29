@@ -8,6 +8,31 @@ use Tests\TestCase;
 
 class ClaimPlannerContextReasonTest extends TestCase
 {
+    public function test_attributed_prediction_is_checked_instead_of_the_rhetorical_headline(): void
+    {
+        $headline = 'WORLD ENDS WHEN?';
+        $statement = 'The end of the world will be on Friday, November 13, 2026, according to a scientist’s mathematical prediction';
+        $text = $headline."\n\n".$statement;
+        $this->mock(StructuredAnalysis::class)->shouldReceive('ask')->once()->andReturn([
+            'claims' => [
+                ['quote' => $headline, 'kind' => 'rhetorical', 'entities' => [], 'dates' => [], 'locations' => [],
+                    'quantities' => [], 'qualifiers' => [], 'requires_context' => true,
+                    'context_reason' => 'The headline is a question.', 'searches' => ['world end November 2026'], 'references' => []],
+                ['quote' => $statement, 'kind' => 'prediction', 'entities' => ['scientist'], 'dates' => ['November 13, 2026'],
+                    'locations' => [], 'quantities' => [], 'qualifiers' => [], 'requires_context' => false,
+                    'context_reason' => '', 'searches' => ['November 13 2026 prediction'], 'references' => []],
+            ],
+            'original_claim_date' => null, 'date_quote' => '',
+        ]);
+
+        $plan = app(ClaimPlanner::class)->plan($text);
+
+        $this->assertCount(1, $plan['claims']);
+        $this->assertSame($statement, $plan['claims'][0]['text']);
+        $this->assertSame('factual', $plan['claims'][0]['kind']);
+        $this->assertFalse($plan['claims'][0]['requires_context']);
+    }
+
     public function test_a_searchable_topic_heading_does_not_request_a_logo_acronym_as_the_missing_claim(): void
     {
         $headline = '2026 BSKE POSTPONEMENT: A RACE AGAINST TIME AND THE CONSTITUTION TOA';

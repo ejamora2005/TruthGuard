@@ -21,7 +21,7 @@
                 @endif
 
                 <div class="tg-pagination-picker">
-                    <select class="tg-pagination-select" aria-label="Go to page" onchange="window.location.assign(this.value)" title="Choose a page">
+                    <select class="tg-pagination-select" data-tg-select data-tg-select-trigger-class="tg-pagination-select" aria-label="Go to page" onchange="window.location.assign(this.value)" title="Choose a page">
                         @for ($page = 1; $page <= $lastPage; $page++)
                             <option value="{{ $pageUrl($page) }}" @selected($page === $currentPage)>{{ $page }} / {{ $lastPage }}</option>
                         @endfor

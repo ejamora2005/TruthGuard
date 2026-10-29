@@ -57,6 +57,16 @@ class ClaimPlanner
             }
             $row['id'] = 'c'.(count($claims) + 1);
             $row['text'] = $row['quote'];
+
+            // An attributed forecast makes a checkable claim that the forecast
+            // exists. Do not discard it merely because the forecast itself is
+            // about the future.
+            if ($row['kind'] === 'prediction'
+                && preg_match('/\b(?:according to|predicted by|forecast by|study|scientist|researcher)\b/iu', $row['quote'])) {
+                $row['kind'] = 'factual';
+                $row['requires_context'] = false;
+                $row['context_reason'] = '';
+            }
             if ($target !== '') {
                 $row['current_status_question'] = $this->isCurrentStatus($submission['question'] ?? '');
             }
@@ -87,6 +97,16 @@ class ClaimPlanner
             $claims[] = $row;
         }
         $claims = $this->mergeSentences($claims);
+
+        // A rhetorical headline is presentation, not a competing assessment
+        // target when the same post contains a specific factual statement.
+        if (collect($claims)->contains(fn ($claim) => ($claim['kind'] ?? null) === 'factual')) {
+            $claims = array_values(array_filter($claims, fn ($claim) => ! in_array($claim['kind'] ?? null, ['question', 'rhetorical'], true)));
+            foreach ($claims as $index => &$claim) {
+                $claim['id'] = 'c'.($index + 1);
+            }
+            unset($claim);
+        }
         foreach ($claims as &$claim) {
             // Satire provenance may need researching even when the literal
             // wording is an opinion. This never turns an opinion into a fact.

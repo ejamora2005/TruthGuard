@@ -67,7 +67,7 @@ class AnalyzeDetectionEvidence implements ShouldBeUnique, ShouldQueue
             $file = new UploadedFile($path, basename($path), null, null, true);
         }
         $completed = $pipeline->run($detection->user, $this->context, $file, $detection);
-        if (config('playwright.related_posts_inline', false)) {
+        if ($completed->processing_status === 'completed' && config('playwright.related_posts_inline', false)) {
             app(RelatedPostScraper::class)->scrapeForDetection($completed, $this->context);
         }
     }

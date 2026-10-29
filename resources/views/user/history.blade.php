@@ -97,7 +97,7 @@
                         <button type="submit" aria-label="Search history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></button>
                     </div>
                 </form>
-                <select name="sort" form="history-search-form" aria-label="Sort history" onchange="this.form.requestSubmit()">
+                <select name="sort" form="history-search-form" data-tg-select aria-label="Sort history" onchange="this.form.requestSubmit()">
                     @foreach ($historySortOptions as $value => $label)
                         <option value="{{ $value }}" @selected(($historyFilters['sort'] ?? 'newest') === $value)>{{ $label }}</option>
                     @endforeach

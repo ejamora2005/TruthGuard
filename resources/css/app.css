@@ -67,12 +67,20 @@
     color: #34466a;
 }
 .tg-auth-card-detailed input:not([type="checkbox"]):not([type="hidden"]) {
-    background: linear-gradient(180deg, #f5f8fd, #fff);
-    box-shadow: inset 0 2px 4px rgba(50, 78, 122, .04), 0 2px 5px rgba(77, 100, 148, .035);
+    color-scheme: light;
+    background: #fff;
+    box-shadow: none;
     transition: border-color 180ms ease, box-shadow 180ms ease;
 }
+.tg-auth-card-detailed input:not([type="checkbox"]):not([type="hidden"]):-webkit-autofill,
+.tg-auth-card-detailed input:not([type="checkbox"]):not([type="hidden"]):-webkit-autofill:hover,
+.tg-auth-card-detailed input:not([type="checkbox"]):not([type="hidden"]):-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a;
+    box-shadow: 0 0 0 1000px #fff inset !important;
+    caret-color: #0f172a;
+}
 .tg-auth-card-detailed input:not([type="checkbox"]):focus-visible {
-    box-shadow: 0 0 0 3px rgba(14, 165, 233, .14), inset 0 1px 3px rgba(50, 78, 122, .025);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, .14);
 }
 .tg-auth-card-detailed button[type="submit"] {
     background-image: linear-gradient(115deg, #0891b2, #2563eb 55%, #7153de);
@@ -1365,12 +1373,12 @@ select[data-tg-select][hidden], .tg-select-menu[hidden] { display: none !importa
     z-index: 10000;
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 0.375rem;
+    padding: 0.45rem;
     border: 1px solid #dbeafe;
-    border-radius: 8px;
+    border-radius: 12px;
     background: #fff;
     color: #334155;
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14), 0 3px 8px rgba(37, 99, 235, 0.06);
+    box-shadow: 0 22px 54px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(37, 99, 235, 0.08);
     outline: none;
     animation: tg-menu-enter 140ms ease-out;
 }
@@ -1381,7 +1389,7 @@ select[data-tg-select][hidden], .tg-select-menu[hidden] { display: none !importa
     gap: 0.75rem;
     min-height: 2.75rem;
     padding: 0.65rem 0.75rem;
-    border-radius: 6px;
+    border-radius: 9px;
     font-size: 0.875rem;
     line-height: 1.4;
     cursor: pointer;
@@ -1390,6 +1398,10 @@ select[data-tg-select][hidden], .tg-select-menu[hidden] { display: none !importa
 .tg-select-option[aria-selected="true"] { color: #1d4ed8; font-weight: 700; }
 .tg-select-option[aria-selected="true"]::after { content: '\2713'; }
 .tg-select-option[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+html.dark .tg-select-menu { background: #182235; color: #f1f5f9; border-color: #3b4b63; box-shadow: 0 22px 54px rgb(0 0 0 / 34%); }
+html.dark .tg-select-option:hover,
+html.dark .tg-select-option.is-focused { background: #203858; color: #bfdbfe; }
+html.dark .tg-select-option[aria-selected="true"] { color: #93c5fd; }
 @keyframes tg-menu-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .tg-select-menu { animation: none; } }
 
@@ -5617,6 +5629,36 @@ html[data-pwa-standalone] .truthguard-history-date-filters { display: none !impo
     }
 }
 
+/* The mobile composer previously inherited the light card's white inset ring
+   after the dark-theme imports. Keep the fixed composer inside the night
+   palette, including its focused state. */
+@media (max-width: 640px) {
+    html[data-tg-workspace].dark body.truthguard-fact-check-create-route
+    .truthguard-pre-result-workspace .truthguard-pre-result-form {
+        background: color-mix(in srgb, var(--tg-night-bg) 88%, transparent) !important;
+        border-color: var(--tg-night-line) !important;
+        box-shadow: 0 -10px 28px rgb(0 0 0 / 24%) !important;
+    }
+
+    html[data-tg-workspace].dark body.truthguard-fact-check-create-route
+    .truthguard-pre-result-workspace .truthguard-detection-composer,
+    html[data-tg-workspace].dark body.truthguard-fact-check-create-route
+    .truthguard-pre-result-workspace .truthguard-detection-composer:focus-within {
+        background: var(--tg-night-surface) !important;
+        border-color: var(--tg-night-line) !important;
+        box-shadow: 0 8px 22px rgb(0 0 0 / 22%) !important;
+    }
+
+    html[data-tg-workspace].dark body.truthguard-fact-check-create-route
+    .truthguard-pre-result-workspace .truthguard-composer-field,
+    html[data-tg-workspace].dark body.truthguard-fact-check-create-route
+    .truthguard-pre-result-workspace .truthguard-composer-field:focus-within {
+        background: var(--tg-night-raised) !important;
+        border-color: var(--tg-night-line) !important;
+        box-shadow: none !important;
+    }
+}
+
 /* Keep the input hint on one line without changing how user text wraps. */
 .truthguard-detection-textarea::placeholder {
     white-space: nowrap;
@@ -5636,6 +5678,7 @@ body.truthguard-fact-check-create-route .truthguard-recent-card {
 }
 body.truthguard-fact-check-create-route .truthguard-recent-card > .truthguard-recent-open {
     width: 30px !important; height: 30px !important; margin-top: 0;
+    transform: translateX(-4px);
     border-radius: 50% !important; border: 1px solid #dce7f7;
     background: linear-gradient(145deg, #fff, #eef4ff); color: #4666a5;
     box-shadow: 0 2px 5px rgb(37 99 235 / 6%);

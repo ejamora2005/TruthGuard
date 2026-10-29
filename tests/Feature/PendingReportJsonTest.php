@@ -70,6 +70,46 @@ class PendingReportJsonTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_returning_to_fact_check_automatically_resumes_the_owners_active_assessment(): void
+    {
+        $user = User::factory()->create();
+        $older = Detection::create(['user_id' => $user->id, 'source_kind' => 'link', 'media_type' => 'text',
+            'processing_status' => 'processing', 'verdict' => 'review', 'fake_score' => 0]);
+        $latest = Detection::create(['user_id' => $user->id, 'source_kind' => 'link', 'media_type' => 'text',
+            'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0]);
+        Detection::create(['user_id' => User::factory()->create()->id, 'source_kind' => 'link', 'media_type' => 'text',
+            'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0]);
+
+        $this->actingAs($user)->get(route('detections.create'))
+            ->assertOk()
+            ->assertViewHas('pendingDetection', fn ($pending) => $pending->is($latest));
+
+        $this->assertNotSame($older->id, $latest->id);
+    }
+
+    public function test_logout_stops_only_the_signed_in_users_unfinished_assessments(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $queued = Detection::create(['user_id' => $user->id, 'source_kind' => 'link', 'media_type' => 'text',
+            'caption_text' => 'A claim in progress', 'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0]);
+        $processing = Detection::create(['user_id' => $user->id, 'source_kind' => 'link', 'media_type' => 'text',
+            'processing_status' => 'processing', 'verdict' => 'review', 'fake_score' => 0]);
+        $otherQueued = Detection::create(['user_id' => $other->id, 'source_kind' => 'link', 'media_type' => 'text',
+            'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0]);
+
+        $this->actingAs($user)->post(route('logout'))->assertRedirect(route('login', absolute: false));
+
+        foreach ([$queued, $processing] as $stopped) {
+            $stopped->refresh();
+            $this->assertSame('failed', $stopped->processing_status);
+            $this->assertSame('signed_out', data_get($stopped->signals, 'analysis_cancellation.reason'));
+            $this->assertSame('ANALYSIS_UNAVAILABLE', data_get($stopped->fact_check_result, 'verdict'));
+        }
+        $this->assertSame('queued', $otherQueued->fresh()->processing_status);
+        $this->assertGuest();
+    }
+
     public function test_polling_does_not_return_a_stale_completed_report_while_new_work_is_pending_or_failed(): void
     {
         $user = User::factory()->create();

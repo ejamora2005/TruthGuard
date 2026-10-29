@@ -99,6 +99,10 @@ html[data-tg-workspace].dark body :is(.truthguard-sidebar, .truthguard-topbar, .
 html[data-tg-workspace].dark body .truthguard-settings-hero::after { opacity: .1; }
 html[data-tg-workspace].dark body .truthguard-notification-popover::before { border-bottom-color: var(--tg-night-line); }
 html[data-tg-workspace].dark body .truthguard-notification-popover::after { border-bottom-color: var(--tg-night-surface); }
+html[data-tg-workspace].dark body .truthguard-notification-header {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+}
 html[data-tg-workspace].dark body :is(.tg-result-report, .tg-ai-report, .tg-notice-card) { color: var(--tg-night-ink) !important; }
 html[data-tg-workspace].dark body :is(.tg-result-report, .tg-ai-report) :is(h1, h2, h3, h4, p, li, summary) { color: inherit; }
 html[data-tg-workspace].dark body .tg-result-report :is(.tg-result-summary, .tg-result-claim-text, .tg-result-answer-copy, .tg-result-findings, .tg-result-source-purpose, .tg-result-limitations, .tg-result-muted, .tg-result-section-description, .tg-result-record, .tg-result-report-subtitle) { color: var(--tg-night-muted) !important; }

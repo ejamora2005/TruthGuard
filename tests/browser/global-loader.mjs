@@ -117,8 +117,8 @@ try {
         window.ends.push(TruthGuardLoader.begin({ immediate: true }));
     });
     await visible();
-    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backdropFilter), 'none');
-    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundImage.includes('linear-gradient')), true);
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backdropFilter), 'blur(10px) saturate(0.9)');
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundImage), 'none');
     assert.equal(await page.locator('.tg-loader-ring').evaluate(el => getComputedStyle(el).backgroundImage.includes('conic-gradient')), true);
     assert.deepEqual(await page.locator('main').boundingBox(), before);
     await page.evaluate(() => {
@@ -166,12 +166,12 @@ try {
         await page.goto(base + '/hold');
         await visible();
         assert.equal(await page.locator('html').getAttribute('data-tg-loader-initial'), '');
-        assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), colorScheme === 'dark' ? 'rgb(15, 23, 42)' : 'rgb(248, 251, 255)');
+        assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), colorScheme === 'dark' ? 'rgba(15, 23, 42, 0.18)' : 'rgba(248, 251, 255, 0.1)');
         await page.evaluate(() => ends.pop()());
         await hidden();
         await page.evaluate(() => TruthGuardLoader.begin({ immediate: true }));
         await visible();
-        assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backdropFilter), 'none');
+        assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backdropFilter), 'blur(10px) saturate(0.9)');
         await page.screenshot({ path: `storage/app/loader-qa/mobile-${colorScheme}.png` });
         await page.keyboard.press('Escape');
         await hidden();
@@ -179,18 +179,18 @@ try {
     await page.emulateMedia({ colorScheme: 'light' });
     await page.evaluate(() => { TruthGuardAppearance.set({ mode: 'dark' }); TruthGuardLoader.begin({ immediate: true }); });
     assert.equal(await page.locator('.tg-loader-status').evaluate(el => getComputedStyle(el).color), 'rgb(187, 200, 218)');
-    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(15, 23, 42)');
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(15, 23, 42, 0.18)');
     await page.keyboard.press('Escape');
     await hidden();
     await page.goto(base + '/hold');
     await visible();
-    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(15, 23, 42)');
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(15, 23, 42, 0.18)');
     await page.evaluate(() => ends.pop()());
     await hidden();
     // An explicit light choice wins over a dark OS preference.
     await page.emulateMedia({ colorScheme: 'dark' });
     await page.evaluate(() => { TruthGuardAppearance.set({ mode: 'light' }); TruthGuardLoader.begin({ immediate: true }); });
-    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(248, 251, 255)');
+    assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(248, 251, 255, 0.1)');
     await page.keyboard.press('Escape');
     await hidden();
     await page.emulateMedia({ reducedMotion: 'reduce' });
