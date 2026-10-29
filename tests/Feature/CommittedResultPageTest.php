@@ -288,7 +288,7 @@ class CommittedResultPageTest extends TestCase
 
         $html = $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
             ->assertSee('Media analysis report')->assertSee('Your question')->assertSee('What the evidence shows')
-            ->assertSee('Evidence insufficient')->assertSee($saved['summary'])
+            ->assertDontSee('Evidence insufficient')->assertDontSee('No calibrated confidence recorded')->assertSee($saved['summary'])
             ->assertSee('Saved explanation tied to the original source record.')->assertSee('Source result')->assertSee('False')
             ->assertSee('Source verification')->assertSee('Original saved source title')->assertSee('Original saved relevance explanation.')
             ->assertSee('href="https://example.com/saved-source"', false)->assertSee('Enlarge submitted image')

@@ -32,6 +32,10 @@ html body.tg-polished-workspace .truthguard-sidebar {
 html body.tg-polished-workspace :is(.truthguard-sidebar, .truthguard-topbar, .truthguard-mobile-tabbar)::before,
 html body.tg-polished-workspace :is(.truthguard-topbar, .truthguard-mobile-tabbar)::after { display: none !important; }
 html body.tg-polished-workspace .truthguard-sidebar > div:first-child { padding-block: 1.5rem; }
+html body.tg-polished-workspace .truthguard-sidebar-brand-mark {
+    display: inline-grid; width: 46px; height: 46px; flex: 0 0 46px; place-items: center;
+    border: 1px solid var(--workspace-line); border-radius: 13px; background: var(--workspace-soft);
+}
 html body.tg-polished-workspace .truthguard-sidebar > div:first-child a p {
     background: none !important; color: var(--workspace-ink) !important;
     -webkit-text-fill-color: currentColor !important; font-size: 1.125rem; letter-spacing: -.035em;

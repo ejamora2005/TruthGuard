@@ -84,11 +84,42 @@ html[data-tg-workspace].dark body .tg-ai-report :is(.tg-ai-surface, .tg-report-e
     color: var(--tg-night-ink) !important;
     box-shadow: none !important;
 }
+/* Source verification cards define their light-theme text colors inside the view.
+   Override each text role explicitly so links remain legible in the night palette. */
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-group,
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-publisher,
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-card-title {
+    color: var(--tg-night-ink) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-section-title p, .tg-source-domain, .tg-source-description, .tg-source-meta) {
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-group::after,
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-card-footer {
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-group::after {
+    background: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-open {
+    background: #203858 !important;
+    color: #bfdbfe !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-card:hover .tg-source-open {
+    background: #28486f !important;
+}
 html[data-tg-workspace].dark body .tg-ai-report :is(.tg-ai-media, .tg-evidence-question, .tg-evidence-kind, .tg-verdict-score, .tg-report-metrics > div, .tg-report-method-summary, .tg-report-method-chevron) { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark body .tg-ai-report :is(.tg-report-reference, .tg-report-subtitle, .tg-card-eyebrow, .tg-evidence-meta, .tg-submission-question, .tg-interpretation-intro, .tg-details-coverage-copy, .tg-related-date, .tg-related-publisher, .tg-related-group) { color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark body :is(.tg-related-headline, .tg-related-title) { color: var(--tg-night-ink) !important; }
 html[data-tg-workspace].dark body :is(.tg-related-summary, .tg-related-meta) { color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark body :is(.tg-related-open, .tg-related-host) { color: #93c5fd !important; }
+html[data-tg-workspace].dark body .tg-ai-report .tg-related-media {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report .tg-related-card-footer {
+    border-color: var(--tg-night-line) !important;
+}
 html[data-tg-workspace].dark body .tg-ai-report .tg-interpretation-action { background: #123c35 !important; border-color: #377864 !important; color: #d1fae5 !important; }
 html[data-tg-workspace].dark body .tg-ai-report .tg-verdict-help-popover::before { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body :is(.tg-image-preview, .tg-image-close) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; color: #93c5fd !important; }

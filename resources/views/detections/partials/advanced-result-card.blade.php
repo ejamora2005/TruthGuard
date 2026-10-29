@@ -90,6 +90,7 @@
     $presentationAdjusted = $publicResult['primary_task'] !== ($savedAssessment['primary_task'] ?? $publicResult['primary_task'])
         || $publicResult['verdict'] !== ($savedAssessment['verdict'] ?? $publicResult['verdict']);
     $scoreBadge = \App\Services\Detections\AssessmentScore::badge($presentationAdjusted ? $publicResult : $savedAssessment);
+    $showAiScore = $isMediaReport && ($scoreBadge['has_percentage'] ?? false);
     $isUnconfirmed = ! $presentationAdjusted && $verdictPresenter::isNoOfficialConfirmation($selectedDetection);
     $assessment = trim((string) (
         (filled(data_get($selectedDetection->fact_check_result, 'summary')) || ($selectedDetection->fact_check_result['schema_version'] ?? 0) < 4
@@ -982,7 +983,9 @@
                             <p class="tg-card-eyebrow">{{ $assessmentHeading }}</p>
                             <a href="#source-verification" @click="scrollToSources($event)" aria-label="View source verification" title="View source verification" class="tg-source-jump rounded-xl text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
                                 <span>View sources</span>
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m7 10 5 5 5-5" /></svg>
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v15m-5-5 5 5 5-5" />
+                                </svg>
                             </a>
                         </div>
                         <div class="tg-verdict-summary">
@@ -1014,10 +1017,12 @@
                                     <p>{{ $presentation['verdict_meaning'] ?? $tone['summary'] }}</p>
                                 </div>
                             </div>
-                            <div class="tg-verdict-score" aria-label="Assessment score" title="{{ $scoreBadge['detail'] }}">
-                                <strong>{{ $scoreBadge['title'] }}</strong>
-                                <span>{{ $scoreBadge['description'] }}</span>
-                            </div>
+                            @if ($showAiScore)
+                                <div class="tg-verdict-score" aria-label="AI media assessment score" title="{{ $scoreBadge['detail'] }}">
+                                    <strong>{{ $scoreBadge['title'] }}</strong>
+                                    <span>{{ $scoreBadge['description'] }}</span>
+                                </div>
+                            @endif
                         </div>
                         <div class="tg-verdict-explanation">
                             <h3>What the evidence shows</h3>
@@ -1177,12 +1182,12 @@
             </div>
 
             <dl class="tg-report-metrics">
-                @foreach ([
-                    ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : 'Assessment score', 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']],
+                @foreach (array_values(array_filter([
+                    $showAiScore ? ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : 'AI assessment score', 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']] : null,
                     ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
                     ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
                     ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
-                ] as $metric)
+                ])) as $metric)
                     <div title="{{ $metric['help'] }}"><dt>{{ $metric['label'] }}</dt><dd>{{ $metric['value'] }}</dd><p class="mt-1 text-xs leading-5 text-slate-500">{{ $metric['help'] }}</p></div>
                 @endforeach
             </dl>

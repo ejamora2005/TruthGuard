@@ -1016,37 +1016,20 @@
                 ]"
                 :style="isDesktop || userSidebarOpen ? 'transform: translateX(0);' : 'transform: translateX(calc(-100% - 1rem));'"
             >
-                <div class="flex items-center justify-between gap-2 px-4 py-6 sm:px-5 sm:py-7" :class="sidebarExpanded ? '' : 'lg:px-2'">
-                    <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 overflow-hidden">
+                <div class="flex items-center justify-between gap-2 px-4 py-6 sm:px-5 sm:py-7" :class="sidebarExpanded ? '' : 'lg:justify-center lg:px-2'">
+                    <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 overflow-hidden" :class="sidebarExpanded ? '' : 'lg:w-full lg:justify-center'">
                         @if ($logoUrl !== '')
-                            <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-8 w-8 shrink-0 object-contain" width="32" height="32">
+                            <span class="truthguard-sidebar-brand-mark">
+                                <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-9 w-9 shrink-0 object-contain" width="36" height="36">
+                            </span>
                         @else
-                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-500 text-sm font-semibold text-white">TG</span>
+                            <span class="truthguard-sidebar-brand-mark font-semibold text-blue-700">TG</span>
                         @endif
 
                         <div x-show="sidebarExpanded || window.innerWidth < 1024" x-cloak>
                             <p class="font-semibold text-gray-800 text-theme-xl">TruthGuard</p>
                         </div>
                     </a>
-
-                    <button
-                        type="button"
-                        class="truthguard-sidebar-collapse hidden lg:inline-flex"
-                        @click="toggleSidebar()"
-                        :aria-label="sidebarExpanded ? 'Minimize sidebar' : 'Expand sidebar'"
-                        :title="sidebarExpanded ? 'Minimize sidebar' : 'Expand sidebar'"
-                        :aria-expanded="sidebarExpanded.toString()"
-                        :data-collapsed="(!sidebarExpanded).toString()"
-                    >
-                        <svg x-show="sidebarExpanded" class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <rect x="3.5" y="4" width="17" height="16" rx="3"></rect>
-                            <path stroke-linecap="round" d="M9 4v16m7-11-3 3 3 3"></path>
-                        </svg>
-                        <svg x-show="!sidebarExpanded" x-cloak class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <rect x="3.5" y="4" width="17" height="16" rx="3"></rect>
-                            <path stroke-linecap="round" d="M9 4v16m4-11 3 3-3 3"></path>
-                        </svg>
-                    </button>
 
                     <button type="button" class="text-gray-500 lg:hidden" @click="userSidebarOpen = false" aria-label="Close sidebar">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1181,6 +1164,19 @@
             >
                 <header class="truthguard-topbar sticky top-0 z-[99997] w-full border-b border-[color:var(--tg-shell-border)] backdrop-blur-xl">
                     <div class="flex w-full items-center gap-2.5 px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3 lg:px-6 lg:py-4">
+                        <button
+                            type="button"
+                            class="truthguard-shell-toggle hidden shrink-0 lg:inline-flex"
+                            @click="toggleSidebar()"
+                            :aria-label="sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'"
+                            :title="sidebarExpanded ? 'Collapse sidebar' : 'Expand sidebar'"
+                            :aria-expanded="sidebarExpanded.toString()"
+                        >
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                                <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"></path>
+                            </svg>
+                        </button>
+
                         @if ($pageBackUrl !== '')
                             <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0 {{ $isDetectionPage ? 'truthguard-detection-mobile-logo' : '' }}" aria-label="Go back" title="Go back">
                                 @if ($isDetectionPage)
