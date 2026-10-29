@@ -37,6 +37,10 @@ const hidden = () => page.waitForFunction(() => !document.documentElement.classL
 const visible = () => page.waitForFunction(() => document.documentElement.classList.contains('tg-loading')
     && Number(getComputedStyle(document.querySelector('.tg-loader')).opacity) > .99);
 try {
+    await page.goto(base);
+    await hidden();
+    assert.equal(await page.evaluate(() => document.documentElement.hasAttribute('data-tg-loader-initial')), false);
+
     await page.goto(base + '/hold');
     await visible();
     assert.equal(await page.locator('main').evaluate(el => el.inert), true);
@@ -165,7 +169,7 @@ try {
         await page.emulateMedia({ colorScheme });
         await page.goto(base + '/hold');
         await visible();
-        assert.equal(await page.locator('html').getAttribute('data-tg-loader-initial'), '');
+        assert.equal(await page.locator('html').getAttribute('data-tg-loader-initial'), null);
         assert.equal(await page.locator('.tg-loader').evaluate(el => getComputedStyle(el).backgroundColor), colorScheme === 'dark' ? 'rgba(15, 23, 42, 0.18)' : 'rgba(248, 251, 255, 0.1)');
         await page.evaluate(() => ends.pop()());
         await hidden();

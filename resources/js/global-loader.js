@@ -120,10 +120,11 @@
         navigation = null;
     };
     window.TruthGuardLoader = { begin, reset, ready, startNavigation };
-    root.setAttribute('data-tg-loader-initial', '');
-    const initialDone = begin({ immediate: true });
+    // A direct page render already contains its usable server-rendered UI. Do not
+    // cover an empty workspace with a synthetic loading state; real navigation,
+    // submissions and explicit data operations call begin() themselves.
+    const initialDone = () => {};
     document.addEventListener('DOMContentLoaded', () => {
-        lock();
         if (!document.getElementById('admin-root')) ready();
     }, { once: true });
     // Observe native actions after other handlers can cancel them. Never intercept.
