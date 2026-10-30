@@ -15,6 +15,8 @@
                 : asset('favicon.ico');
             $logoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
             $logoUrl = is_file(public_path($logoPath)) ? asset($logoPath) : '';
+            $sidebarLogoPath = 'images/truthguard-logo-transparent.png';
+            $sidebarLogoUrl = is_file(public_path($sidebarLogoPath)) ? asset($sidebarLogoPath) : $logoUrl;
 
             $user = auth()->user();
             $displayName = filled($user?->name) ? (string) $user->name : 'TruthGuard User';
@@ -621,7 +623,7 @@
                 content: '';
                 position: absolute;
                 top: -0.72rem;
-                right: 1.33rem;
+                right: 0.69rem;
                 height: 0.9rem;
                 width: 1.38rem;
                 clip-path: polygon(50% 0, 0 100%, 100% 100%);
@@ -1018,9 +1020,9 @@
             >
                 <div class="flex items-center justify-between gap-2 px-4 py-6 sm:px-5 sm:py-7" :class="sidebarExpanded ? '' : 'lg:justify-center lg:px-2'">
                     <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 overflow-hidden" :class="sidebarExpanded ? '' : 'lg:w-full lg:justify-center'">
-                        @if ($logoUrl !== '')
+                        @if ($sidebarLogoUrl !== '')
                             <span class="truthguard-sidebar-brand-mark">
-                                <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-9 w-9 shrink-0 object-contain" width="36" height="36">
+                                <img src="{{ $sidebarLogoUrl }}" alt="TruthGuard logo" class="h-9 w-9 shrink-0 object-contain" width="36" height="36">
                             </span>
                         @else
                             <span class="truthguard-sidebar-brand-mark font-semibold text-blue-700">TG</span>

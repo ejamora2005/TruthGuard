@@ -4363,7 +4363,7 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         right: max(0.65rem, env(safe-area-inset-right, 0px));
         bottom: calc(0.72rem + env(safe-area-inset-bottom, 0px));
         width: auto;
-        min-height: 3.4rem;
+        min-height: 3.85rem;
         transform: none;
         isolation: isolate;
         align-items: center;
@@ -4431,8 +4431,8 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     }
 
     body:not(.truthguard-admin-app) .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary) {
-        bottom: 0.28rem;
-        transform: translateY(-0.05rem);
+        bottom: 0;
+        transform: none;
     }
 
     body:not(.truthguard-admin-app) .truthguard-mobile-primary-slot {
@@ -4489,7 +4489,7 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     }
 
     body:not(.truthguard-admin-app) .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary).is-active {
-        transform: translateY(-0.12rem) scale(1.03);
+        transform: scale(1.03);
         box-shadow: 0 12px 26px rgba(37, 99, 235, 0.13);
     }
 
@@ -4660,7 +4660,7 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
 
     body:not(.truthguard-admin-app) .truthguard-mobile-check .truthguard-pre-result-form {
         position: fixed !important;
-        bottom: calc(5.35rem + env(safe-area-inset-bottom, 0px)) !important;
+        bottom: calc(5.8rem + env(safe-area-inset-bottom, 0px)) !important;
         max-height: calc(52svh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     }
 }
