@@ -20,7 +20,7 @@ class DetectionVerdictPresenter
                 'short_label' => Str::upper($label), 'history_label' => $label, 'notification_label' => $label,
                 'risk_label' => 'ASSESSMENT INCOMPLETE', 'summary_lead' => 'The requested assessment did not complete; no factual or media-origin conclusion was reached.',
                 'rating' => null, 'source_rating' => null, 'verdict' => 'review', 'verdict_label' => $label,
-                'verdict_meaning' => 'The requested assessment did not complete. This is not a true or false finding about the submitted claim.',
+                'verdict_meaning' => AssessmentVerdict::meaning($recordedVerdict),
                 'is_unconfirmed' => false,
             ]);
         }
@@ -42,14 +42,7 @@ class DetectionVerdictPresenter
                 'MANIPULATED', 'LIKELY_MANIPULATED' => FactCheckRatingNormalizer::MANIPULATED_MEDIA,
                 default => null,
             };
-            $meaning = match ($recordedVerdict) {
-                'AI_GENERATED' => 'The recorded assessment identifies AI-generated media. This origin finding does not verify any factual claim associated with it.',
-                'LIKELY_AI_GENERATED' => 'The primary AI-origin detector found signals consistent with AI generation. This is a model-based finding, not proof of how the media was created.',
-                'LIKELY_NOT_AI_GENERATED' => 'The primary AI-origin detector did not find strong AI-generation signals. This does not prove human origin or rule out editing.',
-                'MANIPULATED', 'LIKELY_MANIPULATED' => 'The recorded assessment found signs of alteration. Review the original media and the recorded limitations; this does not verify associated factual claims.',
-                'NO_MANIPULATION_DETECTED' => 'The recorded checks did not detect manipulation. This does not prove the media is authentic or that associated factual claims are true.',
-                default => 'The available media analysis did not resolve the origin. Neither AI generation nor human origin has been established.',
-            };
+            $meaning = AssessmentVerdict::meaning($recordedVerdict);
 
             return array_replace(self::profileFor($rating, $verdict), [
                 'short_label' => Str::upper($label), 'history_label' => $label, 'notification_label' => $label,
@@ -76,7 +69,7 @@ class DetectionVerdictPresenter
                 'history_label' => $label, 'notification_label' => $label,
                 'summary_lead' => $result['summary'], 'rating' => null, 'source_rating' => null,
                 'verdict' => $verdict, 'verdict_label' => $label,
-                'verdict_meaning' => $result['summary'], 'is_unconfirmed' => false,
+                'verdict_meaning' => AssessmentVerdict::meaning($result['verdict']), 'is_unconfirmed' => false,
             ]);
         }
         $rating = self::specificRating($detection);

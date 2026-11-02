@@ -34,7 +34,7 @@ html body.tg-polished-workspace :is(.truthguard-topbar, .truthguard-mobile-tabba
 html body.tg-polished-workspace .truthguard-sidebar > div:first-child { padding-block: 1.5rem; }
 html body.tg-polished-workspace .truthguard-sidebar-brand-mark {
     display: inline-grid; width: 46px; height: 46px; flex: 0 0 46px; place-items: center;
-    border: 1px solid var(--workspace-line); border-radius: 13px; background: var(--workspace-soft);
+    border: 0; border-radius: 0; background: transparent;
 }
 html body.tg-polished-workspace .truthguard-sidebar > div:first-child a p {
     background: none !important; color: var(--workspace-ink) !important;

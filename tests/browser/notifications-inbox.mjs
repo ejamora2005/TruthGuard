@@ -97,6 +97,8 @@ try {
                 await inbox.getByRole('button', { name: 'Mark all as read', exact: true }).click();
                 await inbox.getByRole('heading', { name: 'You’re all caught up' }).waitFor();
                 assert.equal(await inbox.getByRole('button', { name: 'Mark all as read', exact: true }).isDisabled(), true);
+                const notificationBadge = page.locator('.truthguard-notification-badge');
+                if (await notificationBadge.count()) await notificationBadge.waitFor({ state: 'hidden' });
                 await inbox.getByRole('button', { name: 'View all notifications', exact: true }).click();
                 assert.equal(await rows.count(), 5);
                 status = 500;

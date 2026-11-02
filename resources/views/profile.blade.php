@@ -145,7 +145,6 @@
                 window.history.replaceState({}, '', url.toString());
                 this.$nextTick(() => {
                     this.$refs.settingsBody?.scrollTo({ top: 0 });
-                    this.$refs.settingsDialog?.querySelector('.truthguard-settings-modal-tab.is-active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
                 });
             },
             openSettings(section) {
@@ -1161,22 +1160,6 @@
                             </button>
                         </div>
 
-                        <nav class="truthguard-settings-modal-nav mt-4 flex gap-2 overflow-x-auto pb-1" aria-label="Settings modal sections">
-                            @foreach ($settingsSections as $section)
-                                <button
-                                    type="button"
-                                    @click="setSection('{{ $section['id'] }}')"
-                                    class="truthguard-settings-modal-tab inline-flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition focus:outline-none focus:ring-4 focus:ring-sky-400/20"
-                                    :class="activeSection === '{{ $section['id'] }}' ? 'is-active' : ''"
-                                    :aria-pressed="activeSection === '{{ $section['id'] }}'"
-                                >
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $section['icon'] }}"></path>
-                                    </svg>
-                                    {{ $section['label'] }}
-                                </button>
-                            @endforeach
-                        </nav>
                     </header>
 
                     <div class="truthguard-settings-modal-body" x-ref="settingsBody">

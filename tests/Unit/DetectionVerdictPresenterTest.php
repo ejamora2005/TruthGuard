@@ -11,6 +11,20 @@ use Tests\TestCase;
 
 class DetectionVerdictPresenterTest extends TestCase
 {
+    public static function allCanonicalVerdicts(): array
+    {
+        return array_map(fn ($verdict) => [$verdict], array_keys(AssessmentVerdict::LABELS));
+    }
+
+    #[DataProvider('allCanonicalVerdicts')]
+    public function test_every_canonical_verdict_has_a_specific_hardcoded_explanation(string $verdict): void
+    {
+        $meaning = AssessmentVerdict::meaning($verdict);
+
+        $this->assertNotSame('', $meaning);
+        $this->assertNotSame('This result describes how the available evidence relates to the submitted content.', $meaning);
+    }
+
     public static function canonicalMediaVerdicts(): array
     {
         return array_map(fn ($verdict) => [$verdict, AssessmentVerdict::label($verdict)],
@@ -30,6 +44,7 @@ class DetectionVerdictPresenterTest extends TestCase
         $this->assertSame($label, $presentation['history_label']);
         $this->assertSame($label, $presentation['notification_label']);
         $this->assertNull($presentation['source_rating']);
+        $this->assertSame(AssessmentVerdict::meaning($verdict), $presentation['verdict_meaning']);
         if (in_array($verdict, ['LIKELY_NOT_AI_GENERATED', 'NO_MANIPULATION_DETECTED', 'INCONCLUSIVE'], true)) {
             $this->assertNotSame('ai_generated', $presentation['category_key']);
         }
@@ -72,6 +87,35 @@ class DetectionVerdictPresenterTest extends TestCase
 
         $this->assertSame('LIKELY MISLEADING', $presentation['short_label']);
         $this->assertSame('Likely misleading', $presentation['history_label']);
+    }
+
+    public function test_canonical_misleading_tooltip_defines_the_verdict_instead_of_repeating_the_case_summary(): void
+    {
+        $caseSummary = 'No. The cited population model does not predict a literal apocalypse.';
+        $detection = new Detection([
+            'verdict' => 'fake',
+            'fake_score' => 80,
+            'fact_check_result' => [
+                'schema_version' => 4,
+                'primary_task' => 'claim',
+                'verdict' => 'MISLEADING',
+                'summary' => $caseSummary,
+                'sources' => [[
+                    'id' => 'reviewed-source',
+                    'name' => 'Reviewed source',
+                    'title' => 'Population model explanation',
+                    'url' => 'https://example.com/population-model',
+                    'used_for' => 'The model describes population growth rather than a literal end-of-world date.',
+                ]],
+            ],
+        ]);
+
+        $presentation = DetectionVerdictPresenter::forDetection($detection);
+
+        $this->assertSame('Misleading', $presentation['verdict_label']);
+        $this->assertSame(AssessmentVerdict::meaning('MISLEADING'), $presentation['verdict_meaning']);
+        $this->assertNotSame($caseSummary, $presentation['verdict_meaning']);
+        $this->assertStringContainsString('false or inaccurate overall impression', $presentation['verdict_meaning']);
     }
 
     public function test_source_backed_rating_and_plain_language_verdict_are_exposed_for_the_result_page(): void

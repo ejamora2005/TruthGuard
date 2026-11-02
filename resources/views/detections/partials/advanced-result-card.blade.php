@@ -121,7 +121,11 @@
         $assessment = $reasoning = $publicResult['summary'];
     }
 
-    $recordedWording = $presentationAdjusted ? null : \App\Services\Detections\ResultWording::saved($savedAssessment);
+    // Reconstruct legacy copy locally without changing its saved evidence.
+    $displayAssessment = $presentationAdjusted
+        ? $savedAssessment
+        : \App\Services\Detections\ResultWording::ensure($savedAssessment, $recommendation);
+    $recordedWording = $presentationAdjusted ? null : \App\Services\Detections\ResultWording::saved($displayAssessment);
     $savedWording = $recordedWording
         ? \App\Services\Detections\ResultWording::accept($publicResult, \Illuminate\Support\Arr::except($recordedWording, ['version']))
         : null;

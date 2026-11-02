@@ -1,6 +1,9 @@
 @if ($user->needsPasswordSetup())
+    @php($waitForTour = (bool) $user->needsCurrentOnboarding())
     <div
-        x-data="{ open: true, showPassword: false, showPasswordConfirmation: false }"
+        x-data="{ open: @js(! $waitForTour), showPassword: false, showPasswordConfirmation: false }"
+        data-wait-for-tour="{{ $waitForTour ? 'true' : 'false' }}"
+        @truthguard:tour-finished.window="open = true"
         x-show="open"
         x-cloak
         x-transition.opacity.duration.180ms

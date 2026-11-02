@@ -21,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -35,8 +36,26 @@ class DetectionController extends Controller
     ): View|RedirectResponse
     {
         if (! $request->user()->isAdmin()) {
-            $retentionService->archiveExpired($request->user()->id);
-            $activeDetectionManager->expireStaleForUser($request->user()->id);
+            try {
+                $retentionService->archiveExpired($request->user()->id);
+            } catch (\Throwable $exception) {
+                Log::warning('Unable to archive expired detections while opening Fact Check.', [
+                    'user_id' => $request->user()->id,
+                    'exception' => $exception,
+                ]);
+            }
+
+            try {
+                $activeDetectionManager->expireStaleForUser($request->user()->id);
+            } catch (\Throwable $exception) {
+                // Expiring abandoned work is maintenance, not a prerequisite for
+                // opening Fact Check. Keep the page available and leave enough
+                // context in the server log to repair the affected job safely.
+                Log::warning('Unable to expire stale detection while opening Fact Check.', [
+                    'user_id' => $request->user()->id,
+                    'exception' => $exception,
+                ]);
+            }
         }
 
         $pendingDetectionId = $request->integer('pending');
@@ -65,23 +84,6 @@ class DetectionController extends Controller
                 }
 
                 return redirect()->route('detections.result', $selectedDetection);
-            }
-        }
-
-        // Navigating elsewhere only closes the browser-side poller. The queued
-        // analysis keeps running, so reconnect the composer when its owner returns.
-        if ($selectedDetectionId <= 0) {
-            $pendingDetection = Detection::query()
-                ->where('user_id', $request->user()->id)
-                ->whereIn('processing_status', ['queued', 'processing'])
-                ->latest('id')
-                ->first();
-
-            if ($pendingDetection) {
-                return view('detections.create', [
-                    'selectedDetection' => null,
-                    'pendingDetection' => $pendingDetection,
-                ]);
             }
         }
 

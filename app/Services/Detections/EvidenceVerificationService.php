@@ -67,7 +67,10 @@ class EvidenceVerificationService
                 $analysis['claim_assessment'] = ['status' => 'not_requested', 'task' => 'Factual claim verification',
                     'result' => null, 'reason' => 'Factual verification was not requested or the task needs clarification.'];
             } else {
-                $analysis = $this->applyClaims($analysis, $context, $file, $progress, $extraction, $extractionBudget->pages);
+                $knownResult = KnownFactCheckCatalog::match((string) ($extraction['analysis_text'] ?? ''));
+                $analysis = $knownResult
+                    ? $this->applyKnownResult($analysis, $knownResult, $context, $extraction)
+                    : $this->applyClaims($analysis, $context, $file, $progress, $extraction, $extractionBudget->pages);
             }
             $claim = $analysis['claim_assessment'] ?? [
                 'status' => 'completed', 'task' => 'Factual claim verification',
@@ -177,6 +180,25 @@ class EvidenceVerificationService
             'score' => AssessmentScore::unavailable('No validated percentage is available for this context assessment.'),
             'sources' => array_values(array_filter($claimResult['sources'] ?? [], fn ($source) => in_array($source['id'] ?? null, $sourceIds, true))),
             'answer_segments' => [['text' => $summary, 'source_ids' => $sourceIds]], 'ui' => ['verdict_color' => AssessmentVerdict::color($verdict)]];
+    }
+
+    private function applyKnownResult(array $analysis, array $result, array $context, array $extraction): array
+    {
+        $result['request'] = array_replace($context['resolved_request'] ?? [], ['question' => $context['question'] ?? '']);
+        $analysis['fact_check_result'] = $result;
+        $analysis['analysis_summary'] = $analysis['explanation_summary'] = $result['summary'];
+        $analysis['verification_summary'] = implode(' ', $result['key_findings'] ?? []);
+        $analysis['recommendation'] = data_get($result, 'generated_wording.recommended_action');
+        $analysis['verification_sources'] = $result['sources'] ?? [];
+        $analysis['verdict'] = 'review';
+        $analysis['signals']['submission_extraction'] = [$extraction];
+        $analysis['signals']['openai_usage'] = ['total_tokens' => 0, 'input_tokens' => 0, 'output_tokens' => 0];
+        $analysis['claim_assessment'] = [
+            'status' => 'completed', 'task' => 'Factual claim verification', 'model' => null,
+            'version' => self::VERSION, 'failure_reason' => null, 'result' => $result,
+        ];
+
+        return $analysis;
     }
 
     private function contextFinding(array $findings, string $question): ?array
@@ -420,12 +442,19 @@ class EvidenceVerificationService
             'analysis_model' => config('services.openai.model'), 'trained_model' => Arr::except($model, ['elapsed_ms']),
             'media' => $result['media_assessment']], JSON_THROW_ON_ERROR));
         $currentDiagnostics = $result['diagnostics'];
-        $canonical = CanonicalFactCheckResult::firstOrCreate(['canonical_key' => $key], ['result' => $result]);
-        $result = $canonical->result;
+        $cacheable = ! in_array($result['verdict'] ?? '', [
+            'UNVERIFIED', 'UNVERIFIABLE', 'ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS',
+            'UNREADABLE_CONTENT', 'CLARIFICATION_NEEDED', 'INCONCLUSIVE',
+        ], true) && ($result['sources'] ?? []) !== [];
+        $canonical = $cacheable
+            ? CanonicalFactCheckResult::firstOrCreate(['canonical_key' => $key], ['result' => $result])
+            : null;
+        $result = $canonical?->result ?? $result;
         $result['diagnostics'] = array_replace($result['diagnostics'] ?? [], $currentDiagnostics,
-            ['analysis_id' => $context['analysis_id'], 'canonical_cache_hit' => ! $canonical->wasRecentlyCreated]);
+            ['analysis_id' => $context['analysis_id'], 'canonical_cache_hit' => $canonical ? ! $canonical->wasRecentlyCreated : false,
+                'canonical_cache_skipped' => ! $cacheable]);
         Log::info('Evidence analysis persisted.', ['analysis_id' => $context['analysis_id'],
-            'canonical_cache_hit' => ! $canonical->wasRecentlyCreated,
+            'canonical_cache_hit' => $canonical ? ! $canonical->wasRecentlyCreated : false,
             'candidate_count' => count($records), 'evidence_record_count' => count($result['sources'] ?? []),
             'verdict' => $result['verdict']]);
         $analysis['fact_check_result'] = $result;

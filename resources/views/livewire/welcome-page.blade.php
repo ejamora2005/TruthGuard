@@ -758,12 +758,7 @@
             display: flex;
             gap: var(--partner-gap);
             width: max-content;
-            animation: truthguardPartnerSlide 24s linear infinite;
-        }
-
-        .truthguard-partner-marquee:hover .truthguard-partner-track,
-        .truthguard-partner-marquee:focus-within .truthguard-partner-track {
-            animation-play-state: paused;
+            animation: truthguardPartnerSlide 20s linear infinite;
         }
 
         .truthguard-partner-card {
@@ -799,8 +794,9 @@
             font-size: 0.75rem;
             font-weight: 600;
             line-height: 1.2;
+            max-width: 100%;
             text-align: center;
-            white-space: nowrap;
+            white-space: normal;
         }
 
         @media (min-width: 641px) and (max-width: 1023px) {
@@ -833,7 +829,7 @@
             }
 
             .truthguard-partner-card {
-                flex-basis: 10.5rem;
+                flex-basis: clamp(10.75rem, 48vw, 12rem);
                 min-height: 5rem;
                 padding: 0.45rem 0.5rem;
             }
@@ -848,10 +844,14 @@
             }
 
             .truthguard-partner-name {
-                font-size: 0.68rem;
-                max-width: 9.5rem;
+                display: -webkit-box;
+                font-size: clamp(0.56rem, 2.45vw, 0.66rem);
+                line-height: 1.12;
+                max-width: 11.25rem;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                -webkit-box-orient: vertical;
+                -webkit-line-clamp: 2;
             }
         }
 
@@ -944,18 +944,18 @@
                     <div class="truthguard-partner-track">
                         @foreach ([false, true] as $duplicatePartnerSet)
                             <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
-                                <img class="truthguard-partner-logo-wide" src="{{ asset('images/partners/southern-leyte-logo.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'Southern Leyte State University logo' }}">
-                                <p class="truthguard-partner-name">Southern Leyte State University</p>
+                                <img class="truthguard-partner-logo-wide" src="{{ asset('images/partners/slsu-wordmark-logo.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'Southern Leyte State University logo' }}">
+                                <p class="truthguard-partner-name">Southern Leyte State University &ndash; Bontoc Campus</p>
                             </div>
 
                             <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
-                                <img class="truthguard-partner-logo-square" src="{{ asset('images/partners/bitsconnect-logo.jpg') }}" alt="{{ $duplicatePartnerSet ? '' : 'BITS department logo' }}">
-                                <p class="truthguard-partner-name">BITS</p>
+                                <img class="truthguard-partner-logo-square" src="{{ asset('images/partners/bitsconnect-logo-transparent.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'BITS department logo' }}">
+                                <p class="truthguard-partner-name">Bontoc Information Technology Society</p>
                             </div>
 
                             <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
-                                <img src="{{ asset('images/partners/radyo-pilipinas-logo.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'RP Radyo Pilipinas logo' }}">
-                                <p class="truthguard-partner-name">Radyo Pilipinas</p>
+                                <img class="truthguard-partner-logo-wide" src="{{ asset('images/partners/radyo-pilipinas-sogod-logo-transparent.png') }}" alt="{{ $duplicatePartnerSet ? '' : 'Radyo Pilipinas Sogod DYSL 104.7 MHz logo' }}">
+                                <p class="truthguard-partner-name">Radyo Pilipinas Sogod</p>
                             </div>
 
                             <div class="truthguard-partner-card justify-center" @if ($duplicatePartnerSet) aria-hidden="true" @endif>
@@ -968,27 +968,125 @@
             </div>
         </section>
 
-        <section id="features" class="reveal border-b border-slate-200 bg-slate-50 py-16 md:py-20">
-            <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="mx-auto mb-14 max-w-3xl text-center">
-                    <h2 class="text-3xl font-bold md:text-4xl">What You Can Do With TruthGuard</h2>
-                    <p class="mt-4 text-lg leading-8 text-slate-600">From the first upload to the final review, keep the claim, evidence, sources, and next step together.</p>
+        <section id="features" class="reveal relative overflow-hidden border-b border-slate-200 bg-[linear-gradient(180deg,#f8fafc_0%,#eef6ff_52%,#f8fafc_100%)] py-16 md:py-24">
+            <div aria-hidden="true" class="absolute -left-28 top-24 h-72 w-72 rounded-full bg-cyan-200/25 blur-3xl"></div>
+            <div aria-hidden="true" class="absolute -right-28 bottom-10 h-80 w-80 rounded-full bg-violet-200/25 blur-3xl"></div>
+
+            <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="mx-auto mb-10 max-w-3xl text-center md:mb-14">
+                    <h2 class="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">Everything you need to investigate a claim</h2>
+                    <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">Submit media or a claim, compare the available evidence, review trusted sources, and keep every result organized in one workspace.</p>
+
+                    <div class="mt-7 flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-slate-600 sm:gap-3">
+                        @foreach (['Submit', 'Analyze', 'Review sources', 'Save'] as $step => $label)
+                            <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
+                                <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">{{ $step + 1 }}</span>
+                                {{ $label }}
+                            </span>
+                            @if (! $loop->last)<span class="hidden text-blue-300 sm:inline" aria-hidden="true">&rarr;</span>@endif
+                        @endforeach
+                    </div>
                 </div>
 
-                <div class="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-12 lg:gap-5">
                     @foreach ($featureCards as $feature)
-                        <article class="reveal rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                            <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600 shadow-sm shadow-blue-100/70">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6">
-                                    @foreach (explode(' M', $feature['icon']) as $i => $path)
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="{{ $i === 0 ? $path : 'M'.$path }}" />
-                                    @endforeach
-                                </svg>
+                        @php
+                            $isPrimaryFeature = $loop->index < 2;
+                            $featureLabel = ['AI detection', 'Evidence review', 'Publisher reports', 'Saved reports', 'Live updates', 'Your workspace'][$loop->index];
+                            $featureOutcome = ['Inspect visual signals', 'Check a claim or URL', 'Compare independent ratings', 'Return to any result', 'Know when reports are ready', 'Control your experience'][$loop->index];
+                        @endphp
+                        <article @class([
+                            'reveal group relative flex min-h-full flex-col overflow-hidden rounded-3xl border bg-white/95 shadow-[0_18px_55px_rgba(15,23,42,0.07)] transition duration-300 hover:-translate-y-1.5 hover:border-blue-300 hover:shadow-[0_24px_70px_rgba(37,99,235,0.14)]',
+                            'border-blue-200 lg:col-span-6' => $isPrimaryFeature,
+                            'border-slate-200 lg:col-span-3' => ! $isPrimaryFeature,
+                        ])>
+                            <div class="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-600 via-cyan-500 to-violet-600 opacity-70 transition group-hover:opacity-100"></div>
+                            <div @class(['flex flex-1 flex-col', 'p-6 sm:p-7' => $isPrimaryFeature, 'p-5 sm:p-6' => ! $isPrimaryFeature])>
+                                <div class="flex items-start justify-between gap-4">
+                                    <div class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-blue-200 transition duration-300 group-hover:scale-105 group-hover:rotate-2">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="h-6 w-6" aria-hidden="true">
+                                            @switch($loop->index)
+                                                @case(0)
+                                                    <rect x="3" y="5" width="13" height="14" rx="2" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m16 10 5-3v10l-5-3M6.5 15l2.5-3 2 2 2-2 2 3" />
+                                                    @break
+                                                @case(1)
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2" />
+                                                    @break
+                                                @case(2)
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm2 4h4v4H7V8Zm7 0h4m-4 4h4M7 16h11" />
+                                                    @break
+                                                @case(3)
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v5l3 2" />
+                                                    @break
+                                                @case(4)
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 12h4" />
+                                                    @break
+                                                @default
+                                                    <circle cx="12" cy="12" r="3" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" />
+                                            @endswitch
+                                        </svg>
+                                    </div>
+                                    <span class="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700">{{ $featureLabel }}</span>
+                                </div>
+
+                                <h3 @class(['font-bold tracking-tight text-slate-950', 'mt-6 text-2xl' => $isPrimaryFeature, 'mt-5 text-xl' => ! $isPrimaryFeature])>{{ $feature['title'] }}</h3>
+                                <p class="mt-3 text-sm leading-7 text-slate-600">{{ $feature['description'] }}</p>
+
+                                <div @class(['mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/90', 'p-4' => $isPrimaryFeature, 'p-3.5' => ! $isPrimaryFeature]) aria-hidden="true">
+                                    @switch($loop->index)
+                                        @case(0)
+                                            <div class="flex items-center gap-4">
+                                                <div class="flex h-20 w-24 shrink-0 items-center justify-center rounded-xl border border-dashed border-blue-300 bg-white text-blue-600">
+                                                    <svg class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16V5m0 0L8 9m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-500"><span>Media analysis</span><span class="text-emerald-600">Ready</span></div>
+                                                    <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200"><span class="block h-full w-4/5 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500"></span></div>
+                                                    <div class="mt-3 flex gap-2"><span class="rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm">Image</span><span class="rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm">Video</span><span class="rounded-md bg-white px-2 py-1 text-[10px] font-bold text-slate-500 shadow-sm">Context</span></div>
+                                                </div>
+                                            </div>
+                                            @break
+                                        @case(1)
+                                            <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                                                <div class="flex items-center gap-2 text-xs text-slate-400"><span class="h-2 w-2 rounded-full bg-emerald-500"></span><span class="truncate">Paste a claim or source link...</span><span class="ml-auto rounded-lg bg-blue-600 px-3 py-1.5 font-bold text-white">Check</span></div>
+                                            </div>
+                                            <div class="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] font-bold"><span class="rounded-lg bg-blue-100 px-2 py-2 text-blue-700">Claim</span><span class="rounded-lg bg-cyan-100 px-2 py-2 text-cyan-700">Sources</span><span class="rounded-lg bg-violet-100 px-2 py-2 text-violet-700">Context</span></div>
+                                            @break
+                                        @case(2)
+                                            <div class="space-y-2"><div class="flex items-center gap-2 rounded-xl bg-white p-2.5 shadow-sm"><span class="h-8 w-8 rounded-lg bg-blue-100"></span><span class="min-w-0 flex-1"><span class="block h-2 w-4/5 rounded bg-slate-300"></span><span class="mt-2 block h-1.5 w-1/2 rounded bg-slate-200"></span></span><span class="rounded-full bg-rose-100 px-2 py-1 text-[9px] font-black text-rose-700">FALSE</span></div><div class="flex items-center gap-2 rounded-xl bg-white p-2.5 shadow-sm"><span class="h-8 w-8 rounded-lg bg-cyan-100"></span><span class="min-w-0 flex-1"><span class="block h-2 w-3/4 rounded bg-slate-300"></span><span class="mt-2 block h-1.5 w-2/5 rounded bg-slate-200"></span></span></div></div>
+                                            @break
+                                        @case(3)
+                                            <div class="space-y-2 text-[10px] font-bold text-slate-500"><div class="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm"><span>Today &middot; Image check</span><span class="text-emerald-600">Reviewed</span></div><div class="flex items-center justify-between rounded-lg bg-white px-3 py-2 shadow-sm"><span>Yesterday &middot; Source link</span><span class="text-amber-600">Context</span></div></div>
+                                            @break
+                                        @case(4)
+                                            <div class="space-y-2"><div class="rounded-xl bg-white p-3 shadow-sm"><div class="flex items-center gap-2 text-[10px] font-bold text-slate-700"><span class="h-2 w-2 rounded-full bg-blue-500"></span>Fact check complete<span class="ml-auto text-slate-400">Now</span></div><p class="mt-2 text-[10px] text-slate-400">Your report is ready to review.</p></div></div>
+                                            @break
+                                        @default
+                                            <div class="grid grid-cols-2 gap-2 text-[10px] font-bold text-slate-600"><span class="rounded-xl bg-white p-3 shadow-sm">Profile</span><span class="rounded-xl bg-slate-900 p-3 text-white shadow-sm">Dark theme</span><span class="rounded-xl bg-white p-3 shadow-sm">Privacy</span><span class="rounded-xl bg-white p-3 shadow-sm">Security</span></div>
+                                    @endswitch
+                                </div>
+
+                                <div class="mt-5 flex items-center gap-2 text-xs font-bold text-blue-700">
+                                    <span class="h-1.5 w-1.5 rounded-full bg-blue-600"></span>
+                                    {{ $featureOutcome }}
+                                </div>
                             </div>
-                            <h3 class="mb-2 text-xl font-semibold">{{ $feature['title'] }}</h3>
-                            <p class="text-slate-600">{{ $feature['description'] }}</p>
                         </article>
                     @endforeach
+                </div>
+
+                <div class="mt-8 flex flex-col items-center justify-between gap-5 rounded-3xl border border-blue-200 bg-gradient-to-r from-blue-700 via-blue-600 to-violet-700 p-6 text-white shadow-xl shadow-blue-200/60 sm:flex-row sm:p-8">
+                    <div>
+                        <p class="text-xs font-black uppercase tracking-[0.16em] text-blue-100">Ready when you are</p>
+                        <h3 class="mt-2 text-2xl font-bold">Start with the claim in front of you.</h3>
+                        <p class="mt-2 text-sm leading-6 text-blue-100">Source-linked results, saved history, and privacy controls are built in.</p>
+                    </div>
+                    <a href="{{ auth()->check() ? route('detections.create') : route('register') }}" class="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-blue-700 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40">
+                        {{ auth()->check() ? 'Start a fact check' : 'Create a free account' }}
+                        <span aria-hidden="true">&rarr;</span>
+                    </a>
                 </div>
             </div>
         </section>
@@ -1042,6 +1140,18 @@
                         </div>
                     </div>
                 @endforeach
+
+                <div class="mt-6 flex items-center justify-center gap-2" aria-label="Use case position">
+                    @foreach ($useCases as $key => $case)
+                        <button
+                            type="button"
+                            @click="activeUseCase='{{ $key }}'"
+                            :class="activeUseCase === '{{ $key }}' ? 'w-8 bg-blue-600' : 'w-2 bg-slate-300 hover:bg-blue-300'"
+                            class="h-2 rounded-full transition-all duration-300"
+                            aria-label="Show {{ $case['title'] }}"
+                        ></button>
+                    @endforeach
+                </div>
             </div>
         </section>
 

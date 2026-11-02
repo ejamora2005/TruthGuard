@@ -21,9 +21,9 @@ class GeneratedResultWordingTest extends TestCase
 
     private const CLAIM = 'The fictional library opened on January 3, 2024.';
 
-    private const EXPLANATION = 'The claim is that the fictional library opened on January 3, 2024. The municipal library record gives that exact opening date and names the same library as the submission. This directly supports the claim about when it opened, rather than simply mentioning a similar building or a proposed opening. The finding is limited to the opening date recorded in that document; it does not establish other claims about the library. Within that scope, the available record agrees with the submitted statement, so the result is True.';
+    private const EXPLANATION = 'The municipal library record gives January 3, 2024 as the opening date and names the same library as the submission. This directly confirms the claimed opening date, but does not establish unrelated claims about the library.';
 
-    private const SHORT = 'The municipal record gives the same opening date as the submitted claim, directly supporting it. The result covers that recorded date and does not establish other claims about the library.';
+    private const SHORT = 'The key date and identity are directly supported by the reviewed municipal record.';
 
     private const ACTION = 'Read the municipal library record before quoting its opening date.';
 
@@ -65,8 +65,8 @@ class GeneratedResultWordingTest extends TestCase
             } else {
                 $this->assertSame((int) config('fact_check.model_output_tokens'), $request['max_output_tokens']);
                 $this->assertArrayNotHasKey('tools', $request->data());
-                $this->assertSame(1, substr_count($request['input'][0]['content'], '45–75 words'));
-                $this->assertStringContainsString('FIRST sentence must directly answer', $request['input'][0]['content']);
+                $this->assertSame(1, substr_count($request['input'][0]['content'], '45-80 words'));
+                $this->assertStringContainsString('NEVER repeat the verdict label', $request['input'][0]['content']);
                 $this->assertCount(1, $input['sources']);
                 $data = ['context_findings' => [], 'relationships' => [[
                     'claim_id' => $input['claims'][0]['id'], 'source_id' => 's1', 'stance' => 'supporting',

@@ -159,6 +159,19 @@
                 }
             } catch (error) {}
         },
+        handleNotificationUpdate(event) {
+            if (Number.isInteger(event.detail?.unreadCount)) {
+                this.mutationVersion++;
+                this.unreadCount = Math.max(0, event.detail.unreadCount);
+
+                if (event.detail.markAllRead) {
+                    this.notifications = this.notifications.map((item) => ({ ...item, unread: false }));
+                    this.latestId = null;
+                }
+            }
+
+            this.fetchNotifications();
+        },
         showToastOnce(item) {
             if (!item || !item.id) return;
 
@@ -271,7 +284,7 @@
             }[category] || 'bg-slate-100 text-slate-700 ring-slate-200';
         },
     }"
-    @truthguard:notification.window="fetchNotifications()"
+    @truthguard:notification.window="handleNotificationUpdate($event)"
     @truthguard:notification-archived.window="removeArchived($event.detail.id)"
     @resize.window="if (open) positionPopover()"
     @keydown.escape.window="open = false; toast = null"

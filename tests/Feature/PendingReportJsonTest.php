@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\AnalyzeDetectionEvidence;
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -91,8 +92,28 @@ class PendingReportJsonTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_returning_to_fact_check_automatically_resumes_the_owners_active_assessment(): void
+    public function test_stale_job_cleanup_failure_does_not_crash_the_fact_check_page(): void
     {
+        $user = User::factory()->create();
+        $this->mock(GoogleFactCheckFeedService::class)
+            ->shouldReceive('latest')
+            ->once()
+            ->andReturn(['items' => []]);
+        $this->mock(ActiveDetectionManager::class)
+            ->shouldReceive('expireStaleForUser')
+            ->once()
+            ->with($user->id)
+            ->andThrow(new \RuntimeException('Production cleanup failure'));
+
+        $this->actingAs($user)
+            ->get(route('detections.create'))
+            ->assertOk()
+            ->assertViewHas('selectedDetection', null);
+    }
+
+    public function test_opening_fact_check_does_not_resume_background_work_without_an_explicit_pending_link(): void
+    {
+        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->andReturn(['items' => []]);
         $user = User::factory()->create();
         $older = Detection::create(['user_id' => $user->id, 'source_kind' => 'link', 'media_type' => 'text',
             'processing_status' => 'processing', 'verdict' => 'review', 'fake_score' => 0]);
@@ -103,9 +124,44 @@ class PendingReportJsonTest extends TestCase
 
         $this->actingAs($user)->get(route('detections.create'))
             ->assertOk()
-            ->assertViewHas('pendingDetection', fn ($pending) => $pending->is($latest));
+            ->assertViewMissing('pendingDetection')
+            ->assertDontSee('aria-label="Mobile navigation"', false);
 
         $this->assertNotSame($older->id, $latest->id);
+        $this->assertSame('processing', $older->fresh()->processing_status);
+        $this->assertSame('queued', $latest->fresh()->processing_status);
+    }
+
+    public function test_unfinished_analysis_remains_accessible_after_leaving_fact_check(): void
+    {
+        $user = User::factory()->create();
+        $pending = Detection::create([
+            'user_id' => $user->id,
+            'source_kind' => 'link',
+            'media_type' => 'text',
+            'caption_text' => 'A background claim review',
+            'processing_status' => 'processing',
+            'verdict' => 'review',
+            'fake_score' => 0,
+        ]);
+        Detection::create([
+            'user_id' => User::factory()->create()->id,
+            'source_kind' => 'link',
+            'media_type' => 'text',
+            'processing_status' => 'processing',
+            'verdict' => 'review',
+            'fake_score' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Fact check analyzing')
+            ->assertSee('View progress')
+            ->assertSee('Your fact check is ready')
+            ->assertSee('Open result')
+            ->assertSee('Dismiss fact-check update')
+            ->assertSee('pending='.$pending->id, false);
     }
 
     public function test_stale_background_assessment_does_not_reopen_the_analysis_modal(): void

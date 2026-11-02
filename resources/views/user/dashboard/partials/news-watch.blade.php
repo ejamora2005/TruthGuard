@@ -742,7 +742,7 @@
     </style>
 @endonce
 
-<section id="news-watch" class="tg-mobile-feed rounded-[28px] border border-slate-200 bg-white shadow-md">
+<section id="news-watch" data-tour="news-watch" class="tg-mobile-feed rounded-[28px] border border-slate-200 bg-white shadow-md">
     <div class="tg-mobile-feed-head border-b border-slate-200 bg-slate-50/80 px-5 py-5 sm:px-6 sm:py-6">
         <div class="tg-feed-header-layout">
             <div class="tg-feed-header-copy">
@@ -874,7 +874,7 @@
                         ? route('dashboard.fact-check', ['factCheck' => $item['id']])
                         : ($item['url'] ?: route('detections.create'));
                 @endphp
-                <article class="tg-fact-feed-row grid gap-5 py-6">
+                <article @if ($loop->first) data-tour="recent-fact-check" @endif class="tg-fact-feed-row grid gap-5 py-6">
                     <a
                         href="{{ $detailUrl }}"
                         class="tg-mobile-fact-media group relative min-h-52 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100"

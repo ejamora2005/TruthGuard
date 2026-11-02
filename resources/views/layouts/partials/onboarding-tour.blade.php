@@ -1,30 +1,47 @@
 @php
     $showOnboardingTour = (bool) ($showOnboardingTour ?? false);
+    $tourLogoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
+    $tourLogoUrl = is_file(public_path($tourLogoPath)) ? asset($tourLogoPath) : null;
     $tourSteps = [
         [
             'title' => 'Welcome to TruthGuard',
             'targets' => [],
-            'text' => 'Your dashboard brings together recent activity and public claim reviews. Take a quick tour to find your way around.',
+            'text' => 'This quick tour explains every main workspace page, where to review results, and how to adjust your experience.',
+        ],
+        [
+            'title' => 'Dashboard',
+            'targets' => ['dashboard'],
+            'text' => 'Use Home to see your latest activity, public claim reviews, verified-source updates, and shortcuts to common tasks.',
+        ],
+        [
+            'title' => 'Public Claim Reviews',
+            'targets' => ['recent-fact-check', 'news-watch', 'dashboard'],
+            'text' => 'Browse recent reviews from independent fact-checking publishers. Open a review to examine its rating, summary, and original sources.',
         ],
         [
             'title' => 'Fact Check',
             'targets' => ['fact-check'],
-            'text' => 'Start a check with an image, video, PDF, or source link. Your report explains the result and the evidence behind it.',
+            'text' => 'Check text, images, videos, PDFs, or source and social-media links. Each completed report gives a verdict, direct explanation, evidence, and sources when available.',
         ],
         [
             'title' => 'History',
             'targets' => ['history'],
-            'text' => 'Review your recent fact-check records. TruthGuard keeps only the latest 7 days of user fact-check history.',
+            'text' => 'Reopen your recent fact checks, search past results, and review their evidence. TruthGuard keeps the latest seven days of user history.',
         ],
         [
-            'title' => 'Notifications',
+            'title' => 'Alerts and Notifications',
             'targets' => ['notifications-bell', 'notifications'],
-            'text' => 'Find completed results, new claim reviews, and account alerts in one place.',
+            'text' => 'See completed fact-check updates, newly published claim reviews, and important account activity. Marking alerts as read updates the badge immediately.',
+        ],
+        [
+            'title' => 'Light and Dark Mode',
+            'targets' => ['appearance', 'settings'],
+            'text' => 'Use this control to switch between light and dark mode. You can also manage your saved appearance preference from Settings.',
         ],
         [
             'title' => 'Profile and Settings',
             'targets' => ['profile', 'settings'],
-            'text' => 'Make TruthGuard yours. Update your profile, appearance, privacy, and notifications here. You are ready to begin.',
+            'text' => 'Manage your profile photo, account information, password, privacy, appearance, and notification preferences. You are now ready to use the full workspace.',
         ],
     ];
 @endphp
@@ -47,13 +64,18 @@
                 animation: truthguard-tour-fade-in 160ms ease-out both;
             }
 
+            .truthguard-tour-scrim.has-spotlight {
+                background: transparent;
+            }
+
             .truthguard-tour-highlight {
                 position: fixed;
                 z-index: 100001;
                 border: 2px solid rgba(255, 255, 255, 0.95);
                 border-radius: 18px;
-                background: rgba(255, 255, 255, 0.08);
+                background: transparent;
                 box-shadow:
+                    0 0 0 9999px rgba(15, 23, 42, 0.58),
                     0 0 0 4px rgba(37, 99, 235, 0.38),
                     0 18px 45px rgba(15, 23, 42, 0.26);
                 pointer-events: none;
@@ -416,7 +438,7 @@
             csrfToken: @js(csrf_token()),
             completeUrl: @js(route('onboarding.complete', absolute: false)),
             skipUrl: @js(route('onboarding.skip', absolute: false)),
-            version: @js(config('app.onboarding_version', '2026-07-28')),
+            version: @js(config('app.onboarding_version', '2026-11-02-v2')),
         })"
         x-show="active"
         x-cloak
@@ -424,7 +446,7 @@
         role="presentation"
         @keydown.escape.window="if (active) { $event.preventDefault(); $event.stopPropagation(); skip(); }"
     >
-        <div class="truthguard-tour-scrim" aria-hidden="true"></div>
+        <div class="truthguard-tour-scrim" :class="highlights.length ? 'has-spotlight' : ''" aria-hidden="true"></div>
 
         <template x-for="(rect, index) in highlights" :key="index">
             <div
@@ -448,10 +470,11 @@
             <div class="truthguard-tour-body p-5" :class="transitioning ? 'is-transitioning' : ''">
                 <div class="flex items-start gap-3">
                     <span class="truthguard-tour-icon inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3.75 5.25 6v5.25c0 4.13 2.8 7.89 6.75 9 3.95-1.11 6.75-4.87 6.75-9V6L12 3.75Z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m9.5 12.25 1.75 1.75 3.5-4" />
-                        </svg>
+                        @if ($tourLogoUrl)
+                            <img src="{{ $tourLogoUrl }}" alt="TruthGuard logo" class="h-9 w-9 object-contain drop-shadow-sm">
+                        @else
+                            <span class="text-xs font-black" aria-label="TruthGuard">TG</span>
+                        @endif
                     </span>
 
                     <div class="min-w-0 flex-1">

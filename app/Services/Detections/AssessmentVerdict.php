@@ -48,6 +48,37 @@ class AssessmentVerdict
         return self::LABELS[$verdict] ?? str_replace('_', ' ', $verdict);
     }
 
+    public static function meaning(string $verdict): string
+    {
+        return match ($verdict) {
+            'TRUE', 'VERIFIED' => 'The reviewed evidence supports the factual claim.',
+            'FALSE' => 'The reviewed evidence contradicts the factual claim.',
+            'MISLEADING' => 'The content uses real or partly true details in a way that creates a false or inaccurate overall impression.',
+            'PARTLY_TRUE', 'PARTIALLY_TRUE' => 'Some parts of the claim are supported, while other important parts are inaccurate or unsupported.',
+            'MIXED' => 'The reviewed evidence supports some important parts of the claim and contradicts or cannot verify others.',
+            'NEEDS_CONTEXT', 'MISSING_CONTEXT' => 'Important details are missing and could change how the claim is understood.',
+            'OUT_OF_CONTEXT' => 'The content is presented in a setting that changes its original meaning.',
+            'CONFLICTING_EVIDENCE' => 'Reliable sources disagree, so the claim cannot be settled confidently.',
+            'OUTDATED' => 'The claim relies on information that is no longer current.',
+            'UNVERIFIED' => 'The available evidence does not establish whether the claim is true or false.',
+            'UNVERIFIABLE' => 'There is not enough reliable evidence to confirm or refute the claim.',
+            'AI_GENERATED' => 'The media assessment indicates AI generation; this does not verify any factual claim shown with it.',
+            'LIKELY_AI_GENERATED' => 'The detector found signals consistent with AI generation, but this is not proof of origin.',
+            'LIKELY_NOT_AI_GENERATED' => 'No strong AI-generation signal was detected; this does not prove the media is authentic.',
+            'MANIPULATED' => 'The supported analysis found evidence that the media was altered.',
+            'LIKELY_MANIPULATED' => 'Possible manipulation signals were found, but the result is not conclusive.',
+            'NO_MANIPULATION_DETECTED' => 'No manipulation signal was detected; this does not prove the media was never edited.',
+            'INCONCLUSIVE' => 'The available analysis cannot determine a reliable answer.',
+            'SATIRE_PARODY' => 'The content appears intended as satire or parody rather than a literal factual claim.',
+            'OPINION_NOT_FACT_CHECKABLE' => 'The content is an opinion or value judgment that cannot be verified as a factual claim.',
+            'ANALYSIS_UNAVAILABLE' => 'The requested analysis could not be completed, so no result was established.',
+            'UNSUPPORTED_ANALYSIS' => 'The requested type of analysis is not supported for this submission.',
+            'UNREADABLE_CONTENT' => 'There was not enough readable content to assess the submission.',
+            'CLARIFICATION_NEEDED' => 'The submission needs a clearer question or assessment choice before it can be checked.',
+            default => 'This result describes how the available evidence relates to the submitted content.',
+        };
+    }
+
     public static function color(string $verdict): string
     {
         return match ($verdict) {

@@ -108,6 +108,7 @@ class GoogleAuthenticationTest extends TestCase
         $this->assertFalse($user->is_admin);
         $this->assertSame('active', $user->subscription_status);
         $this->assertSame('google-new-123', $user->google_id);
+        $this->assertSame('new_google_user', $user->username);
         $this->assertSame('https://lh3.googleusercontent.com/a/new-avatar.png', $user->google_avatar_url);
         $this->assertNotNull($user->email_verified_at);
         $this->assertNull($user->password_set_at);
@@ -135,10 +136,38 @@ class GoogleAuthenticationTest extends TestCase
             ->assertSessionHas('truthguard_social_setup_prompt', true);
 
         $this->assertAuthenticatedAs($user);
+        $this->assertSame('facebook_user', $user->username);
         $this->assertNull($user->password_set_at);
         $this->assertTrue($user->needsPasswordSetup());
 
         Notification::assertSentTo($user, WelcomeToTruthGuard::class);
+    }
+
+    public function test_social_login_generates_a_unique_username_and_preserves_an_existing_one(): void
+    {
+        User::factory()->create(['username' => 'shared_name']);
+        $existing = User::factory()->create([
+            'email' => 'linked@example.com',
+            'username' => 'chosen_username',
+            'google_id' => null,
+        ]);
+
+        $this->mockFacebookUser([
+            'email' => 'new-social@example.com',
+            'name' => 'Shared Name',
+        ]);
+        $this->get(route('facebook.callback'));
+
+        $this->assertSame('shared_name_2', User::where('email', 'new-social@example.com')->value('username'));
+
+        $this->mockGoogleUser([
+            'id' => 'google-linked-name',
+            'email' => 'linked@example.com',
+            'name' => 'Replacement Name',
+        ]);
+        $this->get(route('google.callback'));
+
+        $this->assertSame('chosen_username', $existing->fresh()->username);
     }
 
     public function test_existing_email_is_linked_to_google_without_duplicate_account(): void

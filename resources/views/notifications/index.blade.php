@@ -78,7 +78,9 @@
                     });
                     if (!response.ok) throw new Error('Read update failed.');
                     this.notifications = this.notifications.map((item) => ({ ...item, unread: false }));
-                    window.dispatchEvent(new CustomEvent('truthguard:notification'));
+                    window.dispatchEvent(new CustomEvent('truthguard:notification', {
+                        detail: { unreadCount: 0, markAllRead: true },
+                    }));
                 } catch (error) {
                     this.errorMessage = 'Could not mark your notifications as read. Please try again.';
                 } finally {

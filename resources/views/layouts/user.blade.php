@@ -15,6 +15,8 @@
                 : asset('favicon.ico');
             $logoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
             $logoUrl = is_file(public_path($logoPath)) ? asset($logoPath) : '';
+            $sidebarLogoPath = 'images/truthguard-logo-transparent.png';
+            $sidebarLogoUrl = is_file(public_path($sidebarLogoPath)) ? asset($sidebarLogoPath) : $logoUrl;
 
             $user = auth()->user();
             $displayName = filled($user?->name) ? (string) $user->name : 'TruthGuard User';
@@ -52,7 +54,7 @@
             $themeBadgeClasses = collect($themePresets)->mapWithKeys(fn (array $preset, string $key) => [$key => $preset['badge']])->all();
             $hideUserFooter = request()->routeIs('detections.create');
             $isDetectionPage = request()->routeIs('detections.*');
-            $hideMobileNav = false;
+            $hideMobileNav = request()->routeIs('detections.create');
             $mobileNavActiveIndex = match (true) {
                 request()->routeIs('dashboard') || request()->routeIs('dashboard.*') => 0,
                 request()->routeIs('history') => 1,
@@ -64,6 +66,15 @@
             $notificationQuickItems = [];
             $unreadNotificationCount = 0;
             $latestUnreadNotificationId = null;
+            $backgroundDetection = null;
+
+            if ($user && \Illuminate\Support\Facades\Schema::hasTable('detections')) {
+                $backgroundDetection = \App\Models\Detection::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('processing_status', ['queued', 'processing'])
+                    ->latest('id')
+                    ->first();
+            }
 
             if ($user && \Illuminate\Support\Facades\Schema::hasTable('notifications')) {
                 $formatNavNotification = \App\Services\Notifications\NotificationInbox::format(...);
@@ -621,7 +632,7 @@
                 content: '';
                 position: absolute;
                 top: -0.72rem;
-                right: 1.33rem;
+                right: 0.69rem;
                 height: 0.9rem;
                 width: 1.38rem;
                 clip-path: polygon(50% 0, 0 100%, 100% 100%);
@@ -1018,9 +1029,9 @@
             >
                 <div class="flex items-center justify-between gap-2 px-4 py-6 sm:px-5 sm:py-7" :class="sidebarExpanded ? '' : 'lg:justify-center lg:px-2'">
                     <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3 overflow-hidden" :class="sidebarExpanded ? '' : 'lg:w-full lg:justify-center'">
-                        @if ($logoUrl !== '')
+                        @if ($sidebarLogoUrl !== '')
                             <span class="truthguard-sidebar-brand-mark">
-                                <img src="{{ $logoUrl }}" alt="TruthGuard logo" class="h-9 w-9 shrink-0 object-contain" width="36" height="36">
+                                <img src="{{ $sidebarLogoUrl }}" alt="TruthGuard logo" class="h-9 w-9 shrink-0 object-contain" width="36" height="36">
                             </span>
                         @else
                             <span class="truthguard-sidebar-brand-mark font-semibold text-blue-700">TG</span>
@@ -1464,9 +1475,13 @@
                     </footer>
                 @endunless
 
+                @if ($backgroundDetection)
+                    @include('layouts.partials.background-analysis', ['detection' => $backgroundDetection])
+                @endif
+
                 @unless ($hideMobileNav)
                 <nav class="truthguard-mobile-tabbar lg:hidden" style="--active-index: {{ $mobileNavActiveIndex }};" aria-label="Mobile navigation">
-                    <a href="{{ route('dashboard') }}" class="truthguard-mobile-tab {{ request()->routeIs('dashboard') || request()->routeIs('dashboard.*') ? 'is-active' : '' }}">
+                    <a href="{{ route('dashboard') }}" data-tour="dashboard" class="truthguard-mobile-tab {{ request()->routeIs('dashboard') || request()->routeIs('dashboard.*') ? 'is-active' : '' }}">
                         <span class="truthguard-mobile-tab-icon">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <rect x="4" y="4" width="6.5" height="6.5" rx="1.8"></rect>
@@ -1478,7 +1493,7 @@
                         <span>Home</span>
                     </a>
 
-                    <a href="{{ route('history') }}" class="truthguard-mobile-tab {{ request()->routeIs('history') ? 'is-active' : '' }}">
+                    <a href="{{ route('history') }}" data-tour="history" class="truthguard-mobile-tab {{ request()->routeIs('history') ? 'is-active' : '' }}">
                         <span class="truthguard-mobile-tab-icon">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5v5l3.2 1.9"></path>
@@ -1490,7 +1505,7 @@
                     </a>
 
                     <span class="truthguard-mobile-primary-slot">
-                        <a href="{{ route('detections.create') }}"
+                        <a href="{{ route('detections.create') }}" data-tour="fact-check"
                            class="truthguard-mobile-tab truthguard-mobile-tab-primary {{ request()->routeIs('detections.*') ? 'is-active' : '' }}"
                            @if (request()->routeIs('detections.*')) aria-current="page" @endif>
                             <span class="truthguard-mobile-tab-icon">
@@ -1507,7 +1522,7 @@
                         </a>
                     </span>
 
-                    <a href="{{ route('notifications.index') }}" class="truthguard-mobile-tab {{ request()->routeIs('notifications.*') ? 'is-active' : '' }}">
+                    <a href="{{ route('notifications.index') }}" data-tour="notifications" class="truthguard-mobile-tab {{ request()->routeIs('notifications.*') ? 'is-active' : '' }}">
                         <span class="truthguard-mobile-tab-icon relative">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M14.8 18.2a2.9 2.9 0 0 1-5.6 0"></path>
@@ -1520,7 +1535,7 @@
                         <span>Alerts</span>
                     </a>
 
-                    <a href="{{ route('profile') }}" class="truthguard-mobile-tab {{ request()->routeIs('profile') || request()->routeIs('profile.*') ? 'is-active' : '' }}">
+                    <a href="{{ route('profile') }}" data-tour="settings" class="truthguard-mobile-tab {{ request()->routeIs('profile') || request()->routeIs('profile.*') ? 'is-active' : '' }}">
                         <span class="truthguard-mobile-tab-icon">
                             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z"></path>

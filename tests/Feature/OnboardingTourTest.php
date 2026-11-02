@@ -38,8 +38,11 @@ class OnboardingTourTest extends TestCase
             ->get(route('dashboard'))
             ->assertOk()
             ->assertSee('TruthGuard Tour')
-            ->assertSee('Your dashboard brings together recent activity and public claim reviews. Take a quick tour to find your way around.')
+            ->assertSee('This quick tour explains every main workspace page, where to review results, and how to adjust your experience.')
             ->assertSee('data-tour="dashboard"', false)
+            ->assertSee('data-tour="news-watch"', false)
+            ->assertSee('Light and Dark Mode')
+            ->assertSee('data-tour="appearance"', false)
             ->assertSee(\Illuminate\Support\Js::from(route('onboarding.complete', absolute: false))->toHtml(), false);
     }
 
@@ -57,6 +60,24 @@ class OnboardingTourTest extends TestCase
             ->assertOk()
             ->assertSee('TruthGuard Tour')
             ->assertSee('aria-label="Skip onboarding tour"', false);
+    }
+
+    public function test_password_setup_prompt_waits_until_the_tour_closes(): void
+    {
+        $user = User::factory()->create([
+            'password_set_at' => null,
+            'onboarding_completed_at' => null,
+            'onboarding_skipped_at' => null,
+            'onboarding_version' => null,
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('data-wait-for-tour="true"', false)
+            ->assertSee('@truthguard:tour-finished.window="open = true"', false)
+            ->assertSee('x-data="{ open: false', false);
     }
 
     public function test_user_with_completed_current_onboarding_does_not_see_tour(): void

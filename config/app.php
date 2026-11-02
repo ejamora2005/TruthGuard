@@ -61,7 +61,7 @@ return [
         explode(',', (string) env('TRUTHGUARD_ADMIN_EMAILS', ''))
     ))),
     'privacy_policy_version' => env('TRUTHGUARD_PRIVACY_POLICY_VERSION', '2026-07-28'),
-    'onboarding_version' => env('TRUTHGUARD_ONBOARDING_VERSION', '2026-07-28'),
+    'onboarding_version' => env('TRUTHGUARD_ONBOARDING_VERSION', '2026-11-02-v2'),
 
     /*
     |--------------------------------------------------------------------------

@@ -142,6 +142,7 @@ class GoogleAuthController extends Controller
 
             $userAttributes = [
                 'name' => $this->nullableString($socialUser->getName()) ?: Str::before($email, '@'),
+                'username' => $this->socialUsername($socialUser),
                 'email' => $email,
                 'email_verified_at' => now(),
                 'password' => Hash::make(Str::random(48)),
@@ -189,6 +190,10 @@ class GoogleAuthController extends Controller
             $updates['name'] = $this->nullableString($socialUser->getName());
         }
 
+        if (blank($user->username)) {
+            $updates['username'] = $this->socialUsername($socialUser, $user->id);
+        }
+
         $user->forceFill($updates)->save();
 
         return $user->refresh();
@@ -200,6 +205,7 @@ class GoogleAuthController extends Controller
 
         $userDefaults = [
             'name' => $socialUser->getName() ?: Str::before($email, '@'),
+            'username' => $this->socialUsername($socialUser),
             'password' => Hash::make(Str::random(40)),
             'email_verified_at' => now(),
             'is_admin' => false,
@@ -228,11 +234,40 @@ class GoogleAuthController extends Controller
             $updates['email_verified_at'] = now();
         }
 
+        if (blank($user->username)) {
+            $updates['username'] = $this->socialUsername($socialUser, $user->id);
+        }
+
         if ($updates !== []) {
             $user->forceFill($updates)->save();
         }
 
         return $user;
+    }
+
+    private function socialUsername(SocialiteUser $socialUser, ?int $ignoreUserId = null): string
+    {
+        $source = $this->nullableString($socialUser->getName())
+            ?: Str::before((string) $socialUser->getEmail(), '@');
+        $base = Str::of($source)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '_')
+            ->trim('_')
+            ->substr(0, 55)
+            ->toString();
+        $base = $base !== '' ? $base : 'truthguard_user';
+        $candidate = $base;
+        $suffix = 2;
+
+        while (User::query()
+            ->where('username', $candidate)
+            ->when($ignoreUserId, fn ($query) => $query->whereKeyNot($ignoreUserId))
+            ->exists()) {
+            $candidate = Str::limit($base, 55, '').'_'.$suffix++;
+        }
+
+        return $candidate;
     }
 
     private function loginSocialUser(User $user): RedirectResponse

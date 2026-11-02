@@ -9,11 +9,11 @@ use Illuminate\Support\Str;
 /** Saved presentation copy; never determines a verdict, score, or citation. */
 final class ResultWording
 {
-    public const VERSION = 'result-wording-v2';
+    public const VERSION = 'result-wording-v5';
 
     public static function instructions(): string
     {
-        return 'Write a ready-to-share answer inside this same evidence-review response; never request a separate wording call. Preserve the validated finding and uncertainty. explanation: 45–75 words in one short paragraph. The FIRST sentence must directly answer the claim in plain language: Yes, No, Misleading, Not verified, or Not enough context. Then state the decisive reason and what the cited evidence establishes. For questions using latest, current, today, now, still, or recent, begin with the evaluation cutoff date and do not imply knowledge after it. result_summary: 15–25 words giving the direct answer and main reason. recommended_action: one short, specific sharing or checking step. Use simple words; no search narration, internal terminology, long quotations, repetition, invented facts, confidence percentages, greetings, or follow-up questions. source_ids lists only supplied sources used in this wording, empty for detector-only findings.';
+        return 'Write a ready-to-share answer inside this same evidence-review response; never request a separate wording call. Preserve the validated finding and uncertainty. The verdict label is already displayed separately, so NEVER repeat the verdict label or begin with Yes, No, Misleading, True, False, or a restatement of the submitted claim. explanation: 55-95 words in one clear paragraph of three or four sentences. Directly explain what the evidence establishes, identify the origin of the confusing detail, explain why that detail does not support the claim, and give the strongest current correction when the supplied evidence supports one. For questions using latest, current, today, now, still, or recent, begin with the evaluation cutoff date and do not imply knowledge after it. result_summary: one sentence of 15-30 words explaining only why the evidence fits the assigned verdict; do not repeat the full answer. recommended_action: one short, specific sharing or checking step. Use simple words; no search narration, internal terminology, long quotations, repetition, invented facts, confidence percentages, greetings, or follow-up questions. source_ids lists only supplied sources used in this wording, empty for detector-only findings.';
     }
 
     public static function schema(array $verdicts): array
@@ -46,7 +46,7 @@ final class ResultWording
             $candidate[$key] = $text;
         }
         // Reject malformed presentation independently of evidence validation.
-        if (count(SubmittedText::sentences($candidate['result_summary'])) > 2
+        if (count(SubmittedText::sentences($candidate['result_summary'])) > 1
             || count(SubmittedText::sentences($candidate['recommended_action'])) > 1) {
             return null;
         }
@@ -118,29 +118,46 @@ final class ResultWording
         if (self::saved($result)) {
             return $result;
         }
+        if (self::inaccessibleSocialLink($result)) {
+            $result['generated_wording'] = ['version' => self::VERSION] + [
+                'verdict' => $result['verdict'],
+                'explanation' => 'TruthGuard could not access the linked social-media post. The post may be private, require sign-in, have been deleted, or be restricted in this location, so its caption and content could not be verified.',
+                'result_summary' => 'The original post was not publicly accessible, so there was not enough content for a factual conclusion.',
+                'recommended_action' => 'Paste the exact caption or claim, or upload a clear screenshot or copy of the post.',
+                'source_ids' => [],
+            ];
+
+            return $result;
+        }
+        $noSearchEvidence = ($result['diagnostics']['retrieval_status'] ?? null) === 'completed_no_results'
+            || (in_array($result['verdict'] ?? '', ['UNVERIFIED', 'UNVERIFIABLE'], true)
+                && ($result['sources'] ?? []) === [] && ($result['contextual_sources'] ?? []) === []);
+        if ($noSearchEvidence) {
+            $result['generated_wording'] = ['version' => self::VERSION] + [
+                'verdict' => $result['verdict'],
+                'explanation' => 'The available searches did not find reliable evidence that directly confirms or disproves the claim. This does not mean the claim is false; it means TruthGuard cannot reach a supported conclusion with the sources and search access currently available.',
+                'result_summary' => 'No reliable matching source was available to support a factual conclusion.',
+                'recommended_action' => 'Check the original source, exact wording, date, and official records before sharing the claim.',
+                'source_ids' => [],
+            ];
+
+            return $result;
+        }
         $summary = ResultContract::text($result['summary'] ?? null) ?? '';
         $summary = preg_split('/\bA related source dated\b/u', $summary, 2)[0];
         $sentences = collect(SubmittedText::sentences($summary))
             ->reject(fn ($sentence) => preg_match('/^(?:I|We|TruthGuard)\s+(?:searched|browsed|queried|looked for)\b/iu', $sentence))
+            ->reject(fn ($sentence) => preg_match('/^(?:Yes|No|True|False|Misleading|Partly true|Unverified|Outdated)\.?$/iu', trim($sentence)))
             ->map(fn ($sentence) => preg_replace('/^I checked the submitted claim:/u', 'The claim being assessed is:', $sentence))
             ->unique()->values();
-        $explanation = $sentences->implode(' ');
-        $claim = ResultContract::text($result['claim'] ?? null);
-        if (($result['primary_task'] ?? '') !== 'media' && $claim && Str::wordCount($claim) <= 40
-            && ! str_contains(Str::lower($explanation), Str::lower($claim))) {
-            $explanation = 'The submitted claim is: '.$claim.(preg_match('/[.!?]$/u', $claim) ? ' ' : '. ').$explanation;
-        }
-        $lead = self::readyLead($result);
-        if ($lead !== '' && ! Str::startsWith(Str::lower($explanation), Str::lower($lead))) {
-            $explanation = $lead.' '.$explanation;
-        }
+        $explanation = $sentences->take(4)->implode(' ');
         if ($explanation === '' || Str::wordCount($explanation) > 160 || mb_strlen($explanation) > 2200) {
             $explanation = ReportAnswer::interpretationSummary($result, $explanation);
         }
         if (Str::wordCount($explanation) > 160 || mb_strlen($explanation) > 2200) {
             $explanation = ReportAnswer::interpretationSummary($result, '');
         }
-        $short = ReportAnswer::interpretationSummary($result, $explanation);
+        $short = self::verdictRationale($result);
         // Retain a complete short sentence; never pay for a fallback rewrite.
         $action = SubmittedText::sentences(ReportAnswer::interpretationAction($short, $recommendation))[0] ?? '';
         $fallbackAction = ($result['primary_task'] ?? '') === 'media'
@@ -164,33 +181,47 @@ final class ResultWording
         return $result;
     }
 
-    /** A concise local lead sentence; this never makes a model request. */
-    private static function readyLead(array $result): string
+    /** A short classification rationale for the separate "Why this result?" area. */
+    private static function verdictRationale(array $result): string
     {
-        $question = (string) data_get($result, 'request.question', '');
-        $current = preg_match('/\b(?:latest|current|currently|today|now|still|recent)\b/iu', $question) === 1;
-        $date = null;
-        if ($current && filled($result['evidence_cutoff'] ?? null)) {
-            try {
-                $date = \Illuminate\Support\Carbon::parse($result['evidence_cutoff'])->format('F j, Y');
-            } catch (\Throwable) {
-                $date = null;
-            }
+        return match ($result['verdict'] ?? '') {
+            'TRUE' => 'The key details are directly supported by the reviewed evidence.',
+            'FALSE' => 'The claim conflicts with the strongest available evidence.',
+            'MISLEADING' => 'The claim presents the information without its proper context, creating an inaccurate overall impression.',
+            'PARTLY_TRUE', 'MIXED' => 'Some details are supported, but important parts are inaccurate, unsupported, or incomplete.',
+            'OUTDATED' => 'The claim relies on information that no longer reflects the latest reviewed evidence.',
+            'OUT_OF_CONTEXT' => 'The content is presented outside its original setting, changing how it is understood.',
+            'UNVERIFIED', 'UNVERIFIABLE' => 'The available reliable evidence is not sufficient to confirm or refute the claim.',
+            'MISSING_CONTEXT' => 'Important details needed to understand the claim accurately are missing.',
+            'CONFLICTING_EVIDENCE' => 'Reliable sources disagree, so the available evidence does not support a firm conclusion.',
+            'SATIRE_PARODY' => 'The content is presented as satire or parody rather than as a literal factual report.',
+            'OPINION_NOT_FACT_CHECKABLE' => 'The submission expresses an opinion or value judgment rather than a verifiable factual claim.',
+            default => AssessmentVerdict::meaning((string) ($result['verdict'] ?? '')),
+        };
+    }
+
+    /** Detect a social post that could not be publicly read; no model call. */
+    private static function inaccessibleSocialLink(array $result): bool
+    {
+        $record = $result['extraction']['source_record'] ?? null;
+        if (! is_array($record)) {
+            return false;
+        }
+        $host = Str::lower((string) parse_url((string) ($record['url'] ?? ''), PHP_URL_HOST));
+        $social = Str::contains($host, ['facebook.com', 'fb.com', 'instagram.com', 'tiktok.com', 'youtube.com', 'youtu.be']);
+        if (! $social) {
+            return false;
+        }
+        if (($record['status'] ?? '') !== 'retrieved') {
+            return true;
         }
 
-        $lead = match ($result['verdict'] ?? '') {
-            'TRUE' => 'Yes. The reviewed evidence supports the claim.',
-            'FALSE' => 'No. The reviewed evidence contradicts the claim.',
-            'MISLEADING' => 'Misleading. The claim uses real information but gives the wrong overall impression.',
-            'PARTLY_TRUE', 'MIXED' => 'Partly true. Some parts are supported, but other important parts are not.',
-            'OUTDATED' => 'Outdated. The claim no longer matches the latest reviewed information.',
-            'OUT_OF_CONTEXT' => 'Out of context. The content is presented with the wrong setting, date, or meaning.',
-            'UNVERIFIED' => 'Not verified. The reviewed evidence does not establish that the claim is true.',
-            'MISSING_CONTEXT' => 'Not enough context. The available information does not support a reliable answer.',
-            'CONFLICTING_EVIDENCE' => 'Unresolved. Reliable sources disagree, so no firm conclusion is supported.',
-            default => '',
-        };
+        $text = Str::lower(Str::squish((string) ($record['text'] ?? $result['extraction']['article_text'] ?? '')));
 
-        return $date && $lead !== '' ? 'As of '.$date.', '.lcfirst($lead) : $lead;
+        return $text === '' || Str::contains($text, [
+            'log in to continue', 'login to continue', 'sign in to continue', 'you must log in',
+            'this account is private', 'private account', 'content isn\'t available',
+            'content is not available', 'post is unavailable', 'video unavailable',
+        ]);
     }
 }

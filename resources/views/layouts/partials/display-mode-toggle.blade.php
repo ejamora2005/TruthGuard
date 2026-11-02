@@ -1,4 +1,4 @@
-<button type="button" class="truthguard-top-icon truthguard-mode-toggle" role="switch" aria-label="Dark mode" aria-checked="false"
+<button type="button" data-tour="appearance" class="truthguard-top-icon truthguard-mode-toggle" role="switch" aria-label="Dark mode" aria-checked="false"
     x-data="{ dark: document.documentElement.classList.contains('dark') }"
     @truthguard-appearance-updated.window="dark = document.documentElement.classList.contains('dark')"
     :aria-checked="dark" :title="dark ? 'Switch to light mode' : 'Switch to dark mode'"

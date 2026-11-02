@@ -3262,6 +3262,7 @@ new class extends Component
             background: rgba(225, 235, 248, 0.32);
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
+            pointer-events: none;
         }
         .truthguard-prompt-help {
             position: absolute; bottom: calc(100% + 6px); left: 50%; z-index: 10;
@@ -3286,6 +3287,7 @@ new class extends Component
             border-radius: 20px;
             padding: 12px 16px 16px;
             background: #f8fbff;
+            pointer-events: auto;
         }
         .truthguard-inline-progress .truthguard-verify-panel {
             width: 100%;

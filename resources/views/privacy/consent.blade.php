@@ -9,41 +9,10 @@
 @endphp
 
 @section('content')
-    <main class="truthguard-policy-main relative min-h-dvh overflow-x-hidden bg-slate-50 px-4 py-5 text-slate-900 sm:px-6 lg:px-8">
+    <main class="truthguard-policy-main relative min-h-dvh overflow-x-hidden bg-slate-100 px-4 py-5 text-slate-900 sm:px-6 lg:px-8">
         <style>
             [x-cloak] {
                 display: none !important;
-            }
-
-            .tg-consent-bg {
-                position: absolute;
-                inset: 0;
-                overflow: hidden;
-                pointer-events: none;
-            }
-
-            .tg-consent-bg::before {
-                content: '';
-                position: absolute;
-                inset: -3rem;
-                opacity: 0.42;
-                filter: blur(10px);
-                background:
-                    linear-gradient(90deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px),
-                    linear-gradient(180deg, rgba(37, 99, 235, 0.06) 1px, transparent 1px),
-                    linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
-                background-size: 32px 32px, 32px 32px, auto;
-                transform: scale(1.02);
-            }
-
-            .tg-consent-bg-card {
-                position: absolute;
-                border: 1px solid rgba(191, 219, 254, 0.7);
-                border-radius: 24px;
-                background: rgba(255, 255, 255, 0.74);
-                box-shadow: 0 26px 70px rgba(15, 23, 42, 0.08);
-                opacity: 0.52;
-                filter: blur(6px);
             }
 
             .tg-consent-shell {
@@ -81,13 +50,7 @@
             }
         </style>
 
-        <div class="tg-consent-bg" aria-hidden="true">
-            <div class="tg-consent-bg-card left-[7%] top-[14%] h-28 w-72"></div>
-            <div class="tg-consent-bg-card right-[8%] top-[9%] h-24 w-96"></div>
-            <div class="tg-consent-bg-card bottom-[12%] left-[18%] h-40 w-[32rem]"></div>
-            <div class="tg-consent-bg-card bottom-[18%] right-[13%] h-32 w-80"></div>
-        </div>
-        <div class="pointer-events-none absolute inset-0 bg-white/64"></div>
+        @include('privacy.partials.dashboard-backdrop')
 
         <div class="relative z-10 mx-auto w-full max-w-6xl">
             <section

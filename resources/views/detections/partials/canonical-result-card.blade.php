@@ -34,35 +34,7 @@
         'UNVERIFIABLE' => 'M9.1 9a3 3 0 0 1 5.8 1c0 2-2.9 2-2.9 4m0 3h.01',
         'OUTDATED' => 'M12 7v5l3 2',
     ];
-    $verdictMeanings = [
-        'TRUE' => 'The reviewed evidence supports the factual claim.',
-        'VERIFIED' => 'The reviewed evidence supports the factual claim.',
-        'FALSE' => 'The reviewed evidence contradicts the factual claim.',
-        'MISLEADING' => 'The content creates an inaccurate impression, even if some details are true.',
-        'PARTLY_TRUE' => 'Some factual components are supported and others are refuted by the reviewed evidence.',
-        'PARTIALLY_TRUE' => 'Some parts are supported, while other parts are inaccurate or unproven.',
-        'NEEDS_CONTEXT' => 'Important context is needed before the claim can be understood fairly.',
-        'MISSING_CONTEXT' => 'Key details are missing and could change how the claim is understood.',
-        'OUT_OF_CONTEXT' => 'The content is presented in a setting that changes its meaning.',
-        'CONFLICTING_EVIDENCE' => 'The reviewed sources disagree, so the claim cannot be settled confidently.',
-        'OUTDATED' => 'The claim relies on information that is no longer current.',
-        'UNVERIFIED' => 'The available review did not establish whether the claim is true or false. No matching evidence does not mean the claim is false.',
-        'UNVERIFIABLE' => 'There is not enough reliable evidence to confirm or refute the claim.',
-        'AI_GENERATED' => 'The media analysis indicates AI generation; it does not establish who created the media.',
-        'LIKELY_AI_GENERATED' => 'The detector found signals consistent with AI generation, but this is not proof of origin.',
-        'LIKELY_NOT_AI_GENERATED' => 'No strong AI-generation signal was detected. This does not prove the media is authentic.',
-        'MANIPULATED' => 'The supported analysis found evidence of media manipulation.',
-        'LIKELY_MANIPULATED' => 'The supported analysis found possible manipulation signals, but the result is not conclusive.',
-        'NO_MANIPULATION_DETECTED' => 'No manipulation signal was detected; this does not prove the media was never edited.',
-        'INCONCLUSIVE' => 'The available analysis cannot determine a reliable answer.',
-        'SATIRE_PARODY' => 'The content appears intended as satire or parody rather than a literal factual claim.',
-        'OPINION_NOT_FACT_CHECKABLE' => 'This is an opinion or value judgment that cannot be verified as a factual claim.',
-        'ANALYSIS_UNAVAILABLE' => 'The requested analysis could not be completed, so no result was established.',
-        'UNSUPPORTED_ANALYSIS' => 'The requested analysis is not supported for this submission.',
-        'UNREADABLE_CONTENT' => 'There was not enough readable content to assess the submission.',
-        'CLARIFICATION_NEEDED' => 'The saved assessment did not resolve the requested check.',
-    ];
-    $verdictMeaning = $verdictMeanings[$result['verdict']] ?? 'This label summarizes the available evidence. Read the explanation below for its reasons and limits.';
+    $verdictMeaning = \App\Services\Detections\AssessmentVerdict::meaning((string) $result['verdict']);
     $notices = array_values(array_filter([
         ['show' => $ui['show_official_verification_notice'], 'title' => 'Verify with the official authority', 'label' => 'Official verification notice', 'message' => $ui['official_verification_notice'], 'type' => 'info'],
         ['show' => $ui['show_evidence_warning'], 'title' => 'Evidence warning', 'label' => 'Evidence warning', 'message' => $ui['evidence_warning'], 'type' => 'status'],
