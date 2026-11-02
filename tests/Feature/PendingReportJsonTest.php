@@ -103,6 +103,40 @@ class PendingReportJsonTest extends TestCase
         $this->assertSame('ANALYSIS_UNAVAILABLE', data_get($detection->fresh()->fact_check_result, 'verdict'));
     }
 
+    public function test_opening_an_older_november_13_report_restores_the_reviewed_catalog_answer(): void
+    {
+        $user = User::factory()->create();
+        $detection = Detection::create([
+            'user_id' => $user->id,
+            'source_kind' => 'upload',
+            'media_type' => 'image',
+            'caption_text' => 'Is the claim in this post true?',
+            'processing_status' => 'completed',
+            'verdict' => 'review',
+            'fake_score' => 0,
+            'signals' => ['submission_extraction' => [[
+                'analysis_text' => 'The end of the world will be on Friday, November 13, 2026, according to a scientist mathematical prediction.',
+            ]]],
+            'fact_check_result' => [
+                'schema_version' => 4,
+                'verdict' => 'UNVERIFIED',
+                'summary' => 'No result was found.',
+                'sources' => [],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('detections.result', $detection))
+            ->assertOk()
+            ->assertJsonPath('processing_status', 'completed')
+            ->assertJsonPath('verdict', 'MISLEADING')
+            ->assertJsonCount(2, 'sources');
+
+        $detection->refresh();
+        $this->assertSame('MISLEADING', data_get($detection->fact_check_result, 'verdict'));
+        $this->assertTrue((bool) data_get($detection->fact_check_result, 'diagnostics.known_fact_check'));
+    }
+
     public function test_unfinished_report_links_resume_the_closable_composer_instead_of_a_pending_page(): void
     {
         Queue::fake();

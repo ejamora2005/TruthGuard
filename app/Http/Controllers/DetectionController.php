@@ -11,6 +11,7 @@ use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\FactCheckResultService;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\LiveVerificationEvidenceService;
+use App\Services\Detections\KnownFactCheckCatalog;
 use App\Services\Detections\OpenAiDetectionReportService;
 use App\Services\Detections\ReportAnswer;
 use App\Services\Detections\SubmissionInput;
@@ -132,6 +133,8 @@ class DetectionController extends Controller
             ])
             ->firstOrFail();
 
+        $selectedDetection = $this->restoreKnownFactCheck($selectedDetection);
+
         // Include archived submissions so retention does not renumber the owner's reports.
         $userReportNumber = $request->expectsJson() ? null : Detection::query()
             ->where('user_id', $selectedDetection->user_id)
@@ -175,6 +178,57 @@ class DetectionController extends Controller
             'userReportNumber' => $userReportNumber,
             'latestFactChecks' => $factCheckFeedService->latest(6),
         ]);
+    }
+
+    /**
+     * Upgrade an older saved report when its already-extracted text matches a
+     * reviewed catalog answer. This repairs production records without another
+     * model or web-search request.
+     */
+    private function restoreKnownFactCheck(Detection $detection): Detection
+    {
+        if ((bool) data_get($detection->fact_check_result, 'diagnostics.known_fact_check')) {
+            return $detection;
+        }
+
+        $extraction = data_get($detection->signals, 'submission_extraction.0', []);
+        $text = implode(' ', array_filter([
+            $detection->caption_text,
+            $detection->notes,
+            data_get($extraction, 'analysis_text'),
+            data_get($extraction, 'reconstructed_text'),
+            data_get($extraction, 'visible_text'),
+        ]));
+        $knownResult = KnownFactCheckCatalog::match($text);
+
+        if ($knownResult === null) {
+            return $detection;
+        }
+
+        $knownResult['request'] = array_replace((array) data_get($detection->fact_check_result, 'request', []), [
+            'question' => (string) ($detection->caption_text ?? ''),
+        ]);
+        $signals = is_array($detection->signals) ? $detection->signals : [];
+        unset($signals['analysis_progress'], $signals['analysis_timeout']);
+        $signals['known_fact_check'] = [[
+            'label' => 'Matched reviewed November 13, 2026 claim',
+            'weight' => 0,
+        ]];
+
+        $detection->forceFill([
+            'processing_status' => 'completed',
+            'fact_check_result' => $knownResult,
+            'analysis_summary' => $knownResult['summary'],
+            'explanation_summary' => $knownResult['summary'],
+            'verification_summary' => implode(' ', $knownResult['key_findings'] ?? []),
+            'recommendation' => data_get($knownResult, 'generated_wording.recommended_action'),
+            'verification_sources' => $knownResult['sources'] ?? [],
+            'signals' => $signals,
+            'verdict' => 'review',
+            'analyzed_at' => $detection->analyzed_at ?? now(),
+        ])->saveQuietly();
+
+        return $detection->fresh(['scrapedPosts.scrapeRun']);
     }
 
     public function store(

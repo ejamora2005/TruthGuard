@@ -50,7 +50,25 @@ class EvidenceVerificationService
         $extractionBudget->freshSources = ! $detectorOnly && ClaimPlanner::isCurrentStatus($question);
         try {
             $progress && $progress('Reading submitted content');
-            $extraction = $detectorOnly ? null : $this->extractor->extract($context, $file, $extractionBudget);
+            $submittedKnownResult = $detectorOnly ? null : KnownFactCheckCatalog::match(implode(' ', array_filter([
+                $context['caption_text'] ?? null,
+                $context['notes'] ?? null,
+            ])));
+            $extraction = $detectorOnly
+                ? null
+                : ($submittedKnownResult
+                    ? [
+                        'status' => 'completed',
+                        'analysis_text' => trim(implode(' ', array_filter([$context['caption_text'] ?? null, $context['notes'] ?? null]))),
+                        'visible_text' => '',
+                        'original_text' => trim((string) ($context['caption_text'] ?? '')),
+                        'reconstructed_text' => trim((string) ($context['caption_text'] ?? '')),
+                        'usage' => ['total_tokens' => 0, 'input_tokens' => 0, 'output_tokens' => 0],
+                        'input_scope' => 'submitted text',
+                        'limitations' => [],
+                        'failure_reason' => null,
+                    ]
+                    : $this->extractor->extract($context, $file, $extractionBudget));
             // Only automatic, content-dependent routing may be finalized after OCR.
             if (SubmissionTask::tasks($request) === [] && ($request['analysis_task'] ?? 'auto') === 'auto') {
                 $resolved = SubmissionTask::resolve($request, $extraction);
@@ -67,7 +85,8 @@ class EvidenceVerificationService
                 $analysis['claim_assessment'] = ['status' => 'not_requested', 'task' => 'Factual claim verification',
                     'result' => null, 'reason' => 'Factual verification was not requested or the task needs clarification.'];
             } else {
-                $knownResult = KnownFactCheckCatalog::match((string) ($extraction['analysis_text'] ?? ''));
+                $knownResult = $submittedKnownResult
+                    ?? KnownFactCheckCatalog::match((string) ($extraction['analysis_text'] ?? ''));
                 $analysis = $knownResult
                     ? $this->applyKnownResult($analysis, $knownResult, $context, $extraction)
                     : $this->applyClaims($analysis, $context, $file, $progress, $extraction, $extractionBudget->pages);
