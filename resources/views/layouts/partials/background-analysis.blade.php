@@ -1,6 +1,7 @@
 @php
     $resultUrl = route('detections.result', $detection);
     $progressUrl = route('detections.create', ['pending' => $detection->id]);
+    $floatingLogoUrl = asset('images/truthguard-logo-transparent.png');
 @endphp
 
 <aside
@@ -52,14 +53,15 @@
         :aria-label="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"
     >
         <span class="truthguard-background-analysis-icon" aria-hidden="true">
-            <svg x-show="!complete && !failed" class="truthguard-background-analysis-spinner" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.4" opacity=".28"></circle>
-                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"></path>
+            <img class="truthguard-background-analysis-logo" src="{{ $floatingLogoUrl }}" alt="">
+            <svg x-show="!complete && !failed" class="truthguard-background-analysis-spinner" viewBox="0 0 40 40" fill="none">
+                <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2.2" opacity=".25"></circle>
+                <path d="M20 2a18 18 0 0 1 18 18" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"></path>
             </svg>
-            <svg x-show="complete" x-cloak viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <svg x-show="complete" x-cloak class="truthguard-background-analysis-state" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.2 4.2L19 7"></path>
             </svg>
-            <svg x-show="failed" x-cloak viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <svg x-show="failed" x-cloak class="truthguard-background-analysis-state truthguard-background-analysis-state--failed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path stroke-linecap="round" d="M12 7v6m0 4h.01"></path>
                 <circle cx="12" cy="12" r="9"></circle>
             </svg>
