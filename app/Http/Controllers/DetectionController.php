@@ -99,9 +99,25 @@ class DetectionController extends Controller
         LiveVerificationEvidenceService $liveVerificationEvidenceService,
         OpenAiDetectionReportService $openAiDetectionReportService,
         GoogleFactCheckFeedService $factCheckFeedService,
+        ActiveDetectionManager $activeDetectionManager,
     ): View|JsonResponse|RedirectResponse {
         if (! $request->user()->isAdmin()) {
             $retentionService->archiveExpired($request->user()->id);
+
+            if (in_array($detection->processing_status, ['queued', 'processing'], true)) {
+                try {
+                    // Polling must also close abandoned work. Otherwise a browser
+                    // left on the progress view can spin forever until the user
+                    // manually opens Fact Check again.
+                    $activeDetectionManager->expireStaleForUser($request->user()->id);
+                } catch (\Throwable $exception) {
+                    Log::warning('Unable to expire stale detection while polling a report.', [
+                        'user_id' => $request->user()->id,
+                        'detection_id' => $detection->id,
+                        'exception' => $exception,
+                    ]);
+                }
+            }
         }
 
         abort_if(! $request->user()->isAdmin() && $detection->user_id !== $request->user()->id, 404);
@@ -146,9 +162,12 @@ class DetectionController extends Controller
         // Keep JSON clients compatible without projecting or rewriting the saved
         // explanation/verdict/source fields used by the committed HTML report.
         if ($request->expectsJson()) {
-            return response()->json(is_array($selectedDetection->fact_check_result)
+            $payload = is_array($selectedDetection->fact_check_result)
                 ? ReportAnswer::forPresentation($selectedDetection->fact_check_result)
-                : ReportAnswer::forLegacyDetection($selectedDetection));
+                : ReportAnswer::forLegacyDetection($selectedDetection);
+            $payload['processing_status'] = 'completed';
+
+            return response()->json($payload);
         }
 
         return view('detections.result', [

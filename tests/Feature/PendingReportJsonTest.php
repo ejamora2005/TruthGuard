@@ -57,6 +57,52 @@ class PendingReportJsonTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_completed_report_poll_explicitly_returns_completed_status(): void
+    {
+        $user = User::factory()->create();
+        $detection = Detection::create([
+            'user_id' => $user->id,
+            'source_kind' => 'upload',
+            'media_type' => 'image',
+            'processing_status' => 'completed',
+            'verdict' => 'misleading',
+            'fake_score' => 64,
+            'fact_check_result' => [
+                'verdict' => 'MISLEADING',
+                'summary' => 'The claim removes important context.',
+                'sources' => [],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('detections.result', $detection))
+            ->assertOk()
+            ->assertJsonPath('processing_status', 'completed');
+    }
+
+    public function test_polling_expires_an_abandoned_analysis_instead_of_loading_forever(): void
+    {
+        config()->set('fact_check.pending_stale_minutes', 10);
+        $user = User::factory()->create();
+        $detection = Detection::create([
+            'user_id' => $user->id,
+            'source_kind' => 'upload',
+            'media_type' => 'image',
+            'processing_status' => 'processing',
+            'verdict' => 'review',
+            'fake_score' => 0,
+        ]);
+        $this->travel(11)->minutes();
+
+        $this->actingAs($user)
+            ->getJson(route('detections.result', $detection))
+            ->assertOk()
+            ->assertJsonPath('processing_status', 'failed');
+
+        $this->assertSame('failed', $detection->fresh()->processing_status);
+        $this->assertSame('ANALYSIS_UNAVAILABLE', data_get($detection->fresh()->fact_check_result, 'verdict'));
+    }
+
     public function test_unfinished_report_links_resume_the_closable_composer_instead_of_a_pending_page(): void
     {
         Queue::fake();
