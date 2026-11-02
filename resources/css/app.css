@@ -465,6 +465,36 @@ html[data-tg-workspace].dark .truthguard-background-analysis-dismiss:hover { bac
     animation: truthguard-background-analysis-pulse 1.6s ease-out infinite;
 }
 
+.truthguard-background-analysis-tooltip {
+    position: absolute;
+    right: calc(100% + 0.75rem);
+    top: 50%;
+    width: max-content;
+    max-width: min(17rem, calc(100vw - 6.5rem));
+    transform: translate(0.35rem, -50%);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 0.65rem;
+    background: rgba(15, 23, 42, 0.96);
+    padding: 0.5rem 0.7rem;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.35;
+    text-align: left;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.24);
+    transition: opacity 150ms ease, transform 150ms ease, visibility 150ms ease;
+}
+
+.truthguard-background-analysis-button:hover .truthguard-background-analysis-tooltip,
+.truthguard-background-analysis-button:focus-visible .truthguard-background-analysis-tooltip {
+    transform: translate(0, -50%);
+    opacity: 1;
+    visibility: visible;
+}
+
 @keyframes truthguard-background-analysis-spin {
     to { transform: rotate(360deg); }
 }
@@ -476,7 +506,7 @@ html[data-tg-workspace].dark .truthguard-background-analysis-dismiss:hover { bac
 @media (max-width: 1023px) {
     .truthguard-background-analysis {
         right: max(0.75rem, env(safe-area-inset-right, 0px));
-        bottom: calc(5.15rem + env(safe-area-inset-bottom, 0px));
+        bottom: calc(6.65rem + env(safe-area-inset-bottom, 0px));
     }
 }
 

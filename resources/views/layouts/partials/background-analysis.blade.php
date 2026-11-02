@@ -15,6 +15,11 @@
         showPrompt: false,
         get complete() { return this.status === 'completed'; },
         get failed() { return this.status === 'failed'; },
+        get statusLabel() {
+            if (this.complete) return 'Fact check complete — open result';
+            if (this.failed) return 'Fact check needs attention — open report';
+            return this.stage || (this.status === 'queued' ? 'Fact check queued' : 'Fact check analysis in progress');
+        },
         async refresh() {
             try {
                 const response = await fetch(@js($resultUrl), {
@@ -67,6 +72,7 @@
             </svg>
         </span>
         <span class="truthguard-background-analysis-pulse" x-show="!complete && !failed" aria-hidden="true"></span>
+        <span class="truthguard-background-analysis-tooltip" x-text="statusLabel" role="tooltip"></span>
         <span class="sr-only" x-text="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"></span>
     </a>
 
