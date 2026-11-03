@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\Detection;
 use App\Services\Automation\RelatedPostScraper;
 use App\Services\Detections\DetectionPipeline;
+use App\Services\Detections\ReportAnswer;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -89,6 +90,20 @@ class AnalyzeDetectionEvidence implements ShouldBeUnique, ShouldQueue
 
             return;
         }
-        Detection::whereKey($this->detectionId)->whereNull('fact_check_result')->update(['processing_status' => 'failed']);
+        $detection = Detection::find($this->detectionId);
+        if ($detection && $detection->fact_check_result === null
+            && in_array($detection->processing_status, ['queued', 'processing'], true)) {
+            $result = ReportAnswer::complete([
+                'schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'ANALYSIS_UNAVAILABLE',
+                'summary' => 'The analysis could not finish. Your upload is saved. Retry the assessment to try again.',
+                'sources' => [],
+            ]);
+            $signals = $detection->signals ?? [];
+            unset($signals['analysis_progress']);
+            $detection->forceFill(['processing_status' => 'failed', 'fact_check_result' => $result,
+                'signals' => $signals, 'analysis_summary' => $result['summary'],
+                'explanation_summary' => $result['summary'],
+            ])->saveQuietly();
+        }
     }
 }

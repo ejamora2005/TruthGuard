@@ -19,7 +19,9 @@ class ActiveDetectionManager
             $detections = Detection::query()
                 ->where('user_id', $userId)
                 ->whereIn('processing_status', ['queued', 'processing'])
-                ->where('updated_at', '<', $cutoff)
+                ->where(fn ($query) => $query->where('updated_at', '<', $cutoff)
+                    ->orWhere(fn ($initial) => $initial->whereNull('fact_check_result')
+                        ->where('created_at', '<', now()->subMinutes(15))))
                 ->lockForUpdate()
                 ->get();
 

@@ -16,6 +16,22 @@ class PendingReportJsonTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_lightweight_progress_expires_stale_work_and_is_owner_scoped(): void
+    {
+        $user = User::factory()->create();
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'upload',
+            'media_type' => 'image', 'processing_status' => 'processing', 'verdict' => 'review', 'fake_score' => 0]);
+        $this->actingAs(User::factory()->create())->getJson(route('detections.progress', $detection))->assertNotFound();
+        $this->actingAs($user)->getJson(route('detections.progress', $detection))
+            ->assertOk()->assertJsonPath('processing_status', 'processing')->assertJsonPath('elapsed_seconds', 0);
+        $this->travel(16)->minutes();
+        $detection->touch();
+        $this->getJson(route('detections.progress', $detection))->assertOk()
+            ->assertJsonPath('processing_status', 'failed');
+        $this->assertSame('failed', $detection->fresh()->processing_status);
+        Http::assertNothingSent();
+    }
+
     public function test_first_visit_with_no_submission_does_not_start_or_resume_analysis(): void
     {
         Queue::fake();
@@ -148,7 +164,7 @@ class PendingReportJsonTest extends TestCase
         $resume = route('detections.create', ['pending' => $detection->id]);
         $response->assertRedirect($resume);
 
-        foreach (['queued', 'processing', 'failed'] as $status) {
+        foreach (['queued', 'processing'] as $status) {
             $detection->forceFill(['processing_status' => $status])->saveQuietly();
             $this->get(route('detections.result', $detection))->assertRedirect($resume);
             $this->get($resume)->assertOk()->assertViewHas('pendingDetection', fn ($pending) => $pending->is($detection))
@@ -159,6 +175,15 @@ class PendingReportJsonTest extends TestCase
         $this->get($resume)->assertRedirect(route('detections.result', $detection));
         Queue::assertPushed(AnalyzeDetectionEvidence::class, 1);
         Http::assertNothingSent();
+    }
+
+    public function test_failed_upload_opens_a_readable_report_instead_of_redirecting_to_progress(): void
+    {
+        $user = User::factory()->create();
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'upload',
+            'media_type' => 'image', 'processing_status' => 'failed', 'verdict' => 'review', 'fake_score' => 0]);
+        $this->actingAs($user)->get(route('detections.result', $detection))->assertOk();
+        $this->assertSame('ANALYSIS_UNAVAILABLE', data_get($detection->fresh()->fact_check_result, 'verdict'));
     }
 
     public function test_pending_report_resume_and_polling_are_owner_scoped(): void

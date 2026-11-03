@@ -348,6 +348,10 @@
 }
 
 .truthguard-background-analysis-prompt strong { display: block; padding-right: 1.5rem; font-size: 0.95rem; }
+.truthguard-progress-steps { display: flex; gap: .35rem; margin-top: .8rem; }
+.truthguard-progress-steps span { flex: 1; border-top: 3px solid #cbd5e1; padding-top: .35rem; font-size: .68rem; color: #64748b; }
+.truthguard-progress-steps span.is-active { border-color: #2563eb; color: #2563eb; font-weight: 700; }
+.truthguard-progress-refresh { margin-top: .65rem; color: #2563eb; font-size: .8rem; font-weight: 700; }
 .truthguard-background-analysis-prompt p { margin-top: 0.25rem; color: #64748b; font-size: 0.78rem; line-height: 1.55; }
 .truthguard-background-analysis-prompt a {
     display: inline-flex;

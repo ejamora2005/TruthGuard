@@ -93,6 +93,30 @@ class DetectionController extends Controller
         ]);
     }
 
+    public function progress(Request $request, Detection $detection, ActiveDetectionManager $manager): JsonResponse
+    {
+        abort_if($detection->user_id !== $request->user()->id, 404);
+        $manager->expireStaleForUser($request->user()->id);
+        $detection->refresh();
+        $status = $detection->processing_status;
+
+        return response()->json([
+            'processing_status' => $status,
+            'stage' => data_get($detection->signals, 'analysis_progress.0.label')
+                ?: match ($status) {
+                    'queued' => 'Waiting for an analysis worker',
+                    'processing' => 'Reading submitted content',
+                    'completed' => 'Analysis complete',
+                    default => 'Analysis could not finish',
+                },
+            'elapsed_seconds' => max(0, (int) $detection->created_at->diffInSeconds(now())),
+            'message' => $status === 'failed'
+                ? 'The analysis could not finish. Open the report to review its status and retry.'
+                : ($status === 'queued' ? 'Your upload is saved and waiting to start. You can continue using TruthGuard.' : 'You can continue using TruthGuard while this check runs.'),
+            'result_url' => route('detections.result', $detection),
+        ])->header('Cache-Control', 'no-store, private');
+    }
+
     public function result(
         Request $request,
         Detection $detection,
@@ -134,6 +158,17 @@ class DetectionController extends Controller
             ->firstOrFail();
 
         $selectedDetection = $this->restoreKnownFactCheck($selectedDetection);
+
+        if ($selectedDetection->processing_status === 'failed' && $selectedDetection->fact_check_result === null) {
+            $failure = ReportAnswer::complete([
+                'schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'ANALYSIS_UNAVAILABLE',
+                'summary' => 'The analysis could not finish. Your upload is saved. Retry the assessment to try again.',
+                'sources' => [],
+            ]);
+            $selectedDetection->forceFill(['fact_check_result' => $failure,
+                'analysis_summary' => $failure['summary'], 'explanation_summary' => $failure['summary'],
+            ])->saveQuietly();
+        }
 
         // Include archived submissions so retention does not renumber the owner's reports.
         $userReportNumber = $request->expectsJson() ? null : Detection::query()

@@ -13,6 +13,13 @@
         href: @js($progressUrl),
         timer: null,
         showPrompt: false,
+        elapsed: 0,
+        clock: null,
+        checking: false,
+        connectionError: false,
+        failures: 0,
+        message: 'Your upload is saved. Checking its progress.',
+        get elapsedLabel() { return Math.floor(this.elapsed / 60) + 'm ' + (this.elapsed % 60) + 's elapsed'; },
         get complete() { return this.status === 'completed'; },
         get failed() { return this.status === 'failed'; },
         get statusLabel() {
@@ -21,14 +28,30 @@
             return this.stage || (this.status === 'queued' ? 'Fact check queued' : 'Fact check analysis in progress');
         },
         async refresh() {
+            if (this.checking) return;
+            this.checking = true;
+            const controller = new AbortController();
+            const timeout = window.setTimeout(() => controller.abort(), 12000);
             try {
-                const response = await fetch(@js($resultUrl), {
+                const response = await fetch(@js(route('detections.progress', $detection)), {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                     credentials: 'same-origin',
                     cache: 'no-store',
+                    signal: controller.signal,
                 });
-                if (!response.ok) return;
+                if (response.redirected || [401, 403, 404, 419].includes(response.status)) {
+                    this.message = 'Your session or report is unavailable. Refresh this page or sign in again.';
+                    this.connectionError = true;
+                    window.clearInterval(this.timer);
+                    this.showPrompt = true;
+                    return;
+                }
+                if (!response.ok) throw new Error('Status unavailable');
                 const data = await response.json();
+                this.failures = 0;
+                this.connectionError = false;
+                this.elapsed = data.elapsed_seconds || 0;
+                this.message = data.message;
                 const nextStatus = data.processing_status || (data.verdict ? 'completed' : this.status);
                 const wasPending = !this.complete && !this.failed;
                 this.status = nextStatus;
@@ -39,27 +62,39 @@
                     if (wasPending) this.showPrompt = true;
                 }
             } catch (error) {
-                // Keep the saved progress link available during a temporary network failure.
+                this.connectionError = true;
+                this.message = 'Progress updates are unavailable. Your upload is saved. Check again in a moment.';
+                if (++this.failures >= 3) {
+                    window.clearInterval(this.timer);
+                    this.showPrompt = true;
+                    this.message = 'Unable to reach your analysis. Use Check status to reconnect, or refresh this page. Your upload is saved.';
+                }
+            } finally {
+                window.clearTimeout(timeout);
+                this.checking = false;
             }
         },
         init() {
             this.refresh();
             this.timer = window.setInterval(() => this.refresh(), 5000);
+            this.clock = window.setInterval(() => { if (!this.complete && !this.failed) this.elapsed++; }, 1000);
         },
         destroy() {
             window.clearInterval(this.timer);
+            window.clearInterval(this.clock);
         },
     }"
 >
-    <a
+    <button type="button"
         class="truthguard-background-analysis-button"
-        :href="href"
+        @click="showPrompt = !showPrompt; if (showPrompt) refresh()"
+        :aria-expanded="showPrompt"
         :title="complete ? 'Fact check ready — view result' : (failed ? 'Analysis needs attention — view report' : 'Fact check analyzing — view progress')"
         :aria-label="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"
     >
         <span class="truthguard-background-analysis-icon" aria-hidden="true">
             <img class="truthguard-background-analysis-logo" src="{{ $floatingLogoUrl }}" alt="">
-            <svg x-show="!complete && !failed" class="truthguard-background-analysis-spinner" viewBox="0 0 40 40" fill="none">
+            <svg x-show="!complete && !failed && !connectionError" class="truthguard-background-analysis-spinner" viewBox="0 0 40 40" fill="none">
                 <circle cx="20" cy="20" r="18" stroke="currentColor" stroke-width="2.2" opacity=".25"></circle>
                 <path d="M20 2a18 18 0 0 1 18 18" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"></path>
             </svg>
@@ -71,13 +106,13 @@
                 <circle cx="12" cy="12" r="9"></circle>
             </svg>
         </span>
-        <span class="truthguard-background-analysis-pulse" x-show="!complete && !failed" aria-hidden="true"></span>
+        <span class="truthguard-background-analysis-pulse" x-show="!complete && !failed && !connectionError" aria-hidden="true"></span>
         <span class="truthguard-background-analysis-tooltip" x-text="statusLabel" role="tooltip"></span>
         <span class="sr-only" x-text="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"></span>
-    </a>
+    </button>
 
     <div
-        x-show="showPrompt && (complete || failed)"
+        x-show="showPrompt"
         x-cloak
         x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="translate-y-2 opacity-0"
@@ -103,9 +138,17 @@
             </svg>
         </span>
         <div class="min-w-0">
-            <strong x-text="complete ? 'Your fact check is ready' : 'Your fact check needs attention'"></strong>
-            <p x-text="complete ? 'The analysis has finished. Open the report to review the verdict and evidence.' : 'Open the report to see why the analysis could not finish.'"></p>
-            <a :href="href" x-text="complete ? 'Open result' : 'Open report'"></a>
+            <strong x-text="complete ? 'Your fact check is ready' : (failed ? 'Your fact check needs attention' : 'Fact check in progress')"></strong>
+            <p x-text="connectionError ? 'Reconnecting to progress updates' : statusLabel"></p>
+            <p x-text="elapsedLabel"></p>
+            <div class="truthguard-progress-steps" aria-label="Analysis stages">
+                <span class="is-active">Uploaded</span>
+                <span :class="{ 'is-active': status !== 'queued' }">Analyzing</span>
+                <span :class="{ 'is-active': complete }">Result</span>
+            </div>
+            <p x-text="complete ? 'Open the report to review the verdict and evidence.' : message"></p>
+            <a x-show="complete || failed" :href="@js($resultUrl)" x-text="complete ? 'Open result' : 'Open report'"></a>
+            <button x-show="!complete && !failed" type="button" class="truthguard-progress-refresh" @click="refresh()" :disabled="checking" x-text="checking ? 'Checking…' : 'Check status'"></button>
         </div>
     </div>
 </aside>

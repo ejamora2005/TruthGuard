@@ -3444,6 +3444,9 @@ new class extends Component
             pendingResultUrl: @js($pendingResultUrl),
             pendingMediaType: @js($pendingMediaType),
             progressMessage: null,
+            progressElapsed: 0,
+            progressState: 'queued',
+            progressFailures: 0,
             progressTimer: null,
             progressDisposed: false,
             previewUrl: null,
@@ -3776,6 +3779,7 @@ new class extends Component
             trackPendingResult(url) {
                 window.clearTimeout(this.progressTimer);
                 this.pendingResultUrl = url;
+                this.progressFailures = 0;
                 this.submitting = true;
                 this.composerError = null;
                 this.progressMessage = 'Your analysis is starting. You can hide this card.';
@@ -3784,10 +3788,14 @@ new class extends Component
             async refreshPendingResult() {
                 const url = this.pendingResultUrl;
                 if (!url || this.progressDisposed) return;
+                const controller = new AbortController();
+                const timeout = window.setTimeout(() => controller.abort(), 12000);
                 try {
-                    const response = await fetch(url, {
+                    const response = await fetch(url.replace(/\/result(?:\?.*)?$/, '/progress'), {
                         credentials: 'same-origin',
                         headers: { Accept: 'application/json' },
+                        signal: controller.signal,
+                        cache: 'no-store',
                     });
                     if (this.progressDisposed) return;
                     if ([401, 403, 404, 419].includes(response.status) || response.redirected) {
@@ -3796,12 +3804,15 @@ new class extends Component
                     }
                     if (!response.ok) throw new Error('Status unavailable');
                     const data = await response.json();
+                    this.progressFailures = 0;
+                    this.progressElapsed = data.elapsed_seconds || 0;
+                    this.progressState = data.processing_status;
                     if (this.progressDisposed) return;
                     if (data.processing_status === 'failed') {
                         this.stopPendingResult('The analysis could not be completed. No verdict was produced. Please try again.');
                         return;
                     }
-                    if (data.verdict) {
+                    if (data.processing_status === 'completed') {
                         window.clearTimeout(this.progressTimer);
                         this.pendingResultUrl = null;
                         window.location.assign(url);
@@ -3812,7 +3823,11 @@ new class extends Component
                         : (data.stage || 'Your analysis is running. You can hide this card.');
                 } catch (error) {
                     this.progressMessage = 'Reconnecting to your analysis. You can hide this card and check History later.';
+                    if (++this.progressFailures >= 3) {
+                        this.stopPendingResult('Unable to reach your analysis. Your upload is saved. Refresh this page or open History to check its status.');
+                    }
                 } finally {
+                    window.clearTimeout(timeout);
                     if (this.pendingResultUrl && !this.progressDisposed) {
                         this.progressTimer = window.setTimeout(() => this.refreshPendingResult(), 5000);
                     }
@@ -5178,7 +5193,12 @@ new class extends Component
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
                     <p class="truthguard-verify-copy" x-text="progressMessage || 'You can hide this card. Your analysis will continue.'">You can hide this card. Your analysis will continue.</p>
-                    <div class="truthguard-verify-progress" aria-hidden="true"></div>
+                    <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed · ' + (progressState === 'queued' ? 'Waiting for a worker' : 'Analysis running')"></p>
+                    <div class="truthguard-progress-steps" style="width: min(100%, 20rem)" aria-label="Analysis stages">
+                        <span class="is-active">Uploaded</span>
+                        <span :class="{ 'is-active': progressState === 'processing' }">Analyzing</span>
+                        <span>Result</span>
+                    </div>
                 </div>
             </div>
         </div>
