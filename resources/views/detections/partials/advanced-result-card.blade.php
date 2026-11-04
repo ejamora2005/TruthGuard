@@ -504,7 +504,13 @@
             .tg-report-header { flex-wrap: wrap; }
             .tg-report-title { flex-basis: 100%; }
             .tg-report-header-actions { width: 100%; justify-content: space-between; gap: .75rem; }
-            .tg-report-new-check { margin-left: auto; font-size: .75rem; padding-inline: .75rem; }
+            .tg-ai-report .tg-report-new-check {
+                margin: 0; min-height: 44px; padding: .5rem .75rem;
+                gap: .35rem; border: 0; border-radius: .65rem; box-shadow: none;
+                font-size: .72rem !important; line-height: 1.3;
+            }
+            .tg-ai-report .tg-report-new-check > span { font-size: inherit !important; }
+            .tg-ai-report .tg-report-new-check > svg { width: .9rem; height: .9rem; }
         }
         .tg-report-title { flex: 1; min-width: 0; }
         .tg-report-kicker { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; font-size: .6875rem; font-weight: 800; text-transform: uppercase; line-height: 1.6; }
