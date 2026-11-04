@@ -4911,10 +4911,15 @@ new class extends Component
                     return;
                 }
 
+                const mobile = window.matchMedia('(max-width: 640px)').matches;
+                composer.style.setProperty('--composer-input-height', '0px');
                 composer.style.height = '0px';
-                const maxHeight = 132;
-                composer.style.height = `${Math.min(composer.scrollHeight, maxHeight)}px`;
-                composer.style.overflowY = composer.scrollHeight > maxHeight ? 'auto' : 'hidden';
+                const maxHeight = mobile ? Math.min(112, window.innerHeight * .24) : 132;
+                const contentHeight = composer.scrollHeight;
+                const height = `${Math.min(contentHeight, maxHeight)}px`;
+                composer.style.height = height;
+                composer.style.setProperty('--composer-input-height', height);
+                composer.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
             }
         }"
         x-init="init(); $nextTick(() => resizeComposer())"

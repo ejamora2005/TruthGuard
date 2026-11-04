@@ -5918,10 +5918,10 @@ html[data-pwa-standalone] .truthguard-history-date-filters { display: none !impo
         padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)) !important;
     }
     body.truthguard-fact-check-create-route .truthguard-detection-composer { border-radius: 20px !important; }
-    body.truthguard-fact-check-create-route .truthguard-detection-textarea { font-size: 13px !important; line-height: 1.45 !important; }
+    body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-detection-textarea { font-size: 12px !important; line-height: 1.5 !important; }
     body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form .truthguard-detection-textarea {
-        height: clamp(4.5rem, 14dvh, 7rem) !important;
-        min-height: min(4.5rem, 20dvh) !important;
+        height: var(--composer-input-height, 2.6rem) !important;
+        min-height: 2.6rem !important;
         max-height: min(7rem, 24dvh) !important;
     }
     body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-field { align-items: flex-end !important; }
