@@ -1256,9 +1256,7 @@
                                     </span>
                                 </div>
 
-                                @unless(request()->routeIs('dashboard'))
-                                    @include('layouts.partials.display-mode-toggle')
-                                @endunless
+                                @include('layouts.partials.display-mode-toggle')
 
                                 @include('layouts.partials.notification-center')
 
