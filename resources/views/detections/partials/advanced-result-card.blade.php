@@ -490,6 +490,17 @@
         .tg-report-process li::before { content: counter(report-step); display: grid; place-items: center; flex: 0 0 1.5rem; height: 1.5rem; border-radius: 50%; background: #eff6ff; color: #1d4ed8; font-weight: 600; }
         .tg-report-process li > span:first-child { display: none; }
         .tg-report-header { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: .5rem 0 .75rem; }
+        .tg-report-header-actions { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+        .tg-report-new-check { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; padding: .65rem 1rem; border-radius: .75rem; background: #2563eb; color: #fff; font-size: .8125rem; font-weight: 700; white-space: nowrap; }
+        .tg-report-new-check:hover { background: #1d4ed8; }
+        .tg-report-new-check:focus-visible { outline: 3px solid #60a5fa; outline-offset: 3px; }
+        .tg-report-new-check svg { width: 1rem; height: 1rem; }
+        @media (max-width: 640px) {
+            .tg-report-header { flex-wrap: wrap; }
+            .tg-report-title { flex-basis: 100%; }
+            .tg-report-header-actions { width: 100%; justify-content: space-between; gap: .75rem; }
+            .tg-report-new-check { margin-left: auto; font-size: .75rem; padding-inline: .75rem; }
+        }
         .tg-report-title { flex: 1; min-width: 0; }
         .tg-report-kicker { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; font-size: .6875rem; font-weight: 800; text-transform: uppercase; line-height: 1.6; }
         .tg-report-page-title { margin: .75rem 0 .6rem; font-size: clamp(1.625rem, 2.5vw, 2.125rem); font-weight: 800; line-height: 1.2; color: #0f172a; }
@@ -924,12 +935,18 @@
             <h1 class="tg-report-page-title">{{ $reportTitle }}</h1>
             <p class="tg-report-subtitle">{{ $isMediaReport ? 'Submitted media and the requested assessment.' : 'Submitted evidence, assessment, and supporting sources.' }}</p>
         </div>
+        <div class="tg-report-header-actions">
         @isset($userReportNumber)
             <div class="tg-report-reference">
                 <span>Report reference</span>
                 <strong>{{ 'TG-'.str_pad((string) $userReportNumber, 2, '0', STR_PAD_LEFT) }}</strong>
             </div>
         @endisset
+            <a href="{{ route('detections.create') }}" class="tg-report-new-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
+                <span>New fact check</span>
+            </a>
+        </div>
     </header>
 
     @if ($resultReuse)
