@@ -3333,7 +3333,7 @@ new class extends Component
         }
         .truthguard-progress-control--close { color: #dc2626; }
         .truthguard-inline-progress .truthguard-progress-control > svg {
-            width: 28px; height: 28px; min-width: 28px; flex-shrink: 0;
+            width: 21px; height: 21px; min-width: 21px; flex-shrink: 0;
         }
         .truthguard-progress-control.truthguard-progress-control--close:hover { color: #b91c1c; background: #fef2f2; }
         .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
