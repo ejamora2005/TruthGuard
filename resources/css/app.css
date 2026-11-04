@@ -367,7 +367,10 @@
         background: linear-gradient(105deg, #1d4ed8, #7c3aed) !important;
         background-clip: text !important; -webkit-background-clip: text !important;
         color: transparent !important; -webkit-text-fill-color: transparent !important;
-        font-size: .95rem; font-weight: 800; white-space: nowrap; line-height: 1.4;
+        font-size: 1.125rem; font-weight: 800; white-space: nowrap; line-height: 1.4;
+    }
+    html[data-tg-workspace] body .truthguard-topbar .truthguard-mobile-brand > img {
+        width: 2.4rem; height: 2.4rem; flex-shrink: 0; object-fit: contain;
     }
     html[data-tg-workspace].dark body .truthguard-topbar .truthguard-mobile-brand-name {
         background-image: linear-gradient(105deg, #93c5fd, #c4b5fd) !important;
