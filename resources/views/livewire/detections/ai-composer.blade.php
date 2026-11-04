@@ -3327,14 +3327,17 @@ new class extends Component
         .truthguard-progress-label { flex: 1; font-size: 13px; font-weight: 700; color: #334155; }
         .truthguard-progress-control {
             display: inline-flex; align-items: center; justify-content: center;
-            flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px;
-            color: #475569; background: #e2e8f0; font-size: 24px;
-            border: 1px solid #cbd5e1; transition: background .15s, color .15s;
+            flex: 0 0 48px; width: 48px; height: 48px; border-radius: 12px;
+            color: #475569; background: transparent; font-size: 30px;
+            border: 0; box-shadow: none; transition: background .15s, color .15s;
         }
+        .truthguard-progress-control--close { color: #dc2626; }
+        .truthguard-progress-control--close:hover { color: #b91c1c; background: #fef2f2; }
         .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
         html[data-tg-workspace].dark .truthguard-inline-progress .truthguard-progress-control {
-            background: #223047; color: #e2e8f0; border-color: #475569;
+            background: transparent; color: #e2e8f0; border: 0;
         }
+        html[data-tg-workspace].dark .truthguard-inline-progress .truthguard-progress-control--close { color: #f87171; }
         .truthguard-progress-restore {
             display: flex; align-items: center; justify-content: center;
             width: fit-content; max-width: 100%; min-height: 44px;
@@ -5130,7 +5133,7 @@ new class extends Component
                 <button type="button" class="truthguard-progress-control" aria-label="Minimize progress" title="Minimize progress" @click="progressMinimized = true; $nextTick(() => $refs.showProgress.focus())">
                     <span aria-hidden="true">&minus;</span>
                 </button>
-                <button type="button" class="truthguard-progress-control" aria-label="Hide progress" title="Hide progress; analysis continues" @click="progressHidden = true; $nextTick(() => $refs.showProgress.focus())">&times;</button>
+                <button type="button" class="truthguard-progress-control truthguard-progress-control--close" aria-label="Hide progress" title="Hide progress; analysis continues" @click="progressHidden = true; $nextTick(() => $refs.showProgress.focus())">&times;</button>
             </div>
             <div class="truthguard-verify-panel relative z-10 flex flex-col items-center justify-center" role="status" aria-live="polite" aria-busy="true">
                 <div class="truthguard-verify-loader mx-auto" aria-hidden="true">
