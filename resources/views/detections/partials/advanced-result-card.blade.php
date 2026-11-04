@@ -936,16 +936,16 @@
             <p class="tg-report-subtitle">{{ $isMediaReport ? 'Submitted media and the requested assessment.' : 'Submitted evidence, assessment, and supporting sources.' }}</p>
         </div>
         <div class="tg-report-header-actions">
+            <a href="{{ route('detections.create') }}" class="tg-report-new-check">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
+                <span>New fact check</span>
+            </a>
         @isset($userReportNumber)
             <div class="tg-report-reference">
                 <span>Report reference</span>
                 <strong>{{ 'TG-'.str_pad((string) $userReportNumber, 2, '0', STR_PAD_LEFT) }}</strong>
             </div>
         @endisset
-            <a href="{{ route('detections.create') }}" class="tg-report-new-check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
-                <span>New fact check</span>
-            </a>
         </div>
     </header>
 
