@@ -3332,14 +3332,6 @@ new class extends Component
             border: 1px solid #cbd5e1; transition: background .15s, color .15s;
         }
         .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
-        .truthguard-progress-background {
-            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-            width: 100%; min-height: 44px; margin-top: 10px; padding: 10px 16px;
-            border: 1px solid #2563eb; border-radius: 12px;
-            background: #2563eb; color: #fff; font-size: 13px; font-weight: 700;
-        }
-        .truthguard-progress-background:hover { background: #1d4ed8; }
-        .truthguard-progress-background:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
         html[data-tg-workspace].dark .truthguard-inline-progress .truthguard-progress-control {
             background: #223047; color: #e2e8f0; border-color: #475569;
         }
@@ -5236,7 +5228,6 @@ new class extends Component
                             <span class="is-active" x-text="progressState === 'completed' ? 'Done' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Waiting to analyze' : 'Analyzing'"></span>
                         </div>
                     </div>
-                    <button type="button" class="truthguard-progress-background" @click="progressMinimized = true; $nextTick(() => $refs.showProgress.focus())">Continue browsing <span aria-hidden="true">↗</span></button>
                 </div>
             </div>
         </div>
