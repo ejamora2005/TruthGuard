@@ -220,7 +220,7 @@ final class ResultWording
     {
         // An unreadable supporting link must not replace an assessment of a
         // separately supplied factual statement with an access-error message.
-        if (! in_array($result['verdict'] ?? '', ['MISSING_CONTEXT', 'UNVERIFIABLE', 'UNVERIFIED'], true)
+        if (! in_array($result['verdict'] ?? '', ['MISSING_CONTEXT', 'UNVERIFIABLE', 'UNVERIFIED', 'UNREADABLE_CONTENT'], true)
             || ($result['sources'] ?? []) !== []) {
             return false;
         }

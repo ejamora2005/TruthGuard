@@ -20,6 +20,41 @@ class EvidenceSubmissionCoverageTest extends TestCase
 
     private const SOURCE = 'https://records.gov.ph/library-notice';
 
+    public function test_pasted_link_with_default_question_saves_specific_claim_and_explanation(): void
+    {
+        $this->fakeEvidence(self::CLAIM, 'supporting');
+        $this->actingAs(User::factory()->create())->post(route('detections.store'), [
+            'source_url' => self::SOURCE,
+            'caption_text' => 'Is the claim in this post true? '.self::SOURCE,
+            'analysis_task' => 'claim',
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $detection = Detection::sole();
+        $this->assertSame(self::SOURCE, $detection->source_url);
+        $this->assertSame(self::CLAIM, $detection->fact_check_result['claims'][0]['text']);
+        $this->assertSame('TRUE', $detection->fact_check_result['verdict']);
+        $copy = \App\Services\Detections\ResultWording::saved($detection->fact_check_result);
+        $this->assertNotNull($copy);
+        $this->assertStringNotContainsString('Review the displayed verdict', $copy['explanation']);
+        $this->assertNotEmpty($detection->fact_check_result['sources']);
+        $this->get(route('detections.result', $detection))->assertOk()->assertSee(self::CLAIM);
+    }
+
+    public function test_blocked_facebook_post_saves_access_explanation_without_paid_model_calls(): void
+    {
+        $url = 'https://www.facebook.com/share/p/1CJPr4vmtw/';
+        Http::fake(['www.facebook.com/*' => Http::response('', 403)]);
+        $this->actingAs(User::factory()->create())->post(route('detections.store'), [
+            'caption_text' => $url, 'analysis_task' => 'claim',
+        ])->assertSessionHasNoErrors()->assertRedirect();
+        $detection = Detection::sole();
+        $copy = \App\Services\Detections\ResultWording::saved($detection->fact_check_result);
+        $this->assertNotNull($copy);
+        $this->assertStringStartsWith('TruthGuard could not access the linked social-media post.', $copy['explanation']);
+        $this->assertNotContains($detection->fact_check_result['verdict'], ['TRUE', 'FALSE']);
+        $this->assertNotContains($detection->processing_status, ['queued', 'processing']);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'api.openai.com'));
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
