@@ -160,6 +160,55 @@ html[data-tg-workspace].dark body.truthguard-policy-page .tg-formal-alert { back
 }
 
 /* Keep all form actions reachable on short screens and with the keyboard open. */
+body.truthguard-policy-page {
+    --policy-ink: #17243b;
+    --policy-muted: #52627a;
+    --policy-line: #dce5f1;
+    --policy-soft: #f6f9fe;
+    --policy-accent: #2454c6;
+    --policy-callout: #edf4ff;
+}
+html.dark body.truthguard-policy-page {
+    --policy-ink: #f1f5f9;
+    --policy-muted: #bbc8da;
+    --policy-line: #3b4b63;
+    --policy-soft: #1c2a3f;
+    --policy-accent: #a5c8ff;
+    --policy-callout: #203858;
+}
+html.dark body.truthguard-policy-page .truthguard-policy-main > .pointer-events-none { display: none; }
+.truthguard-policy-page .tg-policy-sections { display: grid; gap: 1rem; min-width: 0; }
+.truthguard-policy-page .tg-policy-section { min-width: 0; padding: 1.1rem; border: 1px solid var(--policy-line); border-radius: 16px; background: var(--policy-soft); color: var(--policy-muted); scroll-margin-top: 1rem; }
+.truthguard-policy-page .tg-policy-section-heading { display: flex; align-items: flex-start; gap: .7rem; margin-bottom: .9rem; }
+.truthguard-policy-page .tg-policy-section-heading > span { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border-radius: 8px; background: var(--policy-callout); color: var(--policy-accent); font-size: .6875rem; font-weight: 700; }
+.truthguard-policy-page .tg-policy-section-heading h2 { margin: 0; padding-top: .1rem; color: var(--policy-ink); font-size: 1rem; font-weight: 700; line-height: 1.5; }
+.truthguard-policy-page .tg-policy-section :is(p, li) { font-size: .875rem; line-height: 1.8; }
+.truthguard-policy-page .tg-policy-section p + p { margin-top: .8rem; }
+.truthguard-policy-page .tg-policy-section ul { display: grid; gap: .6rem; margin: .9rem 0; padding-left: 1.15rem; list-style: disc; }
+.truthguard-policy-page .tg-policy-section strong { color: var(--policy-ink); font-weight: 650; }
+.truthguard-policy-page .tg-policy-section a { color: var(--policy-accent); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.truthguard-policy-page .tg-policy-callout { margin-top: 1rem; padding: .9rem 1rem; border-left: 3px solid var(--policy-accent); border-radius: 0 10px 10px 0; background: var(--policy-callout); font-size: .8125rem; line-height: 1.8; }
+.truthguard-policy-page .tg-policy-version { color: var(--policy-muted); font-size: .75rem; font-weight: 550; }
+.truthguard-policy-page .tg-policy-section .tg-policy-version { margin-top: 1rem; padding-top: .75rem; border-top: 1px solid var(--policy-line); font-size: .75rem; }
+.truthguard-policy-page .tg-policy-decline { min-height: 44px; padding: .5rem 1rem; border-radius: 10px; color: var(--policy-muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: 3px; }
+.truthguard-policy-page .tg-policy-decline:focus-visible { outline: 2px solid var(--policy-accent); outline-offset: 2px; }
+.tg-policy-layout { display: grid; gap: 1rem; align-items: start; }
+.tg-policy-sidebar { min-width: 0; }
+.tg-policy-sidebar .truthguard-policy-nav { margin: 0; }
+@media (min-width: 1024px) {
+    .tg-policy-layout { grid-template-columns: 12rem minmax(0, 1fr); gap: 1.5rem; }
+    .tg-policy-sidebar { position: sticky; top: 1.5rem; }
+    .tg-policy-sidebar .truthguard-policy-nav { display: grid; gap: .5rem; }
+    .tg-policy-sidebar .truthguard-policy-nav a { justify-content: flex-start; border-radius: 10px; }
+}
+@media (max-width: 639px) {
+    .truthguard-policy-page .tg-policy-section { padding: .9rem; border-radius: 12px; }
+    .truthguard-policy-page .tg-policy-section-heading { gap: .55rem; }
+    .truthguard-policy-page .tg-policy-section-heading h2 { font-size: .9375rem; }
+    .truthguard-policy-page .tg-policy-section :is(p, li) { font-size: .8125rem; }
+    body.truthguard-policy-page .tg-consent-shell .tg-consent-policy { padding: 0; border: 0; }
+}
+
 body.truthguard-auth-page .truthguard-auth-shell { height: auto; min-height: 100dvh; overflow: visible; padding-top: 4.5rem; padding-bottom: 1.5rem; }
 body.truthguard-auth-page .truthguard-auth-card { max-height: none; overflow: visible; }
 html body.truthguard-auth-page { height: auto; min-height: 100dvh; overflow-y: auto !important; }

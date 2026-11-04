@@ -1,82 +1,58 @@
 @php
-    $policyVersion = $policyVersion ?? (string) config('app.privacy_policy_version', '2026-07-28');
+    $policyVersion = $policyVersion ?? (string) config('app.privacy_policy_version', '2026-11-04');
+    $privacyContact = (string) config('app.privacy_contact_email', 'truthguard2026@gmail.com');
 @endphp
 
-<div class="space-y-6 text-sm leading-7 text-slate-600">
-    <section id="privacy-overview">
-        <h2 class="text-base font-black text-slate-950">Privacy Notice</h2>
-        <p class="mt-2">
-            TruthGuard processes your account information and submitted content to provide AI-assisted fact-checking,
-            security, notifications, and account services. This notice explains what we collect, why we use it, and
-            the choices available to you.
-        </p>
+<div class="tg-policy-sections">
+    <section id="privacy-overview" class="tg-policy-section">
+        <div class="tg-policy-section-heading"><span aria-hidden="true">01</span><h2>What we collect and why</h2></div>
+        <p>TruthGuard processes account information and submitted evidence to provide media analysis, fact-checking, saved reports, and account security.</p>
+        <ul>
+            <li><strong>Account details:</strong> name, username, email, protected password credentials, profile information, and privacy acknowledgement.</li>
+            <li><strong>Social sign-in:</strong> the account identifier, name, email, verification status where provided, and avatar returned by Google or Facebook. TruthGuard does not receive your Google or Facebook password.</li>
+            <li><strong>Submitted evidence:</strong> images, videos, documents, links, captions, questions, extracted text, source references, and analysis results.</li>
+            <li><strong>Service activity:</strong> session and login records, notification settings, push subscriptions if enabled, and operational logs used for delivery, troubleshooting, security, and usage monitoring.</li>
+        </ul>
+        <p>We use this information to run your account, review submissions, display reports and history, send enabled notifications, and investigate service errors or misuse.</p>
     </section>
 
-    <section class="grid gap-3 sm:grid-cols-2">
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-            <h3 class="font-bold text-slate-950">Data We Collect</h3>
-            <ul class="mt-2 space-y-1.5">
-                <li>Name, email address, login credentials, and profile details.</li>
-                <li>Google account ID, avatar, and verified email status when you use Google login.</li>
-                <li>Uploaded evidence, source links, captions, notes, and fact-check history.</li>
-                <li>Notifications, email preferences, device/session activity, and login timestamps.</li>
-            </ul>
-        </div>
-
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4">
-            <h3 class="font-bold text-slate-950">Why We Use It</h3>
-            <ul class="mt-2 space-y-1.5">
-                <li>Create and secure your account.</li>
-                <li>Analyze submitted claims and generate AI-assisted reports.</li>
-                <li>Send welcome emails, result updates, and security alerts.</li>
-                <li>Prevent abuse, manage inactivity timeouts, and improve TruthGuard.</li>
-            </ul>
-        </div>
+    <section id="ai-processing" class="tg-policy-section">
+        <div class="tg-policy-section-heading"><span aria-hidden="true">02</span><h2>AI processing and service providers</h2></div>
+        <p>Depending on the requested check and enabled features, submitted text, images, document content, or sampled video frames may be sent to OpenAI for extraction, verification, or explanations. Local models may also assess media.</p>
+        <p>Search and verification services may receive search terms derived from your submission. TruthGuard also uses public fact-check and news sources, social sign-in providers, hosting, email, and browser push services as needed. These providers may process information outside your country under their own terms.</p>
+        <p>For a matching submission, TruthGuard may reuse a saved result or a documented reviewed answer. Exact file fingerprints can identify previously reviewed media. A reused answer is not a new independent detector assessment.</p>
+        <div class="tg-policy-callout"><strong>Check important conclusions.</strong> AI and automated matching can make mistakes. Media origin does not establish whether an accompanying news claim is true. Read the cited evidence before sharing or acting on a report.</div>
     </section>
 
-    <section id="ai-processing">
-        <h2 class="text-base font-black text-slate-950">AI and Verification Services</h2>
-        <p class="mt-2">
-            TruthGuard may send claim text, source context, or limited evidence details to OpenAI to generate
-            AI-assisted explanations. TruthGuard may also use Google login, Google Fact Check sources, public claim
-            review feeds, news sources, weather references, and email delivery services where needed to operate the
-            platform. AI can make mistakes, so important details should be verified before sharing.
-        </p>
+    <section id="privacy-storage" class="tg-policy-section">
+        <div class="tg-policy-section-heading"><span aria-hidden="true">03</span><h2>Storage, access, and retention</h2></div>
+        <p>Your account, submissions, reports, and related service records are stored to support the workspace. Active history normally covers the latest seven days. Older records are archived rather than automatically deleted; archiving does not remove uploaded files.</p>
+        <p>Uploaded media is currently served through file URLs used to display evidence. Anyone who obtains a file URL may be able to access that file. Do not upload passwords, identity documents, confidential records, or other sensitive material that you are not comfortable sharing through this service.</p>
+        <p>Authorized administrators may access records for support and platform operations. Contact us to request deletion or ask about stored information. Removal from the workspace does not necessarily remove copies held in backups, security logs, or by external providers; those copies require separate handling.</p>
     </section>
 
-    <section class="grid gap-3 sm:grid-cols-2">
-        <div class="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-            <h3 class="font-bold text-blue-950">Retention</h3>
-            <p class="mt-2">
-                Fact-check records are intended to be kept for the last 7 days unless a longer period is required for
-                security, legal, operational, or account-support reasons. Account data remains while your account is
-                active or as required to provide the service.
-            </p>
-        </div>
-
-        <div class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
-            <h3 class="font-bold text-emerald-950">Security</h3>
-            <p class="mt-2">
-                TruthGuard uses session protections, CSRF protection, role-based access controls, password protection,
-                inactivity timeout, and secure storage practices to help protect your account and submitted content.
-            </p>
-        </div>
+    <section id="privacy-security" class="tg-policy-section">
+        <div class="tg-policy-section-heading"><span aria-hidden="true">04</span><h2>Account and device security</h2></div>
+        <p>TruthGuard uses password hashing, session controls, inactivity timeouts, request protections, and role-based access checks. These safeguards reduce risk but do not guarantee that every upload or account is protected from all threats.</p>
+        <p>Cookies and browser storage support sign-in, remembered-device choices, appearance settings, and PWA operation. Use remembered sign-in only on your own device. Sign out when using a shared device.</p>
     </section>
 
-    <section id="privacy-choices">
-        <h2 class="text-base font-black text-slate-950">Your Choices and Rights</h2>
-        <p class="mt-2">
-            You may request access to your data, correct profile information, delete your account, export data where
-            supported, withdraw optional consent where applicable, and ask questions about privacy or security.
-            Requests can be sent through the contact channel provided by TruthGuard.
-        </p>
+    <section id="privacy-choices" class="tg-policy-section">
+        <div class="tg-policy-section-heading"><span aria-hidden="true">05</span><h2>Your choices and privacy requests</h2></div>
+        <ul>
+            <li>Update available account details and notification preferences in Settings.</li>
+            <li>Allow or deny optional microphone, location, and browser notification permissions. You can revoke browser permissions later.</li>
+            <li>Submit only content you are authorized to share. Remove unnecessary personal details before uploading.</li>
+            <li>Contact us to request access, correction, deletion, or a copy of your information, or to raise an objection to processing. We may need to verify your identity and explain any limits that apply.</li>
+        </ul>
+        <p>Acknowledging this notice does not enable optional permissions or subscribe you to optional notifications. If you do not want to continue, you can sign out instead of submitting new content.</p>
+        <p>For information about privacy rights and complaints in the Philippines, visit the <a href="https://privacy.gov.ph/data-subject-rights/" target="_blank" rel="noopener noreferrer">National Privacy Commission</a>.</p>
     </section>
 
-    <section class="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-amber-900">
-        <h2 class="font-black">Important Note</h2>
-        <p class="mt-2">
-            This policy is written for product transparency and should be reviewed by a qualified legal professional
-            before public deployment. Policy version: {{ $policyVersion }}.
-        </p>
+    <section id="privacy-contact" class="tg-policy-section tg-policy-contact">
+        <div class="tg-policy-section-heading"><span aria-hidden="true">06</span><h2>Contact and policy updates</h2></div>
+        <p>For privacy questions or requests, contact the TruthGuard project team at <a href="mailto:{{ $privacyContact }}">{{ $privacyContact }}</a>. Describe your request and the relevant account or report; do not send passwords or unnecessary sensitive information.</p>
+        <p>We will display an updated notice when the policy version changes and ask you to acknowledge the current version before continuing to the workspace.</p>
+        <p class="tg-policy-version">Policy version: {{ $policyVersion }}.</p>
     </section>
 </div>

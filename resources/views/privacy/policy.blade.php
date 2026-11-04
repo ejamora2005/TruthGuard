@@ -11,7 +11,7 @@
         <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#f8fbff_0%,#eef4ff_52%,#e8f1ff_100%)]"></div>
         <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(14,165,233,0.2)_0%,transparent_32%),radial-gradient(circle_at_88%_78%,rgba(37,99,235,0.16)_0%,transparent_38%)]"></div>
 
-        <div class="relative z-10 mx-auto w-full max-w-4xl">
+        <div class="relative z-10 mx-auto w-full max-w-6xl">
             <header class="mb-6 rounded-[28px] border border-slate-200 bg-white/90 p-6 shadow-[0_22px_60px_rgba(15,23,42,0.10)] sm:p-8">
                 <a href="{{ route('home') }}" class="inline-flex items-center gap-3">
                     @if ($logoUrl)
@@ -27,18 +27,20 @@
 
                 <div class="mt-8">
                     <p class="text-xs font-black uppercase tracking-[0.2em] text-blue-600">Privacy Policy</p>
+                    <p class="tg-policy-version mt-2">Updated {{ $policyVersion }}</p>
                     <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">How TruthGuard handles your data</h1>
                     <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-500">
-                        This page explains how account data and submitted evidence are processed for AI-assisted
-                        fact-checking, security, notifications, and platform operations.
+                        What you share, how it is processed, and the choices you have. Read the full notice or jump to a section below.
                     </p>
                 </div>
             </header>
 
-            @include('privacy.partials.policy-navigation')
-            <section class="truthguard-policy-document rounded-[28px] border border-slate-200 bg-white/92 p-5 shadow-[0_22px_60px_rgba(15,23,42,0.08)] sm:p-8">
-                @include('privacy.partials.policy-content', ['policyVersion' => $policyVersion])
-            </section>
+            <div class="tg-policy-layout">
+                <aside class="tg-policy-sidebar">@include('privacy.partials.policy-navigation')</aside>
+                <section class="truthguard-policy-document rounded-[24px] border border-slate-200 bg-white/92 p-4 sm:p-6">
+                    @include('privacy.partials.policy-content', ['policyVersion' => $policyVersion])
+                </section>
+            </div>
             <a href="{{ auth()->check() ? route('dashboard') : route('home') }}" class="truthguard-policy-back">Back to TruthGuard &rarr;</a>
         </div>
     </main>

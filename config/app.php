@@ -60,7 +60,10 @@ return [
         static fn (string $email): string => strtolower(trim($email)),
         explode(',', (string) env('TRUTHGUARD_ADMIN_EMAILS', ''))
     ))),
-    'privacy_policy_version' => env('TRUTHGUARD_PRIVACY_POLICY_VERSION', '2026-07-28'),
+    // Older deployment variables must not keep consent attached to outdated content.
+    'privacy_policy_version' => max('2026-11-04', (string) env('TRUTHGUARD_PRIVACY_POLICY_VERSION', '2026-11-04')),
+
+    'privacy_contact_email' => env('TRUTHGUARD_PRIVACY_CONTACT_EMAIL', 'truthguard2026@gmail.com'),
     'onboarding_version' => env('TRUTHGUARD_ONBOARDING_VERSION', '2026-11-02-v2'),
 
     /*

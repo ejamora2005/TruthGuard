@@ -99,26 +99,24 @@
                     <section class="min-w-0 p-5 sm:p-6 lg:p-8">
                         <div class="max-w-3xl">
                             <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Before you continue</p>
-                            <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Review your privacy notice</h1>
+                            <h1 class="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">Your data, your choices</h1>
                             <p class="mt-3 text-sm leading-7 text-slate-600 sm:text-base">
-                                Please read this notice once before entering your workspace. It explains how TruthGuard
-                                processes account data and submitted evidence for AI-assisted fact-checking, notifications,
-                                security, and platform operations.
+                                Review what you share, how AI services process it, and the controls available to you before entering your workspace.
                             </p>
                         </div>
 
                         <div class="tg-consent-highlights mt-5 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Purpose</p>
-                                <p class="mt-1 text-sm font-bold text-slate-950">Fact-checking service</p>
+                                <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Uploads</p>
+                                <p class="mt-1 text-sm font-bold text-slate-950">Choose what to share</p>
                             </div>
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Security</p>
-                                <p class="mt-1 text-sm font-bold text-slate-950">Protected sessions</p>
+                                <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">AI review</p>
+                                <p class="mt-1 text-sm font-bold text-slate-950">Check the evidence</p>
                             </div>
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">AI use</p>
-                                <p class="mt-1 text-sm font-bold text-slate-950">Assisted analysis</p>
+                                <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Choices</p>
+                                <p class="mt-1 text-sm font-bold text-slate-950">Manage permissions</p>
                             </div>
                         </div>
 
@@ -139,9 +137,9 @@
                                         </svg>
                                     </span>
                                     <div>
-                                        <h2 class="text-base font-black text-slate-950">Consent required</h2>
+                                        <h2 class="text-base font-black text-slate-950">Before you continue</h2>
                                         <p class="mt-1 text-sm leading-6 text-slate-600">
-                                            Confirm the acknowledgement below to continue to your TruthGuard workspace.
+                                            Read the notice, then acknowledge how your information is processed.
                                         </p>
                                     </div>
                                 </div>
@@ -153,7 +151,7 @@
                                     </div>
                                     <div class="flex gap-2">
                                         <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-600"></span>
-                                        <p>Important details should still be verified before sharing.</p>
+                                        <p>Avoid confidential uploads; files may be accessible through their URLs.</p>
                                     </div>
                                     <div class="flex gap-2">
                                         <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-blue-600"></span>
@@ -211,10 +209,9 @@
                                         class="mt-1 h-5 w-5 cursor-pointer rounded border-slate-300 text-blue-600 focus:ring-4 focus:ring-blue-100"
                                     >
                                     <span class="min-w-0">
-                                        <span class="block text-sm font-black text-slate-950">I have read and agree</span>
+                                        <span class="block text-sm font-black text-slate-950">I have read this privacy notice</span>
                                         <span class="mt-1 block text-sm leading-6 text-slate-600">
-                                            I agree to the Privacy Policy and understand that TruthGuard may process my
-                                            submitted content to provide AI-assisted fact-checking results.
+                                            I understand how TruthGuard processes my account and submitted content. Optional permissions remain my choice.
                                         </span>
                                     </span>
                                 </label>
@@ -224,13 +221,17 @@
                                     class="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/18 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:cursor-wait disabled:opacity-75"
                                     :disabled="submitting"
                                 >
-                                    <span x-show="!submitting">Agree and continue</span>
+                                    <span x-show="!submitting">Accept and continue</span>
                                     <span x-show="submitting" x-cloak>Saving consent...</span>
                                 </button>
 
                                 <a href="{{ route('privacy.policy') }}" target="_blank" rel="noreferrer" class="inline-flex w-full items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100">
                                     Open full policy
                                 </a>
+                            </form>
+                            <form method="POST" action="{{ route('logout') }}" class="mt-3 text-center">
+                                @csrf
+                                <button type="submit" class="tg-policy-decline">Sign out instead</button>
                             </form>
                         </div>
                     </aside>
