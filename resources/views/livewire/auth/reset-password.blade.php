@@ -119,6 +119,8 @@
                             </span>
                             <input
                                 id="password"
+                                minlength="8"
+                                aria-describedby="password-rules"
                                 x-bind:type="showPassword ? 'text' : 'password'"
                                 x-on:input="strength = evaluate($event.target.value)"
                                 wire:model.live.debounce.250ms="password"
@@ -154,6 +156,7 @@
                             </div>
                             <p class="mt-1 text-xs text-slate-500" x-text="strengthLabel()"></p>
                         </div>
+                        <x-password-rules />
                         @error('password')
                             <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                         @enderror
@@ -170,6 +173,7 @@
                             </span>
                             <input
                                 id="password_confirmation"
+                                aria-describedby="password-rules"
                                 x-bind:type="showPassword ? 'text' : 'password'"
                                 wire:model="password_confirmation"
                                 autocomplete="new-password"

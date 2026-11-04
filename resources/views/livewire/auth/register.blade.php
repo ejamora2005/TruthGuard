@@ -103,6 +103,8 @@
                             x-ref="passwordInput"
                             id="password"
                             name="password"
+                            minlength="8"
+                            aria-describedby="password-rules"
                             x-bind:type="showPassword ? 'text' : 'password'"
                             x-on:input="hasValue = $refs.passwordInput.value.length > 0"
                             autocomplete="new-password"
@@ -129,6 +131,7 @@
                             </svg>
                         </button>
                     </div>
+                    <x-password-rules />
                     @error('password')
                         <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
                     @enderror
@@ -150,6 +153,7 @@
                         <input
                             x-ref="confirmPasswordInput"
                             id="password_confirmation"
+                            aria-describedby="password-rules"
                             name="password_confirmation"
                             x-bind:type="showPassword ? 'text' : 'password'"
                             x-on:input="hasValue = $refs.confirmPasswordInput.value.length > 0"

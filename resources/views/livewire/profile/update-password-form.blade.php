@@ -151,6 +151,8 @@ new class extends Component
                                 wire:model="password"
                                 x-model="passwordValue"
                                 id="update_password_password"
+                                minlength="8"
+                                aria-describedby="update_password_password-rules"
                                 name="password"
                                 x-bind:type="showNew ? 'text' : 'password'"
                                 autocomplete="new-password"
@@ -174,6 +176,7 @@ new class extends Component
                                 </svg>
                             </button>
                         </div>
+                        <x-password-rules password-id="update_password_password" confirmation-id="update_password_password_confirmation" />
                         @if ($errors->has('password'))
                             <ul class="mt-2 space-y-1 text-sm font-medium text-rose-500">
                                 @foreach ($errors->get('password') as $message)
@@ -189,6 +192,7 @@ new class extends Component
                             <input
                                 wire:model="password_confirmation"
                                 id="update_password_password_confirmation"
+                                aria-describedby="update_password_password-rules"
                                 name="password_confirmation"
                                 x-bind:type="showConfirm ? 'text' : 'password'"
                                 autocomplete="new-password"
