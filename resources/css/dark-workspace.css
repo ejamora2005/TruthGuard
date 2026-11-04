@@ -126,6 +126,33 @@ html[data-tg-workspace].dark body .tg-ai-report :is(.tg-ai-surface, .tg-report-e
 }
 /* Source verification cards define their light-theme text colors inside the view.
    Override each text role explicitly so links remain legible in the night palette. */
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-card {
+    background: #1e2b41 !important;
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report .tg-source-card:hover {
+    background: #223047 !important;
+    border-color: #6583ad !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-section-header, .tg-source-popover li + li) {
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-logo, .tg-source-count, .tg-source-popover-card, .tg-source-empty) {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+    color: var(--tg-night-muted) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-count strong, .tg-source-popover strong, .tg-source-popover-heading) {
+    color: var(--tg-night-ink) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-popover span, .tg-source-popover-note) {
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark body .tg-ai-report :is(.tg-source-count-button:hover, .tg-source-count-button[aria-expanded="true"], .tg-source-popover a:hover) {
+    background: #28486f !important;
+    color: #dbeafe !important;
+}
 html[data-tg-workspace].dark body .tg-ai-report .tg-source-group,
 html[data-tg-workspace].dark body .tg-ai-report .tg-source-publisher,
 html[data-tg-workspace].dark body .tg-ai-report .tg-source-card-title {
