@@ -17,7 +17,8 @@ class KnownFactCheckCatalogTest extends TestCase
 
         $this->assertNotNull($result);
         $this->assertSame('MISLEADING', $result['verdict']);
-        $this->assertStringContainsString('1960 Science paper', $result['summary']);
+        $this->assertStringStartsWith('There is no scientific evidence that the world will end on November 13, 2026.', $result['summary']);
+        $this->assertStringContainsString('1960 population-growth model', $result['summary']);
         $this->assertStringContainsString('mid-2080s', $result['summary']);
         $this->assertSame(0, data_get($result, 'diagnostics.api_usage.total_tokens'));
         $this->assertCount(5, $result['sources']);

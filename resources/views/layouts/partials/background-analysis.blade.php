@@ -7,7 +7,11 @@
 <aside
     class="truthguard-background-analysis"
     aria-live="polite"
+    x-show="visible"
+    x-cloak
     x-data="{
+        visible: true,
+        hideTimer: null,
         status: @js($detection->processing_status),
         stage: @js(data_get($detection->signals, 'analysis_progress.0.label')),
         href: @js($progressUrl),
@@ -22,6 +26,14 @@
         get elapsedLabel() { return Math.floor(this.elapsed / 60) + 'm ' + (this.elapsed % 60) + 's elapsed'; },
         get complete() { return this.status === 'completed'; },
         get failed() { return this.status === 'failed'; },
+        dismiss() {
+            this.showPrompt = false;
+            if (this.complete || this.failed) this.visible = false;
+        },
+        startPolling() {
+            window.clearInterval(this.timer);
+            this.timer = window.setInterval(() => this.refresh(), 5000);
+        },
         get statusLabel() {
             if (this.complete) return 'Fact check complete — open result';
             if (this.failed) return 'Fact check needs attention — open report';
@@ -60,6 +72,8 @@
                     this.href = @js($resultUrl);
                     window.clearInterval(this.timer);
                     if (wasPending) this.showPrompt = true;
+                } else {
+                    this.startPolling();
                 }
             } catch (error) {
                 this.connectionError = true;
@@ -76,12 +90,13 @@
         },
         init() {
             this.refresh();
-            this.timer = window.setInterval(() => this.refresh(), 5000);
-            this.clock = window.setInterval(() => { if (!this.complete && !this.failed) this.elapsed++; }, 1000);
+            this.startPolling();
+            this.clock = window.setInterval(() => { if (!this.complete && !this.failed && !this.connectionError) this.elapsed++; }, 1000);
         },
         destroy() {
             window.clearInterval(this.timer);
             window.clearInterval(this.clock);
+            window.clearTimeout(this.hideTimer);
         },
     }"
 >
@@ -123,12 +138,13 @@
         class="truthguard-background-analysis-prompt"
         role="status"
     >
-        <button type="button" class="truthguard-background-analysis-dismiss" @click="showPrompt = false" aria-label="Dismiss fact-check update">
+        <button type="button" class="truthguard-background-analysis-dismiss" @click="dismiss()" aria-label="Dismiss fact-check update">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" d="m7 7 10 10M17 7 7 17"></path>
             </svg>
         </button>
         <span class="truthguard-background-analysis-ready-icon" aria-hidden="true">
+            <img x-show="!complete && !failed" src="{{ $floatingLogoUrl }}" alt="" width="32" height="32">
             <svg x-show="complete" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="m5 12.5 4.2 4.2L19 7"></path>
             </svg>
@@ -138,16 +154,17 @@
             </svg>
         </span>
         <div class="min-w-0">
-            <strong x-text="complete ? 'Your fact check is ready' : (failed ? 'Your fact check needs attention' : 'Fact check in progress')"></strong>
-            <p x-text="connectionError ? 'Reconnecting to progress updates' : statusLabel"></p>
+            <strong x-text="complete ? 'Your fact check is ready' : (failed ? 'Your fact check needs attention' : (connectionError ? 'Progress connection interrupted' : 'Fact check in progress'))"></strong>
+            <p x-text="connectionError ? 'Status temporarily unavailable' : statusLabel"></p>
             <p x-text="elapsedLabel"></p>
-            <div class="truthguard-progress-steps" aria-label="Analysis stages">
-                <span class="is-active">Uploaded</span>
-                <span :class="{ 'is-active': status !== 'queued' }">Analyzing</span>
-                <span :class="{ 'is-active': complete }">Result</span>
+            <div x-show="!connectionError && !failed" class="truthguard-analysis-progress" :class="{ 'is-running': !complete }" role="status" aria-label="Fact check progress">
+                <div class="truthguard-analysis-track" aria-hidden="true"><span :style="'width: ' + (complete ? '100%' : status === 'queued' ? '33.333%' : '66.667%')"></span></div>
+                <div class="truthguard-analysis-labels">
+                    <span class="is-active" x-text="complete ? 'Done' : status === 'queued' ? 'Uploaded · waiting to analyze' : 'Analyzing'"></span>
+                </div>
             </div>
             <p x-text="complete ? 'Open the report to review the verdict and evidence.' : message"></p>
-            <a x-show="complete || failed" :href="@js($resultUrl)" x-text="complete ? 'Open result' : 'Open report'"></a>
+            <a x-show="complete || failed" :href="@js($resultUrl)" @click="visible = false" x-text="complete ? 'Open result' : 'Open report'"></a>
             <button x-show="!complete && !failed" type="button" class="truthguard-progress-refresh" @click="refresh()" :disabled="checking" x-text="checking ? 'Checking…' : 'Check status'"></button>
         </div>
     </div>

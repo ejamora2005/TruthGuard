@@ -1227,6 +1227,17 @@ new class extends Component
             outline-offset: 3px;
         }
 
+        .truthguard-attachment-popover::after { display: none; }
+        .truthguard-attachment-popover .truthguard-upload-type-button {
+            border-radius: 0.85rem;
+            background: #f8fafc;
+            box-shadow: none;
+        }
+        .truthguard-attachment-popover .truthguard-uploader-close {
+            background: #f1f5f9;
+            box-shadow: none;
+        }
+
         .truthguard-attachment-popover .truthguard-drive-status span {
             white-space: normal;
             overflow-wrap: anywhere;
@@ -3294,6 +3305,10 @@ new class extends Component
             min-height: 0;
         }
         .truthguard-inline-progress .truthguard-verify-loader { zoom: 0.5; }
+        .truthguard-inline-progress .truthguard-verify-title { line-height: 1.5; }
+        .truthguard-inline-progress .truthguard-verify-copy { max-width: 290px; line-height: 1.6; }
+        .truthguard-inline-progress .truthguard-progress-steps { margin: 8px 0; text-align: left; }
+        .truthguard-inline-progress .truthguard-progress-steps span { padding-top: 8px; }
         .truthguard-inline-progress .truthguard-verify-panel .mt-5 {
             margin-top: 0 !important;
             gap: 6px;
@@ -3779,6 +3794,7 @@ new class extends Component
             trackPendingResult(url) {
                 window.clearTimeout(this.progressTimer);
                 this.pendingResultUrl = url;
+                this.progressState = 'queued';
                 this.progressFailures = 0;
                 this.submitting = true;
                 this.composerError = null;
@@ -5194,11 +5210,14 @@ new class extends Component
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
                     <p class="truthguard-verify-copy" x-text="progressMessage || 'You can hide this card. Your analysis will continue.'">You can hide this card. Your analysis will continue.</p>
                     <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed · ' + (progressState === 'queued' ? 'Waiting for a worker' : 'Analysis running')"></p>
-                    <div class="truthguard-progress-steps" style="width: min(100%, 20rem)" aria-label="Analysis stages">
-                        <span class="is-active">Uploaded</span>
-                        <span :class="{ 'is-active': progressState === 'processing' }">Analyzing</span>
-                        <span>Result</span>
+                    <div class="truthguard-analysis-progress" :class="{ 'is-running': progressState !== 'completed' }" style="width: min(100%, 20rem)" role="status" aria-label="Fact check progress">
+                        <div class="truthguard-analysis-track" aria-hidden="true"><span :style="'width: ' + (progressState === 'completed' ? '100%' : pendingResultUrl ? (progressState === 'processing' ? '66.667%' : '33.333%') : '15%')"></span></div>
+                        <div class="truthguard-analysis-labels">
+                            <span class="is-active" x-text="progressState === 'completed' ? 'Done' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Uploaded · waiting to analyze' : 'Analyzing'"></span>
+                        </div>
                     </div>
+                    <p class="truthguard-verify-copy">You can browse other pages. Use the TruthGuard button to check progress.</p>
+                    <p class="truthguard-verify-copy" style="font-size: 11px; opacity: .8">Stages reflect the latest server update. Completion time depends on the evidence.</p>
                 </div>
             </div>
         </div>

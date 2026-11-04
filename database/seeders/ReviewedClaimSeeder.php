@@ -15,6 +15,21 @@ class ReviewedClaimSeeder extends Seeder
     {
         $philstar = 'https://www.philstar.com/headlines/2026/';
         $entries = [
+            ['suan-fabricated-bato-shoot-to-kill-quote', 'FALSE', 'Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.',
+                'The circulating quote card falsely attributes a threat against Senator Ronald "Bato" dela Rosa to Cagayan de Oro Representative Lordan Suan. In a November 2, 2026 statement, Suan denied making the remarks about calling a House hearing and seeking a shoot-to-kill resolution if the senator failed to surrender. Philstar and SunStar documented his denial. Reports of the senator\'s surrender deadline do not authenticate the fabricated quotation. This assessment applies to that specific quote card, rather than every statement about efforts to arrest dela Rosa.',
+                'Suan denied the quotation attributed to him; reporting on an arrest or surrender deadline does not establish that he made the threat.',
+                ['Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.',
+                    'Lordan Suan warned Bato dela Rosa of a shoot-to-kill order if he fails to surrender.',
+                    'If Bato dela Rosa fails to surrender by the deadline, I will convene a House committee hearing and file a shoot-to-kill resolution.',
+                    'Nagbanta si Lordan Suan ng shoot-to-kill resolution laban kay Bato dela Rosa.',
+                    'FACT CHECK: Shoot-to-kill Bato dela Rosa warning by Lordan Suan is fake'],
+                [
+                    ['Philstar', 'House prosecution panel member denies shoot-to-kill claim vs Bato', 'https://www.philstar.com/headlines/2026/11/02/2567378/house-prosecution-panel-member-denies-shoot-kill-claim-vs-bato/amp/', 'Documents Suan\'s November 2 denial of the fabricated quotation.'],
+                    ['SunStar', 'Rep. Suan denies shoot-to-kill quote card vs Bato dela Rosa', 'https://www.sunstar.com.ph/amp/story/davao/rep-suan-denies-shoot-to-kill-quote-card-vs-bato-dela-rosa', 'Describes the quote card and reports Suan\'s denial; the same underlying denial, not independent proof.'],
+                    ['ABS-CBN News', 'Rep. Suan denies online claims of shoot-to-kill resolution for Bato dela Rosa', 'https://www.abs-cbn.com/news/nation/2026/11/2/rep-suan-denies-online-claims-of-shoot-to-kill-resolution-for-bato-dela-rosa-1311', 'Related coverage of the denial.'],
+                    ['Daily Tribune', 'CdO solon denies threatening Bato', 'https://tribune.net.ph/2026/11/02/cdo-solon-denies-threatening-bato', 'Supporting coverage of the same denial, not a separate underlying confirmation.'],
+                    ['GMA News', 'PNP: No shoot-to-kill order vs Bato dela Rosa', 'https://www.gmanetwork.com/news/topstories/nation/1008107/pnp-no-shoot-to-kill-order-vs-bato-dela-rosa/story/', 'Related police clarification; distinguishes an alleged order from the fabricated Suan quotation.'],
+                ]],
             ['castro-edited-drug-remarks', 'FALSE', 'Claire Castro accused Marcos of drug use.',
                 'The circulating clip removes references to Rodrigo Duterte from Claire Castro’s remarks about marijuana and fentanyl. Philstar traced the footage to remarks in which she was discussing Duterte, not Marcos. The accompanying claim that she had left her position is contradicted by October 23 reporting that her courtesy resignation would not be accepted. This finding concerns the specific edited clip reviewed in October 2026.',
                 'The edit changes the apparent subject of Castro’s remarks and adds an inaccurate departure narrative.',

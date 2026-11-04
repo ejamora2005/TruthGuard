@@ -7,7 +7,7 @@ use Illuminate\Support\Str;
 /** Stable, reviewed answers for recurring claims. No model or search request is used. */
 final class KnownFactCheckCatalog
 {
-    public const VERSION = 'november-2026-sources-v2';
+    public const VERSION = 'november-2026-context-v4';
 
     public static function match(string $text): ?array
     {
@@ -19,7 +19,7 @@ final class KnownFactCheckCatalog
             return null;
         }
 
-        $explanation = 'There is no scientific evidence that the world will end on November 13, 2026. A 1960 Science paper used that date for a mathematical population model, not a literal apocalypse prediction. The calculation assumed population growth would continue unchanged, but population growth has slowed. Current United Nations projections instead place the global population peak around the mid-2080s.';
+        $explanation = 'There is no scientific evidence that the world will end on November 13, 2026. The date comes from a 1960 population-growth model, not a prediction of a catastrophe that would destroy Earth. In their Science paper, Heinz von Foerster, Patricia Mora and Lawrence Amiot extended a curve fitted to historical population growth. If that pattern continued, the model would approach an impossible infinite population near that date. This mathematical limit means the growth pattern cannot continue indefinitely; it does not establish an apocalypse date. Population trends have since changed, including a shift toward smaller families. The United Nations World Population Prospects 2024 projects a population peak of about 10.3 billion in the mid-2080s, with uncertainty around future trends. The image takes the original calculation out of context and presents it as an end-of-the-world forecast.';
 
         return ReportAnswer::complete([
             'schema_version' => 4,
@@ -29,7 +29,7 @@ final class KnownFactCheckCatalog
             'summary' => $explanation,
             'key_findings' => [
                 'The 1960 paper modeled population growth rather than predicting the physical end of the world.',
-                'Its date depended on an unchanged growth-rate assumption that did not continue.',
+                'The date was a mathematical limit obtained by extending a historical population-growth pattern, not a demonstrated catastrophe.',
                 'Current United Nations projections place the population peak around the mid-2080s.',
             ],
             'limitations' => [],
@@ -48,7 +48,7 @@ final class KnownFactCheckCatalog
                     'title' => 'World Population Prospects 2024',
                     'url' => 'https://www.un.org/development/desa/pd/content/World-Population-Prospects-2024',
                     'type' => 'official_government',
-                    'used_for' => 'Provides the current projection that global population will peak in the mid-2080s.',
+                    'used_for' => 'Provides the 2024 projection that global population will peak in the mid-2080s.',
                 ],
                 [
                     'id' => 'chequeado-doomsday-review',

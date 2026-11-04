@@ -36,7 +36,7 @@ class ReviewedClaimLookupTest extends TestCase
         $this->seed(ReviewedClaimSeeder::class);
         $count = ClaimVariation::count();
         $this->seed(ReviewedClaimSeeder::class);
-        $this->assertSame(6, ReviewedClaim::count());
+        $this->assertSame(7, ReviewedClaim::count());
         $this->assertSame($count, ClaimVariation::count());
         $result = ReviewedClaimLookup::lookup('  HEV ABI cursed at Marcos over his bucket advice!!! ');
         $this->assertSame('FALSE', $result['verdict']);
@@ -44,6 +44,11 @@ class ReviewedClaimLookupTest extends TestCase
         $this->assertSame(0, $result['diagnostics']['api_usage']['total_tokens']);
         $this->assertNotEmpty($result['sources']);
         $this->assertSame('MISLEADING', ReviewedClaimLookup::lookup('Matatapos ang mundo sa November 13, 2026.')['verdict']);
+        $suan = ReviewedClaimLookup::lookup('Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.');
+        $this->assertSame('FALSE', $suan['verdict']);
+        $this->assertCount(5, $suan['sources']);
+        $this->assertSame(0, $suan['diagnostics']['api_usage']['total_tokens']);
+        $this->assertNull(ReviewedClaimLookup::lookup('Lordan Suan did not threaten a shoot-to-kill resolution against Bato dela Rosa.'));
     }
 
     public function test_different_dates_negations_questions_and_partial_claims_do_not_reuse_answers(): void

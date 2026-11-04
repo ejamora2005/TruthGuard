@@ -43,6 +43,33 @@ html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background:
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-neutral { background: #223047; color: #cbd5e1; border-color: #53647c; }
 
 /* Composer and upload surfaces. Leave evidence images and source logos intact. */
+html[data-tg-workspace].dark body .truthguard-attachment-modal-backdrop {
+    background: rgb(2 6 23 / 65%) !important;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+html[data-tg-workspace].dark body .truthguard-attachment-popover {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: 0 24px 64px rgb(0 0 0 / 35%) !important;
+}
+html[data-tg-workspace].dark body .truthguard-attachment-popover::after { display: none; }
+html[data-tg-workspace].dark body .truthguard-attachment-popover :is(.truthguard-upload-type-button, .truthguard-uploader-close) {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+    color: var(--tg-night-ink) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-attachment-popover :is(.truthguard-upload-type-button, .truthguard-uploader-close):hover {
+    background: #203858 !important;
+    border-color: #60a5fa !important;
+    color: #bfdbfe !important;
+}
+html[data-tg-workspace].dark body .truthguard-attachment-popover :is(.truthguard-uploader-mark, .truthguard-uploader-cloud) {
+    background: #2563eb !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-uploader-dropzone::before { display: none; }
 html[data-tg-workspace].dark body :is(.truthguard-workspace-hero, .truthguard-composer-field, .truthguard-recent-skeleton, .truthguard-capability-pill, .truthguard-uploader-dropzone, .truthguard-uploader-head, .truthguard-prompt-hint, .truthguard-composer-hint) {
     background: var(--tg-night-surface) !important;
     border-color: var(--tg-night-line) !important;
