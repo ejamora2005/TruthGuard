@@ -3276,6 +3276,18 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         min-width: 0;
     }
 
+    .truthguard-mobile-composer-back {
+        display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+        flex: 0 0 auto; min-height: 44px; margin-left: auto; padding: .35rem .45rem;
+        border-radius: .65rem; color: #1d4ed8; font-size: .75rem; font-weight: 700;
+        white-space: nowrap;
+    }
+    .truthguard-mobile-composer-back svg { width: 1rem; height: 1rem; }
+    .truthguard-mobile-composer-back:hover { background: #eff6ff; }
+    .truthguard-mobile-composer-back:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+    html.dark .truthguard-mobile-composer-back { color: #93c5fd; }
+    html.dark .truthguard-mobile-composer-back:hover { background: #223047; }
+
     .truthguard-mobile-check .truthguard-mobile-service-status,
     .truthguard-mobile-check .truthguard-mobile-evidence-summary {
         display: flex;

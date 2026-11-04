@@ -5042,6 +5042,15 @@ new class extends Component
                                     <span>Link</span>
                                 </span>
                             </div>
+                            <a href="{{ route('dashboard') }}" class="truthguard-mobile-composer-back"
+                                x-init="try {
+                                    const previous = new URL(document.referrer);
+                                    if (previous.origin === window.location.origin && /^\/(?:dashboard(?:\/|$)|history(?:\/|$)|notifications(?:\/|$)|profile(?:\/|$)|detections\/\d+\/result(?:\/|$))/.test(previous.pathname)) $el.href = previous.href;
+                                } catch (_) {}"
+                                aria-label="Back to previous workspace page" title="Go back">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m10 6-6 6 6 6M4 12h16" /></svg>
+                                <span>Back</span>
+                            </a>
                         </div>
                     </div>
 
