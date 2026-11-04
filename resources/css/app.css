@@ -363,7 +363,14 @@ body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard
 body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard-progress-restore.truthguard-analyze-ready {
     background: #2563eb !important; color: #fff !important; cursor: pointer;
 }
-body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard-progress-restore .truthguard-progress-dot { background: currentColor; }
+body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard-progress-restore .truthguard-progress-dot {
+    background: currentColor;
+    animation: truthguard-progress-blink 1.3s ease-in-out infinite;
+}
+@keyframes truthguard-progress-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) {
+    body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard-progress-restore .truthguard-progress-dot { animation: none; }
+}
 @media (max-width: 1023px) {
     html[data-tg-workspace] body .truthguard-topbar .truthguard-mobile-brand {
         display: inline-flex; align-items: center; justify-content: flex-start;
