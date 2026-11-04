@@ -18,7 +18,9 @@ new class extends Component
         try {
             $validated = $this->validate([
                 'current_password' => ['required', 'string', 'current_password'],
-                'password' => ['required', 'string', Password::defaults(), 'confirmed'],
+                'password' => ['required', 'string', Password::defaults(), 'confirmed', 'different:current_password'],
+            ], [
+                'password.different' => 'Choose a new password that is different from your current password.',
             ]);
         } catch (ValidationException $e) {
             $this->reset('current_password', 'password', 'password_confirmation');
@@ -57,6 +59,7 @@ new class extends Component
         showNew: false,
         showConfirm: false,
         passwordValue: '',
+        currentValue: '',
         strengthScore() {
             let score = 0;
             const value = this.passwordValue || '';
@@ -110,8 +113,10 @@ new class extends Component
                     <div class="mt-2 flex rounded-2xl border border-slate-200/80 bg-white/90 shadow-sm transition focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-100">
                         <input
                             wire:model="current_password"
+                            x-model="currentValue"
                             id="update_password_current_password"
                             name="current_password"
+                            type="password"
                             x-bind:type="showCurrent ? 'text' : 'password'"
                             autocomplete="current-password"
                             class="block w-full rounded-l-2xl border-0 bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
@@ -154,7 +159,8 @@ new class extends Component
                                 minlength="8"
                                 aria-describedby="update_password_password-rules"
                                 name="password"
-                                x-bind:type="showNew ? 'text' : 'password'"
+                                type="password"
+                            x-bind:type="showNew ? 'text' : 'password'"
                                 autocomplete="new-password"
                                 class="block w-full rounded-l-2xl border-0 bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
                             >
@@ -177,6 +183,9 @@ new class extends Component
                             </button>
                         </div>
                         <x-password-rules password-id="update_password_password" confirmation-id="update_password_password_confirmation" />
+                        <p class="mt-2 text-xs" :class="passwordValue && passwordValue === currentValue ? 'text-rose-500' : 'text-slate-500 dark:text-slate-400'" aria-live="polite">
+                            Your new password must be different from your current password.
+                        </p>
                         @if ($errors->has('password'))
                             <ul class="mt-2 space-y-1 text-sm font-medium text-rose-500">
                                 @foreach ($errors->get('password') as $message)
@@ -194,7 +203,8 @@ new class extends Component
                                 id="update_password_password_confirmation"
                                 aria-describedby="update_password_password-rules"
                                 name="password_confirmation"
-                                x-bind:type="showConfirm ? 'text' : 'password'"
+                                type="password"
+                            x-bind:type="showConfirm ? 'text' : 'password'"
                                 autocomplete="new-password"
                                 class="block w-full rounded-l-2xl border-0 bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0"
                             >

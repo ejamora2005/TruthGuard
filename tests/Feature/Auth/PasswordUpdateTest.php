@@ -54,4 +54,23 @@ class PasswordUpdateTest extends TestCase
             ->assertHasErrors(['current_password'])
             ->assertNoRedirect();
     }
+    public function test_current_password_cannot_be_reused_as_new_password(): void
+    {
+        $user = User::factory()->create();
+        $originalHash = $user->password;
+        $originalSetAt = $user->password_set_at;
+        $this->actingAs($user);
+
+        Volt::test('profile.update-password-form')
+            ->set('current_password', 'password')
+            ->set('password', 'password')
+            ->set('password_confirmation', 'password')
+            ->call('updatePassword')
+            ->assertHasErrors(['password' => 'different'])
+            ->assertNotDispatched('password-updated');
+
+        $this->assertSame($originalHash, $user->fresh()->password);
+        $this->assertEquals($originalSetAt, $user->fresh()->password_set_at);
+    }
+
 }
