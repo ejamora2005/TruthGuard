@@ -1,0 +1,66 @@
+/* A single mobile layout for every settings panel; desktop stays unchanged. */
+@media (max-width: 767px) {
+    body .truthguard-settings-modal {
+        place-items: center;
+        padding: max(.75rem, env(safe-area-inset-top, 0px)) max(.75rem, env(safe-area-inset-right, 0px)) max(.75rem, env(safe-area-inset-bottom, 0px)) max(.75rem, env(safe-area-inset-left, 0px));
+    }
+    .truthguard-settings-modal .truthguard-settings-modal-dialog {
+        width: 100%;
+        max-width: 36rem;
+        height: auto;
+        min-height: 0;
+        max-height: 100%;
+        padding-bottom: 0;
+        border-radius: 18px;
+        box-shadow: 0 16px 48px rgb(15 23 42 / 20%);
+    }
+    .truthguard-settings-modal .truthguard-settings-modal-header { flex: none; padding: 1rem !important; }
+    .truthguard-settings-modal .truthguard-settings-modal-title { margin-top: 0; font-size: 1.0625rem !important; line-height: 1.4; }
+    .truthguard-settings-modal .truthguard-settings-modal-subtitle { font-size: .75rem; line-height: 1.5; }
+    .truthguard-settings-modal .truthguard-settings-modal-mark,
+    .truthguard-settings-modal .truthguard-settings-modal-kicker { display: none; }
+    .truthguard-settings-modal .truthguard-settings-modal-close { width: 44px !important; height: 44px !important; flex: 0 0 44px; border-radius: 10px; }
+    .truthguard-settings-modal .truthguard-settings-modal-body { min-height: 0; flex: 0 1 auto; scrollbar-gutter: auto; overflow-y: auto; overflow-x: hidden; }
+    .truthguard-settings-modal .truthguard-settings-modal-body [role="tabpanel"] { width: 100%; min-width: 0; max-width: 100%; padding: 1rem !important; }
+    .truthguard-settings-modal .truthguard-settings-panel { padding: 0 !important; }
+    .truthguard-settings-modal :is(.truthguard-personal-layout, .truthguard-photo-layout, .truthguard-appearance-layout, .truthguard-security-layout, .truthguard-account-layout) {
+        display: grid; grid-template-columns: minmax(0, 1fr) !important; gap: 1rem !important; width: 100%; min-width: 0;
+    }
+    .truthguard-settings-modal :is(.truthguard-account-main, .truthguard-personal-layout > form, .truthguard-photo-content, .truthguard-appearance-main, .truthguard-security-layout > form) { order: 1; min-width: 0; }
+    .truthguard-settings-modal :is(.truthguard-profile-summary, .truthguard-photo-preview-card, .truthguard-appearance-preview-card, .truthguard-security-summary, .truthguard-account-layout > aside) { order: 2; min-width: 0; }
+    .truthguard-settings-modal [role="tabpanel"] :is(.p-5, .p-6, .p-7) { padding: 1rem !important; }
+    .truthguard-settings-modal [role="tabpanel"] .px-5 { padding-inline: 1rem !important; }
+    .truthguard-settings-modal [role="tabpanel"] :is(.py-5, .py-6) { padding-block: 1rem !important; }
+    .truthguard-settings-modal [role="tabpanel"] :is(.rounded-\[28px\], .rounded-\[24px\], .rounded-\[22px\]) { border-radius: 12px !important; box-shadow: none !important; }
+    .truthguard-settings-modal :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea) { min-width: 0 !important; max-width: 100%; font-size: max(16px, 1rem); }
+    .truthguard-settings-modal input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) { min-height: 44px; }
+    .truthguard-settings-modal textarea { min-height: 5rem; line-height: 1.6; }
+    .truthguard-settings-modal .truthguard-settings-action-footer { display: flex; flex-direction: column; align-items: stretch !important; gap: .75rem !important; padding: 1rem !important; box-shadow: none !important; }
+    .truthguard-settings-modal .truthguard-settings-action-footer :is(button, a) { width: 100%; min-height: 44px; padding: .65rem 1rem; white-space: normal; }
+    .truthguard-settings-modal .truthguard-photo-preview-card .h-44 { height: 8rem; width: 8rem; }
+    .truthguard-settings-modal .truthguard-photo-file-facts { display: none; }
+    .truthguard-settings-modal .truthguard-privacy-items { gap: 0; padding-top: 0 !important; }
+    .truthguard-settings-modal .truthguard-privacy-item { padding: .85rem 0; border: 0; border-bottom: 1px solid var(--tg-settings-line, #dce5f1); border-radius: 0; box-shadow: none; }
+    .truthguard-settings-modal .truthguard-privacy-item:last-child { border-bottom: 0; }
+    .truthguard-settings-modal .truthguard-privacy-item-badge { display: none; }
+    .truthguard-settings-modal .truthguard-theme-options { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+    .truthguard-settings-modal .truthguard-theme-option { position: relative; min-width: 0; padding: .45rem; }
+    .truthguard-settings-modal .truthguard-theme-option > div:first-child { min-height: 44px; padding: 0; border-radius: 8px; }
+    .truthguard-settings-modal .truthguard-theme-option > div:first-child > div { display: none; }
+    .truthguard-settings-modal .truthguard-theme-option > div:last-child { justify-content: center; margin-top: .5rem; gap: 0; }
+    .truthguard-settings-modal .truthguard-theme-option p:first-child { font-size: .75rem; text-align: center; }
+    .truthguard-settings-modal .truthguard-theme-option p + p { display: none; }
+    .truthguard-settings-modal .truthguard-theme-option > div:last-child > span { position: absolute; top: .65rem; right: .65rem; width: 18px; height: 18px; }
+    .truthguard-settings-modal [aria-labelledby="tg-display-label"] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .truthguard-settings-modal [aria-labelledby="tg-display-label"] button { padding: .65rem .25rem; min-width: 0; min-height: 44px; text-align: center !important; font-size: .8125rem; }
+    .truthguard-settings-modal .tg-text-size-options { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .truthguard-settings-modal .tg-text-size-options button { display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: .25rem; min-width: 0; min-height: 74px; padding: .6rem .3rem; text-align: center !important; }
+    .truthguard-settings-modal .tg-text-size-options button > span { margin-top: 0; }
+    body .truthguard-account-delete-dialog { width: calc(100vw - 2rem) !important; min-width: 0 !important; max-width: 30rem !important; max-height: calc(100dvh - 2rem) !important; border-radius: 16px; }
+    body .truthguard-account-delete-dialog form { min-width: 0; padding: 1rem; }
+    body .truthguard-account-delete-dialog input { width: 100%; min-width: 0; font-size: 16px; }
+}
+@media (max-width: 359px) {
+    .truthguard-settings-modal .tg-text-size-options { grid-template-columns: minmax(0, 1fr) !important; }
+    .truthguard-settings-modal .tg-text-size-options button { flex-direction: row; justify-content: flex-start; gap: .75rem; min-height: 48px; padding: .6rem .8rem; }
+}

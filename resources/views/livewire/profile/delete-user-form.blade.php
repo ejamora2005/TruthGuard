@@ -68,7 +68,7 @@ new class extends Component
     x-on:open-modal.window="if ($event.detail === 'confirm-user-deletion') { activeSection = 'account'; dangerOpen = true; openDeletionModal = true }"
     @keydown.escape.window="openDeletionModal = false"
 >
-    <div class="grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
+    <div class="truthguard-account-layout grid gap-6 xl:grid-cols-[292px_minmax(0,1fr)]">
         <aside class="space-y-4">
             <div class="overflow-hidden rounded-[28px] border border-white/80 bg-gradient-to-br from-blue-600 via-sky-500 to-emerald-400 text-white shadow-[0_24px_70px_rgba(37,99,235,0.18)]">
                 <div class="px-5 py-5">
@@ -97,7 +97,7 @@ new class extends Component
             </div>
         </aside>
 
-        <div class="space-y-5">
+        <div class="truthguard-account-main space-y-5">
             <div class="overflow-hidden rounded-[28px] border border-white/80 bg-white/85 shadow-[0_24px_70px_rgba(15,23,42,0.08)] backdrop-blur-xl">
                 <div class="flex items-center justify-between gap-3 border-b border-slate-200/70 bg-white/65 px-5 py-4">
                     <div class="flex items-center gap-3">
@@ -113,9 +113,9 @@ new class extends Component
                     </div>
                 </div>
 
-                <div class="grid gap-3 p-5">
+                <div class="truthguard-privacy-items grid gap-3 p-5">
                     @foreach ($privacyItems as $item)
-                        <div class="flex flex-col gap-3 rounded-[22px] border border-slate-200/70 bg-white/80 px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                        <div class="truthguard-privacy-item flex flex-col gap-3 rounded-[22px] border border-slate-200/70 bg-white/80 px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                             <div class="flex items-start gap-3">
                                 <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl {{ $item['tone'] }} ring-1">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
@@ -127,7 +127,7 @@ new class extends Component
                                     <p class="mt-1 text-sm leading-6 text-slate-500">{{ $item['value'] }}</p>
                                 </div>
                             </div>
-                            <span class="inline-flex w-fit rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
+                            <span class="truthguard-privacy-item-badge inline-flex w-fit rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
                                 {{ $item['badge'] }}
                             </span>
                         </div>

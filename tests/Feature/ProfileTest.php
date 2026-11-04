@@ -38,7 +38,9 @@ class ProfileTest extends TestCase
             ->assertSee('Make TruthGuard yours')
             ->assertSee('Open Notifications settings')
             ->assertSee('Notifications')
-            ->assertSee('Enable TruthGuard Notifications')
+            ->assertSee('This device')
+            ->assertSee('Save changes')
+            ->assertSee('aria-label="Notification preferences"', false)
             ->assertDontSee('@include(\'notifications.settings\')', false);
     }
 

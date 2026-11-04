@@ -1054,7 +1054,7 @@
                         <div class="truthguard-settings-panel">
                             <livewire:profile.update-profile-information-form />
                             <livewire:profile.update-password-form />
-                            <div x-show="activeSection === 'notifications'" x-transition.opacity>
+                            <div x-show="activeSection === 'notifications'" x-transition.opacity role="tabpanel" class="p-4 sm:p-6">
                                 @include('notifications.settings', ['embedded' => true])
                             </div>
                             <livewire:profile.delete-user-form />

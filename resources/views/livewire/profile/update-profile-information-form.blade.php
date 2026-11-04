@@ -565,7 +565,7 @@ new class extends Component
                             x-text="avatarUploadError"
                         ></p>
 
-                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div class="truthguard-photo-file-facts mt-4 grid gap-3 sm:grid-cols-2">
                             <div class="rounded-2xl border border-slate-200/70 bg-white/80 px-4 py-3 shadow-sm">
                                 <p class="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Format</p>
                                 <p class="mt-1 text-sm font-semibold text-slate-800">JPG, PNG, WEBP, GIF</p>
@@ -704,12 +704,14 @@ new class extends Component
                         </span>
                     </div>
 
-                    <div class="grid gap-4 p-5 lg:grid-cols-3">
+                    <div class="truthguard-theme-options grid gap-4 p-5 lg:grid-cols-3">
                         @foreach ($themeOptions as $option)
                             <button
                                 type="button"
                                 @click="profileTheme = '{{ $option['key'] }}'"
-                                class="group rounded-[24px] border bg-white/85 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(15,23,42,0.09)] focus:outline-none focus:ring-4 focus:ring-blue-100"
+                                aria-label="{{ $option['label'] }} theme"
+                                :aria-pressed="profileTheme === '{{ $option['key'] }}'"
+                                class="truthguard-theme-option group rounded-[24px] border bg-white/85 p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_44px_rgba(15,23,42,0.09)] focus:outline-none focus:ring-4 focus:ring-blue-100"
                                 :class="profileTheme === '{{ $option['key'] }}' ? 'border-blue-300 bg-blue-50/40 ring-4 ring-blue-100/70' : 'border-slate-200/80 hover:border-blue-200'"
                             >
                                 <div class="rounded-[20px] bg-gradient-to-br {{ $option['preview'] }} p-3">
