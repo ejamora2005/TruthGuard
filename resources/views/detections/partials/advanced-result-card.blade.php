@@ -637,7 +637,10 @@
         @media (min-width: 1100px) {
             .tg-report-overview { grid-template-columns: minmax(0, .85fr) minmax(0, 1.4fr); align-items: stretch; }
         }
-        /* Follow the submission-to-verdict reading order at every screen size. */
+        @media (max-width: 1099px) {
+            .tg-report-verdict { order: -1; }
+        }
+        /* Keep the submitted evidence available after the direct assessment. */
         .tg-report-claim { order: 0; min-width: 0; grid-column: 1 / -1; }
         .tg-report-overview > *, .tg-report-body > *, .tg-report-metrics > div { min-width: 0; }
         .tg-ai-report .tg-ai-hero { align-items: flex-start; }
@@ -671,6 +674,7 @@
             padding: .75rem;
         }
         .tg-report-evidence .tg-image-trigger { width: fit-content; max-width: 100%; border-radius: 15px; }
+        .tg-ai-report .tg-report-evidence .tg-text-evidence { min-height: 0; max-height: none; flex: 0 0 auto; }
         .tg-ai-report .tg-report-evidence .tg-ai-media > .tg-image-trigger > img,
         .tg-ai-report .tg-report-evidence .tg-ai-media > video {
             width: auto;
@@ -807,6 +811,38 @@
         .tg-related-kind { display: none; }
         .tg-related-open { display: inline-flex; align-items: center; gap: .375rem; flex-shrink: 0; min-height: 2rem; font-size: .75rem; font-weight: 700; color: #1d4ed8; }
         .tg-related-open svg { width: .875rem; height: .875rem; }
+        .tg-related-recent-row { display: contents; }
+        @media (max-width: 767px) {
+            .tg-ai-report .tg-source-card { padding: .75rem; }
+            .tg-source-card-header { gap: .5rem; }
+            .tg-source-logo { flex-basis: 1.8rem; height: 1.8rem; border-radius: 8px; }
+            .tg-source-logo > img { width: 1.2rem; height: 1.2rem; }
+            .tg-source-publisher { font-size: .8rem; }
+            .tg-source-domain { font-size: .65rem; margin-top: 0; }
+            .tg-source-rating { margin-top: .25rem; font-size: .6rem; }
+            .tg-source-card-title { margin-top: .5rem; font-size: .78rem; line-height: 1.5; }
+            .tg-source-description { margin: .35rem 0 .55rem; font-size: .7rem; line-height: 1.5; }
+            .tg-source-card-footer { padding-top: .4rem; gap: .4rem; align-items: center; }
+            .tg-source-meta { font-size: .6rem; }
+            .tg-source-open { font-size: .65rem; min-height: 2.75rem; padding: .25rem .5rem; }
+            .tg-related-recent-row {
+                display: flex; gap: .65rem; min-width: 0; overflow-x: auto;
+                padding: .2rem .15rem .65rem; scroll-snap-type: x proximity;
+            }
+            .tg-ai-report .tg-related-recent-row .tg-related-card {
+                flex: 0 0 85%; flex-direction: row; scroll-snap-align: start;
+            }
+            .tg-related-recent-row .tg-related-media {
+                flex: 0 0 4.5rem; width: 4.5rem; height: auto;
+                border-bottom: 0; border-right: 1px solid #e2e8f0;
+            }
+            .tg-related-recent-row .tg-related-body { padding: .6rem; }
+            .tg-related-recent-row .tg-related-headline { -webkit-line-clamp: 2; margin: .35rem 0; font-size: .75rem; line-height: 1.45; }
+            .tg-related-recent-row .tg-related-date { display: none; }
+            .tg-related-recent-row .tg-related-publisher { font-size: .7rem; }
+            .tg-related-recent-row .tg-related-rating { font-size: .6rem; padding: .1rem .3rem; }
+            .tg-related-recent-row .tg-related-open { font-size: .65rem; min-height: 1.5rem; }
+        }
         @media (min-width: 768px) { .tg-related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (min-width: 1280px) { .tg-related-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         @media (max-width: 640px) {
@@ -894,7 +930,7 @@
         <aside class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm leading-6 text-blue-900" aria-label="Saved result reused">
             <strong>Saved result reused.</strong>
             Original assessment: {{ $selectedDetection->analyzed_at?->copy()->timezone('Asia/Shanghai')->format('M j, Y, g:i A') }} UTC+8.
-            No new API tokens were used for this analysis.
+            This saved assessment was reused without a new analysis.
         </aside>
     @endif
 
@@ -916,7 +952,7 @@
                     <span class="tg-evidence-kind">{{ $contentType }}</span>
                 </div>
 
-                <div class="tg-ai-media border border-slate-200">
+                <div @class(['tg-ai-media border border-slate-200', 'tg-text-evidence' => ! $submittedMedia])>
                     @if ($selectedDetection->media_type === 'image' && $mediaUrl)
                         <button type="button" class="tg-image-trigger" aria-label="Enlarge submitted image" aria-haspopup="dialog" aria-controls="evidence-image-{{ $selectedDetection->id }}" @click="$refs.imagePreview.showModal()">
                             <img src="{{ $mediaUrl }}" alt="Analyzed media" class="h-full max-h-[30rem] w-full object-contain">
@@ -939,14 +975,14 @@
                             <a href="{{ $mediaUrl }}" target="_blank" rel="noreferrer" class="mt-3 inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-800">Open PDF</a>
                         </div>
                     @else
-                        <div class="flex min-h-52 flex-col justify-center p-5 sm:p-7">
-                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Text or link claim</p>
+                        <div class="flex w-full min-w-0 flex-col justify-center p-5 sm:p-7">
+                            <p class="text-xs font-black uppercase tracking-[0.14em] text-slate-400">Submitted claim</p>
                             <p class="mt-3 text-base leading-8 text-slate-800">{{ $claimText !== '' ? $claimText : ($selectedDetection->source_url ?: 'No media preview was attached.') }}</p>
                         </div>
                     @endif
                 </div>
 
-                @if ($submittedQuestion !== '')
+                @if ($submittedQuestion !== '' && $submittedMedia)
                     <div class="tg-evidence-question">
                         <p class="tg-card-eyebrow">Your question</p>
                         <p class="tg-submission-question">{{ $submittedQuestion }}</p>
@@ -1599,6 +1635,7 @@
                 @if ($recentFactChecks->isNotEmpty())
                     <h4 class="tg-related-group">Recent public fact checks</h4>
                 @endif
+                <div class="tg-related-recent-row" role="region" aria-label="Recent public fact checks" tabindex="0">
                 @foreach ($recentFactChecks as $item)
                     @php
                         $publisherName = $item['publisher'] ?? 'Fact-check partner';
@@ -1631,6 +1668,7 @@
                         </span>
                     </a>
                 @endforeach
+                </div>
             </div>
         </article>
     @endif

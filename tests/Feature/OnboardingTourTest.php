@@ -77,7 +77,7 @@ class OnboardingTourTest extends TestCase
             ->assertOk()
             ->assertSee('data-wait-for-tour="true"', false)
             ->assertSee('@truthguard:tour-finished.window="open = true"', false)
-            ->assertSee('x-data="{ open: false', false);
+            ->assertSee('open: false', false);
     }
 
     public function test_user_with_completed_current_onboarding_does_not_see_tour(): void

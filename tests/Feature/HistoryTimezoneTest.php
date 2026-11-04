@@ -83,6 +83,25 @@ class HistoryTimezoneTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_unfinished_and_failed_submissions_remain_reachable_with_local_date_filters(): void
+    {
+        $user = User::factory()->create();
+        $ids = [];
+        foreach (['queued', 'processing', 'failed'] as $status) {
+            $report = $this->report($user, '2026-10-16 07:34:00');
+            $report->forceFill(['processing_status' => $status, 'analyzed_at' => null,
+                'created_at' => Carbon::parse('2026-10-16 07:34:00', 'UTC')])->saveQuietly();
+            $ids[] = $report->id;
+        }
+        $this->actingAs($user)->get(route('history'))->assertOk()
+            ->assertViewHas('historyDetections', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === $ids);
+        $this->get(route('history', ['date_from' => '2026-10-16', 'date_to' => '2026-10-16']))->assertOk()
+            ->assertViewHas('historyDetections', fn ($rows) => $rows->pluck('id')->sort()->values()->all() === $ids);
+        $this->get(route('history', ['date_from' => '2026-10-15', 'date_to' => '2026-10-15']))->assertOk()
+            ->assertViewHas('historyRows', fn ($rows) => $rows->isEmpty());
+        Http::assertNothingSent();
+    }
+
     private function report(User $user, string $utcTime, bool $archived = false): Detection
     {
         return Detection::create(['user_id' => $user->id, 'media_type' => 'text', 'source_kind' => 'text',

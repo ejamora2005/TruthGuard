@@ -11,10 +11,21 @@
         microphone: 'Not requested',
         location: 'Not requested',
         files: 'Ready when you upload',
+        waitForPassword: @js((bool) auth()->user()?->needsPasswordSetup()),
+        focusDialog() { this.$nextTick(() => this.$el.querySelector('button:not([disabled])')?.focus()); },
+        trapFocus(event) {
+            if (!this.open) return;
+            const controls = [...this.$el.querySelectorAll('button:not([disabled]), input, a[href]')].filter(element => element.getClientRects().length);
+            const first = controls[0], last = controls[controls.length - 1];
+            if (!first) return;
+            if (!this.$el.contains(document.activeElement) || (!event.shiftKey && document.activeElement === last)) { event.preventDefault(); first.focus(); }
+            else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+        },
         init() {
+            this.$watch('open', value => { if (value) this.focusDialog(); });
             this.completed = false;
             try { this.completed = window.localStorage.getItem('truthguard-device-permissions-complete') === '1'; } catch (_) {}
-            if (!this.completed && !this.$el.dataset.waitForTour) this.open = true;
+            if (!this.completed && !this.$el.dataset.waitForTour && !this.waitForPassword) this.open = true;
         },
         async togglePermission(type) {
             if (type === 'files') {
@@ -82,10 +93,14 @@
             this.completed = true;
             try { window.localStorage.setItem('truthguard-device-permissions-complete', '1'); } catch (_) {}
             this.open = false;
+            this.$nextTick(() => document.querySelector('[aria-label=&quot;Open profile menu&quot;]')?.focus());
         }
     }"
     data-wait-for-tour="{{ ($showOnboardingTour ?? false) ? 'true' : '' }}"
-    @truthguard:tour-finished.window="if (!completed && !$event.detail?.skipped) open = true"
+    @truthguard:tour-finished.window="if (!completed && !waitForPassword && !$event.detail?.skipped) open = true"
+    @truthguard:password-setup-finished.window="waitForPassword = false; if (!completed) open = true"
+    @keydown.tab.window="trapFocus($event)"
+    @keydown.escape.window="if (open) { $event.stopImmediatePropagation(); finish(); }"
     x-show="open"
     x-cloak
     x-transition.opacity

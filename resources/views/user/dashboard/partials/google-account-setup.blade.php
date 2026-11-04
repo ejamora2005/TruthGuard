@@ -1,9 +1,24 @@
 @if ($user->needsPasswordSetup())
     @php($waitForTour = (bool) $user->needsCurrentOnboarding())
     <div
-        x-data="{ open: @js(! $waitForTour), showPassword: false, showPasswordConfirmation: false }"
+        x-data="{
+            open: @js(! $waitForTour), showPassword: false, showPasswordConfirmation: false,
+            focusDialog() { this.$nextTick(() => this.$el.querySelector('input:not([type=hidden])')?.focus()); },
+            init() { this.$watch('open', value => { if (value) this.focusDialog(); }); if (this.open) this.focusDialog(); },
+            close() { this.open = false; this.$dispatch('truthguard:password-setup-finished'); },
+            trapFocus(event) {
+                if (!this.open) return;
+                const controls = [...this.$el.querySelectorAll('button:not([disabled]), input:not([type=hidden]), a[href]')].filter(element => element.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (!first) return;
+                if (!this.$el.contains(document.activeElement) || (!event.shiftKey && document.activeElement === last)) { event.preventDefault(); first.focus(); }
+                else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            }
+        }"
         data-wait-for-tour="{{ $waitForTour ? 'true' : 'false' }}"
         @truthguard:tour-finished.window="open = true"
+        @keydown.tab.window="trapFocus($event)"
+        @keydown.escape.window="if (open) { $event.stopImmediatePropagation(); close(); }"
         x-show="open"
         x-cloak
         x-transition.opacity.duration.180ms
@@ -13,7 +28,7 @@
         aria-labelledby="google-account-setup-title"
     >
         <div class="w-full max-w-xl overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-[0_34px_100px_rgba(15,23,42,0.36)] ring-1 ring-white/80">
-            <div class="border-b border-blue-100 bg-gradient-to-br from-blue-100 via-white to-cyan-50 p-6">
+            <div class="truthguard-account-setup-header border-b border-blue-100 bg-gradient-to-br from-blue-100 via-white to-cyan-50 p-6">
                 <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Social sign-in setup</p>
                 <h2 id="google-account-setup-title" class="mt-2 text-2xl font-black tracking-tight text-slate-950">Finish securing your TruthGuard account</h2>
                 <p class="mt-2 text-sm leading-6 text-slate-600">Create a TruthGuard password so you can also sign in with email, manage security settings, and recover access if social sign-in is unavailable.</p>
@@ -89,7 +104,7 @@
                 </div>
 
                 <div class="flex flex-col-reverse gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-                    <button type="button" @click="open = false" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-50">Later</button>
+                    <button type="button" @click="close()" class="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 hover:bg-slate-50">Later</button>
                     <button type="submit" class="inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-black text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700">Set password</button>
                 </div>
             </form>

@@ -1203,19 +1203,18 @@
                                 @endif
                             </a>
                         @elseif ($isDetectionPage)
-                            <button
-                                type="button"
+                            <a
+                                href="{{ route('dashboard') }}"
                                 class="truthguard-shell-toggle truthguard-detection-mobile-logo shrink-0 lg:hidden"
-                                aria-label="TruthGuard - go back to the previous page"
-                                title="Go back"
-                                onclick="window.history.length > 1 ? window.history.back() : window.location.assign(@js(route('dashboard')))"
+                                aria-label="TruthGuard - back to dashboard"
+                                title="Back to dashboard"
                             >
                                 @if ($logoUrl !== '')
                                     <img src="{{ $logoUrl }}" alt="" class="h-8 w-8 object-contain" width="32" height="32">
                                 @else
                                     <span class="font-bold text-blue-600">TG</span>
                                 @endif
-                            </button>
+                            </a>
                         @else
                             <a
                                 href="{{ route('dashboard') }}"
@@ -1234,10 +1233,7 @@
 
                         @endif
 
-                        <div class="min-w-0 flex-1">
-                            <span class="truthguard-mobile-page-title">{{ $mobileTopbarTitle }}</span>
-                            <div class="tg-workspace-location" aria-label="Current page"><span>Workspace</span><span aria-hidden="true">/</span><strong>{{ $workspacePageLabel }}</strong></div>
-                        </div>
+                        <div class="min-w-0 flex-1" aria-hidden="true"></div>
 
                         <div class="hidden items-center gap-3 xl:flex">
                             @hasSection('page_actions')
@@ -1282,6 +1278,10 @@
                                     </svg>
                                 </a>
                             </div>
+                        </div>
+
+                        <div class="truthguard-mobile-appearance flex shrink-0 items-center lg:hidden">
+                            @include('layouts.partials.display-mode-toggle')
                         </div>
 
                         <div class="relative shrink-0" x-data="{ profileOpen: false }">

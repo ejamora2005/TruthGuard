@@ -78,12 +78,13 @@ class DashboardController extends Controller
             $this->applyHistorySearch($filteredHistoryQuery, $historySearch);
         }
 
-        // Inputs are local calendar dates; stored timestamps remain UTC.
+        // Unfinished and failed checks have no analysis date. Keep their saved
+        // submissions reachable using the same fallback as the retention window.
         if ($dateFrom) {
-            $filteredHistoryQuery->where('analyzed_at', '>=', $dateFrom->copy()->utc());
+            $filteredHistoryQuery->whereRaw('COALESCE(analyzed_at, created_at) >= ?', [$dateFrom->copy()->utc()]);
         }
         if ($dateTo) {
-            $filteredHistoryQuery->where('analyzed_at', '<', $dateTo->copy()->addDay()->startOfDay()->utc());
+            $filteredHistoryQuery->whereRaw('COALESCE(analyzed_at, created_at) < ?', [$dateTo->copy()->addDay()->startOfDay()->utc()]);
         }
 
         $this->applyHistorySort($filteredHistoryQuery, $historySort);

@@ -1,4 +1,8 @@
 /* Component surfaces that use their own gradients or ID-scoped styles. */
+html[data-tg-workspace].dark body .truthguard-account-setup-header {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+}
 html[data-tg-workspace].dark body :is(.menu-item.menu-item-inactive, .truthguard-mobile-tab:not(.is-active), .truthguard-profile-action, .truthguard-shell-toggle) {
     color: var(--tg-night-muted) !important;
 }
@@ -198,16 +202,55 @@ html[data-tg-workspace].dark body .tg-source-popover-card { background: var(--tg
 html[data-tg-workspace].dark body .tg-source-popover-card :is(p, span, strong, a) { color: var(--tg-night-muted) !important; }
 html[data-tg-workspace].dark body .tg-source-popover-card .tg-source-popover-heading { color: var(--tg-night-ink) !important; }
 html[data-tg-workspace].dark body .tg-public-meta dt { color: var(--tg-night-muted) !important; }
-html[data-tg-workspace].dark body .truthguard-mobile-tab.is-active > span:last-child { color: #93c5fd !important; }
-html[data-tg-workspace].dark body .truthguard-mobile-tab-primary { background: var(--tg-night-surface) !important; }
-html[data-tg-workspace].dark body .truthguard-mobile-tab-primary > span:last-child { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab {
+    font-size: .6875rem !important;
+    font-weight: 650 !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary) { color: #e2e8f0 !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary) > span:last-child { color: inherit !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary) .truthguard-mobile-tab-icon {
+    width: 1.625rem;
+    height: 1.625rem;
+    background: #223047 !important;
+    border-color: #64748b !important;
+    color: #e2e8f0 !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary) .truthguard-mobile-tab-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    color: inherit !important;
+    filter: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary):is(.is-active, :hover, :focus-visible) {
+    background: #203858 !important;
+    color: #fff !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab:not(.truthguard-mobile-tab-primary):is(.is-active, :hover, :focus-visible) .truthguard-mobile-tab-icon {
+    background: #1e40af !important;
+    border-color: #93c5fd !important;
+    color: #fff !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab-primary {
+    background: linear-gradient(135deg, #1d4ed8 0%, #0e7490 100%) !important;
+    border-color: #93c5fd !important;
+    color: #fff !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab-primary > span:last-child { color: #fff !important; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon {
+    background: #1e40af !important;
+    border-color: #93c5fd !important;
+    color: #fff !important;
+}
+html[data-tg-workspace].dark body .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon svg { color: #fff !important; }
 html[data-tg-workspace].dark body .truthguard-mobile-tab-primary.is-active {
-    background: linear-gradient(135deg, #2563eb 0%, #0891b2 100%) !important;
-    border-color: #60a5fa !important;
+    background: linear-gradient(135deg, #1d4ed8 0%, #0e7490 100%) !important;
+    border-color: #93c5fd !important;
 }
 html[data-tg-workspace].dark body .truthguard-mobile-tab-primary.is-active > span:last-child { color: #fff !important; }
 html[data-tg-workspace].dark body .truthguard-mobile-tab-dot { background: #be123c !important; color: #fff !important; }
-html[data-tg-workspace].dark body .truthguard-mobile-tab::before { opacity: .08; }
+html[data-tg-workspace].dark body .truthguard-mobile-tab::before { display: none; }
 html[data-tg-workspace].dark body #notification-settings { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body #notification-settings :is(.truthguard-push-status, .truthguard-push-preference-row) { background: var(--tg-night-raised) !important; color: var(--tg-night-muted) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace].dark body :is(.truthguard-user-main, .truthguard-user-content-column) { background: var(--tg-night-bg) !important; }

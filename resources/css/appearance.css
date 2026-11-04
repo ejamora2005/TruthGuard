@@ -126,6 +126,12 @@ html[data-tg-workspace] body .truthguard-settings-modal .tg-reading-preview {
 html[data-tg-workspace].dark body .truthguard-settings-modal .tg-reading-preview { background: var(--tg-night-surface) !important; color: var(--tg-night-ink) !important; border-color: var(--tg-night-line) !important; }
 html[data-tg-workspace] body .truthguard-settings-modal .tg-reading-preview .tg-reading-sample { font-size: .9375rem !important; line-height: 1.8 !important; }
 html[data-tg-workspace] body .tg-text-size-options button { min-height: 4.5rem; overflow-wrap: anywhere; }
+@media (max-width: 480px) {
+    html[data-tg-workspace] body .truthguard-settings-modal :is([aria-labelledby="tg-display-label"], .tg-text-size-options) { grid-template-columns: minmax(0, 1fr); }
+    html[data-tg-workspace] body .truthguard-settings-modal :is([aria-labelledby="tg-display-label"], .tg-text-size-options) button { min-height: 44px; text-align: left; overflow-wrap: normal; }
+    html[data-tg-workspace] body .truthguard-settings-modal .tg-text-size-options button { display: flex; align-items: center; gap: .75rem; }
+    html[data-tg-workspace] body .truthguard-settings-modal .tg-text-size-options button > span { margin-top: 0; }
+}
 
 /* Fixed-pixel report copy must honor the same reading preference as rem-based pages. */
 html[data-tg-workspace][data-text-size] body .tg-result-report :is(.tg-result-summary, .tg-result-answer-copy p, .tg-result-claim-text, .tg-result-source-link) { font-size: calc(14px * var(--tg-text-scale)) !important; }
@@ -138,3 +144,6 @@ html[data-tg-workspace][data-text-size] body .tg-notice-message { font-size: cal
 .truthguard-mode-toggle .truthguard-mode-sun { display: none; }
 .truthguard-mode-toggle[aria-checked="true"] .truthguard-mode-sun { display: block; }
 .truthguard-mode-toggle[aria-checked="true"] .truthguard-mode-moon { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    .truthguard-background-analysis *, .truthguard-background-analysis *::before, .truthguard-background-analysis *::after { animation: none !important; transition: none !important; }
+}

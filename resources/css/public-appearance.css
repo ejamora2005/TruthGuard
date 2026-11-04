@@ -129,6 +129,7 @@ html.dark body.truthguard-auth-page .tg-auth-backdrop { background: radial-gradi
 html.dark body.truthguard-auth-page .tg-auth-card-detailed { background: linear-gradient(155deg, #1d3049, #182235 60%) !important; border-color: #3b4b63; box-shadow: 0 24px 65px #02061766; }
 html.dark body.truthguard-auth-page :is(.tg-auth-card-detailed::after, .tg-auth-backdrop__tile) { opacity: .3; }
 html.dark body.truthguard-auth-page .tg-auth-backdrop__halo { opacity: .08; }
+html.dark body.truthguard-policy-page .text-blue-950 { color: #bfdbfe !important; }
 
 /* Keep all form actions reachable on short screens and with the keyboard open. */
 body.truthguard-auth-page .truthguard-auth-shell { height: auto; min-height: 100dvh; overflow: visible; padding-top: 4.5rem; padding-bottom: 1.5rem; }

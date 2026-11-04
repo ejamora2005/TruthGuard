@@ -3319,10 +3319,22 @@ new class extends Component
         .truthguard-progress-label { flex: 1; font-size: 13px; font-weight: 700; color: #334155; }
         .truthguard-progress-control {
             display: inline-flex; align-items: center; justify-content: center;
-            flex: 0 0 44px; width: 44px; height: 44px; border-radius: 50%;
-            color: #475569; background: white; font-size: 24px;
+            flex: 0 0 44px; width: 44px; height: 44px; border-radius: 12px;
+            color: #475569; background: #e2e8f0; font-size: 24px;
+            border: 1px solid #cbd5e1; transition: background .15s, color .15s;
         }
         .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
+        .truthguard-progress-background {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            width: 100%; min-height: 44px; margin-top: 10px; padding: 10px 16px;
+            border: 1px solid #2563eb; border-radius: 12px;
+            background: #2563eb; color: #fff; font-size: 13px; font-weight: 700;
+        }
+        .truthguard-progress-background:hover { background: #1d4ed8; }
+        .truthguard-progress-background:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+        html[data-tg-workspace].dark .truthguard-inline-progress .truthguard-progress-control {
+            background: #223047; color: #e2e8f0; border-color: #475569;
+        }
         .truthguard-progress-restore {
             display: flex; align-items: center; justify-content: center;
             width: fit-content; max-width: 100%; min-height: 44px;
@@ -5208,16 +5220,15 @@ new class extends Component
 
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
-                    <p class="truthguard-verify-copy" x-text="progressMessage || 'You can hide this card. Your analysis will continue.'">You can hide this card. Your analysis will continue.</p>
-                    <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed · ' + (progressState === 'queued' ? 'Waiting for a worker' : 'Analysis running')"></p>
+                    <p class="truthguard-verify-copy" x-show="progressFailures > 0" x-text="'Reconnecting to progress updates…'"></p>
+                    <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed'"></p>
                     <div class="truthguard-analysis-progress" :class="{ 'is-running': progressState !== 'completed' }" style="width: min(100%, 20rem)" role="status" aria-label="Fact check progress">
                         <div class="truthguard-analysis-track" aria-hidden="true"><span :style="'width: ' + (progressState === 'completed' ? '100%' : pendingResultUrl ? (progressState === 'processing' ? '66.667%' : '33.333%') : '15%')"></span></div>
                         <div class="truthguard-analysis-labels">
-                            <span class="is-active" x-text="progressState === 'completed' ? 'Done' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Uploaded · waiting to analyze' : 'Analyzing'"></span>
+                            <span class="is-active" x-text="progressState === 'completed' ? 'Done' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Waiting to analyze' : 'Analyzing'"></span>
                         </div>
                     </div>
-                    <p class="truthguard-verify-copy">You can browse other pages. Use the TruthGuard button to check progress.</p>
-                    <p class="truthguard-verify-copy" style="font-size: 11px; opacity: .8">Stages reflect the latest server update. Completion time depends on the evidence.</p>
+                    <button type="button" class="truthguard-progress-background" @click="progressMinimized = true; $nextTick(() => $refs.showProgress.focus())">Continue browsing <span aria-hidden="true">↗</span></button>
                 </div>
             </div>
         </div>

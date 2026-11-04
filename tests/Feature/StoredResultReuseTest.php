@@ -87,7 +87,7 @@ class StoredResultReuseTest extends TestCase
         Storage::disk('public')->assertExists($second->media_path);
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->with(6)->andReturn(['items' => []]);
         $this->actingAs($other)->get(route('detections.result', $second))->assertOk()->assertSee('Saved result reused.')
-            ->assertSee('No new API tokens')->assertSee('Reused saved assistance');
+            ->assertSee('This saved assessment was reused without a new analysis.')->assertSee('Reused saved assistance');
         $this->get(route('detections.result', $first))->assertNotFound();
         Http::assertNothingSent();
     }

@@ -4791,10 +4791,10 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         right: 0;
         bottom: 0.18rem;
         width: 100%;
-        max-width: 3.85rem;
+        max-width: 3.75rem;
         margin-right: auto;
         margin-left: auto;
-        min-height: 4.15rem;
+        min-height: 3.75rem;
         margin-top: 0;
         border: 1px solid rgba(37, 99, 235, 0.22);
         border-radius: 1.2rem;
@@ -4836,8 +4836,8 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     }
 
     body:not(.truthguard-admin-app) .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon {
-        width: 2.2rem;
-        height: 2.2rem;
+        width: 2rem;
+        height: 2rem;
         border-color: rgba(255, 255, 255, 0.32);
         border-radius: 9999px;
         background: rgba(255, 255, 255, 0.17);
@@ -4857,15 +4857,23 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         transform: translateY(-0.28rem) scale(0.95);
     }
 
-    body:not(.truthguard-admin-app) .truthguard-mobile-tab-dot {
-        top: -0.42rem;
-        right: -0.42rem;
-        min-width: 1.08rem;
-        height: 1.08rem;
+    body:not(.truthguard-admin-app) .truthguard-mobile-tab[data-tour="notifications"],
+    body:not(.truthguard-admin-app) .truthguard-mobile-tab[data-tour="notifications"] .truthguard-mobile-tab-icon {
+        overflow: visible;
+    }
+
+    body:not(.truthguard-admin-app) .truthguard-mobile-tab .truthguard-mobile-tab-dot {
+        top: -0.125rem;
+        right: -0.4rem;
+        z-index: 2;
+        min-width: 18px;
+        height: 18px;
+        padding: 0 4px;
         border: 2px solid rgba(255, 255, 255, 0.95);
         background: linear-gradient(135deg, #fb7185, #dc2626);
-        font-size: 0.5rem !important;
-        box-shadow: 0 8px 14px rgba(220, 38, 38, 0.28);
+        font-size: 10px !important;
+        line-height: 1 !important;
+        box-shadow: none;
     }
 
     @keyframes truthguard-nav-shine {
@@ -4912,12 +4920,12 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         }
 
         body:not(.truthguard-admin-app) .truthguard-mobile-tab-primary {
-            min-height: 4.9rem;
+            min-height: 3.75rem;
         }
 
         body:not(.truthguard-admin-app) .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon {
-            width: 2.15rem;
-            height: 2.15rem;
+            width: 2rem;
+            height: 2rem;
         }
     }
 }

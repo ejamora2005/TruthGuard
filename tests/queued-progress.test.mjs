@@ -14,6 +14,7 @@ const restore = source.match(/<button x-show="submitting && \(progressHidden \|\
 const alpine = readFileSync('node_modules/alpinejs/dist/cdn.min.js', 'utf8');
 const origin = 'http://localhost:9876';
 const resultUrl = `${origin}/detections/24/result`;
+const progressUrl = `${origin}/detections/24/progress`;
 let browser;
 before(async () => { browser = await chromium.launch({ channel: 'chrome', headless: true }); });
 after(async () => { await browser?.close(); });
@@ -42,7 +43,7 @@ async function setup({ resume = false, mobile = false } = {}) {
             state.posts++;
             return route.fulfill({ status: 202, json: { processing_status: 'queued', result_url: resultUrl } });
         }
-        if (request.url() === resultUrl) {
+        if (request.url() === resultUrl || request.url() === progressUrl) {
             if (request.isNavigationRequest()) {
                 state.navigations++;
                 return route.fulfill({ contentType: 'text/html', body: '<h1>Completed result</h1>' });
@@ -50,7 +51,7 @@ async function setup({ resume = false, mobile = false } = {}) {
             state.polls++;
             if (state.transientFailure) return route.fulfill({ status: 503, body: 'Temporarily unavailable' });
             return route.fulfill({ json: state.status === 'completed'
-                ? { verdict: 'LIKELY_AI_GENERATED' }
+                ? { processing_status: 'completed', result_url: resultUrl }
                 : { processing_status: state.status, stage: 'Analyzing image' } });
         }
         return route.fulfill({ contentType: 'text/html', body: `<html><head><style>
@@ -82,7 +83,7 @@ for (const mobile of [false, true]) {
         const { page, state } = await setup({ mobile });
         try {
             await page.getByRole('button', { name: 'Check claim', exact: true }).click();
-            await page.locator('.truthguard-verify-copy').filter({ hasText: 'Your analysis is starting' }).waitFor();
+            await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
             assert.equal(state.posts, 1);
             assert.equal(state.navigations, 0);
             assert.equal(page.url(), `${origin}/detections/create`);
@@ -109,7 +110,7 @@ test('opening an unfinished report resumes polling without resubmission', async 
     const { page, state } = await setup({ resume: true });
     try {
         await page.locator('.truthguard-inline-progress').waitFor({ state: 'visible' });
-        await page.locator('.truthguard-verify-copy').filter({ hasText: 'Your analysis is starting' }).waitFor();
+        await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
         assert.equal(state.polls, 1); // Alpine auto-init plus x-init must not start two polls.
         assert.equal(state.posts, 0);
         state.status = 'completed';
@@ -122,10 +123,10 @@ test('opening an unfinished report resumes polling without resubmission', async 
 test('temporary status failures reconnect; a failed analysis stops the loader without opening a result', async () => {
     const { page, state } = await setup({ resume: true });
     try {
-        await page.locator('.truthguard-verify-copy').filter({ hasText: 'Your analysis is starting' }).waitFor();
+        await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
         state.transientFailure = true;
         await refresh(page, state);
-        assert.match(await page.locator('.truthguard-verify-copy').innerText(), /Reconnecting/);
+        assert.match(await page.locator('.truthguard-verify-copy').filter({ hasText: 'Reconnecting' }).innerText(), /Reconnecting/);
         state.transientFailure = false;
         state.status = 'failed';
         await refresh(page, state);
