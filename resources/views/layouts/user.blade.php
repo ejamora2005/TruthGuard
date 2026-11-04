@@ -1256,7 +1256,9 @@
                                     </span>
                                 </div>
 
-                                @include('layouts.partials.display-mode-toggle')
+                                @unless(request()->routeIs('dashboard'))
+                                    @include('layouts.partials.display-mode-toggle')
+                                @endunless
 
                                 @include('layouts.partials.notification-center')
 
@@ -1280,9 +1282,11 @@
                             </div>
                         </div>
 
-                        <div class="truthguard-mobile-appearance flex shrink-0 items-center lg:hidden">
-                            @include('layouts.partials.display-mode-toggle')
-                        </div>
+                        @unless(request()->routeIs('dashboard'))
+                            <div class="truthguard-mobile-appearance flex shrink-0 items-center lg:hidden">
+                                @include('layouts.partials.display-mode-toggle')
+                            </div>
+                        @endunless
 
                         <div class="relative shrink-0" x-data="{ profileOpen: false }">
                                 <button
