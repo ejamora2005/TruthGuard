@@ -654,6 +654,11 @@
         .tg-ai-report .tg-ai-media img, .tg-ai-report .tg-ai-media video { max-height: min(50vh, 26rem); }
         @media (max-width: 640px) {
             .tg-report-header { gap: 12px; }
+            .tg-report-main-verdict { padding: .65rem .75rem; gap: .5rem; font-size: 1rem; }
+            .tg-report-main-verdict > span { min-width: 0; }
+            .tg-verdict-explanation { margin-top: 1rem; }
+            .tg-verdict-explanation > p { font-size: .875rem; line-height: 1.75; }
+            .tg-source-jump { padding-inline: .5rem; font-size: .7rem; box-shadow: none; }
             .tg-report-kicker { gap: .35rem; font-size: .625rem; }
             .tg-report-reference { padding-left: .75rem; max-width: 5rem; }
             .tg-report-reference > span { font-size: .625rem; }

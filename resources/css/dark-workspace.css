@@ -47,6 +47,15 @@ html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background:
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-neutral { background: #223047; color: #cbd5e1; border-color: #53647c; }
 
 /* Composer and upload surfaces. Leave evidence images and source logos intact. */
+html[data-tg-workspace].dark body .truthguard-link-preview {
+    background: #182235 !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .truthguard-link-preview strong { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .truthguard-link-preview span { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .truthguard-link-preview > span:first-child { background: #203858 !important; color: #93c5fd !important; }
+html[data-tg-workspace].dark body .truthguard-link-preview > button { color: #cbd5e1 !important; }
 html[data-tg-workspace].dark body .truthguard-attachment-modal-backdrop {
     background: rgb(2 6 23 / 65%) !important;
     backdrop-filter: blur(6px);

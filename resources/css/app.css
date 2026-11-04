@@ -355,6 +355,20 @@
 .truthguard-progress-refresh { margin-top: .75rem; padding: .5rem .8rem; border: 1px solid #93c5fd; border-radius: .65rem; color: #2563eb; font-size: .8rem; font-weight: 700; }
 .truthguard-progress-refresh:disabled { opacity: .6; cursor: wait; }
 .truthguard-analysis-progress { margin-top: .8rem; width: 100%; }
+.truthguard-progress-dot { width: .45rem; height: .45rem; flex: 0 0 auto; border-radius: 50%; background: #2563eb; }
+@media (max-width: 767px) {
+    body.truthguard-fact-check-create-route .truthguard-composer-toolbar .truthguard-progress-restore {
+        gap: .5rem; min-height: 44px; margin: 0 0 .5rem auto; padding: .4rem .75rem;
+        border-radius: .75rem; font-size: .75rem;
+    }
+    body.truthguard-fact-check-create-route .truthguard-link-preview {
+        margin: .25rem 0 .5rem; padding: .4rem .5rem; gap: .5rem; border-radius: .75rem;
+    }
+    body.truthguard-fact-check-create-route .truthguard-link-preview > span:first-child { width: 2rem; height: 2rem; }
+    body.truthguard-fact-check-create-route .truthguard-link-preview strong { font-size: .75rem !important; }
+    body.truthguard-fact-check-create-route .truthguard-link-preview .text-\[11px\] { font-size: .65rem !important; }
+    body.truthguard-fact-check-create-route .truthguard-detection-textarea { overflow-wrap: anywhere; word-break: break-word; }
+}
 .truthguard-analysis-track { height: .45rem; overflow: hidden; border-radius: 999px; background: #cbd5e1; }
 .truthguard-analysis-track > span { display: block; height: 100%; border-radius: inherit; background: #2563eb; transition: width .4s ease; }
 .truthguard-analysis-progress.is-running .truthguard-analysis-track > span { animation: truthguard-stage-pulse 2s ease-in-out infinite; }

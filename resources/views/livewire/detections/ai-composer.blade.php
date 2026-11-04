@@ -5248,7 +5248,7 @@ new class extends Component
                 >
 
                 <div class="truthguard-composer-toolbar" x-show="!hasResult || (submitting && (progressHidden || progressMinimized))">
-                <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore" @click="progressHidden = false; progressMinimized = false">Analyzing &middot; View progress</button>
+                <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore" @click="progressHidden = false; progressMinimized = false"><span class="truthguard-progress-dot" aria-hidden="true"></span><span>View progress</span></button>
                 @if (! $activeDetection)
                     <section x-show.important="!submitting || (!progressHidden && !progressMinimized)" x-data="{ hoveredHint: '', focusedHint: '', hintDismissed: false }" @keydown.escape.window="hintDismissed = true" :inert="submitting" class="truthguard-guided-prompts rounded-[30px] border border-blue-100/80 bg-gradient-to-br from-white via-slate-50 to-blue-50/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
