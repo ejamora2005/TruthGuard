@@ -445,6 +445,7 @@ def predict_video_probability(
     face_margin: float,
     np,
     Image,
+    diagnostics=None,
 ):
     try:
         import cv2
@@ -456,6 +457,8 @@ def predict_video_probability(
     if not capture.isOpened():
         return None, 0, "Video file could not be opened for CNN inference."
 
+    diagnostics = diagnostics if diagnostics is not None else {}
+    diagnostics.update(face_crop_required=face_crop, sampled_frames=0, face_frames=0)
     probabilities: list[float] = []
     batches = []
     face_cascade = load_face_cascade(cv2) if face_crop else None
@@ -470,27 +473,36 @@ def predict_video_probability(
                 if not success:
                     continue
 
+                diagnostics["sampled_frames"] += 1
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                 if face_crop:
-                    rgb_frame, _ = crop_largest_face(rgb_frame, cv2, face_cascade, face_margin)
+                    rgb_frame, found_face = crop_largest_face(rgb_frame, cv2, face_cascade, face_margin)
+                    if not found_face:
+                        continue
+                    diagnostics["face_frames"] += 1
 
                 pil_frame = Image.fromarray(rgb_frame)
                 batches.append(preprocess_pil_image(pil_frame, image_size, input_range, np)[0])
         else:
             frame_index = 0
 
-            while len(batches) < frame_limit:
+            while diagnostics["sampled_frames"] < frame_limit:
                 success, frame = capture.read()
 
                 if not success:
                     break
 
                 if frame_index % frame_stride == 0:
+                    diagnostics["sampled_frames"] += 1
                     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                     if face_crop:
-                        rgb_frame, _ = crop_largest_face(rgb_frame, cv2, face_cascade, face_margin)
+                        rgb_frame, found_face = crop_largest_face(rgb_frame, cv2, face_cascade, face_margin)
+                        if not found_face:
+                            frame_index += 1
+                            continue
+                        diagnostics["face_frames"] += 1
 
                     pil_frame = Image.fromarray(rgb_frame)
                     batches.append(preprocess_pil_image(pil_frame, image_size, input_range, np)[0])
@@ -500,7 +512,8 @@ def predict_video_probability(
         capture.release()
 
     if not batches:
-        return None, 0, "Video inference did not extract any usable frames."
+        # A face model must not score full-frame animals/scenery as human faces.
+        return None, 0, None
 
     prediction_batch = np.asarray(batches, dtype="float32")
     predictions = model.predict(prediction_batch, verbose=0)
@@ -647,6 +660,7 @@ def main() -> int:
     face_crop = configured_video_face_crop(model_config)
     face_margin = env_float("DEEPFAKE_CNN_VIDEO_FACE_MARGIN", DEFAULT_VIDEO_FACE_MARGIN, 0.0, 2.0)
     frames_used: int | None = None
+    video_scope = {}
 
     mapping = model_config.get("label_mapping", model_config.get("label_map"))
     # The deployed weights are binary sigmoid models. Never guess an output
@@ -671,6 +685,7 @@ def main() -> int:
                 face_margin,
                 np,
                 Image,
+                video_scope,
             )
 
             if video_error is not None:
@@ -698,6 +713,12 @@ def main() -> int:
                 )
             )
         )
+        return 0
+
+    if media_type == "video" and frames_used == 0:
+        print(json.dumps({"status": "completed", "media_type": "video", "frames_used": 0,
+            "label": None, "fake_probability": None, "video_scope": video_scope,
+            "summary": "No usable human-face frames were available for the face detector."}))
         return 0
 
     screening_score = round(fake_probability * 100)
@@ -732,6 +753,7 @@ def main() -> int:
                 frames_used=frames_used,
                 aggregation_method=aggregation_method if media_type == "video" else None,
             ), model_name=model_config.get("model_name", model_config.get("model_type", "Trained media CNN")),
+                video_scope=video_scope if media_type == "video" else {},
                 label_mapping=mapping,
                 output_contract={"activation": "sigmoid", "positive_class": "fake", "binary_exclusive": True,
                                  "validated_at_inference": True, "output_shape": [1]},

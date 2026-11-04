@@ -395,6 +395,7 @@ class DetectionPipeline
                 'deepfake' => Arr::except(config('services.deepfake_cnn', []), ['python_binary', 'timeout']),
                 'origin' => Arr::only(config('services.ai_origin', []), ['enabled', 'model_path']),
                 ...($mediaType === 'image' ? ['image_detector_policy' => 'primary-origin-only-v1'] : []),
+                ...($mediaType === 'video' ? ['video_detector_policy' => VideoScreeningPolicy::VERSION] : []),
                 'article_model' => Arr::except(config('services.filipino_news_classifier', []), ['timeout', 'connect_timeout']),
                 'artifacts' => $this->modelArtifactIdentity(),
             ],

@@ -55,6 +55,7 @@ class ResultContract
 
     public static function normalize(array $result, int $depth = 0): array
     {
+        $result = VideoScreeningPolicy::apply($result);
         $errors = [];
         $verdict = $result['verdict'] ?? null;
         if (! is_string($verdict) || ! in_array($verdict, self::VERDICTS, true)) {
@@ -152,6 +153,16 @@ class ResultContract
     /** A compatible, read-only projection for existing saved reports and JSON clients. */
     public static function forPresentation(array $saved, int $depth = 0): array
     {
+        $questionText = (string) ($saved['request']['question'] ?? $saved['claim'] ?? '');
+        if (($saved['primary_task'] ?? '') === 'claim' && $questionText !== ''
+            && SubmissionTask::primary(['caption_text' => $questionText, 'media_type' => 'video']) === 'media') {
+            // Old wrong-task reports cannot answer an origin question with unrelated news links.
+            $saved = ['schema_version' => 4, 'primary_task' => 'media', 'verdict' => 'ANALYSIS_UNAVAILABLE',
+                'summary' => 'This saved report checked factual claims instead of AI generation. It did not determine the video or image origin. Retry media analysis to run the requested check.',
+                'request' => ['question' => $questionText, 'tasks' => ['media'], 'selected_mode' => 'media'],
+                'score' => AssessmentScore::unavailable('The saved assessment evaluated a different task.'),
+                'sources' => [], 'media_assessment' => $saved['media_assessment'] ?? null];
+        }
         $legacy = ! is_int($saved['schema_version'] ?? null) || $saved['schema_version'] < 4;
         $historicalVerdict = is_string($saved['verdict'] ?? null) && in_array($saved['verdict'], self::VERDICTS, true)
             ? $saved['verdict'] : null;

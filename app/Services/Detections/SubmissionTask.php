@@ -4,7 +4,7 @@ namespace App\Services\Detections;
 
 class SubmissionTask
 {
-    public const VERSION = 'tasks-v5';
+    public const VERSION = 'tasks-v6';
 
     public const MEDIA_INSTRUCTION = 'Check whether this image or video shows signs of AI generation or manipulation';
 
@@ -54,7 +54,7 @@ class SubmissionTask
         if (preg_match_all('/\b(?:check|verify|confirm|fact[- ]check)\s+(?:if|whether|that)\s+(.+)/iu', trim($question), $matches)) {
             $candidates = $matches[1];
         }
-        if (preg_match('/^(?:please\s+)?(?:is|was|are|were|did|does|has|have|can|could)\s+(.+)/iu', trim($question), $match)) {
+        if (preg_match('/^(?:please\s+)*(?:is|was|are|were|did|does|has|have|can|could)\s+(.+)/iu', trim($question), $match)) {
             $candidates[] = $match[1];
         }
         foreach ($candidates as $candidate) {
@@ -73,7 +73,7 @@ class SubmissionTask
 
     private static function questionPattern(): string
     {
-        return '/^(?:(?:is|was|are|were|has|did|do|does|can|could)\b[^\n?]{0,220}(?:\?|$)|(?:please\s+)?(?:fact[- ]check|check|verify|tell me|find related fact[- ]checks)\b[^\n.!?]{0,220}(?:[.!?]|$)|(?:ai(?:[- ]generated)?\s+ba|gawa\s+ba|ginawa\s+ba|totoo\s+ba|peke\s+ba|na[- ]?edit\s+ba|binago\s+ba|mapanlinlang\s+ba|suriin|pakisuri|paki[- ]?check)\b[^\n.!?]{0,220}(?:[.!?]|$))\s*/iu';
+        return '/^(?:(?:is|was|are|were|has|did|do|does|can|could)\b[^\n?]{0,220}(?:\?|$)|(?:please\s+)*(?:fact[- ]check|check|verify|tell me|find related fact[- ]checks)\b[^\n.!?]{0,220}(?:[.!?]|$)|(?:ai(?:[- ]generated)?\s+ba|gawa\s+ba|ginawa\s+ba|totoo\s+ba|peke\s+ba|na[- ]?edit\s+ba|binago\s+ba|mapanlinlang\s+ba|suriin|pakisuri|paki[- ]?check)\b[^\n.!?]{0,220}(?:[.!?]|$))\s*/iu';
     }
 
     public static function question(array $context): string

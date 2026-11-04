@@ -176,7 +176,7 @@ final class ResultWording
         // Retain a complete short sentence; never pay for a fallback rewrite.
         $action = SubmittedText::sentences(ReportAnswer::interpretationAction($short, $recommendation))[0] ?? '';
         $fallbackAction = ($result['primary_task'] ?? '') === 'media'
-            ? 'Check the original publication or creation record before relying on this image.'
+            ? 'Check the original publication or creation record before relying on this media.'
             : 'Review the original statement and the available source records before sharing.';
         if ($action === '' || Str::wordCount($action) > 35) {
             $action = $fallbackAction;

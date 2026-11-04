@@ -104,6 +104,14 @@ class DeepfakeCnnClassifier
             return $this->failure($mediaType, 'input_changed', 'The original upload changed or became unavailable during analysis.');
         }
 
+        if ($mediaType === 'video' && ($payload['frames_used'] ?? null) === 0
+            && ($payload['video_scope']['face_crop_required'] ?? false) === true) {
+            return ['status' => 'completed', 'media_type' => 'video', 'label' => null,
+                'fake_probability' => null, 'frames_used' => 0, 'video_scope' => $payload['video_scope'],
+                'input_sha256' => $inputHash, 'model_version' => 'sha256:'.hash_file('sha256', $modelPath),
+                'summary' => 'No usable human-face frames were available for the face detector.'];
+        }
+
         if (($payload['label_mapping'] ?? null) !== ['real', 'fake']
             || ($payload['output_contract']['activation'] ?? null) !== 'sigmoid'
             || ($payload['output_contract']['positive_class'] ?? null) !== 'fake'
@@ -144,6 +152,7 @@ class DeepfakeCnnClassifier
             'summary' => trim((string) ($payload['summary'] ?? 'CNN inference completed.')),
             'signals' => is_array($payload['signals'] ?? null) ? $payload['signals'] : [],
             'frames_used' => max(0, (int) ($payload['frames_used'] ?? 0)),
+            'video_scope' => is_array($payload['video_scope'] ?? null) ? $payload['video_scope'] : [],
             'aggregation_method' => (string) ($payload['aggregation_method'] ?? ''),
         ];
     }

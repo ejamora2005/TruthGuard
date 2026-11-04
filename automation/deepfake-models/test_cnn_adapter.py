@@ -19,6 +19,28 @@ class AdapterContractTest(unittest.TestCase):
         self.model = SimpleNamespace(input_shape=(None, 224, 224, 3), output_shape=(None, 1),
                                      layers=[SimpleNamespace(activation=SimpleNamespace(__name__='sigmoid'))])
 
+    def test_video_without_detected_faces_never_scores_full_frames(self):
+        import cv2
+        import tempfile
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'no-faces.avi'
+            writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*'MJPG'), 10, (64, 64))
+            for _ in range(20):
+                writer.write(np.zeros((64, 64, 3), dtype='uint8'))
+            writer.release()
+            class NeverPredict:
+                def predict(self, *args, **kwargs):
+                    raise AssertionError('Out-of-scope full frames must not reach the face model')
+            scope = {}
+            with patch.object(adapter, 'crop_largest_face', side_effect=lambda image, *args: (image, False)):
+                _, used, error = adapter.predict_video_probability(NeverPredict(), path, 224,
+                    '0_to_1_float32', 8, 1, 'top5_mean', True, .2, np, Image, scope)
+            self.assertIsNone(error)
+            self.assertEqual(0, used)
+            self.assertEqual(8, scope['sampled_frames'])
+            self.assertEqual(0, scope['face_frames'])
+
     def test_deployed_mapping_is_positive_fake_and_reversed_config_fails_closed(self):
         self.assertTrue(adapter.valid_model_contract(self.model, self.config, 224, '0_to_255_float32'))
         altered = copy.deepcopy(self.config)

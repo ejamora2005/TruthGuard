@@ -153,8 +153,11 @@
         }
     }
     $evidenceText = $evidenceParagraphs->implode("\n\n");
-    $interpretationSummary = $savedWording['result_summary'] ?? \App\Services\Detections\ReportAnswer::interpretationSummary($savedAssessment, $reasoning);
+    $interpretationSummary = $savedWording['result_summary'] ?? \App\Services\Detections\ReportAnswer::interpretationSummary($publicResult, $reasoning);
     $interpretationAction = $savedWording['recommended_action'] ?? \App\Services\Detections\ReportAnswer::interpretationAction($interpretationSummary, $recommendation);
+    if ($isMediaReport && ! $savedWording) {
+        $interpretationAction = 'Check the original upload and reliable creation records before relying on this media.';
+    }
 
     $signalGroups = is_array($selectedDetection->signals ?? null) ? $selectedDetection->signals : [];
     $aiBasis = collect($signalGroups['ai_basis'] ?? [])
