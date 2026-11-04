@@ -393,6 +393,7 @@
 .truthguard-analysis-track > span { display: block; height: 100%; border-radius: inherit; background: #2563eb; transition: width .4s ease; }
 .truthguard-analysis-progress.is-running .truthguard-analysis-track > span { animation: truthguard-stage-pulse 2s ease-in-out infinite; }
 .truthguard-analysis-labels { display: flex; justify-content: space-between; gap: .4rem; margin-top: .5rem; font-size: .7rem; color: #64748b; }
+.truthguard-analysis-labels { justify-content: center; text-align: center; }
 .truthguard-analysis-labels .is-active { color: #2563eb; font-weight: 700; }
 html[data-tg-workspace].dark .truthguard-analysis-track { background: #334155; }
 html[data-tg-workspace].dark .truthguard-analysis-labels { color: #94a3b8; }
