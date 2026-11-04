@@ -46,7 +46,7 @@ class CompactPaginationTest extends TestCase
         $items = array_map(fn (int $index) => ['id' => 'sample-'.$index,
             'headline' => 'Pagination sample '.$index, 'claim' => 'Pagination sample claim',
             'publisher' => 'Example newsroom', 'rating' => 'False', 'url' => 'https://example.org/'.$index,
-            'date_label' => 'Oct 19, 2026'], range(1, $guest ? 35 : 25));
+            'date_label' => 'Oct 19, 2026'], range(1, $guest ? 35 : 15));
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => $items]);
         if (! $guest) {
             $this->actingAs(User::factory()->create());
@@ -55,6 +55,13 @@ class CompactPaginationTest extends TestCase
         foreach ([1, 2, 3] as $page) {
             $response = $this->get(route($route, $query + [$pageName => $page]))->assertOk();
             $this->checkPager($response->getContent(), $page, 3, $query, $pageName, $guest ? 'public' : 'dashboard');
+            if (! $guest) {
+                $document = new \DOMDocument;
+                @$document->loadHTML($response->getContent());
+                $xpath = new \DOMXPath($document);
+                $this->assertCount(5, $xpath->query('//article[contains(@class,"tg-fact-feed-row")]'));
+                $this->assertCount(2, $xpath->query('//nav[contains(@class,"tg-pagination-controls")]'));
+            }
         }
         Http::assertNothingSent();
     }
@@ -64,7 +71,7 @@ class CompactPaginationTest extends TestCase
         $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new \DOMXPath($document);
-        $options = $xpath->query('//select[contains(@class,"tg-pagination-select")]/option');
+        $options = $xpath->query('(//select[contains(@class,"tg-pagination-select")])[last()]/option');
         $this->assertCount($last, $options);
         foreach ($options as $index => $option) {
             parse_str((string) parse_url($option->getAttribute('value'), PHP_URL_QUERY), $query);
@@ -75,7 +82,7 @@ class CompactPaginationTest extends TestCase
             }
         }
         foreach (['prev' => $current - 1, 'next' => $current + 1] as $direction => $page) {
-            $links = $xpath->query('//nav[contains(@class,"tg-pagination-controls")]/a[@rel="'.$direction.'"]');
+            $links = $xpath->query('(//nav[contains(@class,"tg-pagination-controls")])[last()]/a[@rel="'.$direction.'"]');
             $valid = $page >= 1 && $page <= $last;
             $this->assertCount($valid ? 1 : 0, $links);
             if ($valid) {

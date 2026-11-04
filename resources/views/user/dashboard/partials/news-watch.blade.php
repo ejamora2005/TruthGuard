@@ -74,7 +74,7 @@
             return \Illuminate\Support\Str::contains($feedItemText($item), \Illuminate\Support\Str::lower($feedSearch));
         })
         ->values();
-    $feedPerPage = $reviewPageSize ?? 10;
+    $feedPerPage = $reviewPageSize ?? 5;
     $feedPageName = $reviewPageParameter ?? 'fact_page';
     $feedTotal = $allFeedItems->count();
     $feedLookbackDays = max(0, (int) ($feed['max_age_days'] ?? 0));
@@ -861,6 +861,17 @@
     </div>
 
     @if ($feedItems->isNotEmpty())
+        @if ($feedTotalPages > 1)
+            <x-pagination
+                :current-page="$feedCurrentPage"
+                :last-page="$feedTotalPages"
+                :total="$feedTotal"
+                :first-item="$feedFirstItem"
+                :last-item="$feedLastItem"
+                :page-url="$feedPageUrl"
+                label="Latest fact-check pages, above results"
+            />
+        @endif
         <div class="tg-mobile-feed-list divide-y divide-slate-200 px-5 sm:px-6">
             @foreach ($feedItems as $item)
                 @php
