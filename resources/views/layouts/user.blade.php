@@ -730,10 +730,10 @@
             }
 
             .truthguard-profile-appearance {
-                border: 1px solid rgba(226, 232, 240, .92);
-                border-radius: 1rem;
-                padding: .7rem;
-                background: rgba(248, 250, 252, .72);
+                min-width: 0;
+                padding: 0;
+                border: 0;
+                background: transparent;
             }
 
             .truthguard-profile-mode-grid {
@@ -741,6 +741,7 @@
                 grid-template-columns: repeat(3, minmax(0, 1fr));
                 gap: .35rem;
                 margin-top: .55rem;
+                padding: 0 .5rem .5rem;
             }
 
             .truthguard-profile-mode-option {
@@ -1349,14 +1350,14 @@
                                             x-data="{ displayMode: window.TruthGuardAppearance?.preferences.mode || 'system', appearanceOpen: false }"
                                             @truthguard-appearance-updated.window="displayMode = $event.detail?.mode || 'system'"
                                         >
-                                            <button type="button" class="flex w-full items-center gap-2 px-1 text-left" @click="appearanceOpen = !appearanceOpen" :aria-expanded="appearanceOpen.toString()">
+                                            <button type="button" class="truthguard-profile-action group flex w-full items-center gap-3 rounded-2xl border border-slate-100 px-3 py-2.5 text-left text-sm font-bold text-slate-700 transition hover:border-blue-100 hover:bg-blue-50/80 hover:text-blue-700" @click="appearanceOpen = !appearanceOpen" :aria-expanded="appearanceOpen.toString()">
                                                 <span class="truthguard-profile-action-icon shrink-0 text-blue-600">
                                                     <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
                                                         <circle cx="12" cy="12" r="4"></circle>
                                                         <path stroke-linecap="round" d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4m0-14.2-1.4 1.4M6.3 17.7l-1.4 1.4"></path>
                                                     </svg>
                                                 </span>
-                                                <span class="min-w-0 flex-1 text-xs font-black text-slate-700">Appearance</span>
+                                                <span class="relative z-10 min-w-0 flex-1">Appearance</span>
                                                 <span class="text-[10px] font-bold capitalize text-slate-500" x-text="displayMode === 'system' ? 'Device' : displayMode"></span>
                                                 <svg class="h-3.5 w-3.5 text-slate-400 transition-transform" :class="appearanceOpen ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"></path></svg>
                                             </button>
