@@ -131,7 +131,7 @@
 
                 <label x-show="isPwa" x-cloak style="display:none;" data-login-option="pwa" class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">
                     <input type="checkbox" name="remember" value="1" x-model="rememberDevice" disabled x-bind:disabled="!isPwa" class="h-5 w-5 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500" style="width:20px;height:20px;min-height:20px;flex:none">
-                    <span>Keep me signed in for 30 days<span class="block text-xs text-slate-500">Use only on your personal device.</span></span>
+                    <span>Keep me signed in<span class="block text-xs text-slate-500">Up to 30 days in this app. Personal devices only.</span></span>
                 </label>
 
                 <label x-show="!isPwa" x-cloak style="display:none;" data-login-option="web" class="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-slate-700">

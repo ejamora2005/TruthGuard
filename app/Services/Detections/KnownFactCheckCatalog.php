@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 /** Stable, reviewed answers for recurring claims. No model or search request is used. */
 final class KnownFactCheckCatalog
 {
+    public const VERSION = 'november-2026-sources-v2';
+
     public static function match(string $text): ?array
     {
         $normalized = Str::of($text)->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
@@ -48,10 +50,34 @@ final class KnownFactCheckCatalog
                     'type' => 'official_government',
                     'used_for' => 'Provides the current projection that global population will peak in the mid-2080s.',
                 ],
+                [
+                    'id' => 'chequeado-doomsday-review',
+                    'name' => 'Chequeado',
+                    'title' => 'No, cientificos de la Universidad de Harvard no afirmaron que el mundo se terminara el 13 de noviembre de 2026',
+                    'url' => 'https://chequeado.com/verificacionfb/no-cientificos-de-la-universidad-de-harvard-no-afirmaron-que-el-mundo-se-terminara-el-13-de-noviembre-de-2026/',
+                    'type' => 'fact_check',
+                    'used_for' => 'Reviews a related viral claim and explains that the original population study did not predict the literal end of the world. Article in Spanish.',
+                ],
+                [
+                    'id' => 'climate-fact-checks-doomsday',
+                    'name' => 'Climate Fact Checks',
+                    'title' => 'Climate Anxiety Is Real. These Viral Doomsday Claims Aren’t',
+                    'url' => 'https://climatefactchecks.org/climate-anxiety-is-real-these-viral-doomsday-claims-arent/',
+                    'type' => 'fact_check',
+                    'used_for' => 'Explains how November 13, 2026 posts remove the context of the 1960 mathematical population model.',
+                ],
+                [
+                    'id' => 'un-wpp-2024-summary',
+                    'name' => 'United Nations DESA',
+                    'title' => 'World Population Prospects 2024: Summary of Results',
+                    'url' => 'https://desapublications.un.org/publications/world-population-prospects-2024-summary-results',
+                    'type' => 'primary_source',
+                    'used_for' => 'Provides the summary report accompanying the UN projections; this is part of the same UN study, not a separate independent estimate.',
+                ],
             ],
             'answer_segments' => [[
                 'text' => $explanation,
-                'source_ids' => ['science-doomsday-1960', 'un-wpp-2024'],
+                'source_ids' => ['science-doomsday-1960', 'un-wpp-2024', 'chequeado-doomsday-review', 'climate-fact-checks-doomsday', 'un-wpp-2024-summary'],
             ]],
             'generated_wording' => [
                 'version' => ResultWording::VERSION,
@@ -59,10 +85,11 @@ final class KnownFactCheckCatalog
                 'explanation' => $explanation,
                 'result_summary' => 'The date came from an outdated population-growth model and was misrepresented as a literal prediction that the world would end.',
                 'recommended_action' => 'Do not share the image as a scientific apocalypse prediction; consult the original paper and current population projections.',
-                'source_ids' => ['science-doomsday-1960', 'un-wpp-2024'],
+                'source_ids' => ['science-doomsday-1960', 'un-wpp-2024', 'chequeado-doomsday-review', 'climate-fact-checks-doomsday', 'un-wpp-2024-summary'],
             ],
             'diagnostics' => [
                 'known_fact_check' => true,
+                'known_fact_check_version' => self::VERSION,
                 'canonical_cache_hit' => true,
                 'api_usage' => ['total_tokens' => 0, 'input_tokens' => 0, 'output_tokens' => 0],
                 'outcome_reason' => 'known_fact_check_match',

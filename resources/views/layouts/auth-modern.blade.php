@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        @include('layouts.partials.appearance-preferences', ['publicAppearance' => true])
         @include('layouts.partials.global-loader-assets')
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
@@ -27,6 +28,9 @@
     </head>
     <body class="truthguard-auth-page {{ request()->routeIs('login', 'register') ? 'truthguard-auth-entry-page' : '' }} @yield('body_class') min-h-dvh overflow-x-hidden bg-slate-950 font-[Poppins] text-slate-100 antialiased selection:bg-cyan-300/40 selection:text-white">
         @include('layouts.partials.app-splash')
+        <div class="truthguard-auth-appearance">
+            @include('layouts.partials.appearance-toggle')
+        </div>
 
         @isset($slot)
             {{ $slot }}

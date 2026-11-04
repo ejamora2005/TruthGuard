@@ -7,6 +7,7 @@
 @import './notifications.css';
 @import './settings-account.css';
 @import './user-workspace.css';
+@import './public-appearance.css';
 
 @tailwind base;
 @tailwind components;
@@ -511,6 +512,18 @@ html[data-tg-workspace].dark .truthguard-background-analysis-dismiss:hover { bac
     .truthguard-background-analysis {
         right: max(0.75rem, env(safe-area-inset-right, 0px));
         bottom: calc(6.65rem + env(safe-area-inset-bottom, 0px));
+    }
+    .truthguard-background-analysis-button {
+        width: 3.4rem;
+        height: 3.4rem;
+    }
+    .truthguard-background-analysis-icon {
+        width: 2.55rem;
+        height: 2.55rem;
+    }
+    .truthguard-background-analysis-logo {
+        width: 1.9rem;
+        height: 1.9rem;
     }
 }
 

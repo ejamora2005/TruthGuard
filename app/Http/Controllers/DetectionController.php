@@ -222,7 +222,8 @@ class DetectionController extends Controller
      */
     private function restoreKnownFactCheck(Detection $detection): Detection
     {
-        if ((bool) data_get($detection->fact_check_result, 'diagnostics.known_fact_check')) {
+        if ((bool) data_get($detection->fact_check_result, 'diagnostics.known_fact_check')
+            && data_get($detection->fact_check_result, 'diagnostics.known_fact_check_version') === KnownFactCheckCatalog::VERSION) {
             return $detection;
         }
 

@@ -20,6 +20,7 @@
             </nav>
 
             <div class="hidden shrink-0 items-center gap-3 xl:flex xl:gap-4">
+                @include('layouts.partials.appearance-toggle')
                 @auth
                     <a href="{{ route('dashboard') }}" class="whitespace-nowrap rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:text-blue-700 lg:px-4">Dashboard</a>
                     <a href="{{ route('detections.create') }}" class="whitespace-nowrap rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:from-blue-700 hover:to-violet-700 lg:px-4">New Detection</a>
@@ -31,6 +32,8 @@
                 @endauth
             </div>
 
+            <div class="flex shrink-0 items-center gap-1 xl:hidden">
+            @include('layouts.partials.appearance-toggle')
             <button type="button" class="flex h-11 w-11 items-center justify-center rounded-lg text-slate-700 xl:hidden" @click="isMenuOpen = !isMenuOpen" :aria-expanded="isMenuOpen" aria-label="Toggle menu">
                 <svg x-show="!isMenuOpen" x-cloak class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -39,6 +42,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
+            </div>
         </div>
 
         <div x-show="isMenuOpen" x-cloak x-transition class="truthguard-public-mobile-menu xl:hidden">

@@ -1,0 +1,170 @@
+.tg-section-kicker {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: .55rem;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    background: linear-gradient(110deg, #eff6ff, #f5f3ff) padding-box,
+        linear-gradient(110deg, #bfdbfe, #ddd6fe) border-box;
+    padding: .45rem .95rem;
+    color: #3730a3;
+    font-size: clamp(.58rem, 2vw, .7rem);
+    font-weight: 700;
+    letter-spacing: .1em;
+    line-height: 1.5;
+    text-align: center;
+    text-transform: uppercase;
+    text-wrap: balance;
+}
+.truthguard-public-footer li a { display: flex; align-items: center; min-height: 2rem; padding-block: .25rem; }
+.tg-use-case-stage { display: grid; }
+.tg-use-case-slide { grid-area: 1 / 1; min-width: 0; visibility: hidden; opacity: 0; pointer-events: none; transition: opacity 650ms ease; }
+.tg-use-case-slide.is-active { visibility: visible; opacity: 1; pointer-events: auto; }
+.tg-use-case-control { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border: 1px solid #cbd5e1; border-radius: 9999px; background: #fff; color: #1d4ed8; }
+.tg-use-case-control svg { width: .8rem; height: .8rem; }
+.tg-use-case-control:hover { border-color: #60a5fa; }
+.tg-use-case-control:focus-visible { outline: 2px solid #60a5fa; outline-offset: 3px; }
+html.dark .tg-use-case-control { background: #182235; border-color: #3b4b63; color: #bfdbfe; }
+@media (prefers-reduced-motion: reduce) { .tg-use-case-slide { transition: none; } }
+.tg-section-kicker::before {
+    content: '';
+    width: .4rem;
+    height: .4rem;
+    flex: 0 0 .4rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+}
+html.dark .tg-section-kicker {
+    background: linear-gradient(110deg, #1c2e49, #292744) padding-box,
+        linear-gradient(110deg, #3b567c, #5b4c7a) border-box;
+    border-color: transparent;
+    color: #ddd6fe;
+}
+html.dark .tg-section-kicker::before { background: linear-gradient(135deg, #93c5fd, #c4b5fd); }
+.tg-section-kicker--inverse,
+html.dark .tg-section-kicker--inverse { background: rgb(255 255 255 / .12); border-color: rgb(255 255 255 / .35); color: #fff; }
+.tg-section-kicker--inverse::before,
+html.dark .tg-section-kicker--inverse::before { background: #e0e7ff; }
+@media (max-width: 640px) {
+    .tg-section-kicker { gap: .4rem; padding: .35rem .7rem; letter-spacing: .075em; }
+}
+
+.truthguard-appearance-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 50%;
+    background: #fff;
+    color: #334155;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.truthguard-appearance-toggle svg { width: 1.2rem; height: 1.2rem; }
+.truthguard-appearance-toggle:focus-visible { outline: 3px solid #60a5fa; outline-offset: 3px; }
+.truthguard-appearance-sun { display: none; }
+.dark .truthguard-appearance-moon { display: none; }
+.dark .truthguard-appearance-sun { display: block; }
+.truthguard-auth-appearance { position: fixed; top: max(.75rem, env(safe-area-inset-top)); right: max(.75rem, env(safe-area-inset-right)); z-index: 60; }
+body.truthguard-auth-page { font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif; }
+
+/* One heading treatment across the landing-page sections. */
+.tg-welcome main :is(h1, h2) {
+    background: linear-gradient(90deg, #172554, #1e40af 50%, #5b21b6) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+html[data-tg-workspace].dark .tg-welcome main :is(h1, h2) {
+    background: linear-gradient(90deg, #bfdbfe, #93c5fd 50%, #c4b5fd) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+.tg-welcome #install h2 {
+    background: linear-gradient(90deg, #fff, #dbeafe 50%, #ede9fe) !important;
+    background-clip: text !important;
+    -webkit-background-clip: text !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+
+html.dark body :is(.truthguard-public-header, .truthguard-public-mobile-menu, .truthguard-public-menu-link, .truthguard-public-menu-secondary, .truthguard-appearance-toggle) {
+    background: #182235 !important;
+    border-color: #3b4b63 !important;
+    color: #f1f5f9 !important;
+    box-shadow: none;
+}
+html.dark .truthguard-public-menu-heading span:first-child { color: #f1f5f9; }
+html.dark .truthguard-public-menu-heading span:last-child { color: #bbc8da; }
+html.dark .tg-welcome :is(.tg-hero-section, .truthguard-presentation-frame, .truthguard-presentation-scene, .truthguard-presentation-caption) { background: #182235 !important; border-color: #3b4b63 !important; }
+html.dark .tg-welcome :is(.truthguard-presentation-title, .truthguard-public-brand-name) { color: #f1f5f9; }
+html.dark .tg-welcome .bg-clip-text { background: none !important; color: #a5c8ff !important; -webkit-text-fill-color: currentColor !important; }
+/* Explicit section backgrounds also cover arbitrary light gradient utilities. */
+html.dark .tg-welcome main > section {
+    background: #0f172a !important;
+    border-color: #3b4b63 !important;
+    color: #f1f5f9;
+}
+html.dark .tg-welcome main > section:nth-of-type(even) { background: #131e30 !important; }
+html.dark .tg-welcome :is(h1, h2, h3, h4) { text-shadow: none !important; }
+html.dark .tg-welcome [class*="shadow"] { box-shadow: none !important; text-shadow: none !important; }
+html.dark .tg-welcome [aria-hidden="true"][class*="blur-"] { display: none; }
+html.dark .tg-welcome .truthguard-presentation-frame::before,
+html.dark .tg-welcome .truthguard-presentation-frame::after { display: none; }
+html.dark .tg-welcome :is(.bg-blue-100, .bg-cyan-100, .bg-violet-100) { background: #223047 !important; color: #c3d9ff !important; }
+html.dark .tg-welcome :is(.truthguard-presentation-copy, .truthguard-presentation-caption p, .truthguard-presentation-caption span, .truthguard-partner-name) { color: #bbc8da; }
+html.dark .tg-welcome :is(.truthguard-video-pill, .truthguard-presentation-status, .truthguard-signal-list span, .truthguard-verdict-strip, .truthguard-presentation-duration) { background: #223047; color: #bfdbfe; border-color: #3b4b63; }
+html.dark .tg-welcome #pricing :is(.tg-plan-card, .tg-pricing-toggle) { background: #182235; border-color: #3b4b63; }
+html.dark .tg-welcome #pricing :is(.tg-plan-price, .tg-plan-card h3) { color: #f1f5f9 !important; }
+html.dark body.truthguard-auth-page .tg-auth-backdrop { background: radial-gradient(ellipse at 50% 48%, #1e3452, transparent 65%), linear-gradient(135deg, #0f172a, #182235 55%, #25203c); }
+html.dark body.truthguard-auth-page .tg-auth-card-detailed { background: linear-gradient(155deg, #1d3049, #182235 60%) !important; border-color: #3b4b63; box-shadow: 0 24px 65px #02061766; }
+html.dark body.truthguard-auth-page :is(.tg-auth-card-detailed::after, .tg-auth-backdrop__tile) { opacity: .3; }
+html.dark body.truthguard-auth-page .tg-auth-backdrop__halo { opacity: .08; }
+
+/* Keep all form actions reachable on short screens and with the keyboard open. */
+body.truthguard-auth-page .truthguard-auth-shell { height: auto; min-height: 100dvh; overflow: visible; padding-top: 4.5rem; padding-bottom: 1.5rem; }
+body.truthguard-auth-page .truthguard-auth-card { max-height: none; overflow: visible; }
+html body.truthguard-auth-page { height: auto; min-height: 100dvh; overflow-y: auto !important; }
+@media (min-width: 1024px) {
+    body.truthguard-auth-entry-page .truthguard-auth-shell { padding-top: 2rem; padding-bottom: 2rem; }
+    body.truthguard-auth-entry-page .truthguard-auth-shell > .relative { max-width: 25rem; }
+    body.truthguard-auth-entry-page .truthguard-auth-card { padding: 1.25rem; }
+    body.truthguard-auth-entry-page .truthguard-auth-card > a:first-child { gap: .35rem; margin-bottom: .75rem; }
+    body.truthguard-auth-entry-page .truthguard-auth-card > a:first-child img { width: 3rem; height: 3rem; }
+    body.truthguard-auth-entry-page .truthguard-auth-card h1 { font-size: 1.375rem; line-height: 1.35; }
+}
+@media (max-width: 360px) {
+    .truthguard-public-header > div:first-child { padding-inline: .75rem; }
+    .truthguard-public-header .truthguard-public-brand-name { font-size: 1rem; }
+    .truthguard-public-header a:first-child { gap: .4rem; }
+}
+
+@media (max-width: 640px) {
+    .tg-workflow-steps {
+        flex-wrap: nowrap;
+        gap: .25rem;
+        font-size: clamp(.5rem, 2.3vw, .625rem);
+    }
+    .tg-workflow-steps > span:not([aria-hidden]) {
+        flex: 0 1 auto;
+        gap: .25rem;
+        padding: .4rem .35rem;
+        white-space: nowrap;
+    }
+    .tg-workflow-steps > span > span {
+        width: .9rem;
+        height: .9rem;
+        flex: 0 0 .9rem;
+        font-size: .5rem;
+    }
+    .tg-workflow-steps > span[aria-hidden] { display: none; }
+}

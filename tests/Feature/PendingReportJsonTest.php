@@ -146,7 +146,7 @@ class PendingReportJsonTest extends TestCase
             ->assertOk()
             ->assertJsonPath('processing_status', 'completed')
             ->assertJsonPath('verdict', 'MISLEADING')
-            ->assertJsonCount(2, 'sources');
+            ->assertJsonCount(5, 'sources');
 
         $detection->refresh();
         $this->assertSame('MISLEADING', data_get($detection->fact_check_result, 'verdict'));

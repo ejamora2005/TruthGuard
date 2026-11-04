@@ -35,7 +35,7 @@
                     <div aria-hidden="true" class="absolute -right-20 -top-24 h-72 w-72 rounded-full border-[40px] border-blue-100/40"></div>
                     <div class="relative grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
                         <div class="max-w-3xl">
-                            <span class="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/80 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-blue-700 shadow-sm backdrop-blur"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>The public record</span>
+                            <span class="tg-section-kicker">See what the evidence says</span>
                             <h1 class="mt-5 bg-gradient-to-r from-slate-950 via-blue-800 to-violet-800 bg-clip-text text-4xl font-black tracking-tight text-transparent sm:text-5xl lg:text-6xl">Claim Reviews</h1>
                             <p class="mt-5 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">Browse recent reviews from independent publishers, compare their ratings, and follow the original evidence before deciding what to trust or share.</p>
                             @guest

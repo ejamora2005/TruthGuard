@@ -1,3 +1,4 @@
+@php($appearanceScope = ($publicAppearance ?? false) ? 'guest' : (auth()->check() ? 'user:'.auth()->id() : 'guest'))
 <script>
     // Apply before paint so saved reading preferences survive every page load.
     (() => {
@@ -5,20 +6,23 @@
         const system = window.matchMedia('(prefers-color-scheme: dark)');
         const allowedModes = ['light', 'dark', 'system'];
         const allowedSizes = ['standard', 'large', 'extra-large'];
+        const scope = @js($appearanceScope);
+        const modeKey = `truthguard-appearance:${scope}:mode`;
+        const sizeKey = `truthguard-appearance:${scope}:text-size`;
         const read = (key, allowed, fallback) => {
             try {
                 const value = localStorage.getItem(key);
                 return allowed.includes(value) ? value : fallback;
             } catch { return fallback; }
         };
-        let mode = read('truthguard-display-mode', allowedModes, 'system');
-        let textSize = read('truthguard-text-size', allowedSizes, 'standard');
+        let mode = read(modeKey, allowedModes, 'system');
+        let textSize = read(sizeKey, allowedSizes, 'standard');
         root.dataset.tgWorkspace = '';
         const apply = () => {
             const dark = mode === 'dark' || (mode === 'system' && system.matches);
             root.classList.toggle('dark', dark);
             root.dataset.displayMode = mode;
-            root.dataset.textSize = textSize;
+            root.dataset.textSize = @js((bool) ($publicAppearance ?? false)) ? 'standard' : textSize;
             root.style.colorScheme = dark ? 'dark' : 'light';
             window.dispatchEvent(new CustomEvent('truthguard-appearance-updated', { detail: { mode, textSize } }));
         };
@@ -31,17 +35,17 @@
                 if (allowedModes.includes(preferences.mode)) mode = preferences.mode;
                 if (allowedSizes.includes(preferences.textSize)) textSize = preferences.textSize;
                 try {
-                    localStorage.setItem('truthguard-display-mode', mode);
-                    localStorage.setItem('truthguard-text-size', textSize);
+                    localStorage.setItem(modeKey, mode);
+                    localStorage.setItem(sizeKey, textSize);
                 } catch {}
                 apply();
             },
         };
         system.addEventListener('change', () => { if (mode === 'system') apply(); });
         window.addEventListener('storage', (event) => {
-            if (event.key !== null && !['truthguard-display-mode', 'truthguard-text-size'].includes(event.key)) return;
-            mode = read('truthguard-display-mode', allowedModes, 'system');
-            textSize = read('truthguard-text-size', allowedSizes, 'standard');
+            if (event.key !== null && ![modeKey, sizeKey].includes(event.key)) return;
+            mode = read(modeKey, allowedModes, 'system');
+            textSize = read(sizeKey, allowedSizes, 'standard');
             apply();
         });
         apply();

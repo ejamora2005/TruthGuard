@@ -100,6 +100,12 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
     const config = getAdminConfig();
     const [now, setNow] = useState(() => new Date());
     const [profileOpen, setProfileOpen] = useState(false);
+    const [darkMode, setDarkMode] = useState(() => document.documentElement.classList.contains('dark'));
+    useEffect(() => {
+        const syncAppearance = () => setDarkMode(document.documentElement.classList.contains('dark'));
+        window.addEventListener('truthguard-appearance-updated', syncAppearance);
+        return () => window.removeEventListener('truthguard-appearance-updated', syncAppearance);
+    }, []);
     const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
     const [logoutSubmitting, setLogoutSubmitting] = useState(false);
     const [logoutError, setLogoutError] = useState('');
@@ -235,6 +241,14 @@ export function AdminHeader({ title, onToggleSidebar, mobileOpen }) {
                     </div>
                 </div>
 
+                <button type="button" className="truthguard-admin-top-icon shrink-0"
+                    onClick={() => window.TruthGuardAppearance?.toggle()}
+                    aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'} aria-pressed={darkMode}>
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                        {darkMode ? <><circle cx="12" cy="12" r="4"/><path strokeLinecap="round" d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.4 1.4m11.2 11.2L19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></> : <path strokeLinecap="round" strokeLinejoin="round" d="M20.9 13a9 9 0 0 1-9.9-9.9A9 9 0 1 0 20.9 13Z"/>}
+                    </svg>
+                </button>
                 <div ref={profileRef} className="relative shrink-0">
                     <button
                         type="button"

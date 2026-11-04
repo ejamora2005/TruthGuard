@@ -86,7 +86,8 @@ class AppearancePreferencesTest extends TestCase
         config()->set('firebase.enabled', false);
         $this->actingAs(User::factory()->create(['is_admin' => true]));
         $response = $this->get('/admin/dashboard')->assertOk()
-            ->assertSee('TruthGuardAppearance', false)->assertSee('truthguard-display-mode', false);
+            ->assertSee('TruthGuardAppearance', false)->assertSee('truthguard-appearance:', false)
+            ->assertSee("const scope = 'user:".auth()->id()."';", false);
         if (getenv('TRUTHGUARD_DARK_MODE_BROWSER_FIXTURE')) {
             file_put_contents(storage_path('tmp-dark-mode-admin.html'), $response->getContent());
         }

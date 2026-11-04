@@ -830,23 +830,24 @@
 
             .truthguard-partner-card {
                 flex-basis: clamp(10.75rem, 48vw, 12rem);
-                min-height: 5rem;
-                padding: 0.45rem 0.5rem;
+                min-height: 4rem;
+                gap: 0.25rem;
+                padding: 0.3rem 0.5rem;
             }
 
             .truthguard-partner-card img {
-                height: 3.5rem;
-                width: 4.25rem;
+                height: 2.75rem;
+                width: 3.4rem;
             }
 
             .truthguard-partner-card img.truthguard-partner-logo-wide {
-                width: 7.5rem;
+                width: 6.25rem;
             }
 
             .truthguard-partner-name {
                 display: -webkit-box;
-                font-size: clamp(0.56rem, 2.45vw, 0.66rem);
-                line-height: 1.12;
+                font-size: clamp(0.5rem, 2.1vw, 0.58rem);
+                line-height: 1.2;
                 max-width: 11.25rem;
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -939,6 +940,7 @@
             </div>
 
             <div class="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6 md:mt-16 lg:mt-20 lg:px-8" aria-labelledby="capstone-partners-title">
+                <p class="mb-4 text-center"><span class="tg-section-kicker">The people behind the project</span></p>
                 <h2 id="capstone-partners-title" class="mb-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Capstone Project Partners</h2>
                 <div class="truthguard-partner-marquee" aria-label="Capstone project partner logos">
                     <div class="truthguard-partner-track">
@@ -974,10 +976,11 @@
 
             <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-10 max-w-3xl text-center md:mb-14">
+                    <p class="mb-4"><span class="tg-section-kicker">Your verification toolkit</span></p>
                     <h2 class="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">Everything you need to investigate a claim</h2>
                     <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">Submit media or a claim, compare the available evidence, review trusted sources, and keep every result organized in one workspace.</p>
 
-                    <div class="mt-7 flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-slate-600 sm:gap-3">
+                    <div class="tg-workflow-steps mt-7 flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-slate-600 sm:gap-3">
                         @foreach (['Submit', 'Analyze', 'Review sources', 'Save'] as $step => $label)
                             <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 shadow-sm">
                                 <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] text-white">{{ $step + 1 }}</span>
@@ -1094,26 +1097,14 @@
         <section id="use-cases" class="reveal border-b border-slate-200 bg-white py-16 md:py-20">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-3xl text-center">
+                    <p class="mb-4"><span class="tg-section-kicker">Real claims. Everyday situations.</span></p>
                     <h2 class="text-3xl font-bold md:text-4xl">TruthGuard Use Cases</h2>
                     <p class="mt-4 text-lg leading-8 text-slate-600">Choose a workflow that fits your work, whether you are reviewing public claims, newsroom content, or community reports.</p>
                 </div>
 
-                <div class="tg-welcome-tabs mb-10 flex flex-wrap justify-center gap-2">
-                    @foreach ($useCases as $key => $case)
-                        <button
-                            type="button"
-                            @click="activeUseCase='{{ $key }}'"
-                            :aria-pressed="activeUseCase === '{{ $key }}'"
-                            :class="activeUseCase === '{{ $key }}' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-700 border-slate-300'"
-                            class="rounded-lg border px-4 py-2 text-sm font-medium transition"
-                        >
-                            {{ $case['title'] }}
-                        </button>
-                    @endforeach
-                </div>
-
+                <div class="tg-use-case-stage" role="region" aria-roledescription="carousel" aria-label="TruthGuard use cases">
                 @foreach ($useCases as $key => $case)
-                    <div x-show="activeUseCase === '{{ $key }}'" x-cloak x-transition class="reveal overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+                    <div :class="{ 'is-active': activeUseCase === '{{ $key }}' }" :aria-hidden="activeUseCase !== '{{ $key }}'" :inert="activeUseCase !== '{{ $key }}'" class="tg-use-case-slide overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
                         <div class="flex flex-col lg:flex-row">
                             <div class="p-8 lg:w-1/2 lg:p-12">
                                 <h3 class="mb-4 text-2xl font-bold">{{ $case['title'] }}</h3>
@@ -1140,17 +1131,24 @@
                         </div>
                     </div>
                 @endforeach
+                </div>
 
-                <div class="mt-6 flex items-center justify-center gap-2" aria-label="Use case position">
+                <div class="mt-5 flex items-center justify-center gap-2" aria-label="Use case controls">
+                    <button type="button" class="tg-use-case-control" @click="moveUseCase(-1)" aria-label="Previous use case"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m14 6-6 6 6 6"/></svg></button>
+                    <div class="flex items-center gap-1.5" aria-label="Use case position">
                     @foreach ($useCases as $key => $case)
                         <button
                             type="button"
-                            @click="activeUseCase='{{ $key }}'"
-                            :class="activeUseCase === '{{ $key }}' ? 'w-8 bg-blue-600' : 'w-2 bg-slate-300 hover:bg-blue-300'"
-                            class="h-2 rounded-full transition-all duration-300"
+                            data-use-case-key="{{ $key }}"
+                            @click="selectUseCase('{{ $key }}')"
+                            :aria-pressed="activeUseCase === '{{ $key }}'"
+                            :class="activeUseCase === '{{ $key }}' ? 'w-5 bg-blue-600' : 'w-1.5 bg-slate-300 hover:bg-blue-300'"
+                            class="h-1.5 rounded-full transition-all duration-300"
                             aria-label="Show {{ $case['title'] }}"
                         ></button>
                     @endforeach
+                    </div>
+                    <button type="button" class="tg-use-case-control" @click="moveUseCase(1)" aria-label="Next use case"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m10 6 6 6-6 6"/></svg></button>
                 </div>
             </div>
         </section>
@@ -1160,7 +1158,7 @@
             <div aria-hidden="true" class="absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-violet-200/30 blur-3xl"></div>
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="relative mx-auto mb-12 max-w-3xl text-center">
-                    <span class="inline-flex rounded-full border border-blue-100 bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-blue-700 shadow-sm">A 30-second safety check</span>
+                    <span class="tg-section-kicker">A 30-second safety check</span>
                     <h2 class="mt-4 bg-gradient-to-r from-slate-950 via-blue-800 to-violet-800 bg-clip-text text-3xl font-black tracking-tight text-transparent md:text-5xl">Before You Share</h2>
                     <p class="mx-auto mt-5 max-w-2xl text-base leading-8 text-slate-600 md:text-lg">Pause, review the evidence, and confirm important details. TruthGuard supports your judgment—it does not replace it.</p>
                 </div>
@@ -1205,7 +1203,7 @@
         <section id="pricing" class="reveal border-b border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 py-16 md:py-24">
             <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="mx-auto mb-14 max-w-4xl text-center">
-                    <span class="tg-pricing-kicker inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">Simple plans, clear value</span>
+                    <span class="tg-section-kicker">Choose your starting point</span>
                     <h2 class="mt-4 bg-gradient-to-r from-slate-950 via-blue-800 to-violet-800 bg-clip-text text-3xl font-black tracking-tight text-transparent md:text-5xl">Start Free. Keep It Affordable.</h2>
                     <p class="mx-auto mt-5 max-w-3xl text-lg leading-8 text-slate-600">Start with the public review tools and personal workspace. Choose a plan that keeps trusted verification within reach as your workflow grows.</p>
 
@@ -1293,6 +1291,7 @@
 
                         <div class="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                             <div>
+                                <p class="mb-4"><span class="tg-section-kicker tg-section-kicker--inverse">Keep TruthGuard with you</span></p>
                                 <h2 class="text-3xl font-bold text-white md:text-4xl">Install TruthGuard As an App</h2>
                                 <p class="mt-3 max-w-2xl text-lg text-blue-100">Launch faster and work in app mode on desktop or mobile with the same TruthGuard dashboard experience.</p>
                             </div>
@@ -1335,6 +1334,9 @@
             return {
                 isMenuOpen: false,
                 activeUseCase: 'customer-service',
+                useCaseKeys: [],
+                useCaseTimer: null,
+                useCasePaused: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
                 currentTestimonial: 0,
                 totalTestimonials: 1,
                 isAnnual: false,
@@ -1349,6 +1351,8 @@
                     this.updateScrollOffset();
                     this.observeReveals();
                     this.startAutoRotate();
+                    this.useCaseKeys = Array.from(this.$el.querySelectorAll('[data-use-case-key]'), el => el.dataset.useCaseKey);
+                    this.startUseCaseRotation();
                     this.scrollHandler = () => {
                         this.showBackTop = window.scrollY > 420;
                     };
@@ -1435,6 +1439,25 @@
 
                     items.forEach((el) => observer.observe(el));
                 },
+                startUseCaseRotation() {
+                    window.clearInterval(this.useCaseTimer);
+                    this.useCaseTimer = window.setInterval(() => {
+                        const section = this.$el.querySelector('#use-cases');
+                        if (!section || this.useCasePaused || document.hidden || section.contains(document.activeElement)) return;
+                        const rect = section.getBoundingClientRect();
+                        if (rect.bottom > 0 && rect.top < window.innerHeight) this.moveUseCase(1, false);
+                    }, 8000);
+                },
+                selectUseCase(key) {
+                    this.activeUseCase = key;
+                    this.startUseCaseRotation();
+                },
+                moveUseCase(direction, manual = true) {
+                    if (!this.useCaseKeys.length) return;
+                    const index = this.useCaseKeys.indexOf(this.activeUseCase);
+                    this.activeUseCase = this.useCaseKeys[(index + direction + this.useCaseKeys.length) % this.useCaseKeys.length];
+                    if (manual) this.startUseCaseRotation();
+                },
                 startAutoRotate() {
                     this.stopAutoRotate();
                     this.autoRotateId = setInterval(() => {
@@ -1460,6 +1483,7 @@
                     this.startAutoRotate();
                 },
                 destroy() {
+                    window.clearInterval(this.useCaseTimer);
                     this.stopAutoRotate();
                     if (this.scrollHandler) {
                         window.removeEventListener('scroll', this.scrollHandler);

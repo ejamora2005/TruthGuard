@@ -50,7 +50,7 @@ class EvidenceVerificationService
         $extractionBudget->freshSources = ! $detectorOnly && ClaimPlanner::isCurrentStatus($question);
         try {
             $progress && $progress('Reading submitted content');
-            $submittedKnownResult = $detectorOnly ? null : KnownFactCheckCatalog::match(implode(' ', array_filter([
+            $submittedKnownResult = $detectorOnly ? null : ReviewedClaimLookup::lookup(implode(' ', array_filter([
                 $context['caption_text'] ?? null,
                 $context['notes'] ?? null,
             ])));
@@ -86,7 +86,7 @@ class EvidenceVerificationService
                     'result' => null, 'reason' => 'Factual verification was not requested or the task needs clarification.'];
             } else {
                 $knownResult = $submittedKnownResult
-                    ?? KnownFactCheckCatalog::match((string) ($extraction['analysis_text'] ?? ''));
+                    ?? ReviewedClaimLookup::lookup((string) ($extraction['analysis_text'] ?? ''));
                 $analysis = $knownResult
                     ? $this->applyKnownResult($analysis, $knownResult, $context, $extraction)
                     : $this->applyClaims($analysis, $context, $file, $progress, $extraction, $extractionBudget->pages);

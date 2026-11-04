@@ -20,7 +20,7 @@ class KnownFactCheckCatalogTest extends TestCase
         $this->assertStringContainsString('1960 Science paper', $result['summary']);
         $this->assertStringContainsString('mid-2080s', $result['summary']);
         $this->assertSame(0, data_get($result, 'diagnostics.api_usage.total_tokens'));
-        $this->assertCount(2, $result['sources']);
+        $this->assertCount(5, $result['sources']);
     }
 
     #[Test]
