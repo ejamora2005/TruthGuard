@@ -3567,6 +3567,7 @@ new class extends Component
                 this.$watch('hasFile', () => this.updateScrollLock());
 
                 if (this.pendingResultUrl && !this.submitting) {
+                    this.progressMinimized = true;
                     this.previewKind = this.pendingMediaType === 'document' ? 'pdf' : this.pendingMediaType;
                     this.trackPendingResult(this.pendingResultUrl);
                 }
@@ -5870,7 +5871,7 @@ new class extends Component
                         <span x-text="composerError"></span>
                     </div>
 
-                    <div class="truthguard-composer-footer mt-2 hidden items-center justify-between gap-3 sm:flex">
+                    <div class="truthguard-composer-footer mt-2 hidden items-center justify-between gap-3 sm:flex" :style="submitting ? 'display: flex' : ''">
                         <div class="truthguard-input-types flex min-w-0 items-center gap-1.5 overflow-x-auto" :inert="submitting" role="group" aria-label="Evidence type">
                             <button type="button" class="truthguard-input-type" :class="selectedInputType === 'image' ? 'truthguard-input-type-active' : ''" :aria-pressed="selectedInputType === 'image'" @click="selectInputType('image')">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">

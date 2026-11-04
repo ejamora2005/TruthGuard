@@ -62,6 +62,17 @@ class DetectionController extends Controller
         $pendingDetectionId = $request->integer('pending');
         $selectedDetectionId = $pendingDetectionId ?: $request->integer('detection');
 
+        if ($selectedDetectionId <= 0) {
+            $pendingDetection = Detection::query()
+                ->where('user_id', $request->user()->id)
+                ->whereIn('processing_status', ['queued', 'processing'])
+                ->latest('id')->first();
+
+            if ($pendingDetection) {
+                return view('detections.create', ['selectedDetection' => null, 'pendingDetection' => $pendingDetection]);
+            }
+        }
+
         if ($selectedDetectionId > 0) {
             $selectedDetectionQuery = Detection::query()->whereKey($selectedDetectionId);
 

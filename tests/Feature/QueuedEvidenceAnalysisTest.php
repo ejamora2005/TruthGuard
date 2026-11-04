@@ -53,6 +53,19 @@ class QueuedEvidenceAnalysisTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_returning_to_fact_check_resumes_only_the_users_running_check_without_a_floating_circle(): void
+    {
+        $own = $this->savedReport();
+        $own->forceFill(['processing_status' => 'processing'])->saveQuietly();
+        $other = $this->savedReport();
+        $other->forceFill(['processing_status' => 'queued'])->saveQuietly();
+
+        $this->actingAs($own->user)->get(route('detections.create'))
+            ->assertOk()
+            ->assertViewHas('pendingDetection', fn ($pending) => $pending->id === $own->id)
+            ->assertDontSee('class="truthguard-background-analysis"', false);
+    }
+
     public function test_retry_is_queued_once_and_preserves_the_old_result_until_the_worker_finishes(): void
     {
         $detection = $this->savedReport();

@@ -112,6 +112,9 @@ for (const mobile of [false, true]) {
 test('opening an unfinished report resumes polling without resubmission', async () => {
     const { page, state } = await setup({ resume: true });
     try {
+        await page.locator('.truthguard-progress-restore').waitFor({ state: 'visible' });
+        assert.equal(await page.locator('.truthguard-inline-progress').isVisible(), false);
+        await page.locator('.truthguard-progress-restore').click();
         await page.locator('.truthguard-inline-progress').waitFor({ state: 'visible' });
         await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
         assert.equal(state.polls, 1); // Alpine auto-init plus x-init must not start two polls.
@@ -126,6 +129,7 @@ test('opening an unfinished report resumes polling without resubmission', async 
 test('temporary status failures reconnect; a failed analysis opens its saved final report', async () => {
     const { page, state } = await setup({ resume: true });
     try {
+        await page.locator('.truthguard-progress-restore').click();
         await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
         state.transientFailure = true;
         await refresh(page, state);

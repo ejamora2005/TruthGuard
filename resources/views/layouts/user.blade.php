@@ -1474,7 +1474,7 @@
                     </footer>
                 @endunless
 
-                @if ($backgroundDetection)
+                @if ($backgroundDetection && ! request()->routeIs('detections.create'))
                     @include('layouts.partials.background-analysis', ['detection' => $backgroundDetection])
                 @endif
 
