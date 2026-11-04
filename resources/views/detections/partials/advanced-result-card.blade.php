@@ -561,6 +561,7 @@
         .tg-verdict-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; margin-top: .75rem; }
         .tg-report-main-verdict { display: inline-flex; align-items: center; gap: .75rem; width: fit-content; max-width: 100%; margin: 0; padding: .875rem 1rem; border: 1px solid rgb(var(--tg-accent-rgb) / .3); border-radius: 10px; background: rgb(var(--tg-accent-rgb) / .08); color: var(--tg-accent); font-size: clamp(1.125rem, 1.75vw, 1.5rem); font-weight: 800; line-height: 1.35; }
         .tg-report-main-verdict > svg { flex-shrink: 0; }
+        .tg-report-main-verdict > span { white-space: nowrap; }
         .tg-verdict-help { position: relative; display: inline-block; min-width: 0; max-width: 100%; padding-block: .5rem; margin-block: -.5rem; }
         .tg-verdict-help > h2 { margin: 0; }
         .tg-verdict-help .tg-report-main-verdict { cursor: help; text-align: left; }
@@ -881,10 +882,10 @@
         }
         @media (prefers-reduced-motion: reduce) { .tg-submission-details > summary > svg { transition: none; } }
         @media (max-width: 640px) {
-            .tg-ai-report .tg-verdict-summary { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: .625rem; align-items: stretch; }
+            .tg-ai-report .tg-verdict-summary { grid-template-columns: minmax(0, 1fr); gap: .625rem; align-items: start; }
             .tg-verdict-summary > .tg-verdict-help { display: flex; align-items: stretch; padding-block: 0; margin-block: 0; }
             .tg-verdict-summary > .tg-verdict-help > h2 { display: flex; width: 100%; }
-            .tg-ai-report .tg-verdict-help .tg-report-main-verdict { width: 100%; min-height: 3.5rem; gap: .375rem; padding: .625rem .5rem; font-size: .875rem !important; line-height: 1.5; }
+            .tg-ai-report .tg-verdict-help .tg-report-main-verdict { width: fit-content; min-height: 2.75rem; gap: .375rem; padding: .625rem .65rem; font-size: .8rem !important; line-height: 1.5; }
             .tg-verdict-help .tg-report-main-verdict > svg { width: 18px; height: 18px; flex: 0 0 18px; }
             .tg-ai-report .tg-verdict-help .tg-report-main-verdict > span { font-size: inherit !important; line-height: inherit; }
             .tg-ai-report .tg-verdict-score { display: flex; flex-direction: column; justify-content: center; max-width: none; padding: .625rem; }
