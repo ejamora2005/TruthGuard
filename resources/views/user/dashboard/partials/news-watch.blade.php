@@ -861,17 +861,15 @@
     </div>
 
     @if ($feedItems->isNotEmpty())
-        @if ($feedTotalPages > 1)
-            <x-pagination
+        <x-pagination
                 :current-page="$feedCurrentPage"
                 :last-page="$feedTotalPages"
                 :total="$feedTotal"
                 :first-item="$feedFirstItem"
                 :last-item="$feedLastItem"
                 :page-url="$feedPageUrl"
-                label="Latest fact-check pages, above results"
-            />
-        @endif
+                label="Latest fact-check pages"
+        />
         <div class="tg-mobile-feed-list divide-y divide-slate-200 px-5 sm:px-6">
             @foreach ($feedItems as $item)
                 @php
@@ -991,15 +989,6 @@
             @endforeach
         </div>
 
-        <x-pagination
-            :current-page="$feedCurrentPage"
-            :last-page="$feedTotalPages"
-            :total="$feedTotal"
-            :first-item="$feedFirstItem"
-            :last-item="$feedLastItem"
-            :page-url="$feedPageUrl"
-            label="Latest fact-check pages"
-        />
     @else
         <div class="m-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center sm:m-6">
             @if ($feedSearch !== '' || $feedCategory !== 'all')

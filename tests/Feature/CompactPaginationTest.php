@@ -60,7 +60,7 @@ class CompactPaginationTest extends TestCase
                 @$document->loadHTML($response->getContent());
                 $xpath = new \DOMXPath($document);
                 $this->assertCount(5, $xpath->query('//article[contains(@class,"tg-fact-feed-row")]'));
-                $this->assertCount(2, $xpath->query('//nav[contains(@class,"tg-pagination-controls")]'));
+                $this->assertCount(1, $xpath->query('//nav[contains(@class,"tg-pagination-controls")]'));
             }
         }
         Http::assertNothingSent();
