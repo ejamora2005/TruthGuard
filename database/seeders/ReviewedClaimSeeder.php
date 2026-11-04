@@ -16,8 +16,8 @@ class ReviewedClaimSeeder extends Seeder
         $philstar = 'https://www.philstar.com/headlines/2026/';
         $entries = [
             ['suan-fabricated-bato-shoot-to-kill-quote', 'FALSE', 'Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.',
-                'The circulating quote card falsely attributes a threat against Senator Ronald "Bato" dela Rosa to Cagayan de Oro Representative Lordan Suan. In a November 2, 2026 statement, Suan denied making the remarks about calling a House hearing and seeking a shoot-to-kill resolution if the senator failed to surrender. Philstar and SunStar documented his denial. Reports of the senator\'s surrender deadline do not authenticate the fabricated quotation. This assessment applies to that specific quote card, rather than every statement about efforts to arrest dela Rosa.',
-                'Suan denied the quotation attributed to him; reporting on an arrest or surrender deadline does not establish that he made the threat.',
+                'The viral quote claiming Representative Lordan Suan threatened a shoot-to-kill resolution against Senator Ronald "Bato" dela Rosa is fabricated. Suan denied making the statement on November 2, 2026. Reports about dela Rosa\'s surrender deadline do not establish that Suan issued such a threat. This finding applies specifically to the quotation attributed to Suan.',
+                'The statement was falsely attributed to Suan, who publicly denied it.',
                 ['Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.',
                     'Lordan Suan warned Bato dela Rosa of a shoot-to-kill order if he fails to surrender.',
                     'If Bato dela Rosa fails to surrender by the deadline, I will convene a House committee hearing and file a shoot-to-kill resolution.',
