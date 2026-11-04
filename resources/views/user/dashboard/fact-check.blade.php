@@ -1,7 +1,6 @@
 @extends('layouts.user')
 @section('title', 'Fact-Check Source')
 @section('page_title', 'Fact-Check Source')
-@section('page_back_url', isset($reportDetection) ? route('detections.result', $reportDetection) : route('dashboard').'#news-watch')
 @section('content')
     @php
         $safeUrl = fn ($value) => is_string($value) && filter_var($value, FILTER_VALIDATE_URL)
@@ -164,6 +163,10 @@
                 @if ($date)<span>{{ $date }}</span>@endif
                 @if (! empty($item['query']))<span>{{ str_starts_with($item['feed_source_type'] ?? '', 'publisher') ? 'Source' : 'Topic' }}: {{ $item['query'] }}</span>@endif
             </header>
+            <a href="{{ isset($reportDetection) ? route('detections.result', $reportDetection) : route('dashboard').'#news-watch' }}" class="inline-flex min-h-11 w-fit items-center gap-2 rounded-lg px-2 text-sm font-bold text-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:text-blue-300" aria-label="Back to {{ isset($reportDetection) ? 'fact-check report' : 'latest fact checks' }}">
+                <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m10 6-6 6 6 6M4 12h16" /></svg>
+                Back
+            </a>
             @if ($imageUrl)
                 <figure>
                     <a href="{{ $imageUrl }}" target="_blank" rel="noopener noreferrer" aria-label="View full fact-check image"><img src="{{ $imageUrl }}" alt="{{ $headline }}" referrerpolicy="no-referrer"></a>
