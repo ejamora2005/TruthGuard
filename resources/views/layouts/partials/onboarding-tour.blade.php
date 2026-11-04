@@ -514,7 +514,7 @@
                 <p role="alert" x-show="error" x-cloak class="mt-4 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" x-text="error"></p>
             </div>
 
-            <div class="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <div class="truthguard-tour-actions flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
                 <button
                     type="button"
                     class="inline-flex items-center justify-center rounded-full px-3.5 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-200/70 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"

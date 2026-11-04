@@ -1,4 +1,33 @@
 /* Reading preferences are limited to signed-in Blade workspaces. */
+html[data-tg-workspace].dark .truthguard-tour-card {
+    background: #182235 !important;
+    border-color: #3b4b63 !important;
+    color: #f1f5f9 !important;
+}
+html[data-tg-workspace].dark .truthguard-tour-copy { color: #bbc8da !important; }
+html[data-tg-workspace].dark .truthguard-tour-kicker { color: #93c5fd !important; }
+html[data-tg-workspace].dark .truthguard-tour-icon { background: #203858 !important; border-color: #5276a3 !important; color: #bfdbfe; }
+html[data-tg-workspace].dark .truthguard-tour-progress { background: #3b4b63 !important; }
+html[data-tg-workspace].dark .truthguard-tour-card .truthguard-tour-actions { background: #223047 !important; border-color: #3b4b63 !important; }
+
+/* Keep the profile avatar crisp without decorative halos or glow. */
+.truthguard-topbar .truthguard-profile-button,
+.truthguard-topbar .truthguard-profile-button:hover,
+.truthguard-topbar .truthguard-profile-button-active {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+}
+.truthguard-topbar .truthguard-profile-button::before { display: none !important; }
+.truthguard-topbar .truthguard-profile-button::after,
+.truthguard-topbar .truthguard-profile-button > :is(img, span) { box-shadow: none !important; }
+.truthguard-topbar .truthguard-profile-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+html[data-tg-workspace].dark .truthguard-topbar .truthguard-profile-button { background: #182235 !important; border-color: #53647c !important; }
+html[data-tg-workspace].dark .truthguard-topbar .truthguard-profile-button::after { border-color: #182235; }
+html[data-tg-workspace].dark .truthguard-topbar .truthguard-profile-button:focus-visible { outline-color: #93c5fd; }
+
 html[data-tg-workspace] { --tg-text-scale: 1; }
 html[data-tg-workspace][data-text-size="large"] { font-size: 112.5%; --tg-text-scale: 1.125; }
 html[data-tg-workspace][data-text-size="extra-large"] { font-size: 125%; --tg-text-scale: 1.25; }
