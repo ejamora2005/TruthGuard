@@ -6062,6 +6062,12 @@ body.truthguard-fact-check-create-route .truthguard-recent-card:focus-visible > 
 @media (max-width: 640px) {
     body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-recent-grid > .truthguard-recent-card {
         grid-template-columns: 48px minmax(0, 1fr) 30px !important;
+        column-gap: .75rem !important;
+    }
+    body.truthguard-fact-check-create-route .truthguard-mobile-check .truthguard-recent-meta {
+        column-gap: .6rem !important;
+        row-gap: .3rem !important;
+        margin-top: .5rem !important;
     }
 }
 
