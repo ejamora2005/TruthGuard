@@ -1316,6 +1316,7 @@
                                     class="truthguard-profile-popover absolute right-0 z-50 mt-4 w-[min(18rem,calc(100vw-1rem))] rounded-[22px] border border-blue-100/80 p-1.5 backdrop-blur-xl sm:w-[17rem]"
                                     role="menu"
                                 >
+                                    <span class="truthguard-profile-pointer" aria-hidden="true"></span>
                                     <div class="truthguard-profile-capsule rounded-[19px] border border-white/10 px-3.5 py-3">
                                         <div class="relative z-10 flex items-center gap-3">
                                             <span class="truthguard-profile-menu-avatar relative inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl">
@@ -1383,11 +1384,6 @@
                                                 </svg>
                                             </span>
                                             <span class="relative z-10 flex-1">Account settings</span>
-                                            <span class="truthguard-profile-chevron relative z-10">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6" />
-                                                </svg>
-                                            </span>
                                         </a>
 
                                         <button
@@ -1403,11 +1399,6 @@
                                                 </svg>
                                             </span>
                                             <span class="relative z-10 flex-1 text-left" data-pwa-install-label>Install app</span>
-                                            <span class="truthguard-profile-chevron relative z-10">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6" />
-                                                </svg>
-                                            </span>
                                         </button>
 
                                         <p class="hidden px-3 text-[10px] font-semibold leading-snug text-slate-500" data-pwa-install-help></p>
@@ -1425,11 +1416,6 @@
                                                 </svg>
                                             </span>
                                             <span class="relative z-10 flex-1 text-left">Sign out</span>
-                                            <span class="truthguard-profile-chevron relative z-10">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6" />
-                                                </svg>
-                                            </span>
                                         </button>
                                     </div>
                                 </div>

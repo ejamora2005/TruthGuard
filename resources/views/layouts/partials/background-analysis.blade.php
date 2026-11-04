@@ -111,7 +111,6 @@
     >
         <span class="truthguard-background-analysis-cue" x-show="!complete && !failed && !showPrompt" aria-hidden="true">
             <span>View progress</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16m-6-6 6 6-6 6"></path></svg>
         </span>
         <span class="truthguard-background-analysis-icon" aria-hidden="true">
             <img class="truthguard-background-analysis-logo" src="{{ $floatingLogoUrl }}" alt="">
@@ -144,6 +143,7 @@
         class="truthguard-background-analysis-prompt"
         role="status"
     >
+        <span class="truthguard-progress-pointer" aria-hidden="true"></span>
         <button type="button" class="truthguard-background-analysis-dismiss" @click="dismiss()" aria-label="Dismiss fact-check update">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" d="m7 7 10 10M17 7 7 17"></path>
