@@ -4831,10 +4831,10 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         right: 0;
         bottom: 0.18rem;
         width: 100%;
-        max-width: 3.75rem;
+        max-width: 4rem;
         margin-right: auto;
         margin-left: auto;
-        min-height: 3.75rem;
+        min-height: 4rem;
         margin-top: 0;
         border: 1px solid rgba(37, 99, 235, 0.22);
         border-radius: 1.2rem;
@@ -4960,7 +4960,7 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         }
 
         body:not(.truthguard-admin-app) .truthguard-mobile-tab-primary {
-            min-height: 3.75rem;
+            min-height: 4rem;
         }
 
         body:not(.truthguard-admin-app) .truthguard-mobile-tab-primary .truthguard-mobile-tab-icon {
