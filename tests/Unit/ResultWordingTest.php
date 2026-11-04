@@ -126,4 +126,17 @@ class ResultWordingTest extends TestCase
         $this->assertStringContainsString('upload a clear screenshot', $copy['recommended_action']);
         Http::assertNothingSent();
     }
+
+    public function test_blocked_link_replaces_generic_saved_missing_context_copy(): void
+    {
+        $result = ResultWording::ensure(['verdict' => 'MISSING_CONTEXT', 'sources' => [],
+            'summary' => 'The submitted wording does not provide enough context for a specific factual assessment.']);
+        $result['extraction'] = ['submitted_text' => '', 'source_record' => [
+            'url' => 'https://www.facebook.com/share/p/example/', 'status' => 'http_403', 'text' => '',
+        ]];
+        $copy = ResultWording::saved(ResultWording::ensure($result));
+        $this->assertStringStartsWith('TruthGuard could not access the linked social-media post.', $copy['explanation']);
+        $result['extraction']['submitted_text'] = 'The bridge reopened yesterday.';
+        $this->assertStringNotContainsString('TruthGuard could not access', ResultWording::saved(ResultWording::ensure($result))['explanation']);
+    }
 }

@@ -115,9 +115,6 @@ final class ResultWording
     /** Generation-time fallback when no usable final AI copy exists. No requests. */
     public static function ensure(array $result, string $recommendation = ''): array
     {
-        if (self::saved($result)) {
-            return $result;
-        }
         if (self::inaccessibleSocialLink($result)) {
             $result['generated_wording'] = ['version' => self::VERSION] + [
                 'verdict' => $result['verdict'],
@@ -127,6 +124,9 @@ final class ResultWording
                 'source_ids' => [],
             ];
 
+            return $result;
+        }
+        if (self::saved($result)) {
             return $result;
         }
         $noSearchEvidence = ($result['diagnostics']['retrieval_status'] ?? null) === 'completed_no_results'
@@ -203,6 +203,12 @@ final class ResultWording
     /** Detect a social post that could not be publicly read; no model call. */
     private static function inaccessibleSocialLink(array $result): bool
     {
+        // An unreadable supporting link must not replace an assessment of a
+        // separately supplied factual statement with an access-error message.
+        if (! in_array($result['verdict'] ?? '', ['MISSING_CONTEXT', 'UNVERIFIABLE', 'UNVERIFIED'], true)
+            || ($result['sources'] ?? []) !== []) {
+            return false;
+        }
         $record = $result['extraction']['source_record'] ?? null;
         if (! is_array($record)) {
             return false;
@@ -210,6 +216,10 @@ final class ResultWording
         $host = Str::lower((string) parse_url((string) ($record['url'] ?? ''), PHP_URL_HOST));
         $social = Str::contains($host, ['facebook.com', 'fb.com', 'instagram.com', 'tiktok.com', 'youtube.com', 'youtu.be']);
         if (! $social) {
+            return false;
+        }
+        $supplied = trim(str_replace((string) ($record['url'] ?? ''), '', (string) ($result['extraction']['submitted_text'] ?? '')));
+        if ($supplied !== '' || trim((string) ($result['extraction']['submitted_notes'] ?? '')) !== '') {
             return false;
         }
         if (($record['status'] ?? '') !== 'retrieved') {

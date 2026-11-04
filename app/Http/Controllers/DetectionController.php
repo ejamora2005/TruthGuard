@@ -419,6 +419,11 @@ class DetectionController extends Controller
         // raising an array-to-string error before the rules can run.
         $sourceUrl = is_string($sourceUrl) ? trim($sourceUrl) : $sourceUrl;
         $captionText = is_string($captionText) ? trim($captionText) : $captionText;
+        // The composer can submit a pasted link in both fields. The URL is
+        // evidence to fetch, not a factual statement to assess in its place.
+        if (is_string($sourceUrl) && $sourceUrl !== '' && is_string($captionText)) {
+            $captionText = trim(str_replace($sourceUrl, '', $captionText));
+        }
 
         if (($sourceUrl === '' || $sourceUrl === null) && is_string($captionText) && $captionText !== '') {
             $extractedUrl = $this->extractUrlFromText($captionText);

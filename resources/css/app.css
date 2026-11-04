@@ -3262,6 +3262,8 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         align-items: flex-start;
         justify-content: center;
         gap: 0.22rem;
+        width: max-content;
+        max-width: 100%;
     }
 
     .truthguard-mobile-check .truthguard-mobile-agent-mark {
@@ -3326,7 +3328,8 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     .truthguard-mobile-check .truthguard-mobile-evidence-list {
         display: flex;
         max-width: 100%;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        white-space: nowrap;
         align-items: center;
         gap: 0.2rem;
         color: #334155;

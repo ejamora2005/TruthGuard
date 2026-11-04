@@ -71,7 +71,7 @@
     $sourceLabel = $selectedDetection->platform
         ? \Illuminate\Support\Str::headline((string) $selectedDetection->platform)
         : ($sourceHost ? preg_replace('/^www\./', '', $sourceHost) : 'Direct submission');
-    $contentType = \Illuminate\Support\Str::headline($selectedDetection->media_type ?: 'Unknown');
+    $contentType = \Illuminate\Support\Str::headline($selectedDetection->media_type ?: ($selectedDetection->source_url ? 'Link' : 'Text'));
     $isMediaReport = in_array($publicResult['primary_task'], ['media', 'manipulation'], true);
     $submittedMedia = in_array($selectedDetection->media_type, ['image', 'video', 'document'], true);
     $combinedReport = count($publicResult['request']['tasks'] ?? []) > 1;

@@ -12,6 +12,9 @@ class SubmissionExtractor
     public function extract(array $context, ?UploadedFile $file, RetrievalBudget $budget): array
     {
         $text = trim((string) ($context['caption_text'] ?? ''));
+        if (filled($context['source_url'] ?? null)) {
+            $text = trim(str_replace((string) $context['source_url'], '', $text));
+        }
         $notes = trim((string) ($context['notes'] ?? ''));
         $record = ['submitted_text' => $text, 'submitted_notes' => $notes, 'visible_text' => '', 'inferred_claim' => '',
             'article_text' => '', 'status' => 'completed', 'limitations' => [], 'input_scope' => 'submitted text', 'source_record' => null];
@@ -36,6 +39,12 @@ class SubmissionExtractor
             $record['limitations'][] = 'PDF extraction covers up to 30 pages; scanned pages require readable OCR text.';
         } elseif (filled($context['source_url'] ?? null) && config('services.live_verification.enabled', true)) {
             $page = $this->fetcher->fetch($context['source_url'], $budget);
+            $host = strtolower((string) parse_url($context['source_url'], PHP_URL_HOST));
+            if (($host === 'facebook.com' || str_ends_with($host, '.facebook.com'))
+                && preg_match('/log\s*in\s+to\s+(?:continue|facebook)|you must log in|content (?:isn.t|is not) available|this content isn.t available/iu', (string) ($page['text'] ?? ''))) {
+                $page['status'] = 'login_or_unavailable';
+                $page['text'] = '';
+            }
             $record['source_record'] = $page;
             $record['article_text'] = $page['text'];
             $record['status'] = $page['status'];

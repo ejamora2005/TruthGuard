@@ -83,4 +83,14 @@ class DetectionSubmissionValidationTest extends TestCase
         Http::assertNothingSent();
         $this->assertSame('Is the claim in this post true?', Detection::orderBy('id')->skip(5)->first()->caption_text);
     }
+
+    public function test_duplicate_pasted_link_is_not_stored_as_the_claim(): void
+    {
+        $url = 'https://www.facebook.com/share/p/1CJPr4vmtw/';
+        $this->post(route('detections.store'), ['source_url' => $url, 'caption_text' => $url])
+            ->assertSessionHasNoErrors()->assertRedirect();
+        $this->assertSame($url, Detection::sole()->source_url);
+        $this->assertNull(Detection::sole()->caption_text);
+        Http::assertNothingSent();
+    }
 }
