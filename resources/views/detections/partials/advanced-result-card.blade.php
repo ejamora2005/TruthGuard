@@ -75,7 +75,7 @@
     $isMediaReport = in_array($publicResult['primary_task'], ['media', 'manipulation'], true);
     $submittedMedia = in_array($selectedDetection->media_type, ['image', 'video', 'document'], true);
     $combinedReport = count($publicResult['request']['tasks'] ?? []) > 1;
-    $reportTitle = $combinedReport ? 'Content verification report' : ($submittedMedia ? 'Media analysis report' : 'Fact-check report');
+    $reportTitle = $combinedReport ? 'Content verification report' : ($isMediaReport ? 'Media analysis report' : 'Fact-check report');
     $claimText = trim((string) ($selectedDetection->caption_text ?: $selectedDetection->notes ?: ''));
     $submittedQuestion = $claimText;
     $submittedFileName = $selectedDetection->media_path ? basename(str_replace('\\', '/', $selectedDetection->media_path)) : null;

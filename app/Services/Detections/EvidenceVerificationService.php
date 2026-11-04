@@ -203,6 +203,10 @@ class EvidenceVerificationService
 
     private function applyKnownResult(array $analysis, array $result, array $context, array $extraction): array
     {
+        // Reusing the reviewed answer costs no further tokens. OCR already
+        // performed for a new image must still be reported honestly.
+        $usage = array_replace(['total_tokens' => 0, 'input_tokens' => 0, 'output_tokens' => 0], $extraction['usage'] ?? []);
+        $result['diagnostics']['api_usage'] = $usage;
         $result['request'] = array_replace($context['resolved_request'] ?? [], ['question' => $context['question'] ?? '']);
         $analysis['fact_check_result'] = $result;
         $analysis['analysis_summary'] = $analysis['explanation_summary'] = $result['summary'];
@@ -211,7 +215,7 @@ class EvidenceVerificationService
         $analysis['verification_sources'] = $result['sources'] ?? [];
         $analysis['verdict'] = 'review';
         $analysis['signals']['submission_extraction'] = [$extraction];
-        $analysis['signals']['openai_usage'] = ['total_tokens' => 0, 'input_tokens' => 0, 'output_tokens' => 0];
+        $analysis['signals']['openai_usage'] = $usage;
         $analysis['claim_assessment'] = [
             'status' => 'completed', 'task' => 'Factual claim verification', 'model' => null,
             'version' => self::VERSION, 'failure_reason' => null, 'result' => $result,

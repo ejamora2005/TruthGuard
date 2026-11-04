@@ -227,7 +227,8 @@ class DetectionController extends Controller
             return $detection;
         }
 
-        $extraction = data_get($detection->signals, 'submission_extraction.0', []);
+        $extraction = data_get($detection->signals, 'submission_extraction.0', [])
+            ?: data_get($detection->fact_check_result, 'extraction', []);
         $text = implode(' ', array_filter([
             $detection->caption_text,
             $detection->notes,
@@ -236,10 +237,21 @@ class DetectionController extends Controller
             data_get($extraction, 'visible_text'),
         ]));
         $knownResult = KnownFactCheckCatalog::match($text);
+        if ($knownResult === null) {
+            foreach (['analysis_text', 'reconstructed_text', 'visible_text'] as $key) {
+                $candidate = (string) data_get($extraction, $key, '');
+                if (KnownFactCheckCatalog::matchesReviewedVariant($candidate)) {
+                    $knownResult = KnownFactCheckCatalog::match($candidate);
+                    break;
+                }
+            }
+        }
 
         if ($knownResult === null) {
             return $detection;
         }
+        $knownResult['diagnostics']['api_usage'] = data_get($detection->fact_check_result, 'diagnostics.api_usage',
+            data_get($detection->signals, 'openai_usage', $knownResult['diagnostics']['api_usage']));
 
         $knownResult['request'] = array_replace((array) data_get($detection->fact_check_result, 'request', []), [
             'question' => (string) ($detection->caption_text ?? ''),

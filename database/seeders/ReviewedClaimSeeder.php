@@ -103,6 +103,7 @@ class ReviewedClaimSeeder extends Seeder
                 $claim, 'The world will end on November 13, 2026.',
                 'Matatapos ang mundo sa November 13, 2026.',
                 'Scientist predicts doomsday on November 13, 2026.',
+                'BIG BREAKING: World will end in Two weeks. World will end on Friday 13 November 2026: According to an old study published in journal Science.',
             ], null);
         });
     }

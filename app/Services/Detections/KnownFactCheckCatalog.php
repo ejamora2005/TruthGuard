@@ -7,15 +7,23 @@ use Illuminate\Support\Str;
 /** Stable, reviewed answers for recurring claims. No model or search request is used. */
 final class KnownFactCheckCatalog
 {
-    public const VERSION = 'november-2026-context-v4';
+    public const VERSION = 'november-2026-context-v5';
+
+    /** Approved alternate image wording; reject extra allegations or negation. */
+    public static function matchesReviewedVariant(string $text): bool
+    {
+        $normalized = ReviewedClaimLookup::normalize(SubmissionTask::claimText($text));
+
+        return (bool) preg_match('/^(?:big breaking )?(?:the )?world will end (?:in two weeks (?:the )?world will end )?on (?:friday )?(?:13 november 2026|november 13 2026) according to an old study published in (?:the )?journal science$/', $normalized);
+    }
 
     public static function match(string $text): ?array
     {
         $normalized = Str::of($text)->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
 
-        if (! str_contains($normalized, 'november 13 2026')
+        if (! self::matchesReviewedVariant($text) && (! str_contains($normalized, 'november 13 2026')
             || (! str_contains($normalized, 'world will end') && ! str_contains($normalized, 'end of the world'))
-            || (! str_contains($normalized, 'mathematical prediction') && ! str_contains($normalized, 'scientist'))) {
+            || (! str_contains($normalized, 'mathematical prediction') && ! str_contains($normalized, 'scientist')))) {
             return null;
         }
 

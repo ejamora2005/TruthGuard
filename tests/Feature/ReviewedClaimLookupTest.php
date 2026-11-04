@@ -72,4 +72,29 @@ class ReviewedClaimLookupTest extends TestCase
         $claim->update(['active' => true, 'expires_at' => now()->subSecond()]);
         $this->assertNull(ReviewedClaimLookup::lookup($claim->claim));
     }
+
+    public function test_reviewed_science_image_variant_reuses_db_answer_without_search(): void
+    {
+        $this->seed(ReviewedClaimSeeder::class);
+        $text = 'BIG BREAKING: World will end in Two weeks. World will end on Friday 13 November 2026: According to an old study published in journal Science.';
+        // Also cover existing deployed DBs before the new variation is seeded.
+        ClaimVariation::where('text', $text)->delete();
+        $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->once()->andReturn([
+            'analysis_text' => $text, 'status' => 'completed', 'input_scope' => 'image text',
+            'usage' => ['total_tokens' => 123, 'input_tokens' => 100, 'output_tokens' => 23],
+        ]);
+        $this->mock(ArticleSearch::class)->shouldNotReceive('retrieve');
+        $analysis = app(EvidenceVerificationService::class)->apply(['signals' => []], [
+            'media_type' => 'image', 'analysis_task' => 'claim',
+        ]);
+        $this->assertSame('MISLEADING', $analysis['fact_check_result']['verdict']);
+        $this->assertSame('approved_november_13_variant', $analysis['fact_check_result']['diagnostics']['match_method']);
+        $this->assertSame(123, $analysis['fact_check_result']['diagnostics']['api_usage']['total_tokens']);
+        $this->assertCount(5, $analysis['fact_check_result']['sources']);
+        $this->assertNull(ReviewedClaimLookup::lookup(str_replace('2026', '2027', $text)));
+        $this->assertNull(ReviewedClaimLookup::lookup($text.' Also classes are cancelled tomorrow.'));
+        ReviewedClaim::where('slug', 'november-13-2026-doomsday')->update(['active' => false]);
+        $this->assertNull(ReviewedClaimLookup::lookup($text));
+        Http::assertNothingSent();
+    }
 }
