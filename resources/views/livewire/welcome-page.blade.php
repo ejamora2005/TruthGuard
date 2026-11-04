@@ -940,7 +940,6 @@
             </div>
 
             <div class="mx-auto mt-14 w-full max-w-7xl px-4 sm:px-6 md:mt-16 lg:mt-20 lg:px-8" aria-labelledby="capstone-partners-title">
-                <p class="mb-4 text-center"><span class="tg-section-kicker">The people behind the project</span></p>
                 <h2 id="capstone-partners-title" class="mb-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Capstone Project Partners</h2>
                 <div class="truthguard-partner-marquee" aria-label="Capstone project partner logos">
                     <div class="truthguard-partner-track">
