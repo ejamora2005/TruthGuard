@@ -358,8 +358,6 @@ class DashboardController extends Controller
         return [
             'newest' => 'Newest first',
             'oldest' => 'Oldest first',
-            'confidence_desc' => 'Legacy risk score high',
-            'confidence_asc' => 'Legacy risk score low',
         ];
     }
 
