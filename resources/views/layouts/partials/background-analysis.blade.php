@@ -109,6 +109,10 @@
         :title="complete ? 'Fact check ready — view result' : (failed ? 'Analysis needs attention — view report' : 'Fact check analyzing — view progress')"
         :aria-label="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"
     >
+        <span class="truthguard-background-analysis-cue" x-show="!complete && !failed && !showPrompt" aria-hidden="true">
+            <span>View progress</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 12h16m-6-6 6 6-6 6"></path></svg>
+        </span>
         <span class="truthguard-background-analysis-icon" aria-hidden="true">
             <img class="truthguard-background-analysis-logo" src="{{ $floatingLogoUrl }}" alt="">
             <svg x-show="!complete && !failed && !connectionError" class="truthguard-background-analysis-spinner" viewBox="0 0 40 40" fill="none">

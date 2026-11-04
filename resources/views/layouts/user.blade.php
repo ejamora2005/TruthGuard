@@ -1383,7 +1383,7 @@
                                                 </svg>
                                             </span>
                                             <span class="relative z-10 flex-1">Account settings</span>
-                                            <span class="relative z-10 text-slate-300 transition group-hover:text-blue-400">
+                                            <span class="truthguard-profile-chevron relative z-10">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6" />
                                                 </svg>
@@ -1403,7 +1403,7 @@
                                                 </svg>
                                             </span>
                                             <span class="relative z-10 flex-1 text-left" data-pwa-install-label>Install app</span>
-                                            <span class="relative z-10 text-slate-300 transition group-hover:text-blue-400">
+                                            <span class="truthguard-profile-chevron relative z-10">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6" />
                                                 </svg>
@@ -1425,7 +1425,7 @@
                                                 </svg>
                                             </span>
                                             <span class="relative z-10 flex-1 text-left">Sign out</span>
-                                            <span class="relative z-10 text-slate-300 transition group-hover:text-rose-400">
+                                            <span class="truthguard-profile-chevron relative z-10">
                                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m9 6 6 6-6 6" />
                                                 </svg>

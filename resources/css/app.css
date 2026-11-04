@@ -332,6 +332,27 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.44);
 }
 
+.truthguard-background-analysis-cue {
+    position: absolute;
+    right: calc(100% + .75rem);
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .65rem;
+    border-radius: .65rem;
+    background: #17243b;
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 650;
+    white-space: nowrap;
+    box-shadow: 0 3px 12px rgb(15 23 42 / 15%);
+}
+.truthguard-background-analysis-cue svg { width: 1.4rem; height: 1.4rem; flex: none; }
+.truthguard-background-analysis-button:has(.truthguard-background-analysis-cue:not([style*="display: none"])) .truthguard-background-analysis-tooltip { display: none; }
+.truthguard-topbar .truthguard-profile-chevron { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 24px; width: 24px; height: 24px; color: #475569; }
+.truthguard-topbar .truthguard-profile-chevron svg { width: 20px; height: 20px; stroke-width: 2.6; }
+html.dark .truthguard-topbar .truthguard-profile-chevron { color: #cbd5e1; }
+
 .truthguard-background-analysis-prompt {
     position: absolute;
     right: 0;
