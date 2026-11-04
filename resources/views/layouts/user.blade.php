@@ -1280,12 +1280,6 @@
                             </div>
                         </div>
 
-                        @unless(request()->routeIs('dashboard'))
-                            <div class="truthguard-mobile-appearance flex shrink-0 items-center lg:hidden">
-                                @include('layouts.partials.display-mode-toggle')
-                            </div>
-                        @endunless
-
                         <div class="relative shrink-0" x-data="{ profileOpen: false }">
                                 <button
                                     type="button"
