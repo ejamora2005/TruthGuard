@@ -6,7 +6,7 @@ import { chromium } from 'playwright';
 const source = readFileSync('resources/js/push-notifications.js', 'utf8');
 const markup = `<!doctype html><html><head><meta name="csrf-token" content="test-csrf"><meta name="truthguard-push-settings" content="/push/settings"></head><body>
 <section data-push-settings><p data-push-status role="status"></p>
-<button data-push-enable disabled>Enable Notifications</button><button data-push-later>Not Now</button>
+<span data-push-device-state></span><button data-push-enable disabled>Enable</button>
 <button data-push-disable>Disable on this device</button><button data-push-save>Save notification preferences</button>
 <button data-push-test hidden>Send Test Notification</button>
 <label><input type="checkbox" data-preference="push_enabled">Push Notifications</label>
@@ -43,7 +43,8 @@ for (const permission of ['default', 'denied', 'unsupported']) {
             await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.length > 0);
             assert.equal(await page.evaluate(() => window.permissionRequests), 0);
             if (permission === 'default') {
-                await page.click('[data-push-later]');
+                assert.equal(await page.locator('[data-push-later]').count(), 0);
+                assert.equal(await page.locator('[data-push-disable]').isHidden(), true);
                 assert.equal(await page.evaluate(() => window.permissionRequests), 0);
                 await page.click('[data-push-enable]');
                 await page.waitForFunction(() => window.permissionRequests === 1);
@@ -90,10 +91,14 @@ test('granted permission registers the existing root worker and device disable p
         });
         await page.goto('http://localhost:9876/profile');
         await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('enabled on this device'));
+        assert.equal(await page.locator('[data-push-enable]').isHidden(), true);
+        assert.equal(await page.locator('[data-push-device-state]').textContent(), 'On');
         assert.deepEqual(await page.evaluate(() => window.registeredWorkers), [['/sw.js', '/']]);
         assert.equal(await page.evaluate(() => window.permissionRequests), 0);
         await page.click('[data-push-disable]');
         await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('disabled on this device'));
+        assert.equal(await page.locator('[data-push-enable]').isVisible(), true);
+        assert.equal(await page.locator('[data-push-disable]').isHidden(), true);
         await page.reload();
         await page.waitForFunction(() => document.querySelector('[data-push-status]').textContent.includes('when you are ready'));
         assert.equal(requests.filter(([path, method]) => path === '/push/subscriptions' && method === 'POST').length, 1);

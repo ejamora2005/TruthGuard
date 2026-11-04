@@ -8,7 +8,10 @@ const deviceDisabled = () => { try { return localStorage.getItem('truthguard:pus
 const setDeviceDisabled = (disabled) => { try { localStorage.setItem('truthguard:push-disabled', disabled ? '1' : '0'); } catch { /* Storage unavailable. */ } };
 const panels = () => [...document.querySelectorAll('[data-push-settings]')];
 const status = (text) => panels().forEach(panel => {
-    panel.querySelectorAll('[data-push-status]').forEach(element => { element.textContent = text; });
+    panel.querySelectorAll('[data-push-status]').forEach(element => {
+        element.textContent = text;
+        element.hidden = !text || text === 'Enable notifications when you are ready.';
+    });
 });
 const supported = () => window.isSecureContext && typeof Notification !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window;
 // This diagnostic must remain usable even if settings/Firebase/queue requests fail.
@@ -85,7 +88,13 @@ const render = () => panels().forEach(panel => {
     panel.querySelectorAll('[data-preference]').forEach(input => { input.checked = !!settings.preferences[input.dataset.preference]; });
     const enable = panel.querySelector('[data-push-enable]');
     enable.disabled = !settings.enabled || !supported() || Notification.permission === 'denied';
-    enable.textContent = settings.subscribed && !settings.deviceDisabled && settings.preferences.push_enabled ? 'Refresh Notifications' : 'Enable Notifications';
+    const deviceActive = supported() && Notification.permission === 'granted' && !!settings.subscribed && !settings.deviceDisabled;
+    enable.hidden = deviceActive;
+    enable.textContent = 'Enable';
+    const disable = panel.querySelector('[data-push-disable]');
+    if (disable) disable.hidden = !deviceActive;
+    const deviceState = panel.querySelector('[data-push-device-state]');
+    if (deviceState) deviceState.textContent = deviceActive ? 'On' : 'Off';
     const testButton = panel.querySelector('[data-push-test]');
     if (testButton) testButton.hidden = !settings.canTest;
 });
@@ -128,7 +137,7 @@ async function initialize() {
                     status('Push notifications are enabled on this device.');
                 });
             });
-            panel.querySelector('[data-push-later]').addEventListener('click', () => status('No problem. You can enable notifications here anytime.'));
+            panel.querySelector('[data-push-later]')?.addEventListener('click', () => status('No problem. You can enable notifications here anytime.'));
             panel.querySelector('[data-push-disable]').addEventListener('click', () => run(async () => {
                 // Wait for any in-flight registration before deleting it.
                 if (registrationPending) await registrationPending.catch(() => {});

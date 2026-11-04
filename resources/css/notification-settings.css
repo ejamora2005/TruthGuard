@@ -1,0 +1,53 @@
+#notification-settings.truthguard-push-compact {
+    --push-line: #dce5f1;
+    --push-ink: #17243b;
+    --push-muted: #5b6b82;
+    --push-surface: #fff;
+    --push-soft: #f5f8fd;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent !important;
+    box-shadow: none;
+}
+html[data-tg-workspace].dark #notification-settings.truthguard-push-compact {
+    --push-line: #3b4b63;
+    --push-ink: #f1f5f9;
+    --push-muted: #bbc8da;
+    --push-surface: #182235;
+    --push-soft: #223047;
+    background: transparent !important;
+    border: 0 !important;
+}
+#notification-settings.truthguard-push-standalone { max-width: 48rem; margin: 1.25rem auto; padding: 1rem; }
+#notification-settings.truthguard-push-compact .truthguard-push-heading { margin-bottom: 1rem; color: var(--push-ink); font-size: 1.125rem; font-weight: 650; }
+#notification-settings.truthguard-push-compact .truthguard-push-device { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 1rem; }
+#notification-settings.truthguard-push-compact .truthguard-push-device > div:first-child { min-width: 0; }
+#notification-settings.truthguard-push-compact .truthguard-push-device h3 { color: var(--push-ink); font-size: .875rem; font-weight: 650; }
+#notification-settings.truthguard-push-compact [data-push-device-state] { margin-left: .35rem; padding: .1rem .35rem; border-radius: 5px; background: var(--push-soft); color: var(--push-muted); font-size: .6875rem; font-weight: 550; }
+#notification-settings.truthguard-push-compact .truthguard-push-device p { margin-top: .25rem; color: var(--push-muted); font-size: .75rem; line-height: 1.5; }
+#notification-settings.truthguard-push-compact .truthguard-push-device-actions { display: flex; flex: none; gap: .5rem; margin: 0; }
+#notification-settings.truthguard-push-compact button.truthguard-push-button { min-height: 44px; padding: .5rem .85rem; border-radius: 10px !important; font-size: .8125rem; box-shadow: none; letter-spacing: 0; }
+#notification-settings.truthguard-push-compact .truthguard-push-preference-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; border: 1px solid var(--push-line); border-radius: 12px; overflow: hidden; }
+#notification-settings.truthguard-push-compact label.truthguard-push-preference-row,
+#notification-settings.truthguard-push-compact label.truthguard-push-preference-row:has(input:checked) {
+    min-height: 54px;
+    padding: .65rem .8rem !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--push-line) !important;
+    border-radius: 0 !important;
+    background: var(--push-surface) !important;
+    color: var(--push-ink);
+    box-shadow: none;
+}
+#notification-settings.truthguard-push-compact label.truthguard-push-preference-row:last-child { border-bottom: 0 !important; }
+html[data-tg-workspace].dark body #notification-settings.truthguard-push-compact label.truthguard-push-preference-row,
+html[data-tg-workspace].dark body #notification-settings.truthguard-push-compact label.truthguard-push-preference-row:has(input:checked) { background: var(--push-surface) !important; border-color: var(--push-line) !important; color: var(--push-ink); }
+#notification-settings.truthguard-push-compact .truthguard-push-preference-label { font-size: .8125rem; font-weight: 550; }
+#notification-settings.truthguard-push-compact .truthguard-push-status { padding: .65rem .75rem; margin: 0 0 .85rem; border-radius: 8px; background: var(--push-soft) !important; color: var(--push-muted); font-size: .75rem; line-height: 1.6; overflow-wrap: anywhere; }
+#notification-settings.truthguard-push-compact .truthguard-push-description { margin: .6rem 0 0; color: var(--push-muted); font-size: .6875rem; line-height: 1.5; }
+#notification-settings.truthguard-push-compact .truthguard-push-actions { display: flex; justify-content: flex-end; margin-top: 1rem; }
+@media (max-width: 639px) {
+    #notification-settings.truthguard-push-compact .truthguard-push-device { gap: .65rem; }
+    #notification-settings.truthguard-push-compact .truthguard-push-actions button { width: 100%; }
+}

@@ -243,7 +243,8 @@ class PushNotificationsTest extends TestCase
     public function test_profile_contains_notification_controls(): void
     {
         $this->actingAs(User::factory()->create())->get('/profile')->assertOk()
-            ->assertSee('Enable TruthGuard Notifications')->assertSee('data-push-settings', false);
+            ->assertSee('This device')->assertSee('data-push-settings', false)
+            ->assertDontSee('Enable TruthGuard Notifications')->assertDontSee('Not Now');
     }
 
     private function detection(User $user, string $status = 'completed'): Detection
