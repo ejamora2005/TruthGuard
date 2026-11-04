@@ -1189,13 +1189,14 @@
                         </button>
 
                         @if ($pageBackUrl !== '')
-                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0 {{ $isDetectionPage ? 'truthguard-detection-mobile-logo' : '' }}" aria-label="Go back" title="Go back">
+                            <a href="{{ $pageBackUrl }}" class="truthguard-shell-toggle shrink-0 {{ $isDetectionPage ? 'truthguard-detection-mobile-logo truthguard-mobile-brand' : '' }}" aria-label="Go back" title="Go back">
                                 @if ($isDetectionPage)
                                     @if ($logoUrl !== '')
                                         <img src="{{ $logoUrl }}" alt="TruthGuard" class="h-8 w-8 object-contain" width="32" height="32">
                                     @else
                                         <span class="font-bold text-blue-600">TG</span>
                                     @endif
+                                    <strong class="truthguard-mobile-brand-name lg:hidden">TruthGuard</strong>
                                 @else
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -1205,7 +1206,7 @@
                         @elseif ($isDetectionPage)
                             <a
                                 href="{{ route('dashboard') }}"
-                                class="truthguard-shell-toggle truthguard-detection-mobile-logo shrink-0 lg:hidden"
+                                class="truthguard-shell-toggle truthguard-detection-mobile-logo truthguard-mobile-brand shrink-0 lg:hidden"
                                 aria-label="TruthGuard - back to dashboard"
                                 title="Back to dashboard"
                             >
@@ -1214,12 +1215,13 @@
                                 @else
                                     <span class="font-bold text-blue-600">TG</span>
                                 @endif
+                                <strong class="truthguard-mobile-brand-name">TruthGuard</strong>
                             </a>
                         @else
                             <a
                                 href="{{ route('dashboard') }}"
                                 @class([
-                                    'truthguard-mobile-top-logo shrink-0 lg:hidden',
+                                    'truthguard-mobile-top-logo truthguard-mobile-brand shrink-0 lg:hidden',
                                     '!hidden' => $isDetectionPage,
                                 ])
                                 aria-label="TruthGuard home"
@@ -1229,6 +1231,7 @@
                                 @else
                                     <span>TG</span>
                                 @endif
+                                <strong class="truthguard-mobile-brand-name">TruthGuard</strong>
                             </a>
 
                         @endif
