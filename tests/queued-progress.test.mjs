@@ -11,6 +11,7 @@ const modalStart = source.indexOf('<template x-teleport="body">', source.indexOf
 const modal = source.slice(modalStart, source.indexOf('<input type="hidden" name="weather_consent"', modalStart))
     .replaceAll('{{ $truthguardLogoUrl }}', 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27/%3E');
 const restore = source.match(/<button x-show="submitting"[^>]*x-ref="showProgress"[^>]*>[\s\S]*?<\/button>/)[0];
+const composerContainer = source.match(/<div\s+class="truthguard-detection-composer[^]*?>/)[0];
 const alpine = readFileSync('node_modules/alpinejs/dist/cdn.min.js', 'utf8');
 const origin = 'http://localhost:9876';
 const resultUrl = `${origin}/detections/24/result`;
@@ -61,7 +62,7 @@ async function setup({ resume = false, mobile = false } = {}) {
             <form action="${origin}/detections" @submit="handleSubmit($event)">
             <input name="caption_text" value="The city cancelled classes today.">
             <button type="submit" :disabled="submitting">Check claim</button>
-            ${modal}${restore}<p role="alert" x-text="composerError"></p>
+            ${modal}${composerContainer}<div :inert="submitting"><input aria-label="Locked evidence"></div>${restore}</div><p role="alert" x-text="composerError"></p>
             </form></section><script>${alpine}</script></body></html>` });
     });
     await page.goto(`${origin}/detections/create${resume ? '?pending=24' : ''}`);
@@ -89,6 +90,8 @@ for (const mobile of [false, true]) {
             assert.equal(page.url(), `${origin}/detections/create`);
             await page.getByRole('button', { name: 'Hide progress', exact: true }).click();
             await page.locator('.truthguard-inline-progress').waitFor({ state: 'hidden' });
+            assert.equal(await page.locator('.truthguard-progress-restore').evaluate(el => !!el.closest('[inert]')), false);
+            assert.equal(await page.getByRole('textbox', { name: 'Locked evidence', includeHidden: true }).evaluate(el => !!el.closest('[inert]')), true);
             state.status = 'processing';
             await refresh(page, state);
             assert.equal(state.posts, 1);

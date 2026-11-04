@@ -5500,7 +5500,6 @@ new class extends Component
 
                 <div
                     class="truthguard-detection-composer relative rounded-[30px] p-2.5 sm:p-3"
-                    :inert="submitting"
                     :aria-busy="submitting"
                         :class="[
                             previewUrl ? 'truthguard-preview-space' : '',
@@ -5512,6 +5511,7 @@ new class extends Component
                             x-cloak
                             x-transition.opacity
                             class="truthguard-link-preview"
+                            :inert="submitting"
                         >
                             <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700" aria-hidden="true">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -5531,6 +5531,7 @@ new class extends Component
 
                     <div
                         class="truthguard-composer-field flex items-start gap-3 p-2.5 sm:gap-3 sm:p-3"
+                        :inert="submitting"
                     >
                         <div class="relative shrink-0">
                             <div
@@ -5870,7 +5871,7 @@ new class extends Component
                     </div>
 
                     <div class="truthguard-composer-footer mt-2 hidden items-center justify-between gap-3 sm:flex">
-                        <div class="truthguard-input-types flex min-w-0 items-center gap-1.5 overflow-x-auto" role="group" aria-label="Evidence type">
+                        <div class="truthguard-input-types flex min-w-0 items-center gap-1.5 overflow-x-auto" :inert="submitting" role="group" aria-label="Evidence type">
                             <button type="button" class="truthguard-input-type" :class="selectedInputType === 'image' ? 'truthguard-input-type-active' : ''" :aria-pressed="selectedInputType === 'image'" @click="selectInputType('image')">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                     <rect x="3" y="5" width="18" height="14" rx="2"></rect>
