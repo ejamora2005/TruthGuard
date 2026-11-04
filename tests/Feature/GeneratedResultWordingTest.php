@@ -65,7 +65,7 @@ class GeneratedResultWordingTest extends TestCase
             } else {
                 $this->assertSame((int) config('fact_check.model_output_tokens'), $request['max_output_tokens']);
                 $this->assertArrayNotHasKey('tools', $request->data());
-                $this->assertSame(1, substr_count($request['input'][0]['content'], '45-80 words'));
+                $this->assertSame(1, substr_count($request['input'][0]['content'], '55-95 words'));
                 $this->assertStringContainsString('NEVER repeat the verdict label', $request['input'][0]['content']);
                 $this->assertCount(1, $input['sources']);
                 $data = ['context_findings' => [], 'relationships' => [[

@@ -71,13 +71,18 @@
     $sourceLabel = $selectedDetection->platform
         ? \Illuminate\Support\Str::headline((string) $selectedDetection->platform)
         : ($sourceHost ? preg_replace('/^www\./', '', $sourceHost) : 'Direct submission');
-    $contentType = \Illuminate\Support\Str::headline($selectedDetection->media_type ?: ($selectedDetection->source_url ? 'Link' : 'Text'));
+    $contentType = \Illuminate\Support\Str::headline(in_array($selectedDetection->media_type, [null, '', 'unknown'], true)
+        ? ($selectedDetection->source_url ? 'Link' : 'Text') : $selectedDetection->media_type);
     $isMediaReport = in_array($publicResult['primary_task'], ['media', 'manipulation'], true);
     $submittedMedia = in_array($selectedDetection->media_type, ['image', 'video', 'document'], true);
     $combinedReport = count($publicResult['request']['tasks'] ?? []) > 1;
     $reportTitle = $combinedReport ? 'Content verification report' : ($isMediaReport ? 'Media analysis report' : 'Fact-check report');
     $claimText = trim((string) ($selectedDetection->caption_text ?: $selectedDetection->notes ?: ''));
     $submittedQuestion = $claimText;
+    if ($selectedDetection->source_url && \App\Services\Detections\SubmissionTask::claimText($claimText) === '') {
+        $firstFact = collect($publicResult['claims'] ?? [])->first(fn ($row) => ($row['kind'] ?? '') === 'factual');
+        $claimText = \Illuminate\Support\Str::limit((string) ($firstFact['text'] ?? $publicResult['claim'] ?? ''), 500);
+    }
     $submittedFileName = $selectedDetection->media_path ? basename(str_replace('\\', '/', $selectedDetection->media_path)) : null;
     $recordedTask = $publicResult['primary_task'];
     $assessmentHeading = match ($recordedTask) {

@@ -9,6 +9,32 @@ use Tests\TestCase;
 
 class ResultWordingTest extends TestCase
 {
+    public function test_fallback_keeps_specific_evidence_when_summary_contains_a_link(): void
+    {
+        Http::preventStrayRequests();
+        $result = ['verdict' => 'TRUE', 'primary_task' => 'claim',
+            'summary' => 'The UN 2024 projection places the population peak at about 10.3 billion in the mid-2080s. The report is available at https://www.un.org/example.',
+            'sources' => [['id' => 'un-2024']], 'contextual_sources' => []];
+        $copy = ResultWording::saved(ResultWording::ensure($result));
+        $this->assertNotNull($copy);
+        $this->assertStringContainsString('10.3 billion', $copy['explanation']);
+        $this->assertStringContainsString('mid-2080s', $copy['explanation']);
+        $this->assertStringNotContainsString('https://', $copy['explanation']);
+        $this->assertNotSame($copy['explanation'], $copy['result_summary']);
+        Http::assertNothingSent();
+    }
+
+    public function test_generic_saved_copy_is_rebuilt_from_recorded_evidence_segments(): void
+    {
+        $generic = 'Review the displayed verdict and its supporting evidence before relying on this result.';
+        $result = ['verdict' => 'TRUE', 'summary' => $generic, 'sources' => [['id' => 'un-2024']],
+            'answer_segments' => [['text' => 'The UN projects a population peak in the mid-2080s.', 'source_ids' => ['un-2024']]],
+            'generated_wording' => ['version' => ResultWording::VERSION, 'explanation' => $generic]];
+        $copy = ResultWording::saved(ResultWording::ensure($result));
+        $this->assertNotNull($copy);
+        $this->assertStringContainsString('mid-2080s', $copy['explanation']);
+    }
+
     public function test_limited_evidence_fallback_is_short_specific_and_saved_without_a_request(): void
     {
         Http::preventStrayRequests();

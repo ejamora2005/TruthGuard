@@ -60,6 +60,7 @@ final class ResultWording
         if (! is_array($copy) || ($copy['version'] ?? '') !== self::VERSION) {
             return null;
         }
+        if (($copy['explanation'] ?? '') === 'Review the displayed verdict and its supporting evidence before relying on this result.') return null;
         unset($copy['version']);
 
         return self::accept($result, $copy);
@@ -144,13 +145,27 @@ final class ResultWording
             return $result;
         }
         $summary = ResultContract::text($result['summary'] ?? null) ?? '';
+        if ($summary === '' || $summary === 'Review the displayed verdict and its supporting evidence before relying on this result.') {
+            $summary = implode(' ', array_filter(array_column($result['answer_segments'] ?? [], 'text'),
+                fn ($text) => is_string($text) && trim($text) !== ''
+                    && trim($text) !== 'Review the displayed verdict and its supporting evidence before relying on this result.'));
+            if ($summary === '') $summary = implode(' ', array_filter(array_column($result['sources'] ?? [], 'used_for')));
+        }
+        // A raw URL in an otherwise useful explanation used to reject the
+        // entire paragraph. Links remain in the source cards; keep the facts.
+        $summary = trim(preg_replace('~https?://[^\s<>]+|www\.[^\s<>]+~iu', '', strip_tags($summary)));
         $summary = preg_split('/\bA related source dated\b/u', $summary, 2)[0];
         $sentences = collect(SubmittedText::sentences($summary))
             ->reject(fn ($sentence) => preg_match('/^(?:I|We|TruthGuard)\s+(?:searched|browsed|queried|looked for)\b/iu', $sentence))
             ->reject(fn ($sentence) => preg_match('/^(?:Yes|No|True|False|Misleading|Partly true|Unverified|Outdated)\.?$/iu', trim($sentence)))
             ->map(fn ($sentence) => preg_replace('/^I checked the submitted claim:/u', 'The claim being assessed is:', $sentence))
             ->unique()->values();
-        $explanation = $sentences->take(4)->implode(' ');
+        $selected = [];
+        foreach ($sentences as $sentence) {
+            if (count($selected) >= 4 || Str::wordCount(implode(' ', [...$selected, $sentence])) > 155) break;
+            $selected[] = $sentence;
+        }
+        $explanation = implode(' ', $selected);
         if ($explanation === '' || Str::wordCount($explanation) > 160 || mb_strlen($explanation) > 2200) {
             $explanation = ReportAnswer::interpretationSummary($result, $explanation);
         }
