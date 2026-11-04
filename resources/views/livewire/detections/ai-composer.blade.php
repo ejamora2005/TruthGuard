@@ -4977,11 +4977,11 @@ new class extends Component
                 <div class="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
                     <div class="truthguard-workspace-intro min-w-0 max-w-3xl">
                         <div class="flex min-w-0 items-center gap-2">
+                            @include('detections.partials.composer-back-link')
                             <div class="truthguard-agent-pill inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold">
                                 <span class="truthguard-agent-pill-icon" aria-hidden="true"></span>
                                 <span>TruthGuard Agent AI</span>
                             </div>
-                            @include('detections.partials.composer-back-link')
                         </div>
 
                         <h2 class="truthguard-workspace-title mt-3 text-[2rem] font-bold leading-tight sm:text-4xl lg:text-[2.65rem]">
