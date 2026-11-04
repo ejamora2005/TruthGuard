@@ -450,6 +450,14 @@ new class extends Component
 
         .truthguard-capability-row {
             gap: 0.38rem !important;
+            flex-wrap: nowrap;
+        }
+
+        .truthguard-capability-row .truthguard-capability-pill { white-space: nowrap; min-width: 0; }
+        .truthguard-capability-row .truthguard-capability-pill svg { flex-shrink: 0; }
+        @media (max-width: 639px) {
+            .truthguard-capability-row { gap: .25rem !important; }
+            .truthguard-capability-row .truthguard-capability-pill { gap: .25rem; padding-inline: .35rem; font-size: .65rem; }
         }
 
         .truthguard-capability-pill svg {
