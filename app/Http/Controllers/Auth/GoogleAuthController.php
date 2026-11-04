@@ -8,12 +8,14 @@ use App\Services\Auth\PostLoginDestination;
 use App\Services\Auth\RememberedLogin;
 use App\Services\Auth\SessionTimeoutManager;
 use App\Services\Notifications\TruthGuardNotificationManager;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
-use RuntimeException;
+use DomainException;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Throwable;
 
@@ -39,14 +41,31 @@ class GoogleAuthController extends Controller
             $user = $this->resolveGoogleUser($socialUser);
 
             return $this->loginSocialUser($user);
-        } catch (RuntimeException $exception) {
+        } catch (DomainException $exception) {
             return redirect()
                 ->route('login')
                 ->with('auth_error', $exception->getMessage());
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            $oauthError = null;
+            $status = null;
+            if ($exception instanceof RequestException && $exception->hasResponse()) {
+                $status = $exception->getResponse()->getStatusCode();
+                $payload = json_decode((string) $exception->getResponse()->getBody(), true);
+                if (is_array($payload) && ($payload['error'] ?? null) === 'invalid_grant') {
+                    $oauthError = 'invalid_grant';
+                }
+            }
+            // Never log token payloads, authorization codes, or exception messages.
+            Log::warning('Google sign-in callback failed.', [
+                'exception_type' => $exception::class, 'http_status' => $status, 'oauth_error' => $oauthError,
+            ]);
+            request()->session()->forget(['oauth_remember', 'oauth_pwa']);
+
             return redirect()
                 ->route('login')
-                ->with('auth_error', 'Google sign-in failed. Please try again.');
+                ->with('auth_error', $oauthError === 'invalid_grant'
+                    ? 'Google sign-in expired or could not be completed. Tap Google to start again.'
+                    : 'Google sign-in could not be completed. Please try again.');
         }
     }
 
@@ -96,10 +115,12 @@ class GoogleAuthController extends Controller
             $user = $this->resolveLegacySocialUser($socialUser);
 
             return $this->loginSocialUser($user);
-        } catch (RuntimeException $exception) {
+        } catch (DomainException $exception) {
             return redirect()
                 ->route('login')
                 ->with('auth_error', $exception->getMessage());
+        } catch (Throwable) {
+            return redirect()->route('login')->with('auth_error', $errorMessage);
         }
     }
 
@@ -109,15 +130,15 @@ class GoogleAuthController extends Controller
         $email = $this->normalizeEmail($socialUser->getEmail());
 
         if ($googleId === null) {
-            throw new RuntimeException('Google did not provide a stable account identifier.');
+            throw new DomainException('Google did not provide a stable account identifier.');
         }
 
         if ($email === null) {
-            throw new RuntimeException('Google account did not provide an email address.');
+            throw new DomainException('Google account did not provide an email address.');
         }
 
         if (! $this->googleEmailIsVerified($socialUser)) {
-            throw new RuntimeException('Use a Google account with a verified email address.');
+            throw new DomainException('Use a Google account with a verified email address.');
         }
 
         return DB::transaction(function () use ($socialUser, $googleId, $email) {
@@ -134,7 +155,7 @@ class GoogleAuthController extends Controller
 
             if ($existingUser) {
                 if (filled($existingUser->google_id) && $existingUser->google_id !== $googleId) {
-                    throw new RuntimeException('This email is already linked to another Google account.');
+                    throw new DomainException('This email is already linked to another Google account.');
                 }
 
                 return $this->updateLinkedGoogleUser($existingUser, $socialUser, $googleId, $email);
@@ -170,7 +191,7 @@ class GoogleAuthController extends Controller
         $emailOwner = $this->findUserByEmail($email, $user->id);
 
         if ($emailOwner) {
-            throw new RuntimeException('This Google email is already used by another TruthGuard account.');
+            throw new DomainException('This Google email is already used by another TruthGuard account.');
         }
 
         $updates = [
@@ -300,7 +321,7 @@ class GoogleAuthController extends Controller
         $status = Str::lower(trim((string) $user->subscription_status));
 
         if (in_array($status, ['inactive', 'suspended'], true)) {
-            throw new RuntimeException('Your account is not active. Please contact TruthGuard support.');
+            throw new DomainException('Your account is not active. Please contact TruthGuard support.');
         }
     }
 

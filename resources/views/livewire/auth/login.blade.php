@@ -33,7 +33,7 @@
             </div>
 
             @if (session('auth_error'))
-                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 [overflow-wrap:anywhere]" role="alert">
                     {{ session('auth_error') }}
                 </div>
             @endif

@@ -5,8 +5,12 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Notifications\WelcomeToTruthGuard;
 use App\Services\Auth\RememberedLogin;
+use GuzzleHttp\Exception\ClientException;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery;
@@ -15,6 +19,43 @@ use Tests\TestCase;
 class GoogleAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_expired_google_code_shows_a_safe_retry_message_without_leaking_provider_details(): void
+    {
+        Log::spy();
+        $provider = Mockery::mock();
+        $provider->shouldReceive('redirectUrl')->andReturnSelf();
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $exception = new ClientException('Sensitive provider response',
+            new Request('POST', 'https://www.googleapis.com/oauth2/v4/token'),
+            new Response(400, [], json_encode(['error' => 'invalid_grant', 'access_token' => 'secret-test-token'])));
+        $provider->shouldReceive('user')->once()->andThrow($exception);
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->withSession(['oauth_remember' => true, 'oauth_pwa' => true])->get(route('google.callback'))
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('auth_error', 'Google sign-in expired or could not be completed. Tap Google to start again.')
+            ->assertSessionMissing('oauth_remember')->assertSessionMissing('oauth_pwa');
+        $this->assertGuest();
+        $this->assertDatabaseCount('users', 0);
+        Log::shouldHaveReceived('warning')->with('Google sign-in callback failed.', [
+            'exception_type' => ClientException::class, 'http_status' => 400, 'oauth_error' => 'invalid_grant',
+        ])->once();
+    }
+
+    public function test_unexpected_runtime_error_does_not_become_a_public_account_message(): void
+    {
+        Log::spy();
+        $provider = Mockery::mock();
+        $provider->shouldReceive('redirectUrl')->andReturnSelf();
+        $provider->shouldReceive('stateless')->andReturnSelf();
+        $provider->shouldReceive('user')->andThrow(new \RuntimeException('Internal host and credential details'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->get(route('google.callback'))->assertRedirect(route('login'))
+            ->assertSessionHas('auth_error', 'Google sign-in could not be completed. Please try again.');
+        $this->assertGuest();
+    }
 
     public function test_google_login_remembers_only_the_explicit_device_choice(): void
     {
