@@ -3248,8 +3248,8 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     }
 
     .truthguard-mobile-check .truthguard-mobile-capabilities {
-        display: grid !important;
-        grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+        display: flex !important;
+        flex-wrap: nowrap;
         gap: 0.55rem;
         margin-top: 0.75rem;
         min-width: 0;
@@ -3278,6 +3278,8 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         gap: 0.22rem;
         width: max-content;
         max-width: 100%;
+        flex: 0 1 auto;
+        box-sizing: border-box;
     }
 
     .truthguard-mobile-check .truthguard-mobile-agent-mark {
@@ -3344,6 +3346,7 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
         max-width: 100%;
         flex-wrap: nowrap;
         white-space: nowrap;
+        flex: 0 0 auto;
         align-items: center;
         gap: 0.2rem;
         color: #334155;
