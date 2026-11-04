@@ -47,6 +47,24 @@ html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background:
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-neutral { background: #223047; color: #cbd5e1; border-color: #53647c; }
 
 /* Composer and upload surfaces. Leave evidence images and source logos intact. */
+html[data-tg-workspace].dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    color: #e2e8f0 !important;
+}
+html[data-tg-workspace].dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card > span:nth-child(4) {
+    color: #e2e8f0 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+html[data-tg-workspace].dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card:is(.truthguard-guided-prompt-active, :hover, :focus-visible) {
+    background: #203858 !important;
+    border-color: #60a5fa !important;
+    color: #dbeafe !important;
+    box-shadow: inset 0 0 0 1px #60a5fa !important;
+}
+html[data-tg-workspace].dark body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-guided-prompt-card:is(.truthguard-guided-prompt-active, :hover, :focus-visible) > span:nth-child(4) {
+    color: #dbeafe !important;
+}
 html[data-tg-workspace].dark body .truthguard-link-preview {
     background: #182235 !important;
     border-color: var(--tg-night-line) !important;
