@@ -99,7 +99,8 @@ class DetectionPipeline
             throw ValidationException::withMessages(['media_file' => 'An identical submission is still being analyzed. Retry after it finishes; no duplicate analysis was started.']);
         }
         try {
-            if ($reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint))) {
+            $reviewedMedia = ReviewedMediaLookup::analysis($mediaChecksum, $mediaType, $resolvedRequest, $sourceUrl);
+            if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint))) {
                 $detection = $this->createReusedDetection($user, $reusableDetection, $sourceUrl, $captionText, $notes, $mediaPath, $mediaChecksum, $requestFingerprint, $pending);
                 Log::info('TruthGuard analysis reused a saved result without inference.', ['analysis_id' => $analysisId,
                     'detection_id' => $detection->id, 'reused_from_detection_id' => $reusableDetection->id]);
@@ -107,62 +108,68 @@ class DetectionPipeline
                 return $detection;
             }
 
-            $analysis = $this->buildLocalAnalysis($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType, $platform,
-                $primaryTask !== 'claim', $runMediaDetector);
-            $platform = $this->nullableString($analysis['platform'] ?? null) ?? $platform;
-            $mediaType = $this->nullableString($analysis['media_type'] ?? null) ?? $mediaType;
-
-            if ((bool) config('fact_check.enhanced_enabled', true) || $primaryTask !== 'claim') {
-                $analysis = $this->evidenceVerificationService->apply($analysis, [
-                    'source_url' => $sourceUrl, 'caption_text' => $captionText, 'notes' => $notes,
-                    'media_type' => $mediaType, 'platform' => $platform,
-                    'analysis_task' => $validated['analysis_task'] ?? 'auto',
-                    'analysis_id' => $analysisId,
-                    'resolved_request' => $resolvedRequest,
-                ] + $weatherContext, $uploadedFile, $pending ? function (string $stage, array $domains = []) use ($pending): void {
-                    $signals = $pending->signals ?? [];
-                    $signals['analysis_progress'] = [['label' => $stage, 'weight' => 0,
-                        'source_domains' => $domains ?: data_get($signals, 'analysis_progress.0.source_domains', [])]];
-                    $pending->forceFill(['signals' => $signals])->saveQuietly();
-                } : null);
+            if ($reviewedMedia !== null) {
+                $analysis = $reviewedMedia;
             } else {
-                $openAiExtractedClaim = $this->openAiDetectionReportService->extractClaimText([
-                    'source_url' => $sourceUrl,
-                    'caption_text' => $captionText,
-                    'notes' => $notes,
-                    'media_type' => $mediaType,
-                    'platform' => $platform,
-                ], $uploadedFile);
+                $analysis = $this->buildLocalAnalysis($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType, $platform,
+                    $primaryTask !== 'claim', $runMediaDetector);
+                $platform = $this->nullableString($analysis['platform'] ?? null) ?? $platform;
+                $mediaType = $this->nullableString($analysis['media_type'] ?? null) ?? $mediaType;
 
-                if ($openAiExtractedClaim !== null) {
-                    $analysis = $this->attachExtractedClaimText($analysis, $openAiExtractedClaim);
+                if ((bool) config('fact_check.enhanced_enabled', true) || $primaryTask !== 'claim') {
+                    $analysis = $this->evidenceVerificationService->apply($analysis, [
+                        'source_url' => $sourceUrl, 'caption_text' => $captionText, 'notes' => $notes,
+                        'media_type' => $mediaType, 'platform' => $platform,
+                        'analysis_task' => $validated['analysis_task'] ?? 'auto',
+                        'analysis_id' => $analysisId,
+                        'resolved_request' => $resolvedRequest,
+                    ] + $weatherContext, $uploadedFile, $pending ? function (string $stage, array $domains = []) use ($pending): void {
+                        $signals = $pending->signals ?? [];
+                        $signals['analysis_progress'] = [['label' => $stage, 'weight' => 0,
+                            'source_domains' => $domains ?: data_get($signals, 'analysis_progress.0.source_domains', [])]];
+                        $pending->forceFill(['signals' => $signals])->saveQuietly();
+                    } : null);
+                } else {
+                    $openAiExtractedClaim = $this->openAiDetectionReportService->extractClaimText([
+                        'source_url' => $sourceUrl,
+                        'caption_text' => $captionText,
+                        'notes' => $notes,
+                        'media_type' => $mediaType,
+                        'platform' => $platform,
+                    ], $uploadedFile);
+
+                    if ($openAiExtractedClaim !== null) {
+                        $analysis = $this->attachExtractedClaimText($analysis, $openAiExtractedClaim);
+                    }
+
+                    $analysis = $this->enrichAnalysis(
+                        $analysis,
+                        $sourceUrl,
+                        $captionText,
+                        $notes,
+                        $mediaType,
+                        $platform,
+                        $weatherContext,
+                        $openAiExtractedClaim,
+                    );
+                    $analysis = $this->factCheckResultService->apply($analysis, [
+                        'source_url' => $sourceUrl,
+                        'caption_text' => $captionText,
+                        'notes' => $notes,
+                        'media_type' => $mediaType,
+                        'platform' => $platform,
+                        'openai_extracted_claim' => $openAiExtractedClaim,
+                        'locale' => app()->getLocale(),
+                    ]);
                 }
-
-                $analysis = $this->enrichAnalysis(
-                    $analysis,
-                    $sourceUrl,
-                    $captionText,
-                    $notes,
-                    $mediaType,
-                    $platform,
-                    $weatherContext,
-                    $openAiExtractedClaim,
-                );
-                $analysis = $this->factCheckResultService->apply($analysis, [
-                    'source_url' => $sourceUrl,
-                    'caption_text' => $captionText,
-                    'notes' => $notes,
-                    'media_type' => $mediaType,
-                    'platform' => $platform,
-                    'openai_extracted_claim' => $openAiExtractedClaim,
-                    'locale' => app()->getLocale(),
-                ]);
             }
             $analysis = $this->markVerificationPolicyVersion($analysis);
             // Every route, including the legacy fallback, crosses the same typed
             // answer boundary before it can be compared, saved or displayed.
             $analysis['fact_check_result'] = ReportAnswer::complete($analysis['fact_check_result']);
-            $analysis = $this->mediaExplanation->apply($analysis);
+            if ($reviewedMedia === null) {
+                $analysis = $this->mediaExplanation->apply($analysis);
+            }
             $analysis['fact_check_result'] = ResultWording::ensure($analysis['fact_check_result'], $analysis['recommendation'] ?? '');
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
             // Older saved reports have not been admitted to this fresh cache.
@@ -444,6 +451,9 @@ class DetectionPipeline
     private function canReuseResult(Detection $candidate): bool
     {
         $result = $candidate->fact_check_result;
+        // Recheck the registry on every request so disabled or revised entries
+        // cannot survive through the ordinary detector-result cache.
+        if (isset($candidate->signals['reviewed_media'])) return false;
         if (! $this->hasCurrentVerificationPolicyVersion($candidate) || ! is_array($result)
             || data_get($candidate->signals, 'result_cache.generation') !== (string) config('fact_check.result_reuse.generation')
             || ($result['schema_version'] ?? null) !== 4 || ($result['processing_status'] ?? null) !== 'completed'

@@ -1,0 +1,152 @@
+[
+    {
+        "slug":  "real-tricycle-tagkawayan",
+        "provenance":  {
+                           "author":  "Sir Mervs from Metro Sta. Rosa, Philippines",
+                           "original_url":  "https://upload.wikimedia.org/wikipedia/commons/0/06/Tricycle_overloaded.jpg",
+                           "source_url":  "https://commons.wikimedia.org/wiki/File:Tricycle_overloaded.jpg",
+                           "license_url":  "https://creativecommons.org/licenses/by/2.0",
+                           "basis":  "Published photographer attribution, archival record, and original image file",
+                           "license":  "CC BY 2.0"
+                       },
+        "sha256":  "8534c7891c1552e90cd92d06c93298436581f67fe0ade83606ef7fa13f7d914c",
+        "filename":  "Real-Tricycle-Tagkawayan.jpg",
+        "summary":  "Real photograph. This shows a passenger tricycle in Tagkawayan, Quezon. The image is documented in a Wikimedia Commons file record dating to 2008, rather than being a newly AI-generated scene.",
+        "origin":  "photograph"
+    },
+    {
+        "slug":  "real-domestic-cat",
+        "provenance":  {
+                           "author":  "Halved sandwich",
+                           "original_url":  "https://upload.wikimedia.org/wikipedia/commons/0/02/Domestic_Cat.jpg",
+                           "source_url":  "https://commons.wikimedia.org/wiki/File:Domestic_Cat.jpg",
+                           "license_url":  null,
+                           "basis":  "Published photographer attribution, archival record, and original image file",
+                           "license":  "Public domain"
+                       },
+        "sha256":  "79324705e38f9b679d299d64ea10a211334be0e332103438033a6bc04e09838d",
+        "filename":  "Real-Domestic-Cat.jpg",
+        "summary":  "Real photograph. This is an archived photograph of a domestic cat, credited to Halved sandwich. Its source record dates to September 2006 and includes camera metadata.",
+        "origin":  "photograph"
+    },
+    {
+        "slug":  "real-fischboedle-lake",
+        "provenance":  {
+                           "author":  "Frederik Vandaele from Oudenaarde, Belgium",
+                           "original_url":  "https://upload.wikimedia.org/wikipedia/commons/a/a8/Fischboedle_mountain_lake%2C_Haut-Rhin%2C_France.jpg",
+                           "source_url":  "https://commons.wikimedia.org/wiki/File:Fischboedle_mountain_lake,_Haut-Rhin,_France.jpg",
+                           "license_url":  "https://creativecommons.org/licenses/by/2.0",
+                           "basis":  "Published photographer attribution, archival record, and original image file",
+                           "license":  "CC BY 2.0"
+                       },
+        "sha256":  "52c669edfe7054799fd0b594845d34d794badf2a1a6e1db1ac153e60b9e4e0a6",
+        "filename":  "Real-Fischboedle-Lake.jpg",
+        "summary":  "Real photograph. This shows Fischboedle lake in Haut-Rhin, France. The photograph is credited to Frederik Vandaele and was archived on Wikimedia Commons in 2010.",
+        "origin":  "photograph"
+    },
+    {
+        "slug":  "real-fishing-boat-jimbaran",
+        "provenance":  {
+                           "author":  "PHGCOM",
+                           "original_url":  "https://upload.wikimedia.org/wikipedia/commons/d/d4/Fishing_boat_on_Jimbaran.jpg",
+                           "source_url":  "https://commons.wikimedia.org/wiki/File:Fishing_boat_on_Jimbaran.jpg",
+                           "license_url":  "https://creativecommons.org/licenses/by-sa/3.0",
+                           "basis":  "Published photographer attribution, archival record, and original image file",
+                           "license":  "CC BY-SA 3.0"
+                       },
+        "sha256":  "cbb5ddecf43304ef8a4b2e3328c9e32b7ae4cedc4f61170b134afa01979072b2",
+        "filename":  "Real-Fishing-Boat-Jimbaran.jpg",
+        "summary":  "Real photograph. This is a fishing boat at Jimbaran, Bali. The original photograph is credited to PHGCOM and dated 2007 in its Wikimedia Commons record.",
+        "origin":  "photograph"
+    },
+    {
+        "slug":  "real-sunflower-austria",
+        "provenance":  {
+                           "author":  "Tribb",
+                           "original_url":  "https://upload.wikimedia.org/wikipedia/commons/2/2f/Sunflower_in_a_Field.jpg",
+                           "source_url":  "https://commons.wikimedia.org/wiki/File:Sunflower_in_a_Field.jpg",
+                           "license_url":  "https://creativecommons.org/licenses/by/3.0",
+                           "basis":  "Published photographer attribution, archival record, and original image file",
+                           "license":  "CC BY 3.0"
+                       },
+        "sha256":  "e1d69c9b6704f8dfe155cce581c605abb195faab79a79b7e9d2476c010e5aaa4",
+        "filename":  "Real-Sunflower-Austria.jpg",
+        "summary":  "Real photograph. This sunflower was photographed in Austria by Tribb in July 2012. The source record documents the photographer, capture date, and Canon camera details.",
+        "origin":  "photograph"
+    },
+    {
+        "slug":  "ai-red-tricycle",
+        "provenance":  {
+                           "reference_images":  [
+
+                                                ],
+                           "basis":  "Original image generated in this session; exact SHA-256 recorded",
+                           "prompt":  "a small unbranded red electric tricycle parked on a quiet fictional tropical town street after rain, coconut palms, wet pavement reflections, soft morning daylight, detailed realistic textures, documentary-style composition, landscape image",
+                           "generator":  "OpenAI built-in image-generation tool"
+                       },
+        "sha256":  "2f9761328099176cc3379d5016537348c5904a4f8509cb48dbfd713cd4e7ba3b",
+        "filename":  "AI-Red-Tricycle.png",
+        "summary":  "AI-generated. The red tricycle, houses, and wet tropical street form a synthetic scene created with an image-generation model. This image does not document a real vehicle at a verified location.",
+        "origin":  "ai_generated"
+    },
+    {
+        "slug":  "ai-cat-by-window",
+        "provenance":  {
+                           "reference_images":  [
+
+                                                ],
+                           "basis":  "Original image generated in this session; exact SHA-256 recorded",
+                           "prompt":  "a grey tabby cat resting on a wooden windowsill beside a potted fern, overcast daylight",
+                           "generator":  "OpenAI built-in image-generation tool"
+                       },
+        "sha256":  "be63e11f5db58b5f3b974de066119dcb6b897dd28f3be9b38813b70b4d6bf4af",
+        "filename":  "AI-Cat-By-Window.png",
+        "summary":  "AI-generated. The grey cat beside the fern is a digitally synthesized scene. Its photographic appearance does not make it a camera-captured photograph.",
+        "origin":  "ai_generated"
+    },
+    {
+        "slug":  "ai-mountain-lake",
+        "provenance":  {
+                           "reference_images":  [
+
+                                                ],
+                           "basis":  "Original image generated in this session; exact SHA-256 recorded",
+                           "prompt":  "a mountain lake with evergreen trees and a rocky shoreline, soft afternoon daylight",
+                           "generator":  "OpenAI built-in image-generation tool"
+                       },
+        "sha256":  "07b5b083f95f7c056ddd9c0f0af0b639793921f5de111f05c932326748321fef",
+        "filename":  "AI-Mountain-Lake.png",
+        "summary":  "AI-generated. The mountain lake, shoreline, and trees were synthesized as one image. It should not be presented as a photograph of a verified destination.",
+        "origin":  "ai_generated"
+    },
+    {
+        "slug":  "ai-beach-fishing-boat",
+        "provenance":  {
+                           "reference_images":  [
+
+                                                ],
+                           "basis":  "Original image generated in this session; exact SHA-256 recorded",
+                           "prompt":  "a quiet tropical beach with a wooden fishing boat on sand and calm turquoise water",
+                           "generator":  "OpenAI built-in image-generation tool"
+                       },
+        "sha256":  "58b9e2cc2b59afd7ed39992181068e05a9a5ad6d730d8b39275b0df4a5995de6",
+        "filename":  "AI-Beach-Fishing-Boat.png",
+        "summary":  "AI-generated. This beach and wooden fishing boat were created digitally. The image does not establish that this boat or coastline exists at a particular location.",
+        "origin":  "ai_generated"
+    },
+    {
+        "slug":  "ai-sunflower",
+        "provenance":  {
+                           "reference_images":  [
+
+                                                ],
+                           "basis":  "Original image generated in this session; exact SHA-256 recorded",
+                           "prompt":  "a close-up of a yellow sunflower growing outdoors, green leaves and natural background",
+                           "generator":  "OpenAI built-in image-generation tool"
+                       },
+        "sha256":  "8999eaba7bdf41186900515c0290789105180b58a24f145543714deefe248966",
+        "filename":  "AI-Sunflower.png",
+        "summary":  "AI-generated. This sunflower image was synthesized rather than captured with a camera. It can illustrate a sunflower, but it is not a photograph of an observed plant.",
+        "origin":  "ai_generated"
+    }
+]
