@@ -22,6 +22,9 @@ class ReviewedClaimSeeder extends Seeder
                     'Lordan Suan warned Bato dela Rosa of a shoot-to-kill order if he fails to surrender.',
                     'If Bato dela Rosa fails to surrender by the deadline, I will convene a House committee hearing and file a shoot-to-kill resolution.',
                     'Nagbanta si Lordan Suan ng shoot-to-kill resolution laban kay Bato dela Rosa.',
+                    // This specific circulating headline was reviewed with the
+                    // Suan quote-card context; never match on "Bato" alone.
+                    'SHOOT-TO-KILL KAY SEN. BATO, IHAHAIN?!',
                     'FACT CHECK: Shoot-to-kill Bato dela Rosa warning by Lordan Suan is fake'],
                 [
                     ['Philstar', 'House prosecution panel member denies shoot-to-kill claim vs Bato', 'https://www.philstar.com/headlines/2026/11/02/2567378/house-prosecution-panel-member-denies-shoot-kill-claim-vs-bato/amp/', 'Documents Suan\'s November 2 denial of the fabricated quotation.'],

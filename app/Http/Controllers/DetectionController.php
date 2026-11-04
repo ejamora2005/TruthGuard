@@ -236,10 +236,13 @@ class DetectionController extends Controller
             data_get($extraction, 'reconstructed_text'),
             data_get($extraction, 'visible_text'),
         ]));
-        $knownResult = KnownFactCheckCatalog::match($text);
+        $knownResult = \App\Services\Detections\ReviewedClaimLookup::lookup($text)
+            ?? KnownFactCheckCatalog::match($text);
         if ($knownResult === null) {
             foreach (['analysis_text', 'reconstructed_text', 'visible_text'] as $key) {
                 $candidate = (string) data_get($extraction, $key, '');
+                $knownResult = \App\Services\Detections\ReviewedClaimLookup::lookup($candidate);
+                if ($knownResult !== null) break;
                 if (KnownFactCheckCatalog::matchesReviewedVariant($candidate)) {
                     $knownResult = KnownFactCheckCatalog::match($candidate);
                     break;
@@ -250,6 +253,9 @@ class DetectionController extends Controller
         if ($knownResult === null) {
             return $detection;
         }
+        if (data_get($detection->fact_check_result, 'diagnostics.reviewed_claim_id') === data_get($knownResult, 'diagnostics.reviewed_claim_id')
+            && data_get($detection->fact_check_result, 'summary') === $knownResult['summary']
+            && data_get($detection->fact_check_result, 'verdict') === $knownResult['verdict']) return $detection;
         $knownResult['diagnostics']['api_usage'] = data_get($detection->fact_check_result, 'diagnostics.api_usage',
             data_get($detection->signals, 'openai_usage', $knownResult['diagnostics']['api_usage']));
 
@@ -259,7 +265,7 @@ class DetectionController extends Controller
         $signals = is_array($detection->signals) ? $detection->signals : [];
         unset($signals['analysis_progress'], $signals['analysis_timeout']);
         $signals['known_fact_check'] = [[
-            'label' => 'Matched reviewed November 13, 2026 claim',
+            'label' => 'Matched reviewed claim',
             'weight' => 0,
         ]];
 
