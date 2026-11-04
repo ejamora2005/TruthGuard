@@ -131,6 +131,34 @@ html.dark body.truthguard-auth-page :is(.tg-auth-card-detailed::after, .tg-auth-
 html.dark body.truthguard-auth-page .tg-auth-backdrop__halo { opacity: .08; }
 html.dark body.truthguard-policy-page .text-blue-950 { color: #bfdbfe !important; }
 
+/* The consent shell has its own surface, outside the utility-based theme rules. */
+html[data-tg-workspace].dark body.truthguard-policy-page .tg-consent-shell {
+    background: #182235 !important;
+    border-color: #3b4b63 !important;
+    color: #f1f5f9;
+    box-shadow: 0 18px 50px rgb(2 6 23 / 25%);
+}
+html[data-tg-workspace].dark body.truthguard-policy-page .truthguard-policy-main { background: #0f172a !important; }
+html[data-tg-workspace].dark body.truthguard-policy-page :is(.truthguard-policy-nav a, .truthguard-policy-back) {
+    background: #223047;
+    border-color: #5276a3;
+    color: #bfdbfe;
+}
+html[data-tg-workspace].dark body.truthguard-policy-page :is(.truthguard-policy-nav a, .truthguard-policy-back):hover { background: #29456b; }
+html[data-tg-workspace].dark body.truthguard-policy-page .tg-consent-policy { scrollbar-color: #64748b #182235; }
+html[data-tg-workspace].dark body.truthguard-policy-page .tg-consent-policy::-webkit-scrollbar-track { background: #182235; }
+html[data-tg-workspace].dark body.truthguard-policy-page .tg-consent-policy::-webkit-scrollbar-thumb { border-color: #182235; }
+html[data-tg-workspace].dark body.truthguard-policy-page .tg-formal-alert { background: #482537; border-color: #96566a; }
+@media (max-width: 639px) {
+    body.truthguard-policy-page .truthguard-policy-main { padding-top: max(4.5rem, calc(env(safe-area-inset-top, 0px) + 4rem)); }
+    .truthguard-policy-page .tg-consent-highlights { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+    .truthguard-policy-page .tg-consent-highlights > div { min-width: 0; padding: .65rem .5rem; border-radius: 12px; }
+    .truthguard-policy-page .tg-consent-highlights p:first-child { font-size: .625rem; letter-spacing: .06em; }
+    .truthguard-policy-page .tg-consent-highlights p:last-child { font-size: .75rem; line-height: 1.5; }
+    .truthguard-policy-page .truthguard-policy-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; }
+    .truthguard-policy-page .truthguard-policy-nav a { min-width: 0; padding: .5rem .35rem; font-size: .6875rem; text-align: center; border-radius: 10px; }
+}
+
 /* Keep all form actions reachable on short screens and with the keyboard open. */
 body.truthguard-auth-page .truthguard-auth-shell { height: auto; min-height: 100dvh; overflow: visible; padding-top: 4.5rem; padding-bottom: 1.5rem; }
 body.truthguard-auth-page .truthguard-auth-card { max-height: none; overflow: visible; }

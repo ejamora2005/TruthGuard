@@ -107,7 +107,7 @@
                             </p>
                         </div>
 
-                        <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                        <div class="tg-consent-highlights mt-5 grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                                 <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-500">Purpose</p>
                                 <p class="mt-1 text-sm font-bold text-slate-950">Fact-checking service</p>
