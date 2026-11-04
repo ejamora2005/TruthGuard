@@ -3481,6 +3481,8 @@ new class extends Component
             progressState: 'queued',
             progressFailures: 0,
             progressTimer: null,
+            progressClock: null,
+            progressStartedAt: null,
             progressDisposed: false,
             previewUrl: null,
             previewName: null,
@@ -3571,6 +3573,7 @@ new class extends Component
             },
             destroy() {
                 this.progressDisposed = true;
+                window.clearInterval(this.progressClock);
                 window.clearTimeout(this.progressTimer);
                 this.cancelVoiceInput();
             },
@@ -3811,6 +3814,12 @@ new class extends Component
             },
             trackPendingResult(url) {
                 window.clearTimeout(this.progressTimer);
+                window.clearInterval(this.progressClock);
+                this.progressElapsed = 0;
+                this.progressStartedAt = Date.now();
+                this.progressClock = window.setInterval(() => {
+                    this.progressElapsed = Math.max(0, Math.floor((Date.now() - this.progressStartedAt) / 1000));
+                }, 1000);
                 this.pendingResultUrl = url;
                 this.progressState = 'queued';
                 this.progressFailures = 0;
@@ -3839,7 +3848,8 @@ new class extends Component
                     if (!response.ok) throw new Error('Status unavailable');
                     const data = await response.json();
                     this.progressFailures = 0;
-                    this.progressElapsed = data.elapsed_seconds || 0;
+                    this.progressElapsed = Math.max(this.progressElapsed, data.elapsed_seconds || 0);
+                    this.progressStartedAt = Date.now() - this.progressElapsed * 1000;
                     this.progressState = data.processing_status;
                     if (this.progressDisposed) return;
                     if (data.processing_status === 'failed') {
@@ -3847,6 +3857,7 @@ new class extends Component
                         return;
                     }
                     if (data.processing_status === 'completed') {
+                        window.clearInterval(this.progressClock);
                         window.clearTimeout(this.progressTimer);
                         this.pendingResultUrl = null;
                         window.location.assign(url);
@@ -3869,6 +3880,7 @@ new class extends Component
             },
             stopPendingResult(message) {
                 window.clearTimeout(this.progressTimer);
+                window.clearInterval(this.progressClock);
                 this.pendingResultUrl = null;
                 this.progressMessage = null;
                 this.submitting = false;
