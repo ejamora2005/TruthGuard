@@ -365,11 +365,13 @@ body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard
 }
 body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard-progress-restore .truthguard-progress-dot {
     background: currentColor;
-    animation: truthguard-progress-blink 1.3s ease-in-out infinite;
 }
 @keyframes truthguard-progress-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+.truthguard-background-analysis-button.is-analyzing .truthguard-background-analysis-logo {
+    animation: truthguard-progress-blink 1.3s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-    body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard-progress-restore .truthguard-progress-dot { animation: none; }
+    .truthguard-background-analysis-button.is-analyzing .truthguard-background-analysis-logo { animation: none; }
 }
 @media (max-width: 1023px) {
     html[data-tg-workspace] body .truthguard-topbar .truthguard-mobile-brand {

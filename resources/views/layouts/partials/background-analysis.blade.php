@@ -103,6 +103,7 @@
 >
     <button type="button"
         class="truthguard-background-analysis-button"
+        :class="{ 'is-analyzing': !complete && !failed && !connectionError }"
         @click="showPrompt = !showPrompt; if (showPrompt) refresh()"
         :aria-expanded="showPrompt"
         :title="complete ? 'Fact check ready — view result' : (failed ? 'Analysis needs attention — view report' : 'Fact check analyzing — view progress')"
