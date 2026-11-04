@@ -3332,7 +3332,7 @@ new class extends Component
             border: 0; box-shadow: none; transition: background .15s, color .15s;
         }
         .truthguard-progress-control--close { color: #dc2626; }
-        .truthguard-progress-control--close:hover { color: #b91c1c; background: #fef2f2; }
+        .truthguard-progress-control.truthguard-progress-control--close:hover { color: #b91c1c; background: #fef2f2; }
         .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
         html[data-tg-workspace].dark .truthguard-inline-progress .truthguard-progress-control {
             background: transparent; color: #e2e8f0; border: 0;
