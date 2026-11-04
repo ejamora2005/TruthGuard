@@ -4559,9 +4559,9 @@ html:not([data-pwa-install-available]) :is(.js-install-app, [data-pwa-install-he
     }
 
     body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form .truthguard-detection-textarea {
-        height: 3rem !important;
-        min-height: 3rem !important;
-        max-height: 3rem !important;
+        height: clamp(4.5rem, 14dvh, 7rem) !important;
+        min-height: min(4.5rem, 20dvh) !important;
+        max-height: min(7rem, 24dvh) !important;
     }
 }
 
@@ -5915,7 +5915,8 @@ html[data-pwa-standalone] .truthguard-history-date-filters { display: none !impo
         padding-bottom: calc(190px + env(safe-area-inset-bottom, 0px)) !important;
     }
     body.truthguard-fact-check-create-route .truthguard-detection-composer { border-radius: 20px !important; }
-    body.truthguard-fact-check-create-route .truthguard-detection-textarea { font-size: 14px !important; line-height: 1.45 !important; }
+    body.truthguard-fact-check-create-route .truthguard-detection-textarea { font-size: 13px !important; line-height: 1.45 !important; }
+    body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-composer-field { align-items: flex-end !important; }
     body.truthguard-fact-check-create-route .truthguard-pre-result-workspace .truthguard-pre-result-form::before { display: none !important; }
     body.truthguard-fact-check-create-route .truthguard-recent-state a { border-radius: 999px !important; padding: 10px 16px !important; }
     body.truthguard-fact-check-create-route .truthguard-mobile-capability-label { display: none !important; }
