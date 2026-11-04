@@ -5894,7 +5894,6 @@ new class extends Component
                         </div>
 
                         <div class="truthguard-composer-actions flex shrink-0 items-center gap-2">
-                            <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore" @click="progressHidden = false; progressMinimized = false"><span class="truthguard-progress-dot" aria-hidden="true"></span><span>View progress</span></button>
                             <span
                                 x-show="showCharacterCount()"
                                 x-cloak
@@ -5903,7 +5902,9 @@ new class extends Component
                                 x-text="`${composerCharacterCount()}/${composerMaxCharacters}`"
                                 aria-live="polite"
                             ></span>
+                        <button x-show="submitting" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore truthguard-analyze-button truthguard-analyze-ready" @click="progressHidden = false; progressMinimized = false"><span class="truthguard-progress-dot" aria-hidden="true"></span><span>View progress</span></button>
                         <button
+                            x-show="!submitting"
                             type="button"
                             class="truthguard-analyze-button relative inline-flex shrink-0 items-center justify-center overflow-hidden text-xs font-bold transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
                             :class="[

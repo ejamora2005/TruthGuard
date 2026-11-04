@@ -10,7 +10,7 @@ const template = source.slice(start, source.indexOf('\n        <div', start));
 const modalStart = source.indexOf('<template x-teleport="body">', source.indexOf('@submit="handleSubmit($event)"'));
 const modal = source.slice(modalStart, source.indexOf('<input type="hidden" name="weather_consent"', modalStart))
     .replaceAll('{{ $truthguardLogoUrl }}', 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27/%3E');
-const restore = source.match(/<button x-show="submitting && \(progressHidden \|\| progressMinimized\)"[^>]*>[\s\S]*?<\/button>/)[0];
+const restore = source.match(/<button x-show="submitting"[^>]*x-ref="showProgress"[^>]*>[\s\S]*?<\/button>/)[0];
 const alpine = readFileSync('node_modules/alpinejs/dist/cdn.min.js', 'utf8');
 const origin = 'http://localhost:9876';
 const resultUrl = `${origin}/detections/24/result`;
