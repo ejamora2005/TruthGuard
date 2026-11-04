@@ -3332,6 +3332,9 @@ new class extends Component
             border: 0; box-shadow: none; transition: background .15s, color .15s;
         }
         .truthguard-progress-control--close { color: #dc2626; }
+        .truthguard-inline-progress .truthguard-progress-control > svg {
+            width: 28px; height: 28px; min-width: 28px; flex-shrink: 0;
+        }
         .truthguard-progress-control.truthguard-progress-control--close:hover { color: #b91c1c; background: #fef2f2; }
         .truthguard-progress-control:hover { background: #e0edff; color: #1d4ed8; }
         html[data-tg-workspace].dark .truthguard-inline-progress .truthguard-progress-control {
@@ -5136,9 +5139,9 @@ new class extends Component
             <div class="truthguard-progress-header">
                 <span class="truthguard-progress-label">Analysis</span>
                 <button type="button" class="truthguard-progress-control" aria-label="Minimize progress" title="Minimize progress" @click="progressMinimized = true; $nextTick(() => $refs.showProgress.focus())">
-                    <span aria-hidden="true">&minus;</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M5 12h14" /></svg>
                 </button>
-                <button type="button" class="truthguard-progress-control truthguard-progress-control--close" aria-label="Hide progress" title="Hide progress; analysis continues" @click="progressHidden = true; $nextTick(() => $refs.showProgress.focus())">&times;</button>
+                <button type="button" class="truthguard-progress-control truthguard-progress-control--close" aria-label="Hide progress" title="Hide progress; analysis continues" @click="progressHidden = true; $nextTick(() => $refs.showProgress.focus())"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
             <div class="truthguard-verify-panel relative z-10 flex flex-col items-center justify-center" role="status" aria-live="polite" aria-busy="true">
                 <div class="truthguard-verify-loader mx-auto" aria-hidden="true">
