@@ -91,18 +91,33 @@ html.dark .tg-history-tone-red { background: #482537; color: #fda4af; border-col
 .tg-history-flash { padding: .75rem 1rem; margin-bottom: 1rem; border: 1px solid var(--history-line); border-radius: 9px; color: var(--history-link); background: var(--history-bg); font-size: .875rem; }
 @media (max-width: 1439px) {
     .tg-history-desktop { display: none; }
-    .tg-history-mobile-list { display: block; }
-    .tg-history-card { padding: 1rem; border-bottom: 1px solid var(--history-line); }
-    .tg-history-card:last-child { border-bottom: 0; }
+    .tg-history-mobile-list { display: grid; gap: .75rem; padding: 1rem; background: var(--history-soft); }
+    .tg-history-card { min-width: 0; padding: 1rem; border: 1px solid var(--history-line); border-radius: 12px; background: var(--history-bg); }
+    .tg-history-card .tg-history-thumb { width: 3.5rem; height: 3.5rem; flex-basis: 3.5rem; border-radius: 10px; }
     .tg-history-card-result { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .75rem; }
     .tg-history-card-result .tg-history-date { text-align: right; }
-    .tg-history-card-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-top: .75rem; }
-    .tg-history-card-footer .tg-history-score { flex: 1 1 9rem; }
-    .tg-history-card-footer .tg-history-actions { flex: 1 0 auto; }
+    .tg-history-card-footer { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .75rem; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--history-line); }
+    .tg-history-card .tg-history-open { min-height: 44px; background: var(--history-soft); }
+    .tg-history-card .tg-history-menu-trigger { width: 44px; min-height: 44px; }
 }
 @media (max-width: 639px) {
     .tg-history-filterbar { gap: .5rem; }
-    .tg-history-tabs { width: 100%; }
+    .tg-history-tabs { width: 100%; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: visible; gap: .3rem; }
+    .tg-history-tabs a { grid-column: span 2; justify-content: center; min-width: 0; min-height: 44px; padding: .4rem .25rem; gap: .3rem; font-size: .7rem; }
+    .tg-history-tabs a:nth-last-child(-n+2) { grid-column: span 3; }
+    .tg-history-tabs a > span { min-width: 1.25rem; padding: .1rem .25rem; font-size: .65rem; }
+    .tg-history-mobile-list { gap: .65rem; padding: .65rem; }
+    .tg-history-card { padding: .8rem; }
+    .tg-history-card .tg-history-title { font-size: .8125rem; }
+    .tg-history-card .tg-history-meta { font-size: .6875rem; }
+    .tg-history-card-result { gap: .5rem; }
+    .tg-history-card .tg-history-badge { font-size: .6875rem; }
+    .tg-history-card .tg-history-date { flex-shrink: 0; font-size: .6875rem; }
+    .tg-history-card .tg-history-date span:last-child { font-size: .625rem; }
+    .tg-history-card-footer { gap: .4rem; }
+    .tg-history-card .tg-history-score-label { font-size: .75rem; }
+    .tg-history-card .tg-history-score-note { font-size: .625rem; }
+    .tg-history-card .tg-history-open { padding: .4rem .5rem; font-size: .7rem; }
     .tg-history-date-picker { position: static; }
     .tg-history-date-picker > summary { justify-content: center; width: 44px; height: 44px; padding: 0; }
     .tg-history-date-label { display: none; }
