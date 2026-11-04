@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Services\Automation\ScrapeOrchestrator;
 use App\Services\Detections\DetectionRetentionService;
 use App\Services\Detections\ModelHealthService;
+use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Notifications\PublicClaimReviewNotificationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -129,6 +130,18 @@ Artisan::command('truthguard:models:health {--load : Load each configured model 
 })->purpose('Check trained model deployment readiness without exposing model internals publicly.');
 
 Schedule::command('truthguard:archive-detections')->daily()->withoutOverlapping();
+
+Artisan::command('truthguard:close-stalled-assessments', function () {
+    $users = \App\Models\Detection::query()->whereIn('processing_status', ['queued', 'processing'])
+        ->distinct()->pluck('user_id');
+    $closed = 0;
+    foreach ($users as $userId) {
+        $closed += app(ActiveDetectionManager::class)->expireStaleForUser((int) $userId);
+    }
+    $this->info('Stalled assessments finalized: '.$closed);
+})->purpose('Save final unavailable reports for abandoned analyses, even when users have left the page.');
+
+Schedule::command('truthguard:close-stalled-assessments')->everyMinute()->withoutOverlapping();
 Artisan::command('truthguard:refresh-review-images {--limit=50} {--queue}', function () {
     if (! config('services.google_fact_check.feed_images_enabled', true)) {
         $this->error('Preview collection is disabled. Enable GOOGLE_FACT_CHECK_FEED_IMAGES_ENABLED and refresh config cache.');

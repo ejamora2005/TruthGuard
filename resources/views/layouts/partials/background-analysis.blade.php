@@ -80,8 +80,9 @@
                 this.message = 'Progress updates are unavailable. Your upload is saved. Check again in a moment.';
                 if (++this.failures >= 3) {
                     window.clearInterval(this.timer);
+                    this.timer = window.setInterval(() => this.refresh(), 15000);
                     this.showPrompt = true;
-                    this.message = 'Unable to reach your analysis. Use Check status to reconnect, or refresh this page. Your upload is saved.';
+                    this.message = 'Connection interrupted. Your upload is saved; reconnecting automatically. You can also use Check status.';
                 }
             } finally {
                 window.clearTimeout(timeout);

@@ -120,7 +120,7 @@ test('opening an unfinished report resumes polling without resubmission', async 
     } finally { await page.close(); }
 });
 
-test('temporary status failures reconnect; a failed analysis stops the loader without opening a result', async () => {
+test('temporary status failures reconnect; a failed analysis opens its saved final report', async () => {
     const { page, state } = await setup({ resume: true });
     try {
         await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
@@ -130,11 +130,9 @@ test('temporary status failures reconnect; a failed analysis stops the loader wi
         state.transientFailure = false;
         state.status = 'failed';
         await refresh(page, state);
-        await page.locator('.truthguard-inline-progress').waitFor({ state: 'hidden' });
-        assert.match(await page.getByRole('alert').innerText(), /No verdict was produced/);
-        assert.equal(await page.getByRole('button', { name: 'Check claim', exact: true }).isEnabled(), true);
+        await page.waitForURL(resultUrl);
         assert.equal(state.posts, 0);
-        assert.equal(state.navigations, 0);
+        assert.equal(state.navigations, 1);
         assert.deepEqual(state.errors, []);
     } finally { await page.close(); }
 });

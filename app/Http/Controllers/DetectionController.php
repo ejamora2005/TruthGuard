@@ -332,7 +332,11 @@ class DetectionController extends Controller
             ]);
             // The worker reopens the persisted original; UploadedFile cannot be serialized.
             unset($validated['media_file']);
-            AnalyzeDetectionEvidence::dispatch($detection->id, $validated);
+            try {
+                AnalyzeDetectionEvidence::dispatch($detection->id, $validated);
+            } catch (\Throwable $error) {
+                (new AnalyzeDetectionEvidence($detection->id, $validated))->failed($error);
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([

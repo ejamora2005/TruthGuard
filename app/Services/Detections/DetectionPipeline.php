@@ -218,6 +218,46 @@ class DetectionPipeline
             Log::info('TruthGuard analysis persisted.', ['analysis_id' => $analysisId, 'detection_id' => $detection->id, 'source_count' => count($analysis['fact_check_result']['sources'] ?? [])]);
 
             return $detection;
+        } catch (\Throwable $error) {
+            // Validation remains an input error. Provider/model failures must
+            // leave a report instead of an abandoned spinner or a bare 500.
+            if ($error instanceof ValidationException) throw $error;
+            Log::warning('TruthGuard assessment ended without a conclusion.', [
+                'analysis_id' => $analysisId, 'error_type' => $error::class,
+            ]);
+            if ($pending?->fact_check_result !== null) {
+                $pending->refresh();
+                if (! in_array($pending->processing_status, ['queued', 'processing'], true)) return $pending;
+                $signals = $pending->signals ?? [];
+                unset($signals['analysis_progress']);
+                if (isset($signals['analysis_retry'])) $signals['analysis_retry']['status'] = 'failed';
+                $pending->forceFill(['processing_status' => 'completed', 'signals' => $signals])->saveQuietly();
+                return $pending->fresh();
+            }
+            $result = ReportAnswer::complete([
+                'schema_version' => 4, 'primary_task' => $primaryTask,
+                'verdict' => 'ANALYSIS_UNAVAILABLE',
+                'claim' => (string) ($captionText ?? ''),
+                'summary' => 'The assessment could not finish because an analysis service was unavailable. Your submission is saved. Open this report from History and retry when the service is available. No true-or-false conclusion was reached.',
+                'sources' => [], 'request' => $resolvedRequest,
+            ]);
+            $attributes = [
+                'user_id' => $user->id, 'source_kind' => $uploadedFile ? 'upload' : ($sourceUrl ? 'link' : 'text'),
+                'source_url' => $sourceUrl, 'caption_text' => $captionText, 'notes' => $notes,
+                'media_path' => $mediaPath, 'media_type' => $mediaType,
+                'processing_status' => 'failed', 'verdict' => 'review', 'fake_score' => 0,
+                'fact_check_result' => $result, 'analysis_summary' => $result['summary'],
+                'explanation_summary' => $result['summary'],
+            ];
+            if ($pending) {
+                $pending->refresh();
+                if (! in_array($pending->processing_status, ['queued', 'processing'], true)) return $pending;
+                $signals = $pending->signals ?? [];
+                unset($signals['analysis_progress']);
+                $pending->forceFill($attributes + ['signals' => $signals])->saveQuietly();
+                return $pending->fresh();
+            }
+            return Detection::create($attributes);
         } finally {
             $reuseLock?->release();
         }

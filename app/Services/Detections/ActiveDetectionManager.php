@@ -33,6 +33,13 @@ class ActiveDetectionManager
                     'expired_at' => now()->toIso8601String(),
                 ];
 
+                // A timed-out retry must not destroy a previously saved report.
+                if ($detection->fact_check_result !== null) {
+                    if (isset($signals['analysis_retry'])) $signals['analysis_retry']['status'] = 'failed';
+                    $detection->forceFill(['processing_status' => 'completed', 'signals' => $signals])->saveQuietly();
+                    continue;
+                }
+
                 $result = ReportAnswer::complete([
                     'schema_version' => 4,
                     'primary_task' => 'claim',

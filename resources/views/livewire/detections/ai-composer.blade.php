@@ -3853,7 +3853,11 @@ new class extends Component
                     this.progressState = data.processing_status;
                     if (this.progressDisposed) return;
                     if (data.processing_status === 'failed') {
+                        window.clearInterval(this.progressClock);
+                        window.clearTimeout(this.progressTimer);
+                        this.pendingResultUrl = null;
                         this.stopPendingResult('The analysis could not be completed. No verdict was produced. Please try again.');
+                        window.location.assign(url);
                         return;
                     }
                     if (data.processing_status === 'completed') {
@@ -3869,12 +3873,12 @@ new class extends Component
                 } catch (error) {
                     this.progressMessage = 'Reconnecting to your analysis. You can hide this card and check History later.';
                     if (++this.progressFailures >= 3) {
-                        this.stopPendingResult('Unable to reach your analysis. Your upload is saved. Refresh this page or open History to check its status.');
+                        this.progressMessage = 'Connection interrupted. Your upload is saved; reconnecting automatically.';
                     }
                 } finally {
                     window.clearTimeout(timeout);
                     if (this.pendingResultUrl && !this.progressDisposed) {
-                        this.progressTimer = window.setTimeout(() => this.refreshPendingResult(), 5000);
+                        this.progressTimer = window.setTimeout(() => this.refreshPendingResult(), this.progressFailures >= 3 ? 15000 : 5000);
                     }
                 }
             },
