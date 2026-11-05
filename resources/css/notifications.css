@@ -101,11 +101,13 @@ html.dark .tg-inbox .tg-inbox-error { border-color: #96566a; background: #482537
 }
 @media (max-width: 639px) {
     .tg-inbox { margin-top: .25rem; }
-    .tg-inbox-header { margin-bottom: 1rem; }
-    .tg-inbox .tg-inbox-title-line h1 { font-size: 1.5rem !important; }
+    .tg-inbox-header { flex-direction: row; align-items: flex-start; justify-content: space-between; gap: .5rem; margin-bottom: 1rem; }
+    .tg-inbox-heading { flex: 1 1 auto; }
+    .tg-inbox-title-line { flex-wrap: nowrap; gap: .4rem; }
+    .tg-inbox .tg-inbox-title-line h1 { font-size: 1.25rem !important; white-space: nowrap; }
     .tg-inbox .tg-inbox-heading > p { font-size: .8125rem !important; }
     .tg-inbox .tg-inbox-unread-count { font-size: .6875rem !important; }
-    .tg-inbox-header-actions { width: auto; align-self: flex-start; }
+    .tg-inbox-header-actions { width: auto; align-self: flex-start; flex: 0 0 auto; gap: .35rem; }
     .tg-inbox .tg-inbox-header-actions > button { width: 44px; flex: 0 0 44px; padding: 0; }
     .tg-inbox .tg-inbox-header-actions > button > span { display: none; }
     .tg-inbox .tg-inbox-preferences { width: 44px; padding: 0; }
