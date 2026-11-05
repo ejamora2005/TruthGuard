@@ -41,6 +41,41 @@ html[data-tg-workspace].dark body #news-watch .tg-feed-search-input input#truthg
 }
 html[data-tg-workspace].dark #news-watch :is(.tg-category-menu a:hover, .tg-category-menu a[aria-current]) { background: #203858 !important; color: #bfdbfe !important; }
 html[data-tg-workspace].dark #news-watch .tg-category-count { color: #93c5fd !important; }
+html[data-tg-workspace].dark #news-watch .tg-feed-pagination {
+    background: var(--tg-night-bg) !important;
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark #news-watch .tg-feed-pagination .tg-pagination {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark #news-watch .tg-feed-pagination .tg-pagination-controls {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark #news-watch .tg-feed-pagination :is(.tg-pagination-count, .tg-pagination-arrow) {
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark #news-watch .tg-feed-pagination :is(.tg-pagination-select, .tg-select-trigger) {
+    background: #203858 !important;
+    color: #bfdbfe !important;
+    border-color: #5276a3 !important;
+}
+html[data-tg-workspace].dark #news-watch .tg-feed-pagination a.tg-pagination-arrow:hover {
+    background: #203858 !important;
+    color: #bfdbfe !important;
+}
+html[data-tg-workspace].dark body > .tg-select-menu {
+    background: var(--tg-night-surface) !important;
+    color: var(--tg-night-ink) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: 0 18px 44px rgb(0 0 0 / 35%) !important;
+}
+html[data-tg-workspace].dark body > .tg-select-menu .tg-select-option:is(:hover, .is-focused, [aria-selected="true"]) {
+    background: #203858 !important;
+    color: #bfdbfe !important;
+}
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-danger { background: #482537; color: #fda4af; border-color: #96566a; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-warning { background: #44301c; color: #fcd34d; border-color: #8c713c; }
 html[data-tg-workspace].dark #news-watch .tg-rating-meta-chip-safe { background: #123c35; color: #6ee7b7; border-color: #377864; }
