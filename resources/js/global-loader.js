@@ -120,10 +120,9 @@
         navigation = null;
     };
     window.TruthGuardLoader = { begin, reset, ready, startNavigation };
-    // A direct page render already contains its usable server-rendered UI. Do not
-    // cover an empty workspace with a synthetic loading state; real navigation,
-    // submissions and explicit data operations call begin() themselves.
-    const initialDone = () => {};
+    // Show the branded splash on a direct page render as well. DOMContentLoaded
+    // completes this token so the eye performs its final blink before fading.
+    const initialDone = begin({ immediate: true });
     document.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('admin-root')) ready();
     }, { once: true });
