@@ -894,11 +894,13 @@
         .tg-submission-details { min-width: 0; }
         .tg-submission-details > summary { display: none; }
         @media (max-width: 640px) {
-            .tg-ai-report .tg-report-header { align-items: center; gap: .75rem; padding-block: .125rem; }
+            .tg-ai-report .tg-report-header { flex-wrap: nowrap; align-items: center; gap: .75rem; padding-block: .125rem; }
+            .tg-ai-report .tg-report-title { flex: 1 1 auto; flex-basis: auto; }
+            .tg-ai-report .tg-report-header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; }
             .tg-ai-report .tg-report-kicker, .tg-ai-report .tg-report-subtitle, .tg-ai-report .tg-report-reference > span { display: none; }
             .tg-ai-report .tg-report-page-title { margin: 0; font-size: 1.125rem; line-height: 1.4; }
-            .tg-ai-report .tg-report-reference { max-width: none; padding-block: .125rem; padding-left: .75rem; }
-            .tg-ai-report .tg-report-reference > strong { margin-top: 0; font-size: 1rem; line-height: 1.4; }
+            .tg-ai-report .tg-report-reference { display: none; }
+            .tg-ai-report .tg-report-new-check { min-height: 34px; padding: .4rem .65rem; }
             .tg-ai-report .tg-report-evidence { gap: .75rem; }
             .tg-ai-report .tg-report-evidence .tg-ai-media > .tg-image-trigger > img,
             .tg-ai-report .tg-report-evidence .tg-ai-media > video { max-height: min(30svh, 14rem); }
@@ -1315,7 +1317,9 @@
                         <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800">The classifiers disagree. Their findings are recorded separately; review the original source before relying on this result.</p>
                     @endif
                     @if (is_array($recordedMedia['input_assessment'] ?? null))
-                        @php($inputAssessment = $recordedMedia['input_assessment'])
+                        @php
+                            $inputAssessment = $recordedMedia['input_assessment'];
+                        @endphp
                         <div class="mt-4 grid gap-3 sm:grid-cols-2">
                             <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
                                 <p class="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Uploaded-file quality</p>
@@ -1381,22 +1385,26 @@
                             <span class="shrink-0 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-black text-amber-800">OCR may be imperfect</span>
                         @endif
                     </div>
-                    @forelse ($claimEvidenceItems as $claimEvidence)
-                        @php $claimPreview = \Illuminate\Support\Str::limit($claimEvidence['text'], 500); @endphp
-                        <div class="mt-4 border-t border-slate-200 pt-3 first:mt-3 first:border-t-0 first:pt-0">
-                            <p class="text-xs font-black text-slate-500">{{ $claimEvidence['label'] }}</p>
-                            <p class="mt-1 break-words text-sm leading-7 text-slate-800">{{ $claimPreview }}</p>
-                            @if ($claimPreview !== $claimEvidence['text'])
-                                <details class="tg-claim-full-text mt-3">
-                                    <summary class="cursor-pointer text-xs font-bold text-blue-700">View full text</summary>
-                                    <p class="mt-2 break-words whitespace-pre-line text-sm leading-7 text-slate-700">{{ $claimEvidence['text'] }}</p>
-                                </details>
-                            @endif
-                        </div>
-                    @empty
+                    @if ($claimEvidenceItems->isNotEmpty())
+                        @foreach ($claimEvidenceItems as $claimEvidence)
+                            @php
+                                $claimPreview = \Illuminate\Support\Str::limit($claimEvidence['text'], 500);
+                            @endphp
+                            <div class="mt-4 border-t border-slate-200 pt-3 first:mt-3 first:border-t-0 first:pt-0">
+                                <p class="text-xs font-black text-slate-500">{{ $claimEvidence['label'] }}</p>
+                                <p class="mt-1 break-words text-sm leading-7 text-slate-800">{{ $claimPreview }}</p>
+                                @if ($claimPreview !== $claimEvidence['text'])
+                                    <details class="tg-claim-full-text mt-3">
+                                        <summary class="cursor-pointer text-xs font-bold text-blue-700">View full text</summary>
+                                        <p class="mt-2 break-words whitespace-pre-line text-sm leading-7 text-slate-700">{{ $claimEvidence['text'] }}</p>
+                                    </details>
+                                @endif
+                            </div>
+                        @endforeach
+                    @else
                         <p class="mt-3 text-sm font-semibold leading-6 text-slate-700">No clear factual claim was detected.</p>
                         <p class="mt-1 text-xs leading-5 text-slate-500">TruthGuard cannot assess a specific claim without claim text or a matching source review.</p>
-                    @endforelse
+                    @endif
                 </div>
 
                 @if ($selectedDetection->source_url)
@@ -1557,7 +1565,7 @@
     </details>
 
     <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="result-feedback-title">
-        <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div class="flex min-w-0 items-start gap-3">
                 <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700" aria-hidden="true">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1571,24 +1579,29 @@
             </div>
             <span class="hidden shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500 sm:inline-flex">Report an issue</span>
         </div>
-        <div class="grid gap-2 border-t border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
-            @foreach ([
-                'wrong_interpretation' => ['Claim was misunderstood', 'M12 3v18m9-9H3'],
-                'unsupported_source' => ['Source does not support it', 'M10.5 13.5 13.5 10.5m-5.25 7.25-1.5 1.5a3.18 3.18 0 0 1-4.5-4.5l3-3a3.18 3.18 0 0 1 4.5 0m6-3.5 1.5-1.5a3.18 3.18 0 0 1 4.5 4.5l-3 3a3.18 3.18 0 0 1-4.5 0'],
-                'verdict_review' => ['Verdict needs review', 'M12 3 5 6v5.2c0 4.3 2.8 7.5 7 9.3 4.2-1.8 7-5 7-9.3V6l-7-3Z'],
-                'unclear_explanation' => ['Explanation is unclear', 'M9.1 9a3 3 0 1 1 4.5 2.6c-1 .6-1.6 1.1-1.6 2.4m0 3h.01'],
-            ] + (($publicResult['primary_task'] ?? '') === 'media' ? [
-                'media_false_positive' => ['This is a real image', 'M5 12.5 9.5 17 19 7.5'],
-                'media_false_negative' => ['This is AI-generated', 'M12 3 14 9.5 21 12l-7 2.5L12 21l-2-6.5L3 12l7-2.5L12 3Z'],
-            ] : []) as $feedbackValue => [$feedbackLabel, $feedbackIcon])
+        @php
+            $feedbackOptions = [
+                'wrong_interpretation' => ['label' => 'Claim was misunderstood', 'icon' => 'M12 3v18m9-9H3'],
+                'unsupported_source' => ['label' => 'Source does not support it', 'icon' => 'M10.5 13.5 13.5 10.5m-5.25 7.25-1.5 1.5a3.18 3.18 0 0 1-4.5-4.5l3-3a3.18 3.18 0 0 1 4.5 0m6-3.5 1.5-1.5a3.18 3.18 0 0 1 4.5 4.5l-3 3a3.18 3.18 0 0 1-4.5 0'],
+                'verdict_review' => ['label' => 'Verdict needs review', 'icon' => 'M12 3 5 6v5.2c0 4.3 2.8 7.5 7 9.3 4.2-1.8 7-5 7-9.3V6l-7-3Z'],
+                'unclear_explanation' => ['label' => 'Explanation is unclear', 'icon' => 'M9.1 9a3 3 0 1 1 4.5 2.6c-1 .6-1.6 1.1-1.6 2.4m0 3h.01'],
+            ];
+
+            if (($publicResult['primary_task'] ?? '') === 'media') {
+                $feedbackOptions['media_false_positive'] = ['label' => 'This is a real image', 'icon' => 'M5 12.5 9.5 17 19 7.5'];
+                $feedbackOptions['media_false_negative'] = ['label' => 'This is AI-generated', 'icon' => 'M12 3 14 9.5 21 12l-7 2.5L12 21l-2-6.5L3 12l7-2.5L12 3Z'];
+            }
+        @endphp
+        <div class="grid grid-cols-2 gap-1.5 border-t border-slate-100 bg-slate-50/70 p-3 sm:gap-2 sm:p-5 lg:grid-cols-4">
+            @foreach ($feedbackOptions as $feedbackValue => $feedbackOption)
                 <form method="POST" action="{{ route('detections.feedback', $selectedDetection) }}" class="min-w-0">
                     @csrf
                     <input type="hidden" name="category" value="{{ $feedbackValue }}">
-                    <button type="submit" class="group flex h-full w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left text-xs font-bold leading-5 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
-                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-blue-50 group-hover:text-blue-700" aria-hidden="true">
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ $feedbackIcon }}" /></svg>
+                    <button type="submit" class="group flex h-full min-h-12 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-left text-[11px] font-bold leading-4 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:min-h-0 sm:gap-2.5 sm:px-3.5 sm:py-3 sm:text-xs sm:leading-5">
+                        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-blue-50 group-hover:text-blue-700 sm:h-8 sm:w-8" aria-hidden="true">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ $feedbackOption['icon'] }}" /></svg>
                         </span>
-                        <span>{{ $feedbackLabel }}</span>
+                        <span>{{ $feedbackOption['label'] }}</span>
                     </button>
                 </form>
             @endforeach
