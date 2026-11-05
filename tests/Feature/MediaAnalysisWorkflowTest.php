@@ -71,7 +71,7 @@ class MediaAnalysisWorkflowTest extends TestCase
         $result = $detection->fact_check_result;
         $this->assertSame('LIKELY_AI_GENERATED', $result['verdict']);
         $this->assertSame('fixture-model', $result['media_assessment']['model_version']);
-        $this->assertSame($caption === null ? 'unavailable' : 'not_requested', $result['claim_assessment']['status']);
+        $this->assertSame('not_requested', $result['claim_assessment']['status']);
         $this->assertNull($result['confidence']);
         $this->get(route('detections.result', $detection))->assertOk()->assertSee('Likely AI-Generated')->assertDontSee('Missing Context')
             ->assertDontSee('unsuitable short input')->assertSee('Retry media analysis');
@@ -110,7 +110,7 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->actingAs(User::factory()->create())->post(route('detections.store'), ['media_file' => $this->upload()]);
         $result = Detection::sole()->fact_check_result;
         $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
-        $this->assertSame('not_applicable', $result['claim_assessment']['status']);
+        $this->assertSame('not_requested', $result['claim_assessment']['status']);
         $this->assertStringContainsString('does not prove', $result['summary']);
         $this->assertSame('review', Detection::sole()->verdict);
     }
@@ -147,7 +147,37 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->andThrow(new \RuntimeException('fixture text outage'));
         $this->actingAs(User::factory()->create())->post(route('detections.store'), ['media_file' => $this->upload()])->assertSessionHasNoErrors();
         $this->assertSame('LIKELY_AI_GENERATED', Detection::sole()->fact_check_result['verdict']);
-        $this->assertSame('unavailable', Detection::sole()->fact_check_result['claim_assessment']['status']);
+        $this->assertSame('not_requested', Detection::sole()->fact_check_result['claim_assessment']['status']);
+    }
+
+    public function test_media_only_check_reports_visible_claim_as_an_optional_notice_without_fact_checking_it(): void
+    {
+        $this->detector('real');
+        $visibleClaim = 'Shoot-to-kill kay Sen. Bato, ihahain?!';
+        $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->once()->andReturn([
+            'analysis_text' => $visibleClaim,
+            'status' => 'completed',
+            'visible_text' => $visibleClaim,
+        ]);
+        $this->mock(ClaimPlanner::class)->shouldNotReceive('plan');
+        $this->mock(FilipinoNewsClassifier::class)->shouldNotReceive('inspect');
+
+        $this->actingAs(User::factory()->create())->post(route('detections.store'), [
+            'media_file' => $this->upload(),
+            'caption_text' => SubmissionTask::MEDIA_INSTRUCTION.'.',
+        ])->assertSessionHasNoErrors();
+
+        $detection = Detection::sole();
+        $result = $detection->fact_check_result;
+        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('not_requested', $result['claim_assessment']['status']);
+        $this->assertSame('claim_detected', $result['media_claim_notice']['status']);
+        $this->assertSame($visibleClaim, $result['media_claim_notice']['text']);
+        $this->assertSame([], $result['sources']);
+        $this->get(route('detections.result', $detection))->assertOk()
+            ->assertSee('Potential factual claim detected')
+            ->assertSee('Fact-check the visible claim')
+            ->assertDontSee('Source verification');
     }
 
     public function test_factual_first_combined_request_retains_media_when_text_extraction_throws(): void

@@ -43,6 +43,8 @@
 /automation/models/deepfake-cnn.keras
 /automation/models/**/*.tmp
 /automation/models/**/.cache
+/automation/evaluation/public-benchmark/
+/automation/evaluation/TruthGuard-Colab-AI-Benchmark.zip
 /20'
 /vendor
 Homestead.json

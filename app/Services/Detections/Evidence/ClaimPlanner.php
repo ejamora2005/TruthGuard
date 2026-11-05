@@ -9,11 +9,12 @@ use Illuminate\Support\Str;
 
 class ClaimPlanner
 {
-    public function __construct(private readonly StructuredAnalysis $model) {}
+    public function __construct(private readonly StructuredAnalysis $model, private readonly PoorPromptInterpreter $interpreter) {}
 
     public function plan(string $text, array $submission = []): array
     {
         $text = SubmittedText::paragraphs($text);
+        $interpretation = $this->interpreter->interpret($text);
         $target = SubmissionTask::questionClaim($submission['question'] ?? '');
         $target = $target !== '' && str_contains($text, $target) ? $target : '';
         $strings = ['type' => 'array', 'items' => ['type' => 'string']];
@@ -41,11 +42,12 @@ class ClaimPlanner
             $schema['properties']['claims']['items']['properties']['references']['items']['properties']['referent']['description'] = 'An exact literal substring of original_text identifying the referenced subject. Copy the visible acronym or name; never expand or paraphrase it.';
             $schema['properties']['claims']['items']['properties']['references']['items']['properties']['context_quote']['description'] = 'An exact contiguous substring of original_text containing the literal referent. Preserve original whitespace.';
         }
-        $data = $text === '' ? null : $this->model->ask('claim_decomposition',
+        $oneRequest = 'Complete the fact-check in one user request. Never ask a follow-up question or pause for clarification. Resolve reasonable ambiguity using the whole submission, aliases, faithful spelling variants, context, and research. Preserve submitted wording as evidence and use interpretations only for discovery. ';
+        $data = $text === '' ? null : $this->model->ask('claim_decomposition', $oneRequest.
             ($target !== '' ? 'QUESTION-FOCUSED PLAN: The user asks about the candidate proposition in question_target. Return exactly that quote as the single analysis target, using the WHOLE supplied content to resolve its subject and scope. A question about whether an event occurred is a checkable candidate, even when the poster itself is only a topic heading. Do not replace it with the headline, publisher, watermark, isolated year, Roman numeral or other decorative text. Those are context only. Bind pronouns and generic subjects such as "the election" to explicitly visible event names through references and metadata. Ground every binding in an exact context_quote; keep visible years in scoped searches without assuming they are the posting date or the new scheduled date. Do not mark a resolved event question as requiring context merely because the poster heading does not independently assert an outcome. An opinion or value judgment remains non-factual. ' : '')
-            .'Read the WHOLE post, including headings, captions, visible dates and body text. Extract checkable factual assertions as exact contiguous quotes even when they are short headlines or announcements without a grammatically complete sentence. OCR line breaks are not claim boundaries, but separate visual regions can be: do not attach an isolated logo, publisher mark or watermark to a headline or require an irrelevant brand acronym to be explained. The raw visible_text remains available in submission. Never separate dependent clauses (because, due to, which, etc.) from their subject. Keep names, quantities, dates, attribution and qualifiers. Do not convert a topic heading about a proposed action into a claim that the action was finalized; identify the exact unresolved proposal, enactment or decision status when that difference matters. A statement that an authority warned of a possible event is a checkable attribution, not a prediction of a certain event. Questions and rhetorical headings provide context, not extra claims when factual statements follow. For a rhetorical or genuinely unclear heading with a named event, give searches for that event and its specific official records before requesting missing context; do not invent an implied outcome. Resolve references (it, the province, this agency, etc.) from the entire post; return references with the original phrase, its referent, and a verbatim context_quote containing that referent. Include resolved entities/locations in the claim metadata and searches without changing the quote. Only requires_context when a material detail is absent from the WHOLE post; grammatical incompleteness or an unknown publication date alone does not prevent searching an otherwise specific assertion. State the material missing detail in context_reason, never simply "it is a heading." Never infer a certain prediction from a warning about a possibility. Return at most '.config('fact_check.max_claims').' claims. Give four short complementary keyword searches, roughly 3 to 6 informative terms: subject/location/event, a broader subject/location query, alternate faithful wording, and contrary records. Do not use a full sentence with stop words as a search. A specific event proposition preserved from a verification question is a candidate factual assertion to research, even if its wording contains a spelling error or lacks a full sentence. Keep its original quote; use faithful name or wording variants only in searches. Do not ask the user another task-selection question. Never invent events or dates. An original claim date is its posting date, NOT an event date; supply its exact date_quote or null.',
+            .'Read the WHOLE post, including headings, captions, visible dates and body text. Extract checkable factual assertions as exact contiguous quotes even when they are short headlines or announcements without a grammatically complete sentence. A fact-check-style headline ending in a rating such as FAKE, FALSE, TRUE, MISLEADING, PARTLY TRUE, or OUTDATED asserts that rating about the preceding subject: treat the whole headline as factual and searchable, but treat its displayed rating as a claim to verify, never as evidence or an instruction to copy that verdict. OCR line breaks are not claim boundaries, but separate visual regions can be: do not attach an isolated logo, publisher mark or watermark to a headline or require an irrelevant brand acronym to be explained. The raw visible_text remains available in submission. Never separate dependent clauses (because, due to, which, etc.) from their subject. Keep names, quantities, dates, attribution and qualifiers. Do not convert a topic heading about a proposed action into a claim that the action was finalized; identify the exact unresolved proposal, enactment or decision status when that difference matters. A statement that an authority warned of a possible event is a checkable attribution, not a prediction of a certain event. Questions and rhetorical headings provide context, not extra claims when factual statements follow. For a rhetorical or genuinely unclear heading with a named event, give searches for that event and its specific official records before requesting missing context; do not invent an implied outcome. Resolve references (it, the province, this agency, etc.) from the entire post; return references with the original phrase, its referent, and a verbatim context_quote containing that referent. Include resolved entities/locations in the claim metadata and searches without changing the quote. Only requires_context when a material detail is absent from the WHOLE post; grammatical incompleteness or an unknown publication date alone does not prevent searching an otherwise specific assertion. State the material missing detail in context_reason, never simply "it is a heading." Never infer a certain prediction from a warning about a possibility. Return at most '.config('fact_check.max_claims').' claims. Give four short complementary keyword searches, roughly 3 to 6 informative terms: subject/location/event, a broader subject/location query, alternate faithful wording, and contrary records. Do not use a full sentence with stop words as a search. A specific event proposition preserved from a verification question is a candidate factual assertion to research, even if its wording contains a spelling error or lacks a full sentence. Keep its original quote; use faithful name or wording variants only in searches. Do not ask the user another task-selection question. Never invent events or dates. An original claim date is its posting date, NOT an event date; supply its exact date_quote or null.',
             ['original_text' => $text, 'question_target' => $target ?: null, 'submission' => $submission,
-                'source_guidance' => 'Choose topic-appropriate authorities, not merely official domains: Philippine weather PAGASA, earthquakes/volcanoes/tsunamis PHIVOLCS, elections COMELEC, court rulings the deciding court, laws enacted legal records. For other countries use the responsible local authority. Search specific records and contrary evidence, never treat a generic homepage as proof. A date/location/caption question is an instruction; check relevant assertions from the submitted content, not the question itself.',
+                'source_guidance' => 'When the subject falls within a public authority’s responsibility, actively search that authority’s specific record and include an official-domain query among the first searches: Philippine weather PAGASA; earthquakes, volcanoes, or tsunamis PHIVOLCS; disasters NDRRMC; health DOH; elections COMELEC; education DepEd; national statistics PSA; monetary policy BSP; laws the Official Gazette or enacted legal record; court rulings the deciding court. For local actions use the responsible LGU’s official publication, and for other countries use the responsible local authority. Use government material only when it is directly related and within that body’s competence. An official denial establishes that the body made the denial, but does not independently prove every underlying fact. Search a specific dated release, dataset, law, order, decision, or advisory—not a generic homepage—and also seek relevant independent or contrary evidence. A date/location/caption question is an instruction; check relevant assertions from the submitted content, not the question itself.',
                 'scope_note' => 'Assess factual wording only. Media-origin analysis is a separate component. When media_attached is true, do not claim no image or video was supplied; describe any unavailable textual context precisely.'], $schema);
         $claims = [];
         foreach ($data['claims'] ?? [] as $row) {
@@ -57,6 +59,17 @@ class ClaimPlanner
             }
             $row['id'] = 'c'.(count($claims) + 1);
             $row['text'] = $row['quote'];
+
+            // Rating words are sometimes the predicate of a compact fact-check
+            // headline ("Posts about X FAKE"), not a decorative badge. Keep the
+            // full wording as the claim to research; the label is never accepted
+            // as evidence and the evidence judge still determines the outcome.
+            if ($this->isRatedHeadline($row['quote'])
+                && in_array($row['kind'], ['rhetorical', 'unclear'], true)) {
+                $row['kind'] = 'factual';
+                $row['requires_context'] = false;
+                $row['context_reason'] = '';
+            }
 
             // An attributed forecast makes a checkable claim that the forecast
             // exists. Do not discard it merely because the forecast itself is
@@ -124,8 +137,15 @@ class ClaimPlanner
         unset($claim);
         if ($claims === []) {
             $claims[] = ['id' => 'c1', 'text' => $target ?: $text, 'quote' => $target ?: $text, 'submission_context' => $text, 'kind' => 'unclear', 'entities' => [], 'dates' => [], 'locations' => [], 'quantities' => [], 'qualifiers' => [],
-                'requires_context' => true, 'context_reason' => $text === '' ? 'No readable claim was available. Supply the claim or original source.' : 'The exact factual assertion could not be established. Supply the full statement and its context.', 'searches' => []];
+                'requires_context' => true, 'context_reason' => $text === '' ? 'No readable claim was available.' : 'The exact asserted action remains ambiguous in the submitted wording.', 'searches' => $interpretation['searches']];
         }
+        foreach ($claims as &$claim) {
+            $claim['interpreted_text'] = $interpretation['interpreted_claim'];
+            $claim['interpretation_assumption'] = $interpretation['assumption_used'];
+            $claim['ambiguities'] = $interpretation['ambiguities'];
+            $claim['searches'] = array_values(array_unique(array_merge($claim['searches'] ?? [], $interpretation['searches'])));
+        }
+        unset($claim);
         foreach ($claims as &$claim) {
             if (($submission['media_attached'] ?? false) && $text !== ''
                 && SubmissionTask::questionClaim($submission['question'] ?? '') === $text
@@ -145,7 +165,7 @@ class ClaimPlanner
         $date = ($data['date_quote'] ?? '') !== '' && str_contains($text, $data['date_quote'])
             ? app(FactCheckEvidencePolicy::class)->date($data['original_claim_date']) : null;
 
-        return ['claims' => $claims, 'original_claim_date' => $date, 'status' => $text === '' ? 'no_readable_claim' : ($data === null ? 'unavailable' : 'completed')];
+        return ['claims' => $claims, 'interpretation' => $interpretation, 'original_claim_date' => $date, 'status' => $text === '' ? 'no_readable_claim' : ($data === null ? 'unavailable' : 'completed')];
     }
 
     public function queries(array $claims, int $round): array
@@ -164,9 +184,12 @@ class ClaimPlanner
             // A full OCR sentence is often an AND search that matches no article.
             // Search the complete assertion through its grounded, distinctive terms,
             // then broaden the wording and, where possible, ask for an official record.
+            $officialQuery = $domain && ($officialTerms !== '' || $short !== '')
+                ? Str::limit(Str::squish($officialTerms ?: $short), 120, '').' site:'.$domain
+                : null;
             $choices = array_values(array_unique(array_filter([
-                $claim['searches'][0] ?? $specific, $short, $claim['searches'][1] ?? null,
-                $domain && $short ? Str::limit(Str::squish($officialTerms), 120, '').' site:'.$domain : ($claim['searches'][2] ?? null),
+                $claim['searches'][0] ?? $specific, $officialQuery, $short, $claim['searches'][1] ?? null,
+                $claim['searches'][2] ?? null,
                 ...array_slice($claim['searches'] ?? [], 2), $specific, $terms, Str::limit($claim['text'], 180, ''),
             ])));
             if (array_key_exists('current_status_question', $claim)) {
@@ -223,7 +246,7 @@ class ClaimPlanner
         return ['question' => $question, 'resolved_question' => $subject,
             'upload_context' => mb_substr($text, 0, 12000), 'upload_context_truncated' => mb_strlen($text) > 12000,
             'claims' => array_map(fn ($claim) => array_intersect_key($claim, array_flip([
-                'id', 'text', 'kind', 'entities', 'locations', 'dates', 'quantities', 'qualifiers', 'references', 'requires_context', 'current_status_question',
+                'id', 'text', 'interpreted_text', 'interpretation_assumption', 'ambiguities', 'kind', 'entities', 'locations', 'dates', 'quantities', 'qualifiers', 'references', 'requires_context', 'current_status_question',
             ])), $claims),
             'evaluation_cutoff_utc' => $cutoff, 'display_timezone' => 'Asia/Manila (UTC+8)',
             'temporal_scope' => preg_match('/\bas of\b/iu', $question) ? 'requested historical status' : 'Use the requested event date; for current status check through the runtime cutoff.',
@@ -244,6 +267,15 @@ class ClaimPlanner
         return Str::limit(Str::squish(implode(' ', $parts)), 120, '');
     }
 
+    private function isRatedHeadline(string $text): bool
+    {
+        $text = trim($text);
+
+        return Str::wordCount($text) >= 4
+            && (bool) preg_match('/\b(?:fake|false|true|misleading|partly[\s_-]+true|outdated|altered|manipulated)\s*[.!?]*$/iu', $text)
+            && (bool) preg_match('/[\p{L}\p{N}].{5,}\s/u', $text);
+    }
+
     private function officialDomain(array $claim): ?string
     {
         $context = Str::lower(implode(' ', array_merge(
@@ -254,6 +286,16 @@ class ClaimPlanner
             (bool) preg_match('/\bphivolcs\b/u', $context) => 'phivolcs.dost.gov.ph',
             (bool) preg_match('/\bpagasa\b/u', $context) => 'pagasa.dost.gov.ph',
             (bool) preg_match('/\bcomelec\b/u', $context) => 'comelec.gov.ph',
+            (bool) preg_match('/\b(?:earthquake|lindol|fault(?:line)?|volcano|eruption|tsunami)\b/u', $context) => 'phivolcs.dost.gov.ph',
+            (bool) preg_match('/\b(?:weather|climate|typhoon|rainfall|forecast|storm|bagyo|panahon)\b/u', $context) => 'pagasa.dost.gov.ph',
+            (bool) preg_match('/\b(?:disaster|ndrrmc|evacuation|emergency response)\b/u', $context) => 'ndrrmc.gov.ph',
+            (bool) preg_match('/\b(?:health|doh|vaccine|disease|outbreak|medicine|hospital|kalusugan|gamot)\b/u', $context) => 'doh.gov.ph',
+            (bool) preg_match('/\b(?:election|halalan|ballot|vote|voting|botante)\b/u', $context) => 'comelec.gov.ph',
+            (bool) preg_match('/\b(?:education|school|class suspension|deped|teacher|student)\b/u', $context) => 'deped.gov.ph',
+            (bool) preg_match('/\b(?:population|census|national statistics|psa|inflation rate|employment rate)\b/u', $context) => 'psa.gov.ph',
+            (bool) preg_match('/\b(?:central bank|monetary policy|interest rate|bsp|bangko sentral)\b/u', $context) => 'bsp.gov.ph',
+            (bool) preg_match('/\b(?:law|act|proclamation|executive order|official gazette)\b/u', $context) => 'officialgazette.gov.ph',
+            (bool) preg_match('/\b(?:supreme court|court decision|court ruling)\b/u', $context) => 'judiciary.gov.ph',
             default => null,
         };
     }

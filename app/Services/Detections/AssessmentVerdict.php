@@ -40,7 +40,7 @@ class AssessmentVerdict
         'MISSING_CONTEXT' => 'Missing Context', 'SATIRE_PARODY' => 'Satire / Parody',
         'OPINION_NOT_FACT_CHECKABLE' => 'Opinion / Not Fact-checkable',
         'ANALYSIS_UNAVAILABLE' => 'Analysis Unavailable', 'UNSUPPORTED_ANALYSIS' => 'Unsupported Analysis',
-        'UNREADABLE_CONTENT' => 'Unreadable Content', 'CLARIFICATION_NEEDED' => 'Choose what to check',
+        'UNREADABLE_CONTENT' => 'Unreadable Content', 'CLARIFICATION_NEEDED' => 'Insufficient Input',
     ];
 
     public static function label(string $verdict): string
@@ -74,7 +74,7 @@ class AssessmentVerdict
             'ANALYSIS_UNAVAILABLE' => 'The requested analysis could not be completed, so no result was established.',
             'UNSUPPORTED_ANALYSIS' => 'The requested type of analysis is not supported for this submission.',
             'UNREADABLE_CONTENT' => 'There was not enough readable content to assess the submission.',
-            'CLARIFICATION_NEEDED' => 'The submission needs a clearer question or assessment choice before it can be checked.',
+            'CLARIFICATION_NEEDED' => 'No safe checkable interpretation could be formed from the available input; the assessment is complete without a follow-up request.',
             default => 'This result describes how the available evidence relates to the submitted content.',
         };
     }

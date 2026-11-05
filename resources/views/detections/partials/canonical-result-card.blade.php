@@ -147,7 +147,7 @@
                 @include('detections.partials.result-media-assessment', ['media' => $result['media_assessment'] ?? null])
             @endif
 
-            @if($mediaPrimary && isset($result['claim_assessment']))
+            @if($mediaPrimary && isset($result['claim_assessment']) && ($result['claim_assessment']['status'] ?? '') !== 'not_requested')
                 @include('detections.partials.result-claim-assessment', ['component' => $result['claim_assessment']])
             @endif
 

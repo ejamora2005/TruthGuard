@@ -57,6 +57,41 @@ class TaskRoutingAndHeadlineTest extends TestCase
         $this->assertNotEmpty(app(ClaimPlanner::class)->queries($plan['claims'], 0));
     }
 
+    public function test_fact_check_rating_headline_is_researched_as_a_factual_assertion(): void
+    {
+        $headline = 'Posts on Rep. Suan’s ‘shoot-to-kill’ resolution vs Bato dela Rosa FAKE';
+        $this->mock(StructuredAnalysis::class)->shouldReceive('ask')->once()->andReturn([
+            'claims' => [$this->claim($headline, 'unclear', true)],
+            'original_claim_date' => null, 'date_quote' => '',
+        ]);
+
+        $plan = app(ClaimPlanner::class)->plan($headline);
+
+        $this->assertSame('factual', $plan['claims'][0]['kind']);
+        $this->assertFalse($plan['claims'][0]['requires_context']);
+        $this->assertSame('', $plan['claims'][0]['context_reason']);
+        $this->assertSame($headline, $plan['claims'][0]['quote']);
+        $this->assertNotEmpty(app(ClaimPlanner::class)->queries($plan['claims'], 0));
+    }
+
+    public function test_related_health_claim_searches_the_responsible_government_domain_early(): void
+    {
+        $claim = 'The Department of Health announced a measles vaccination advisory.';
+        $planned = $this->claim($claim, 'factual', false);
+        $planned['entities'] = ['Department of Health'];
+        $planned['searches'] = ['measles vaccination advisory', 'Philippines measles guidance'];
+        $this->mock(StructuredAnalysis::class)->shouldReceive('ask')->once()->andReturn([
+            'claims' => [$planned], 'original_claim_date' => null, 'date_quote' => '',
+        ]);
+
+        $plan = app(ClaimPlanner::class)->plan($claim);
+        $queries = app(ClaimPlanner::class)->queries($plan['claims'], 0);
+
+        $this->assertCount(2, $queries);
+        $this->assertSame('measles vaccination advisory', $queries[0]);
+        $this->assertStringContainsString('site:doh.gov.ph', $queries[1]);
+    }
+
     public function test_unclear_named_headline_is_searched_before_missing_context(): void
     {
         $headline = 'BSKE 2026 postponement: a race against time and the Constitution.';
@@ -85,7 +120,7 @@ class TaskRoutingAndHeadlineTest extends TestCase
         $this->assertGreaterThan(0, $result['diagnostics']['search_requests']);
         $this->assertLessThanOrEqual((int) config('fact_check.retrieval.max_search_requests'), $result['diagnostics']['search_requests']);
         $this->assertSame('completed_no_results', $result['diagnostics']['retrieval_status']);
-        $this->assertStringContainsString('I searched for records', $result['summary']);
+        $this->assertStringContainsString('I researched the most likely checkable interpretation', $result['summary']);
         $this->assertSame([], $result['sources']);
     }
 

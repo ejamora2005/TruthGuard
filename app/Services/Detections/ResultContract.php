@@ -68,6 +68,30 @@ class ResultContract
             $errors[] = 'invalid_primary_task';
         }
         $result['primary_task'] = $task;
+        // Presentation-time safety for reports saved before selective origin
+        // classification was enforced. Never keep a conclusive media-origin
+        // label when the recorded image score is still in the uncertainty band.
+        $media = is_array($result['media_assessment'] ?? null) ? $result['media_assessment'] : null;
+        $rawAiScore = $media['fake_probability'] ?? null;
+        $minimumClassScore = (float) config('services.ai_origin.minimum_class_score', .9);
+        $borderlineImage = $task === 'media'
+            && ($media['status'] ?? '') === 'completed'
+            && ($media['media_type'] ?? 'image') === 'image'
+            && is_numeric($rawAiScore)
+            && is_finite((float) $rawAiScore)
+            && max((float) $rawAiScore, 1 - (float) $rawAiScore) < $minimumClassScore;
+        if ($borderlineImage && in_array($verdict, ['AI_GENERATED', 'LIKELY_AI_GENERATED', 'LIKELY_NOT_AI_GENERATED'], true)) {
+            $verdict = 'INCONCLUSIVE';
+            $result['summary'] = 'The recorded AI-generation score is not decisive enough to determine this image’s origin. Neither AI generation nor human origin has been established. This result must not be treated as proof that the image is generated, authentic, or unedited.';
+            $result['score'] = AssessmentScore::unavailable('The detector output falls inside the configured uncertainty band.');
+            $result['media_assessment']['origin_policy'] = array_replace([
+                'version' => 'origin-selective-v1',
+                'minimum_class_score' => $minimumClassScore,
+            ], is_array($media['origin_policy'] ?? null) ? $media['origin_policy'] : [], [
+                'inconclusive' => true,
+            ]);
+            $errors[] = 'borderline_media_verdict_suppressed';
+        }
         $result['claim'] = self::text($result['claim'] ?? null) ?? '';
         $result['sources'] = self::sources($result['sources'] ?? null);
         $result['contextual_sources'] = self::sources($result['contextual_sources'] ?? null, true);
@@ -113,8 +137,12 @@ class ResultContract
         $result['assessment_label'] = AssessmentVerdict::label($verdict);
         $result['ui'] = self::ui($result['ui'] ?? null, $verdict);
         $result['request'] = self::request($result['request'] ?? null, $task);
+        $result['media_claim_notice'] = self::mediaClaimNotice($result['media_claim_notice'] ?? null);
+        $mediaOnly = $task === 'media' && array_intersect($result['request']['tasks'], ['claim', 'context']) === [];
         $result['official_references'] = self::references($result['official_references'] ?? null);
         $result['method_references'] = self::references($result['method_references'] ?? null);
+        $result['interpretation'] = self::interpretation($result['interpretation'] ?? null, $result['claim']);
+        $result['correction'] = self::correction($result['correction'] ?? null);
         $result['context_assessments'] = self::contextFindings($result['context_assessments'] ?? null, $sourceIds);
         foreach (['assessed_at', 'evidence_cutoff', 'original_claim_date'] as $dateField) {
             $result[$dateField] = self::date($result[$dateField] ?? null);
@@ -129,6 +157,20 @@ class ResultContract
         } else {
             $result['secondary_assessments'] = [];
             $result['claim_assessment'] = null;
+        }
+        if ($mediaOnly) {
+            $result['claim'] = '';
+            $result['sources'] = [];
+            $result['contextual_sources'] = [];
+            $result['context_assessments'] = [];
+            $result['atomic_claims'] = [];
+            $result['evidence_families'] = [];
+            $result['evidence_balance'] = ['supporting_source_ids' => [], 'contradicting_source_ids' => [], 'both_sides_considered' => false];
+            $result['claim_assessment'] = ['status' => 'not_requested', 'result' => null,
+                'reason' => 'Factual verification was not requested for this media-only assessment.'];
+            $result['answer_segments'] = [['text' => $result['summary'], 'source_ids' => []]];
+            $result['secondary_assessments'] = array_values(array_filter($result['secondary_assessments'],
+                fn ($secondary) => in_array($secondary['primary_task'] ?? null, ['media', 'manipulation'], true)));
         }
         $findings = array_merge([$result], $result['secondary_assessments']);
         $result['completed_tasks'] = array_values(array_unique(array_column(array_filter($findings,
@@ -146,6 +188,8 @@ class ResultContract
             $diagnostics['result_contract_errors'] = array_values(array_unique(array_merge($diagnostics['result_contract_errors'] ?? [], $errors)));
             $result['diagnostics'] = $diagnostics;
         }
+        $result = FactCheckEditorialReview::apply($result);
+        $result['quality_review'] = AssessmentQualityReview::evaluate($result);
 
         return $result;
     }
@@ -197,6 +241,12 @@ class ResultContract
             'context_assessments', 'secondary_assessments', 'ui', 'request', 'assessed_at',
             'evidence_cutoff', 'original_claim_date', 'evidence_strength', 'claim_assessment',
             'media_assessment',
+            'quality_review',
+            'interpretation',
+            'atomic_claims', 'evidence_families', 'evidence_balance', 'claim_origin', 'negative_evidence',
+            'freshness', 'source_assessments', 'verdict_audit', 'editorial_review',
+            'correction',
+            'media_claim_notice',
         ]));
         $public['processing_status'] = in_array($public['processing_status'] ?? null, ['queued', 'processing', 'failed', 'completed', 'partial', 'unsupported', 'needs_clarification'], true)
             ? $public['processing_status'] : 'completed';
@@ -317,6 +367,39 @@ class ResultContract
         }
 
         return collect($valid)->unique('url')->values()->all();
+    }
+
+    private static function interpretation(mixed $value, string $fallback): array
+    {
+        $value = is_array($value) ? $value : [];
+        $original = self::text($value['original_text'] ?? null) ?? $fallback;
+        $interpreted = self::text($value['interpreted_claim'] ?? null) ?? $original;
+
+        return [
+            'original_text' => $original,
+            'interpreted_claim' => $interpreted,
+            'assumption_used' => ($value['assumption_used'] ?? false) === true && $interpreted !== $original,
+            'ambiguities' => self::texts($value['ambiguities'] ?? null),
+            'completed_without_follow_up' => true,
+        ];
+    }
+
+    private static function correction(mixed $value): ?array
+    {
+        if (! is_array($value) || ! ($reason = self::text($value['reason'] ?? null))) return null;
+
+        return ['reason' => $reason, 'corrected_at' => self::date($value['corrected_at'] ?? null)];
+    }
+
+    private static function mediaClaimNotice(mixed $value): array
+    {
+        $value = is_array($value) ? $value : [];
+        $status = in_array($value['status'] ?? null, ['claim_detected', 'no_checkable_claim'], true)
+            ? $value['status'] : 'no_checkable_claim';
+
+        return ['status' => $status, 'text' => $status === 'claim_detected' ? (self::text($value['text'] ?? null) ?? '') : '',
+            'ocr_status' => self::text($value['ocr_status'] ?? null) ?? 'not_run', 'fact_check_requested' => false,
+            'message' => self::text($value['message'] ?? null) ?? 'This media-only report did not perform factual verification.'];
     }
 
     private static function relationships(mixed $rows): array

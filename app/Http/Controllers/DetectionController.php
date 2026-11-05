@@ -22,6 +22,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -30,6 +31,18 @@ use Illuminate\View\View;
 
 class DetectionController extends Controller
 {
+    public function feedback(Request $request, Detection $detection): RedirectResponse
+    {
+        abort_unless((int) $detection->user_id === (int) $request->user()->id, 403);
+        $validated = $request->validate(['category' => ['required', 'in:wrong_interpretation,unsupported_source,verdict_review,unclear_explanation']]);
+        DB::table('detection_feedback')->updateOrInsert([
+            'detection_id' => $detection->id, 'user_id' => $request->user()->id,
+            'category' => $validated['category'],
+        ], ['updated_at' => now(), 'created_at' => now()]);
+
+        return back()->with('status', 'Thank you. This report was flagged for quality review.');
+    }
+
     public function create(
         Request $request,
         DetectionRetentionService $retentionService,
@@ -439,6 +452,39 @@ class DetectionController extends Controller
         }
 
         return redirect()->route('detections.result', $detection)->with('status', 'Assessment retry finished. Review the recorded status below.');
+    }
+
+    public function factCheckMediaClaim(Request $request, Detection $detection, DetectionPipeline $pipeline): RedirectResponse
+    {
+        abort_unless($request->user()->isAdmin() || $detection->user_id === $request->user()->id, 404);
+        abort_unless(in_array($detection->media_type, ['image', 'video'], true), 422);
+        $notice = data_get($detection->fact_check_result, 'media_claim_notice', []);
+        $claim = trim((string) ($notice['text'] ?? ''));
+        abort_unless(($notice['status'] ?? '') === 'claim_detected' && $claim !== '', 422);
+        $context = ['analysis_task' => 'claim', 'caption_text' => $claim, 'notes' => null,
+            'source_url' => $detection->source_url, 'source_platform' => $detection->platform];
+
+        if (config('fact_check.queue_enabled')) {
+            $sourcePath = (string) $detection->media_path;
+            abort_unless($sourcePath !== '' && Storage::disk('public')->exists($sourcePath), 422);
+            $extension = pathinfo($sourcePath, PATHINFO_EXTENSION);
+            $newPath = 'detections/'.Str::uuid().($extension !== '' ? '.'.$extension : '');
+            abort_unless(Storage::disk('public')->copy($sourcePath, $newPath), 500);
+            $newDetection = Detection::create(['user_id' => $request->user()->id, 'source_kind' => 'upload',
+                'source_url' => $detection->source_url, 'caption_text' => $claim, 'media_path' => $newPath,
+                'media_type' => $detection->media_type, 'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0]);
+            AnalyzeDetectionEvidence::dispatch($newDetection->id, $context);
+
+            return redirect()->route('detections.create', ['pending' => $newDetection->id])
+                ->with('status', 'The visible claim was submitted as a separate factual assessment.');
+        }
+
+        $file = $this->uploadedImageForRefresh($detection);
+        abort_unless($file, 422);
+        $newDetection = $pipeline->run($request->user(), $context, $file);
+
+        return redirect()->route('detections.result', $newDetection)
+            ->with('status', 'The visible claim was checked separately from the AI-origin assessment.');
     }
 
     /**

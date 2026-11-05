@@ -5,6 +5,7 @@ use App\Services\Automation\ScrapeOrchestrator;
 use App\Services\Detections\DetectionRetentionService;
 use App\Services\Detections\ModelHealthService;
 use App\Services\Detections\ActiveDetectionManager;
+use App\Services\Detections\FactCheckQueueHealth;
 use App\Services\Notifications\PublicClaimReviewNotificationService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -142,6 +143,20 @@ Artisan::command('truthguard:close-stalled-assessments', function () {
 })->purpose('Save final unavailable reports for abandoned analyses, even when users have left the page.');
 
 Schedule::command('truthguard:close-stalled-assessments')->everyMinute()->withoutOverlapping();
+
+Artisan::command('truthguard:fact-check-health {--json}', function () {
+    $health = app(FactCheckQueueHealth::class)->summary();
+    if ($this->option('json')) {
+        $this->line(json_encode($health, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    } else {
+        $this->info('Fact-check queue: '.$health['status']);
+        $this->line('Pending evidence jobs: '.$health['pending_evidence_jobs']);
+        $this->line('Stalled assessments: '.$health['stalled_assessments']);
+        $this->line('Oldest evidence job: '.($health['oldest_evidence_job_seconds'] ?? 0).' seconds');
+    }
+
+    return $health['status'] === 'healthy' ? 0 : 1;
+})->purpose('Check evidence-queue backlog and stalled fact-check assessments.');
 Artisan::command('truthguard:refresh-review-images {--limit=50} {--queue}', function () {
     if (! config('services.google_fact_check.feed_images_enabled', true)) {
         $this->error('Preview collection is disabled. Enable GOOGLE_FACT_CHECK_FEED_IMAGES_ENABLED and refresh config cache.');

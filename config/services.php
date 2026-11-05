@@ -85,6 +85,9 @@ return [
 
     'ai_origin' => [
         'enabled' => env('AI_ORIGIN_ENABLED', false),
+        // Selective classification: only publish an origin verdict when the
+        // assigned class is this strong. Borderline outputs stay inconclusive.
+        'minimum_class_score' => min(1, max(0.5, (float) env('AI_ORIGIN_MINIMUM_CLASS_SCORE', 0.90))),
         'model_path' => env('AI_ORIGIN_MODEL_PATH', 'automation/models/ai-origin-broad'),
         'python_binary' => env('AI_ORIGIN_PYTHON_BINARY', PHP_OS_FAMILY === 'Windows' ? '.venv-ai-origin/Scripts/python.exe' : '.venv-ai-origin/bin/python'),
         'timeout' => (int) env('AI_ORIGIN_TIMEOUT', 240),
@@ -158,12 +161,14 @@ return [
             [
                 'publisher' => 'Rappler',
                 'domain' => 'rappler.com',
-                'url' => 'https://www.rappler.com/wp-json/wp/v2/posts?categories=712&per_page=100',
+                // Smaller publisher pages return reliably inside the shared
+                // feed timeout; later refreshes continuously capture new posts.
+                'url' => 'https://www.rappler.com/wp-json/wp/v2/posts?categories=712&per_page=25',
             ],
             [
                 'publisher' => 'VERA Files',
                 'domain' => 'verafiles.org',
-                'url' => 'https://verafiles.org/wp-json/wp/v2/posts?categories=2035&per_page=100',
+                'url' => 'https://verafiles.org/wp-json/wp/v2/posts?categories=2035&per_page=25',
             ],
         ],
         'feed_images_enabled' => env('GOOGLE_FACT_CHECK_FEED_IMAGES_ENABLED', true),

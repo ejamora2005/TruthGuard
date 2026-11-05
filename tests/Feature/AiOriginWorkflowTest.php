@@ -111,6 +111,34 @@ class AiOriginWorkflowTest extends TestCase
             ->assertJsonPath('summary', $summary);
     }
 
+    public function test_borderline_score_cannot_be_reported_as_ai_generated_when_policy_field_is_missing(): void
+    {
+        $origin = $this->finding('fake');
+        $origin['fake_probability'] = .55;
+        unset($origin['origin_policy']);
+
+        $result = $this->submit($origin)->fact_check_result;
+
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
+        $this->assertSame('Inconclusive', $result['assessment_label']);
+        $this->assertTrue($result['media_assessment']['origin_policy']['inconclusive']);
+        $this->assertNull($result['score']['value']);
+        $this->assertStringNotContainsString('likely ai-generated finding', strtolower($result['summary']));
+    }
+
+    public function test_forty_five_percent_ai_score_is_inconclusive_not_ai_generated(): void
+    {
+        $origin = $this->finding('real');
+        $origin['fake_probability'] = .45;
+        unset($origin['origin_policy']);
+
+        $result = $this->submit($origin)->fact_check_result;
+
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
+        $this->assertSame(.45, $result['media_assessment']['fake_probability']);
+        $this->assertStringContainsString('neither AI generation nor human origin has been established', $result['summary']);
+    }
+
     public function test_disabled_origin_model_does_not_silently_reenable_mobilenet(): void
     {
         config()->set('services.ai_origin.enabled', false);

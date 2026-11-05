@@ -27,7 +27,27 @@ class MediaAnalysisReport
         $completed = ($media['status'] ?? '') === 'completed';
         $additional = $media['supporting_assessments']['image_cnn'] ?? null;
         $partial = ! $completed && ($additional['status'] ?? '') === 'completed';
-        $uncertain = $completed && ($media['origin_policy']['inconclusive'] ?? false) === true;
+        // Enforce selective classification here as well as in the classifier.
+        // Saved, mocked, retried, or older detector payloads may omit the
+        // origin_policy field; a borderline raw output must never become a
+        // public AI-generated/authenticity verdict merely because it is on one
+        // side of the model's internal 0.5 decision boundary.
+        $minimumClassScore = (float) config('services.ai_origin.minimum_class_score', .9);
+        $rawAiScore = $media['fake_probability'] ?? null;
+        $derivedUncertain = $completed
+            && ($media['media_type'] ?? 'image') === 'image'
+            && is_numeric($rawAiScore)
+            && is_finite((float) $rawAiScore)
+            && max((float) $rawAiScore, 1 - (float) $rawAiScore) < $minimumClassScore;
+        $uncertain = $completed && (($media['origin_policy']['inconclusive'] ?? false) === true || $derivedUncertain);
+        if ($completed && ($media['media_type'] ?? 'image') === 'image') {
+            $media['origin_policy'] = array_replace([
+                'version' => 'origin-selective-v1',
+                'minimum_class_score' => $minimumClassScore,
+            ], is_array($media['origin_policy'] ?? null) ? $media['origin_policy'] : [], [
+                'inconclusive' => $uncertain,
+            ]);
+        }
         $label = match (true) {
             ! $completed => 'Analysis Unavailable',
             ($media['label'] ?? '') === 'fake' => 'Likely AI-Generated',

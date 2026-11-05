@@ -34,11 +34,13 @@ return [
         'max_output_tokens' => (int) env('OPENAI_WEB_SEARCH_MAX_OUTPUT_TOKENS', 350),
     ],
     'retrieval' => [
-        'max_candidates' => (int) env('FACT_CHECK_MAX_CANDIDATES', 16),
-        'max_pages' => (int) env('FACT_CHECK_MAX_PAGES', 6),
-        'max_search_requests' => (int) env('FACT_CHECK_MAX_SEARCH_REQUESTS', 6),
+        // High circuit-breaker ceilings. The verification loop exits early
+        // when every claim is resolved; these do not require a source count.
+        'max_candidates' => (int) env('FACT_CHECK_MAX_CANDIDATES', 100),
+        'max_pages' => (int) env('FACT_CHECK_MAX_PAGES', 50),
+        'max_search_requests' => (int) env('FACT_CHECK_MAX_SEARCH_REQUESTS', 50),
         'max_rounds' => (int) env('FACT_CHECK_MAX_ROUNDS', 1),
-        'seconds' => (int) env('FACT_CHECK_RETRIEVAL_SECONDS', 25),
+        'seconds' => (int) env('FACT_CHECK_RETRIEVAL_SECONDS', 90),
         'timeout' => (int) env('FACT_CHECK_FETCH_TIMEOUT', 5),
         'max_bytes' => (int) env('FACT_CHECK_MAX_BYTES', 2097152),
         'max_text_chars' => (int) env('FACT_CHECK_MAX_TEXT_CHARS', 9000),

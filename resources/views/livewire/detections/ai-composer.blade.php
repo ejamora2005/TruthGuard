@@ -180,6 +180,13 @@ new class extends Component
             'hint' => 'Search related reviews and source ratings.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['sources'],
         ],
+        [
+            'id' => 'context',
+            'label' => 'Check date and context',
+            'task' => 'claim',
+            'hint' => 'Check whether content is old, reused, or missing context.',
+            'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['context'],
+        ],
     ];
     $truthguardLogoPath = ltrim((string) config('app.truthguard_logo', 'images/truthguard-logo.png'), '/');
     $truthguardLogoFile = public_path($truthguardLogoPath);

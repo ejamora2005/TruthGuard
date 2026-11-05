@@ -5,9 +5,10 @@ namespace App\Services\Detections;
 class SubmissionInput
 {
     public const GUIDE_PROMPTS = [
-        'media' => 'Is this image or video AI-generated or manipulated?',
-        'claim' => 'Is the claim in this post true?',
-        'sources' => 'Has this claim already been fact-checked, and what ratings did trusted sources give it?',
+        'media' => SubmissionTask::MEDIA_INSTRUCTION.'.',
+        'claim' => SubmissionTask::CLAIM_INSTRUCTION.'.',
+        'context' => SubmissionTask::CONTEXT_INSTRUCTION.'.',
+        'sources' => SubmissionTask::SOURCES_INSTRUCTION.'.',
     ];
 
     public static function hasEvidenceText(?string $text): bool

@@ -36,7 +36,11 @@ class ReportAnswer
         $result['confidence'] = null; // Reserved for externally validated calibration, never an LLM estimate.
         $result['score_display'] = AssessmentScore::display($result['score']);
         if ($result['answer_segments'] !== []) {
-            return self::answerQuestion($result);
+            $result = self::answerQuestion($result);
+            $result = FactCheckEditorialReview::apply($result);
+            $result['quality_review'] = AssessmentQualityReview::evaluate($result);
+
+            return $result;
         }
         $result['answer_segments'] = [['text' => $result['summary'], 'source_ids' => []]];
         $media = in_array($result['primary_task'] ?? '', ['media', 'manipulation', 'clarification'], true);
@@ -92,7 +96,11 @@ class ReportAnswer
         }
         $result['score_display'] = AssessmentScore::display($result['score']);
 
-        return self::answerQuestion($result);
+        $result = self::answerQuestion($result);
+        $result = FactCheckEditorialReview::apply($result);
+        $result['quality_review'] = AssessmentQualityReview::evaluate($result);
+
+        return $result;
     }
 
     private static function answerQuestion(array $result): array

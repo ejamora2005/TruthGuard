@@ -63,8 +63,9 @@ class AiOriginClassifier
             // Provisional selective classification, not calibrated confidence.
             // Freeze before held-out checks; keep the model's published 0.5
             // decision threshold and every raw class prediction unchanged.
-            $result['origin_policy'] = ['version' => 'origin-selective-v1', 'minimum_class_score' => .9,
-                'inconclusive' => max($result['fake_probability'], 1 - $result['fake_probability']) < .9];
+            $minimumClassScore = (float) config('services.ai_origin.minimum_class_score', .9);
+            $result['origin_policy'] = ['version' => 'origin-selective-v1', 'minimum_class_score' => $minimumClassScore,
+                'inconclusive' => max($result['fake_probability'], 1 - $result['fake_probability']) < $minimumClassScore];
 
             return $result;
         } catch (\Throwable $error) {

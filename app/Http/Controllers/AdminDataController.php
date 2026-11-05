@@ -6,15 +6,70 @@ use App\Models\Detection;
 use App\Models\User;
 use App\Services\Usage\OpenAiCostMonitor;
 use App\Services\Usage\OpenAiUsageRecorder;
+use App\Services\Detections\FactCheckQueueHealth;
+use App\Services\Detections\ReportAnswer;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class AdminDataController extends Controller
 {
+    public function factCheckReviews(): JsonResponse
+    {
+        $feedback = Schema::hasTable('detection_feedback')
+            ? DB::table('detection_feedback')->selectRaw('detection_id, count(*) as feedback_count')
+                ->groupBy('detection_id')->pluck('feedback_count', 'detection_id') : collect();
+        $items = Detection::query()->with('user')->latest()->limit(100)->get()
+            ->filter(fn (Detection $detection) => ($feedback[$detection->id] ?? 0) > 0
+                || data_get($detection->fact_check_result, 'editorial_review.required') === true)
+            ->map(fn (Detection $detection) => [
+                'id' => $detection->id, 'user' => $detection->user?->email,
+                'claim' => $detection->caption_text ?: data_get($detection->fact_check_result, 'claim'),
+                'verdict' => data_get($detection->fact_check_result, 'verdict'),
+                'review_reasons' => data_get($detection->fact_check_result, 'editorial_review.reasons', []),
+                'feedback_count' => (int) ($feedback[$detection->id] ?? 0),
+                'updated_at' => $detection->updated_at?->toIso8601String(),
+            ])->values();
+
+        return response()->json(['items' => $items]);
+    }
+
+    public function reviseFactCheck(Request $request, Detection $detection): JsonResponse
+    {
+        $validated = $request->validate([
+            'verdict' => ['required', 'in:TRUE,FALSE,PARTLY_TRUE,MISLEADING,UNVERIFIED,UNVERIFIABLE,CONFLICTING_EVIDENCE,MIXED,OUTDATED,OUT_OF_CONTEXT,MISSING_CONTEXT,SATIRE_PARODY,OPINION_NOT_FACT_CHECKABLE'],
+            'summary' => ['required', 'string', 'min:20', 'max:2200'],
+            'reason' => ['required', 'string', 'min:10', 'max:500'],
+        ]);
+        $previous = is_array($detection->fact_check_result) ? $detection->fact_check_result : [];
+        abort_if($previous === [], 422, 'This detection has no structured result to revise.');
+        $candidate = $previous;
+        $candidate['verdict'] = $validated['verdict'];
+        $candidate['summary'] = $validated['summary'];
+        $candidate['answer_segments'] = [['text' => $validated['summary'], 'source_ids' => array_values(array_filter(array_column($candidate['sources'] ?? [], 'id')))]];
+        $candidate['correction'] = ['reason' => $validated['reason'], 'corrected_at' => now()->utc()->toIso8601String(),
+            'reviewer_id' => $request->user()->id];
+        $revised = ReportAnswer::complete($candidate);
+
+        DB::transaction(function () use ($detection, $request, $validated, $previous, $revised): void {
+            DB::table('fact_check_revisions')->insert(['detection_id' => $detection->id,
+                'reviewer_id' => $request->user()->id, 'reason' => $validated['reason'],
+                'previous_result' => json_encode($previous, JSON_THROW_ON_ERROR),
+                'revised_result' => json_encode($revised, JSON_THROW_ON_ERROR),
+                'published_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+            $detection->forceFill(['fact_check_result' => $revised, 'processing_status' => 'completed',
+                'analyzed_at' => now(), 'analysis_summary' => $revised['summary']])->save();
+        });
+
+        return response()->json(['result' => ReportAnswer::forPresentation($revised)]);
+    }
+
     public function dashboard(): JsonResponse
     {
+        $queueHealth = app(FactCheckQueueHealth::class)->summary();
         [$monthlyDetectionTrend, $monthlySignupTrend] = $this->monthlyBaseTrends();
 
         $regularUsers = User::query()->where('is_admin', false)->count();
@@ -101,6 +156,12 @@ class AdminDataController extends Controller
             ->get();
 
         $alerts = array_values(array_filter([
+            $queueHealth['status'] !== 'healthy' ? [
+                'title' => 'Fact-check queue needs attention',
+                'value' => $queueHealth['pending_evidence_jobs'] + $queueHealth['stalled_assessments'],
+                'description' => 'Evidence jobs or assessments have waited beyond the configured recovery window. Check the evidence worker.',
+                'tone' => 'error',
+            ] : null,
             $reviewDetections > 0 ? [
                 'title' => 'Review queue waiting',
                 'value' => $reviewDetections,
@@ -122,6 +183,7 @@ class AdminDataController extends Controller
         ]));
 
         return response()->json([
+            'factCheckQueue' => $queueHealth,
             'overviewMetrics' => [
                 [
                     'label' => 'Total Accounts',

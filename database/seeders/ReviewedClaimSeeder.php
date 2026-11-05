@@ -25,8 +25,11 @@ class ReviewedClaimSeeder extends Seeder
                     // This specific circulating headline was reviewed with the
                     // Suan quote-card context; never match on "Bato" alone.
                     'SHOOT-TO-KILL KAY SEN. BATO, IHAHAIN?!',
+                    'Posts on Rep. Suan’s ‘shoot-to-kill’ resolution vs Bato dela Rosa',
+                    'Posts on Rep. Suan’s ‘shoot-to-kill’ resolution vs Bato dela Rosa FAKE',
                     'FACT CHECK: Shoot-to-kill Bato dela Rosa warning by Lordan Suan is fake'],
                 [
+                    ['VERA Files', 'Posts on Rep. Suan’s ‘shoot-to-kill’ threat vs Bato dela Rosa FAKE', 'https://verafiles.org/articles/fact-check-posts-on-rep-suans-shoot-to-kill-resolution-vs-bato-dela-rosa-fake', 'Direct fact-check of the circulating posts; rates the attributed Suan statement fake.'],
                     ['Philstar', 'House prosecution panel member denies shoot-to-kill claim vs Bato', 'https://www.philstar.com/headlines/2026/11/02/2567378/house-prosecution-panel-member-denies-shoot-kill-claim-vs-bato/amp/', 'Documents Suan\'s November 2 denial of the fabricated quotation.'],
                     ['SunStar', 'Rep. Suan denies shoot-to-kill quote card vs Bato dela Rosa', 'https://www.sunstar.com.ph/amp/story/davao/rep-suan-denies-shoot-to-kill-quote-card-vs-bato-dela-rosa', 'Describes the quote card and reports Suan\'s denial; the same underlying denial, not independent proof.'],
                     ['ABS-CBN News', 'Rep. Suan denies online claims of shoot-to-kill resolution for Bato dela Rosa', 'https://www.abs-cbn.com/news/nation/2026/11/2/rep-suan-denies-online-claims-of-shoot-to-kill-resolution-for-bato-dela-rosa-1311', 'Related coverage of the denial.'],

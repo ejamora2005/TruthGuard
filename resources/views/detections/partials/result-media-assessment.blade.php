@@ -21,4 +21,15 @@
             <button class="tg-result-button" type="submit" :disabled="retrying" x-text="retrying ? 'Analyzing original upload…' : {{ Illuminate\Support\Js::from($mediaPrimary ? 'Retry media analysis' : 'Recheck submission') }}">{{ $mediaPrimary ? 'Retry media analysis' : 'Recheck submission' }}</button>
         </form>
     @endif
+    @if (($result['media_claim_notice']['status'] ?? '') === 'claim_detected')
+        <div class="tg-result-notice">
+            <h3>Potential factual claim detected</h3>
+            <p>{{ $result['media_claim_notice']['text'] }}</p>
+            <p class="tg-result-muted">{{ $result['media_claim_notice']['message'] }}</p>
+            <form method="POST" action="{{ route('detections.fact-check-media-claim', $selectedDetection) }}" class="tg-result-assessment-actions">
+                @csrf
+                <button class="tg-result-button" type="submit">Fact-check the visible claim</button>
+            </form>
+        </div>
+    @endif
 </section>

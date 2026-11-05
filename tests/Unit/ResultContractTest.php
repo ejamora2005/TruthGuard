@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Detection;
 use App\Services\Detections\AssessmentScore;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\ResultContract;
 use App\Services\Detections\ResultWording;
 use Tests\TestCase;
 
@@ -20,7 +21,8 @@ class ResultContractTest extends TestCase
 
         $worded = ResultWording::ensure($result);
 
-        $this->assertStringStartsWith('As of October 29, 2026, not verified.', $worded['generated_wording']['explanation']);
+        $this->assertStringStartsWith('As of October 29, 2026,', $worded['generated_wording']['explanation']);
+        $this->assertStringNotContainsString('not verified', strtolower($worded['generated_wording']['explanation']));
         $this->assertSame(ResultWording::VERSION, $worded['generated_wording']['version']);
     }
 
@@ -32,6 +34,66 @@ class ResultContractTest extends TestCase
         $qualified = 'The visible text does not identify a specific assertion unless the missing date is recovered.';
         $this->assertSame($qualified, ReportAnswer::interpretationAction($summary, $qualified));
         $this->assertSame($summary, ReportAnswer::interpretationAction($summary, $summary));
+    }
+
+    public function test_quality_review_records_citation_coverage_and_escalates_unresolved_claims(): void
+    {
+        $passed = ReportAnswer::complete($this->fixture([
+            'answer_segments' => [['text' => 'The official record confirms the stated date.', 'source_ids' => ['s1']]],
+        ]));
+        $this->assertSame('passed', $passed['quality_review']['status']);
+        $this->assertSame(100, $passed['quality_review']['citation_coverage_percent']);
+
+        $review = ReportAnswer::complete($this->fixture([
+            'verdict' => 'UNVERIFIED', 'claim' => 'An election result is circulating online.',
+            'answer_segments' => [['text' => 'Available records do not resolve the claim.', 'source_ids' => []]],
+        ]));
+        $this->assertTrue($review['quality_review']['human_review_recommended']);
+        $this->assertSame('review_recommended', $review['quality_review']['status']);
+        $this->assertNotEmpty($review['quality_review']['reasons']);
+        $this->assertArrayHasKey('quality_review', ReportAnswer::forPresentation($review));
+    }
+
+    public function test_media_only_contract_removes_any_accidental_factual_result_but_keeps_claim_notice(): void
+    {
+        $public = ReportAnswer::forPresentation($this->fixture([
+            'primary_task' => 'media', 'verdict' => 'LIKELY_AI_GENERATED',
+            'request' => ['question' => 'Is this AI-generated?', 'tasks' => ['media'], 'selected_mode' => 'media'],
+            'media_claim_notice' => ['status' => 'claim_detected', 'text' => 'A visible headline claim.',
+                'ocr_status' => 'completed', 'message' => 'Not fact-checked.'],
+            'claim_assessment' => ['status' => 'completed', 'result' => $this->fixture()],
+        ]));
+
+        $this->assertSame('LIKELY_AI_GENERATED', $public['verdict']);
+        $this->assertSame([], $public['sources']);
+        $this->assertSame('not_requested', $public['claim_assessment']['status']);
+        $this->assertNull($public['claim_assessment']['result']);
+        $this->assertSame('A visible headline claim.', $public['media_claim_notice']['text']);
+    }
+
+    public function test_old_saved_borderline_media_verdict_is_suppressed_when_read(): void
+    {
+        $saved = [
+            'schema_version' => 4,
+            'primary_task' => 'media',
+            'verdict' => 'LIKELY_AI_GENERATED',
+            'summary' => 'The old report called this image likely AI-generated.',
+            'request' => ['question' => 'Is this AI-generated?', 'tasks' => ['media']],
+            'media_assessment' => [
+                'status' => 'completed',
+                'media_type' => 'image',
+                'label' => 'fake',
+                'fake_probability' => .55,
+            ],
+            'sources' => [],
+        ];
+
+        $result = ResultContract::forPresentation($saved);
+
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
+        $this->assertSame('Inconclusive', $result['assessment_label']);
+        $this->assertTrue($result['media_assessment']['origin_inconclusive']);
+        $this->assertStringContainsString('Neither AI generation nor human origin has been established', $result['summary']);
     }
 
     public function test_explicitly_unreviewed_sources_and_their_citations_are_excluded(): void

@@ -54,9 +54,7 @@ class EvidenceVerificationService
                 $context['caption_text'] ?? null,
                 $context['notes'] ?? null,
             ])));
-            $extraction = $detectorOnly
-                ? null
-                : ($submittedKnownResult
+            $extraction = $submittedKnownResult
                     ? [
                         'status' => 'completed',
                         'analysis_text' => trim(implode(' ', array_filter([$context['caption_text'] ?? null, $context['notes'] ?? null]))),
@@ -68,7 +66,7 @@ class EvidenceVerificationService
                         'limitations' => [],
                         'failure_reason' => null,
                     ]
-                    : $this->extractor->extract($context, $file, $extractionBudget));
+                    : $this->extractor->extract($context, $file, $extractionBudget);
             // Only automatic, content-dependent routing may be finalized after OCR.
             if (SubmissionTask::tasks($request) === [] && ($request['analysis_task'] ?? 'auto') === 'auto') {
                 $resolved = SubmissionTask::resolve($request, $extraction);
@@ -83,7 +81,7 @@ class EvidenceVerificationService
             $context['media_attached'] = $file !== null;
             if ($detectorOnly || $primary === 'clarification') {
                 $analysis['claim_assessment'] = ['status' => 'not_requested', 'task' => 'Factual claim verification',
-                    'result' => null, 'reason' => 'Factual verification was not requested or the task needs clarification.'];
+                    'result' => null, 'reason' => 'Factual verification was not requested. Visible text, when available, is recorded only as an optional claim notice.'];
             } else {
                 $knownResult = $submittedKnownResult
                     ?? ReviewedClaimLookup::lookup((string) ($extraction['analysis_text'] ?? ''));
@@ -129,6 +127,7 @@ class EvidenceVerificationService
             $media ??= ['status' => 'unavailable', 'media_type' => $context['media_type'], 'task' => 'AI-generation screening',
                 'failure_reason' => 'No media detector output was recorded. Retry the analysis.'];
             $result = MediaAnalysisReport::result($media, $claim);
+            if ($detectorOnly) $result['media_claim_notice'] = MediaClaimNotice::fromExtraction($extraction ?? null);
             if ($primary === 'manipulation' || $primary === 'clarification') {
                 $result = MediaAnalysisReport::unsupportedTask($primary, $result);
             }
@@ -582,7 +581,7 @@ class EvidenceVerificationService
             $unclear = collect($result['claims'] ?? [])->first(fn ($claim) => ($claim['outcome'] ?? null) === 'needs_context');
             $wording = Str::limit(Str::squish((string) ($unclear['text'] ?? $result['claim'] ?? '')), 180, '…');
             $missing = trim((string) ($unclear['context_reason'] ?? ''));
-            $summary = 'I searched for records about “'.$wording.'”. The submitted wording still needs clarification before a factual outcome can be judged.'
+            $summary = 'I researched the most likely checkable interpretation of “'.$wording.'”. The available evidence does not resolve the exact asserted action, so this result records the remaining uncertainty instead of guessing.'
                 .($missing !== '' ? ' '.$missing : '');
             $contextual = $result['contextual_sources'][0] ?? null;
             if ($contextual) {
@@ -739,7 +738,7 @@ class EvidenceVerificationService
             'context_assessments' => $this->judge->contextFindings,
             'verdict' => $verdict, 'assessment_label' => $label, 'confidence' => null,
             'evidence_strength' => ['label' => $strength, 'reason' => $summary, 'method' => 'Categorical assessment of validated claim–source relationships; not a calibrated probability or measured accuracy.'],
-            'summary' => $summary, 'claims' => $claims, 'sources' => array_values($used),
+            'summary' => $summary, 'claims' => $claims, 'interpretation' => $this->publicInterpretation($claims), 'sources' => array_values($used),
             'contextual_sources' => array_values($contextualSources),
             'key_findings' => array_map(fn ($c) => ucfirst(str_replace('_', ' ', $c['outcome'])).': '.$c['text'], $claims),
             'limitations' => $limitations, 'evidence_cutoff' => $cutoff, 'assessed_at' => now()->utc()->toIso8601String(),
@@ -748,10 +747,25 @@ class EvidenceVerificationService
                 'TRUE' => 'green', 'FALSE' => 'red', 'PARTLY_TRUE' => 'amber', default => 'gray'
             },
                 'show_evidence_warning' => $warning, 'evidence_warning' => $warning ? ($limitations[0] ?? $summary) : null,
-                'show_missing_context' => $context, 'missing_context' => $context ? ($contextReason ?: 'Provide the exact statement, its original source, and the relevant date so the submitted content can be assessed.') : null,
+                'show_missing_context' => $context, 'missing_context' => $context ? ($contextReason ?: 'The original statement, source, or date was not available; the report was completed using the most likely searchable interpretation.') : null,
                 'show_source_conflict' => $conflict, 'source_conflict_message' => $conflict ? 'Supporting and contradicting evidence address the same claim; no explicit superseding record resolves the conflict.' : null,
                 'show_official_verification_notice' => $official, 'official_verification_notice' => $official ? 'Consult the relevant original authority for decisions that depend on this claim.' : null,
                 'highlight_evidence_cutoff' => $this->policy->isTimeSensitive($claimText), 'source_display_order' => FactCheckEvidencePolicy::SOURCE_ORDER],
+        ];
+    }
+
+    private function publicInterpretation(array $claims): array
+    {
+        $claim = collect($claims)->first();
+        $original = Str::squish((string) ($claim['text'] ?? ''));
+        $interpreted = Str::squish((string) ($claim['interpreted_text'] ?? $original));
+
+        return [
+            'original_text' => $original,
+            'interpreted_claim' => $interpreted,
+            'assumption_used' => ($claim['interpretation_assumption'] ?? false) === true && $interpreted !== $original,
+            'ambiguities' => array_values(array_filter($claim['ambiguities'] ?? [], 'is_string')),
+            'completed_without_follow_up' => true,
         ];
     }
 }

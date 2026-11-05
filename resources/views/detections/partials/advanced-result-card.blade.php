@@ -9,6 +9,8 @@
     $categoryKey = (string) ($presentation['category_key'] ?? 'needs_review');
     $verdict = (string) ($selectedDetection->verdict ?: 'review');
     $riskScore = max(0, min(100, (int) $selectedDetection->fake_score));
+    $qualityReview = is_array($publicResult['quality_review'] ?? null) ? $publicResult['quality_review'] : [];
+    $interpretation = is_array($publicResult['interpretation'] ?? null) ? $publicResult['interpretation'] : [];
 
     $tone = match ($categoryKey) {
         'confirmed', 'low_risk' => [
@@ -74,6 +76,9 @@
     $contentType = \Illuminate\Support\Str::headline(in_array($selectedDetection->media_type, [null, '', 'unknown'], true)
         ? ($selectedDetection->source_url ? 'Link' : 'Text') : $selectedDetection->media_type);
     $isMediaReport = in_array($publicResult['primary_task'], ['media', 'manipulation'], true);
+    $mediaOnlyReport = $publicResult['primary_task'] === 'media'
+        && empty(array_intersect($publicResult['request']['tasks'] ?? [], ['claim', 'context']));
+    $mediaClaimNotice = is_array($publicResult['media_claim_notice'] ?? null) ? $publicResult['media_claim_notice'] : [];
     $submittedMedia = in_array($selectedDetection->media_type, ['image', 'video', 'document'], true);
     $combinedReport = count($publicResult['request']['tasks'] ?? []) > 1;
     $reportTitle = $combinedReport ? 'Content verification report' : ($isMediaReport ? 'Media analysis report' : 'Fact-check report');
@@ -1058,12 +1063,12 @@
                     <div class="min-w-0">
                         <div class="tg-report-verdict-heading">
                             <p class="tg-card-eyebrow">{{ $assessmentHeading }}</p>
-                            <a href="#source-verification" @click="scrollToSources($event)" aria-label="View source verification" title="View source verification" class="tg-source-jump rounded-xl text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
+                            @unless($mediaOnlyReport)<a href="#source-verification" @click="scrollToSources($event)" aria-label="View source verification" title="View source verification" class="tg-source-jump rounded-xl text-slate-600 transition hover:bg-blue-50 hover:text-blue-700">
                                 <span>View sources</span>
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v15m-5-5 5 5 5-5" />
                                 </svg>
-                            </a>
+                            </a>@endunless
                         </div>
                         <div class="tg-verdict-summary">
                             <div class="tg-verdict-help" x-data="{
@@ -1103,10 +1108,33 @@
                         </div>
                         <div class="tg-verdict-explanation">
                             <h3>What the evidence shows</h3>
+                            @if (is_array($publicResult['correction'] ?? null))
+                                <p class="mb-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900"><strong>Corrected result:</strong> {{ $publicResult['correction']['reason'] }} @if($publicResult['correction']['corrected_at'])<span class="block text-xs text-violet-700">Updated {{ $publicResult['correction']['corrected_at'] }}</span>@endif</p>
+                            @endif
+                            @if (($interpretation['assumption_used'] ?? false) === true)
+                                <p class="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><strong>Interpretation used:</strong> {{ $interpretation['interpreted_claim'] }}</p>
+                            @endif
                             @foreach ($evidenceParagraphs as $paragraph)
                                 <p>{{ $paragraph }}</p>
                             @endforeach
                         </div>
+                        @if ($mediaOnlyReport && ($mediaClaimNotice['status'] ?? '') === 'claim_detected')
+                            <aside class="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" aria-labelledby="detected-media-claim-title">
+                                <strong id="detected-media-claim-title" class="block">Potential factual claim detected</strong>
+                                <p class="mt-2 rounded-lg bg-white/80 p-3 font-medium">{{ $mediaClaimNotice['text'] }}</p>
+                                <p class="mt-2 text-xs leading-5">{{ $mediaClaimNotice['message'] }}</p>
+                                <form method="POST" action="{{ route('detections.fact-check-media-claim', $selectedDetection) }}" class="mt-3" x-data="{ submitting: false }" @submit="submitting = true">
+                                    @csrf
+                                    <button type="submit" :disabled="submitting" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><span x-show="!submitting">Fact-check the visible claim</span><span x-show="submitting" x-cloak>Starting separate fact-check…</span></button>
+                                </form>
+                            </aside>
+                        @endif
+                        @if (($qualityReview['human_review_recommended'] ?? false) === true)
+                            <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="note">
+                                <strong class="block">Human review recommended</strong>
+                                <p class="mt-1">{{ $qualityReview['reasons'][0] ?? 'Review the evidence and original sources before relying on this result.' }}</p>
+                            </div>
+                        @endif
                         <div class="tg-verdict-actions">
                             @if (($extractionIssue || $isMediaReport) && in_array($selectedDetection->media_type, ['image', 'video'], true) && $selectedDetection->media_path)
                                 <form method="POST" action="{{ route('detections.retry-media', $selectedDetection) }}" x-data="{ retrying: false }" @submit="retrying = true" class="mb-4">
@@ -1193,6 +1221,44 @@
             </aside>
         </div>
     </article>
+
+    @if (($publicResult['atomic_claims'] ?? []) !== [])
+        <section class="tg-ai-surface p-5 sm:p-6" aria-labelledby="claim-findings-title">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div><p class="tg-card-eyebrow text-blue-700">Claim-by-claim review</p><h3 id="claim-findings-title" class="mt-1 text-lg font-bold text-slate-900">What was established</h3></div>
+                @if (($publicResult['editorial_review']['required'] ?? false) === true)
+                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">Human review recommended</span>
+                @endif
+            </div>
+            <div class="mt-4 space-y-3">
+                @foreach ($publicResult['atomic_claims'] as $atomicClaim)
+                    <article class="rounded-xl border border-slate-200 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-2"><strong class="text-sm text-slate-900">{{ $atomicClaim['text'] }}</strong><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ Illuminate\Support\Str::headline($atomicClaim['outcome']) }}</span></div>
+                        @if (($atomicClaim['limitation'] ?? '') !== '')<p class="mt-2 text-xs leading-5 text-slate-500">{{ $atomicClaim['limitation'] }}</p>@endif
+                    </article>
+                @endforeach
+            </div>
+            <dl class="mt-4 grid gap-3 text-xs text-slate-600 sm:grid-cols-3">
+                <div><dt class="font-bold text-slate-800">Independent evidence families</dt><dd>{{ count($publicResult['evidence_families'] ?? []) }}</dd></div>
+                <div><dt class="font-bold text-slate-800">Verdict audit</dt><dd>{{ Illuminate\Support\Str::headline($publicResult['verdict_audit']['status'] ?? 'unavailable') }}</dd></div>
+                <div><dt class="font-bold text-slate-800">Freshness</dt><dd>{{ Illuminate\Support\Str::headline($publicResult['freshness']['status'] ?? 'not recorded') }}</dd></div>
+            </dl>
+        </section>
+    @endif
+
+    <section class="tg-ai-surface p-5 sm:p-6" aria-labelledby="result-feedback-title">
+        <h3 id="result-feedback-title" class="text-sm font-bold text-slate-900">Something wrong with this result?</h3>
+        <p class="mt-1 text-xs text-slate-500">Flag the specific problem. Your current report remains available.</p>
+        <div class="mt-3 flex flex-wrap gap-2">
+            @foreach (['wrong_interpretation' => 'Wrong interpreted claim', 'unsupported_source' => 'Source does not support this', 'verdict_review' => 'Verdict needs review', 'unclear_explanation' => 'Explanation is unclear'] as $feedbackValue => $feedbackLabel)
+                <form method="POST" action="{{ route('detections.feedback', $selectedDetection) }}">
+                    @csrf
+                    <input type="hidden" name="category" value="{{ $feedbackValue }}">
+                    <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">{{ $feedbackLabel }}</button>
+                </form>
+            @endforeach
+        </div>
+    </section>
 
     @foreach ($publicResult['secondary_assessments'] ?? [] as $secondary)
         <section class="tg-ai-surface p-5 sm:p-7" aria-label="{{ $secondary['assessment_label'] }}">
@@ -1455,6 +1521,7 @@
         </div>
     </details>
 
+    @unless($mediaOnlyReport)
     <article id="source-verification" tabindex="-1" class="tg-ai-surface tg-report-sources p-5 sm:p-7">
         <div class="tg-source-section-header">
             <div class="tg-source-section-title">
@@ -1626,6 +1693,7 @@
             </section>
         @endif
     </article>
+    @endunless
 
     @if ($relatedPosts->isNotEmpty() || $recentFactChecks->isNotEmpty())
         <article class="tg-ai-surface tg-related-section overflow-hidden">

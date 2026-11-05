@@ -4,14 +4,21 @@ namespace App\Services\Detections;
 
 class SubmissionTask
 {
-    public const VERSION = 'tasks-v6';
+    public const VERSION = 'tasks-v7';
 
-    public const MEDIA_INSTRUCTION = 'Check whether this image or video shows signs of AI generation or manipulation';
+    public const MEDIA_INSTRUCTION = 'Check whether this image or video shows signs of AI generation or manipulation, and explain what the detector can and cannot establish';
+
+    public const CLAIM_INSTRUCTION = 'Fact-check the exact claim using reliable evidence, including its names, dates, places, numbers, and qualifiers, and explain the verdict and uncertainty';
+
+    public const CONTEXT_INSTRUCTION = 'Check whether this content is current and shown in its original date, place, event, and context, and explain what changed or was omitted';
+
+    public const SOURCES_INSTRUCTION = 'Find matching fact-checks and primary sources, compare what each one actually establishes, and explain any disagreement';
 
     private const INSTRUCTIONS = [
         self::MEDIA_INSTRUCTION,
-        'Fact-check this claim against trusted public sources and explain the evidence',
-        'Find related fact-checks for this upload and show their source ratings',
+        self::CLAIM_INSTRUCTION,
+        self::CONTEXT_INSTRUCTION,
+        self::SOURCES_INSTRUCTION,
     ];
 
     public static function isPresetInstruction(?string $text): bool

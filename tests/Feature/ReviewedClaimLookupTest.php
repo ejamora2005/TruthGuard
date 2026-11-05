@@ -46,11 +46,16 @@ class ReviewedClaimLookupTest extends TestCase
         $this->assertSame('MISLEADING', ReviewedClaimLookup::lookup('Matatapos ang mundo sa November 13, 2026.')['verdict']);
         $suan = ReviewedClaimLookup::lookup('Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.');
         $this->assertSame('FALSE', $suan['verdict']);
-        $this->assertCount(5, $suan['sources']);
+        $this->assertCount(6, $suan['sources']);
+        $this->assertSame('VERA Files', $suan['sources'][0]['name']);
         $this->assertSame(0, $suan['diagnostics']['api_usage']['total_tokens']);
         $headline = ReviewedClaimLookup::lookup("SHOOT-TO-KILL\nKAY SEN. BATO,\nIHAHAIN?!");
         $this->assertSame('FALSE', $headline['verdict']);
         $this->assertSame('suan-fabricated-bato-shoot-to-kill-quote', $headline['diagnostics']['reviewed_claim_slug']);
+        $postHeadline = ReviewedClaimLookup::lookup('Posts on Rep. Suan’s ‘shoot-to-kill’ resolution vs Bato dela Rosa');
+        $this->assertSame('FALSE', $postHeadline['verdict']);
+        $this->assertSame(0, $postHeadline['diagnostics']['api_usage']['total_tokens']);
+        $this->assertCount(6, $postHeadline['sources']);
         $this->assertNull(ReviewedClaimLookup::lookup('Bato'));
         $this->assertNull(ReviewedClaimLookup::lookup('Lordan Suan did not threaten a shoot-to-kill resolution against Bato dela Rosa.'));
     }

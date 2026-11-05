@@ -87,6 +87,8 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
                 Route::get('announcements', [AdminAnnouncementController::class, 'index']);
                 Route::post('announcements', [AdminAnnouncementController::class, 'store'])->middleware('throttle:10,1');
                 Route::get('fact-check-sources', [AdminFactCheckSourceController::class, 'index']);
+                Route::get('fact-check-reviews', [AdminDataController::class, 'factCheckReviews']);
+                Route::patch('fact-check-reviews/{detection}', [AdminDataController::class, 'reviseFactCheck']);
                 Route::post('fact-check-sources', [AdminFactCheckSourceController::class, 'store']);
                 Route::patch('fact-check-sources/{factCheckSource}', [AdminFactCheckSourceController::class, 'update']);
                 Route::delete('fact-check-sources/{factCheckSource}', [AdminFactCheckSourceController::class, 'destroy']);
@@ -119,6 +121,8 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('detections/{detection}/result', [DetectionController::class, 'result'])->name('detections.result');
         Route::post('detections', [DetectionController::class, 'store'])->name('detections.store');
         Route::post('detections/{detection}/retry-media', [DetectionController::class, 'retryMedia'])->middleware('throttle:detection-retry')->name('detections.retry-media');
+        Route::post('detections/{detection}/fact-check-media-claim', [DetectionController::class, 'factCheckMediaClaim'])->middleware('throttle:detection-retry')->name('detections.fact-check-media-claim');
+        Route::post('detections/{detection}/feedback', [DetectionController::class, 'feedback'])->middleware('throttle:20,1')->name('detections.feedback');
         Route::patch('profile', [ProfileController::class, 'update'])->name('profile.update');
         Route::post('profile/password/setup', [ProfileController::class, 'setupPassword'])->name('profile.password.setup');
         Route::view('profile', 'profile')->name('profile');
