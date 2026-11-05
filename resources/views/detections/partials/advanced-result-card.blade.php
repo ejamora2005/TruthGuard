@@ -1834,13 +1834,14 @@
                 @foreach ($recentFactChecks as $item)
                     @php
                         $publisherName = $item['publisher'] ?? 'Fact-check partner';
-                        $detailUrl = ! empty($item['id']) && ! auth()->user()?->isAdmin()
+                        $detailIsInternal = ! empty($item['id']) && ! auth()->user()?->isAdmin();
+                        $detailUrl = $detailIsInternal
                             ? route('dashboard.fact-check', ['factCheck' => $item['id'], 'detection' => $selectedDetection->id])
                             : ($item['url'] ?? route('dashboard'));
                         $rating = $ratingNormalizer::shortLabel((string) ($item['rating'] ?? 'Reviewed'), (string) ($item['headline'] ?? ''), (string) ($item['claim'] ?? ''));
                         $itemImage = $item['image_url'] ?? $item['logo_url'] ?? null;
                     @endphp
-                    <a href="{{ $detailUrl }}" target="_blank" rel="noopener noreferrer" class="tg-ai-source tg-related-card">
+                    <a href="{{ $detailUrl }}" @unless($detailIsInternal) target="_blank" rel="noopener noreferrer" @endunless class="tg-ai-source tg-related-card">
                         <span class="tg-related-media">
                             @if ($itemImage)
                                 <img src="{{ $itemImage }}" alt="" loading="lazy" referrerpolicy="no-referrer" x-on:error="$el.hidden = true; $el.nextElementSibling.hidden = false;">

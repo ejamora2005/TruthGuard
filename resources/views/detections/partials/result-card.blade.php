@@ -587,7 +587,8 @@
                 @foreach ($recentFactChecks as $item)
                     @php
                         $publisherName = $item['publisher'] ?? 'Fact-check partner';
-                        $detailUrl = ! empty($item['id']) && ! auth()->user()?->isAdmin()
+                        $detailIsInternal = ! empty($item['id']) && ! auth()->user()?->isAdmin();
+                        $detailUrl = $detailIsInternal
                             ? route('dashboard.fact-check', ['factCheck' => $item['id']])
                             : ($item['url'] ?? route('dashboard'));
                         $rating = $ratingNormalizer::shortLabel((string) ($item['rating'] ?? 'Reviewed'), (string) ($item['headline'] ?? ''), (string) ($item['claim'] ?? ''));
@@ -597,7 +598,7 @@
                             default => 'bg-amber-50 text-amber-700',
                         };
                     @endphp
-                    <a href="{{ $detailUrl }}" target="_blank" rel="noreferrer" class="block rounded-lg border border-slate-200 bg-white p-4 transition hover:border-blue-300">
+                    <a href="{{ $detailUrl }}" @unless($detailIsInternal) target="_blank" rel="noopener noreferrer" @endunless class="block rounded-lg border border-slate-200 bg-white p-4 transition hover:border-blue-300">
                         <div class="flex items-center justify-between gap-3">
                             <p class="truncate text-sm font-black text-slate-950">{{ $publisherName }}</p>
                             <span class="shrink-0 rounded-lg px-2.5 py-1 text-xs font-black {{ $ratingClass }}">{{ $rating }}</span>
