@@ -739,6 +739,41 @@
                 max-height: 22rem;
             }
         }
+
+        #news-watch .tg-feed-pagination {
+            padding: .75rem 1rem 1rem;
+            border-top: 1px solid #e2e8f0;
+            background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+            border-radius: 0 0 12px 12px;
+        }
+
+        #news-watch .tg-feed-pagination .tg-pagination {
+            max-width: 34rem;
+            margin-inline: auto;
+            padding: .375rem;
+            border: 1px solid #dbe4ef;
+            border-radius: 999px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgb(15 23 42 / .06);
+        }
+
+        #news-watch .tg-feed-pagination .tg-pagination-count {
+            padding-left: .625rem;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        #news-watch .tg-feed-pagination .tg-pagination-controls {
+            border: 0;
+            background: #f8fafc;
+        }
+
+        @media (max-width: 640px) {
+            #news-watch .tg-feed-pagination { padding: .625rem .75rem .875rem; }
+            #news-watch .tg-feed-pagination .tg-pagination { flex-wrap: nowrap; padding: .25rem; }
+            #news-watch .tg-feed-pagination .tg-pagination-arrow { flex-basis: 36px; width: 36px; height: 36px; min-height: 36px; }
+            #news-watch .tg-feed-pagination .tg-pagination-select { height: 36px; min-width: 70px; }
+        }
     </style>
 @endonce
 
@@ -861,15 +896,6 @@
     </div>
 
     @if ($feedItems->isNotEmpty())
-        <x-pagination
-                :current-page="$feedCurrentPage"
-                :last-page="$feedTotalPages"
-                :total="$feedTotal"
-                :first-item="$feedFirstItem"
-                :last-item="$feedLastItem"
-                :page-url="$feedPageUrl"
-                label="Latest fact-check pages"
-        />
         <div class="tg-mobile-feed-list divide-y divide-slate-200 px-5 sm:px-6">
             @foreach ($feedItems as $item)
                 @php
@@ -987,6 +1013,18 @@
                     </div>
                 </article>
             @endforeach
+        </div>
+
+        <div class="tg-feed-pagination">
+            <x-pagination
+                    :current-page="$feedCurrentPage"
+                    :last-page="$feedTotalPages"
+                    :total="$feedTotal"
+                    :first-item="$feedFirstItem"
+                    :last-item="$feedLastItem"
+                    :page-url="$feedPageUrl"
+                    label="Latest fact-check pages"
+            />
         </div>
 
     @else

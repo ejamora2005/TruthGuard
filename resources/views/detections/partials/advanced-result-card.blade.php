@@ -809,12 +809,15 @@
             .tg-source-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
         @media (max-width: 640px) {
-            .tg-source-section-header { flex-direction: column; align-items: stretch; gap: .875rem; }
+            .tg-source-section-header { flex-direction: column; align-items: stretch; gap: .625rem; padding-bottom: .875rem; }
             .tg-source-section-title { gap: .625rem; }
-            .tg-ai-report .tg-source-section-title h3 { font-size: 1rem; }
-            .tg-source-section-title p { font-size: .75rem; }
-            .tg-source-count { padding: .3rem .5rem; }
-            .tg-source-counts { justify-content: flex-start; }
+            .tg-source-section-title .tg-ai-icon { width: 2.25rem; height: 2.25rem; border-radius: .75rem; }
+            .tg-ai-report .tg-source-section-title h3 { font-size: .9375rem; white-space: nowrap; }
+            .tg-source-section-title p { display: none; }
+            .tg-source-count { gap: .25rem; padding: .35rem .45rem; font-size: .6875rem; white-space: nowrap; }
+            .tg-source-count strong { font-size: .875rem; }
+            .tg-source-counts { flex-wrap: nowrap; justify-content: flex-start; gap: .375rem; width: 100%; }
+            .tg-source-count-button { min-height: 2.25rem; }
             .tg-source-popover { left: 0; right: auto; width: 100%; }
             .tg-ai-report .tg-source-card { padding: 1rem; }
             .tg-source-card-footer { align-items: flex-end; }
@@ -898,7 +901,7 @@
             .tg-ai-report .tg-report-title { flex: 1 1 auto; flex-basis: auto; }
             .tg-ai-report .tg-report-header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; }
             .tg-ai-report .tg-report-kicker, .tg-ai-report .tg-report-subtitle, .tg-ai-report .tg-report-reference > span { display: none; }
-            .tg-ai-report .tg-report-page-title { margin: 0; font-size: 1.125rem; line-height: 1.4; }
+            .tg-ai-report .tg-report-page-title { margin: 0; font-size: .9375rem; line-height: 1.3; white-space: nowrap; }
             .tg-ai-report .tg-report-reference { display: none; }
             .tg-ai-report .tg-report-new-check { min-height: 34px; padding: .4rem .65rem; }
             .tg-ai-report .tg-report-evidence { gap: .75rem; }
