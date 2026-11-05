@@ -897,13 +897,13 @@
         .tg-submission-details { min-width: 0; }
         .tg-submission-details > summary { display: none; }
         @media (max-width: 640px) {
-            .tg-ai-report .tg-report-header { flex-wrap: nowrap; align-items: center; gap: .75rem; padding-block: .125rem; }
-            .tg-ai-report .tg-report-title { flex: 1 1 auto; flex-basis: auto; }
+            .tg-ai-report .tg-report-header { flex-wrap: nowrap; align-items: center; gap: .5rem; padding-block: .125rem; }
+            .tg-ai-report .tg-report-title { flex: 1 1 auto; flex-basis: auto; min-width: 0; overflow: hidden; }
             .tg-ai-report .tg-report-header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; }
             .tg-ai-report .tg-report-kicker, .tg-ai-report .tg-report-subtitle, .tg-ai-report .tg-report-reference > span { display: none; }
-            .tg-ai-report .tg-report-page-title { margin: 0; font-size: .9375rem; line-height: 1.3; white-space: nowrap; }
+            .tg-ai-report .tg-report-page-title { margin: 0; overflow: hidden; font-size: .875rem; line-height: 1.3; white-space: nowrap; text-overflow: ellipsis; }
             .tg-ai-report .tg-report-reference { display: none; }
-            .tg-ai-report .tg-report-new-check { min-height: 34px; padding: .4rem .65rem; }
+            .tg-ai-report .tg-report-new-check { min-height: 32px; padding: .35rem .5rem; font-size: .6875rem !important; }
             .tg-ai-report .tg-report-evidence { gap: .75rem; }
             .tg-ai-report .tg-report-evidence .tg-ai-media > .tg-image-trigger > img,
             .tg-ai-report .tg-report-evidence .tg-ai-media > video { max-height: min(30svh, 14rem); }
@@ -914,6 +914,9 @@
             .tg-submission-details[open] > summary > svg { transform: rotate(180deg); }
             .tg-submission-details > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; border-radius: 6px; }
             .tg-submission-details .tg-evidence-meta { padding-top: 0; padding-bottom: .25rem; border-top: 0; }
+        }
+        @media (max-width: 380px) {
+            .tg-ai-report .tg-report-new-check > svg { display: none; }
         }
         @media (prefers-reduced-motion: reduce) { .tg-submission-details > summary > svg { transition: none; } }
         @media (max-width: 640px) {
