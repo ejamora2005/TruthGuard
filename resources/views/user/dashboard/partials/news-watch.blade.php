@@ -775,7 +775,8 @@
         #news-watch .tg-feed-pagination .tg-pagination {
             width: min(100%, 24rem);
             max-width: 24rem;
-            margin-inline: auto;
+            margin-left: auto;
+            margin-right: 0;
             padding: .375rem;
             border: 1px solid #dbe4ef;
             border-radius: 999px;
