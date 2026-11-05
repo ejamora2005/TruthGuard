@@ -215,6 +215,37 @@ html[data-tg-workspace].dark body :is(.tg-notice-heading, .tg-notice-icon) {
 }
 html[data-tg-workspace].dark body .tg-notice { --notice-ink: var(--tg-night-ink); --notice-muted: var(--tg-night-muted); --notice-line: var(--tg-night-line); }
 html[data-tg-workspace].dark body .tg-public-article :is(section, article) { background: var(--tg-night-surface) !important; border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-public-article { color: var(--tg-night-ink) !important; }
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-at-glance, .tg-claim-details, .tg-related-articles) {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-at-glance summary, .tg-claim-details summary, .tg-related-articles summary, .tg-claim-body, .tg-related-list) {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+}
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-at-glance-spark, .tg-at-glance-status, .tg-dropdown-icon, .tg-dropdown-count, .tg-related-card, .tg-related-thumb) {
+    background: var(--tg-night-surface) !important;
+    border-color: var(--tg-night-line) !important;
+    box-shadow: none !important;
+}
+html[data-tg-workspace].dark body .tg-public-article .tg-related-card:hover {
+    background: #203858 !important;
+    border-color: #5276a3 !important;
+}
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-at-glance-title, .tg-dropdown-heading strong, .tg-related-title) {
+    color: var(--tg-night-ink) !important;
+}
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-at-glance ul, .tg-claim-body p, .tg-dropdown-heading span, .tg-related-summary, figcaption, .tg-public-meta dt) {
+    color: var(--tg-night-muted) !important;
+}
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-dropdown-chevron, .tg-related-meta) { color: var(--tg-night-muted) !important; }
+html[data-tg-workspace].dark body .tg-public-article :is(.tg-public-meta, .tg-claim-body, .tg-related-list) { border-color: var(--tg-night-line) !important; }
+html[data-tg-workspace].dark body .tg-public-article figure img {
+    background: var(--tg-night-raised) !important;
+    border-color: var(--tg-night-line) !important;
+}
 
 /* Settings overview, account cards and modal contents share the same palette. */
 html[data-tg-workspace].dark body :is(.truthguard-settings-hero-summary, .truthguard-settings-metrics > div, .truthguard-settings-readiness-ring > span, .truthguard-settings-status-chip, .truthguard-settings-rail-card, .truthguard-settings-panel-header, .truthguard-photo-preview-card, .truthguard-password-strength-card, .truthguard-email-permission-card) { background: var(--tg-night-raised) !important; border-color: var(--tg-night-line) !important; color: var(--tg-night-ink) !important; box-shadow: none !important; }
