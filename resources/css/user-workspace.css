@@ -65,7 +65,7 @@ html body.tg-polished-workspace .truthguard-shell-toggle {
 }
 html body.tg-polished-workspace .truthguard-shell-toggle::after { display: none; }
 html body.tg-polished-workspace .truthguard-utility-strip { background: transparent !important; border: 0 !important; box-shadow: none !important; gap: .25rem; }
-html body.tg-polished-workspace .truthguard-clock-pill { border: 0; border-radius: 9px; background: var(--workspace-soft) !important; box-shadow: none; }
+html body.tg-polished-workspace .truthguard-clock-pill { border: 1px solid var(--workspace-line); border-radius: 9px; background: var(--workspace-soft) !important; box-shadow: none; }
 .tg-workspace-location { display: flex; align-items: center; gap: .75rem; color: var(--workspace-muted); font-size: .75rem; }
 .tg-workspace-location strong { color: var(--workspace-ink); font-weight: 550; }
 html body.tg-polished-workspace .truthguard-user-main { max-width: 1440px; padding: 1.75rem clamp(1rem, 2.5vw, 2.5rem); }
