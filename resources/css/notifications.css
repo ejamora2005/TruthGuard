@@ -109,8 +109,9 @@ html.dark .tg-inbox .tg-inbox-error { border-color: #96566a; background: #482537
     .tg-inbox .tg-inbox-header-actions > button { flex: 0 0 auto; padding-inline: .65rem; }
     .tg-inbox .tg-inbox-preferences { width: 44px; padding: 0; }
     .tg-inbox-preferences > span { display: none; }
-    .tg-inbox-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .35rem; padding: .65rem; overflow: visible; }
-    .tg-inbox .tg-inbox-filter { min-height: 44px; font-size: .7rem !important; gap: .3rem; border: 1px solid transparent; border-radius: 8px; padding: .3rem; }
+    .tg-inbox-filters { display: flex; flex-wrap: nowrap; gap: .3rem; padding: .5rem; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
+    .tg-inbox-filters::-webkit-scrollbar { display: none; }
+    .tg-inbox .tg-inbox-filter { min-width: max-content; min-height: 40px; font-size: .6875rem !important; gap: .3rem; border: 1px solid transparent; border-radius: 8px; padding: .3rem .55rem; }
     .tg-inbox .tg-inbox-filter[aria-pressed="true"] { background: var(--inbox-accent-soft); border-color: var(--inbox-line); color: var(--inbox-accent); }
     .tg-inbox .tg-inbox-filter > span, .tg-inbox .tg-inbox-meta > span { font-size: .6875rem !important; }
     .tg-inbox-list-heading { padding: .75rem 1rem; }

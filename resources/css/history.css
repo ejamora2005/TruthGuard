@@ -13,6 +13,7 @@
 }
 html.dark .tg-history { --history-bg: #182235; --history-soft: #223047; --history-line: #3b4b63; --history-ink: #f1f5f9; --history-muted: #bbc8da; --history-link: #93c5fd; }
 .tg-history *, .tg-history *::before, .tg-history *::after { box-sizing: border-box; }
+.tg-history-mobile-heading { display: none; }
 .tg-history svg { width: 1.125rem; height: 1.125rem; fill: none; stroke: currentColor; stroke-width: 1.8; flex-shrink: 0; }
 .tg-history :is(button, a, input, select, summary):focus-visible { outline: 2px solid var(--history-link); outline-offset: 3px; }
 .tg-history-filterbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin-bottom: .75rem; }
@@ -101,10 +102,13 @@ html.dark .tg-history-tone-red { background: #482537; color: #fda4af; border-col
     .tg-history-card .tg-history-menu-trigger { width: 44px; min-height: 44px; }
 }
 @media (max-width: 639px) {
+    .tg-history-mobile-heading { display: block; margin-bottom: 1rem; }
+    .tg-history-mobile-heading h1 { color: var(--history-ink); font-size: 1.35rem; font-weight: 700; line-height: 1.25; letter-spacing: -.025em; }
+    .tg-history-mobile-heading p { margin-top: .3rem; color: var(--history-muted); font-size: .75rem; line-height: 1.5; }
     .tg-history-filterbar { gap: .5rem; }
-    .tg-history-tabs { width: 100%; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: visible; gap: .3rem; }
-    .tg-history-tabs a { grid-column: span 2; justify-content: center; min-width: 0; min-height: 44px; padding: .4rem .25rem; gap: .3rem; font-size: .7rem; }
-    .tg-history-tabs a:nth-last-child(-n+2) { grid-column: span 3; }
+    .tg-history-tabs { width: 100%; display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-inline: contain; gap: .25rem; scrollbar-width: none; }
+    .tg-history-tabs::-webkit-scrollbar { display: none; }
+    .tg-history-tabs a { justify-content: center; min-width: max-content; min-height: 38px; padding: .35rem .55rem; gap: .3rem; font-size: .6875rem; }
     .tg-history-tabs a > span { min-width: 1.25rem; padding: .1rem .25rem; font-size: .65rem; }
     .tg-history-mobile-list { gap: .65rem; padding: .65rem; }
     .tg-history-card { padding: .8rem; }
@@ -125,6 +129,7 @@ html.dark .tg-history-tone-red { background: #482537; color: #fda4af; border-col
     .tg-history-toolbar { gap: .5rem; padding: .75rem; }
     .tg-history-search-form { flex-basis: 100%; }
     .tg-history-search { max-width: none; }
-    .tg-history-search input { font-size: 1rem; }
+    .tg-history-search input { min-height: 40px; padding: .4rem .65rem; font-size: .8125rem; }
+    .tg-history-search button { flex-basis: 40px; width: 40px; min-height: 40px; }
     .tg-history-toolbar :is(select, .tg-select-trigger) { flex: 1; min-width: 0; width: calc(100% - 52px); }
 }

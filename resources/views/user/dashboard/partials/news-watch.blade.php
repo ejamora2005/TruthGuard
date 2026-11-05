@@ -738,6 +738,31 @@
             #news-watch .tg-mobile-fact-media {
                 max-height: 22rem;
             }
+
+            #news-watch .tg-feed-field {
+                min-height: 2.65rem;
+                padding: .25rem .55rem;
+            }
+
+            #news-watch #truthguard-feed-search {
+                height: 2.1rem;
+                padding-left: 1.65rem;
+                padding-right: 4.65rem;
+                font-size: .75rem !important;
+                font-weight: 600;
+            }
+
+            #news-watch .tg-feed-search-input {
+                min-height: 2.1rem;
+            }
+
+            #news-watch .tg-feed-search-input > button {
+                min-width: 4.15rem;
+                padding-inline: .55rem;
+                border-radius: 7px;
+                font-size: .6875rem !important;
+                box-shadow: none;
+            }
         }
 
         #news-watch .tg-feed-pagination {

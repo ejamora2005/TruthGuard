@@ -67,6 +67,10 @@
 @section('content')
     <div class="tg-history">
         <x-workspace-page-heading title="Your history" description="Your saved assessments, evidence, and results in one place." />
+        <header class="tg-history-mobile-heading">
+            <h1>History</h1>
+            <p>Your saved assessments and results.</p>
+        </header>
         @if (session('status') === 'history-archived')
             <p class="tg-history-flash" role="status">Report archived. You can find it in Archive.</p>
         @endif
