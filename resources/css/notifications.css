@@ -106,7 +106,8 @@ html.dark .tg-inbox .tg-inbox-error { border-color: #96566a; background: #482537
     .tg-inbox .tg-inbox-heading > p { font-size: .8125rem !important; }
     .tg-inbox .tg-inbox-unread-count { font-size: .6875rem !important; }
     .tg-inbox-header-actions { width: auto; align-self: flex-start; }
-    .tg-inbox .tg-inbox-header-actions > button { flex: 0 0 auto; padding-inline: .65rem; }
+    .tg-inbox .tg-inbox-header-actions > button { width: 44px; flex: 0 0 44px; padding: 0; }
+    .tg-inbox .tg-inbox-header-actions > button > span { display: none; }
     .tg-inbox .tg-inbox-preferences { width: 44px; padding: 0; }
     .tg-inbox-preferences > span { display: none; }
     .tg-inbox-filters { display: flex; flex-wrap: nowrap; gap: .3rem; padding: .5rem; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: none; }
