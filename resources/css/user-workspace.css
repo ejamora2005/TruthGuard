@@ -200,6 +200,7 @@ html body.tg-polished-workspace .truthguard-settings-modal-tab.is-active { backg
     html body.tg-polished-workspace .tg-report-title :is(h1, h2) { font-size: 1.375rem !important; }
     html body.tg-polished-workspace .tg-report-title .tg-report-page-title { font-size: .875rem !important; line-height: 1.3 !important; white-space: nowrap; }
     html body.tg-polished-workspace .tg-verdict-explanation > p { font-size: .875rem !important; line-height: 1.8 !important; }
+    html body.tg-polished-workspace .tg-ai-report .tg-interpretation-intro { font-size: .75rem !important; line-height: 1.5 !important; }
     html body.tg-polished-workspace .tg-report-overview { gap: 1rem; }
     html body.tg-polished-workspace .tg-ai-report :is(.tg-ai-hero, .tg-report-evidence) { padding: 1rem; }
     html body.tg-polished-workspace .truthguard-settings-modal-dialog { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); border-radius: 14px; }

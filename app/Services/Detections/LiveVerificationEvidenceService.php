@@ -551,7 +551,10 @@ class LiveVerificationEvidenceService
         }
 
         try {
-            $feed = $this->googleFactCheckFeedService->latest(20);
+            // Search the complete collected catalogue, not only the newest page.
+            // An older exact-match review must remain eligible to become the
+            // primary verdict evidence when it carries a usable rating.
+            $feed = $this->googleFactCheckFeedService->latest(500);
         } catch (\Throwable $exception) {
             Log::debug('Trusted publisher feed matching failed.', [
                 'message' => Str::limit($exception->getMessage(), 180),

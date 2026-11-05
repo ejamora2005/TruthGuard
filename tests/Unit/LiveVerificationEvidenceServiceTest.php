@@ -10,6 +10,42 @@ use ReflectionClass;
 
 class LiveVerificationEvidenceServiceTest extends TestCase
 {
+    public function test_publisher_matching_searches_the_complete_collected_catalogue(): void
+    {
+        $feed = $this->createMock(GoogleFactCheckFeedService::class);
+        $feed->expects($this->once())
+            ->method('latest')
+            ->with(500)
+            ->willReturn([
+                'items' => [[
+                    'publisher' => 'Rappler',
+                    'headline' => 'No court order shutting down GMA Network',
+                    'claim' => 'GMA Network will be shut down by a court order',
+                    'rating' => 'False',
+                    'url' => 'https://example.test/fact-check',
+                ]],
+            ]);
+
+        $service = new LiveVerificationEvidenceService(
+            new TrustedFactCheckVerdictResolver(),
+            $feed,
+        );
+
+        $reflection = new ReflectionClass($service);
+        $fetchMatches = $reflection->getMethod('fetchPublisherFeedMatches');
+        $fetchMatches->setAccessible(true);
+
+        $matches = $fetchMatches->invoke(
+            $service,
+            'GMA Network will be shut down by a court order',
+            'general'
+        );
+
+        $this->assertCount(1, $matches);
+        $this->assertSame('Rappler', $matches[0]['publisher']);
+        $this->assertSame('False', $matches[0]['rating']);
+    }
+
     public function test_sona_class_suspension_claim_uses_government_verification_routes(): void
     {
         $service = new LiveVerificationEvidenceService(
