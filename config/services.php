@@ -88,6 +88,10 @@ return [
         // Selective classification: only publish an origin verdict when the
         // assigned class is this strong. Borderline outputs stay inconclusive.
         'minimum_class_score' => min(1, max(0.5, (float) env('AI_ORIGIN_MINIMUM_CLASS_SCORE', 0.90))),
+        // When the independent CNN is enabled, both detectors must agree and
+        // independently clear their decision thresholds.
+        'require_detector_agreement' => env('AI_ORIGIN_REQUIRE_DETECTOR_AGREEMENT', true),
+        'supporting_minimum_class_score' => min(1, max(0.5, (float) env('AI_ORIGIN_SUPPORTING_MINIMUM_CLASS_SCORE', 0.75))),
         'model_path' => env('AI_ORIGIN_MODEL_PATH', 'automation/models/ai-origin-broad'),
         'python_binary' => env('AI_ORIGIN_PYTHON_BINARY', PHP_OS_FAMILY === 'Windows' ? '.venv-ai-origin/Scripts/python.exe' : '.venv-ai-origin/bin/python'),
         'timeout' => (int) env('AI_ORIGIN_TIMEOUT', 240),

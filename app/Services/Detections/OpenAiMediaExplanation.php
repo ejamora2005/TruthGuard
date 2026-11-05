@@ -19,6 +19,7 @@ class OpenAiMediaExplanation
         $media = $result['media_assessment'] ?? [];
         if (($result['primary_task'] ?? '') !== 'media' || ($media['status'] ?? '') !== 'completed'
             || isset($analysis['signals']['media_explanation'])
+            || ($result['verdict'] ?? '') === 'INCONCLUSIVE'
             || AssessmentVerdict::technical($result['verdict'])
             || ! config('services.openai.analysis_enabled') || ! config('services.openai.media_explanation_enabled', true)
             || blank(config('services.openai.key'))) {

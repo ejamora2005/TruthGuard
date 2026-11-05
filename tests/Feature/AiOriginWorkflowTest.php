@@ -25,6 +25,7 @@ class AiOriginWorkflowTest extends TestCase
         Http::preventStrayRequests();
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => []]);
         config()->set(['services.ai_origin.enabled' => true, 'fact_check.enhanced_enabled' => true,
+            'services.deepfake_cnn.enabled' => true,
             'fact_check.queue_enabled' => false, 'services.openai.analysis_enabled' => false,
             'services.live_verification.enabled' => false, 'playwright.related_posts_inline' => false]);
     }
@@ -33,7 +34,14 @@ class AiOriginWorkflowTest extends TestCase
     {
         $path = base_path('tests/Fixtures/evidence/media/notice.png');
         $hash = hash_file('sha256', $path);
-        $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
+        if (($origin['status'] ?? '') === 'completed') {
+            $supporting = $origin;
+            $supporting['fake_probability'] = ($origin['label'] ?? '') === 'fake' ? .88 : .12;
+            $supporting['model_name'] = 'Independent CNN fixture';
+            $this->mock(DeepfakeCnnClassifier::class)->shouldReceive('classify')->once()->andReturn($supporting);
+        } else {
+            $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
+        }
         $this->mock(AiOriginClassifier::class)->shouldReceive('classify')->once()->withArgs(function ($file) use ($hash) {
             $this->assertSame($hash, hash_file('sha256', $file->getRealPath()));
             $this->assertSame(realpath(Storage::disk('public')->path('detections')), dirname($file->getRealPath()));
@@ -58,18 +66,18 @@ class AiOriginWorkflowTest extends TestCase
             'method_reference' => 'https://huggingface.co/Bombek1/ai-image-detector-siglip-dinov2'];
     }
 
-    public function test_image_uses_only_the_primary_origin_model_without_additional_screening(): void
+    public function test_image_requires_and_records_independent_detector_agreement(): void
     {
         $d = $this->submit($this->finding('fake'));
         $r = $d->fact_check_result;
         $this->assertSame('LIKELY_AI_GENERATED', $r['verdict']);
         $this->assertEqualsWithDelta(.93, $r['score']['value'], .00001);
         $this->assertFalse($r['media_assessment']['detector_disagreement'] ?? false);
-        $this->assertEmpty($r['media_assessment']['supporting_assessments'] ?? []);
+        $this->assertSame('fake', data_get($r, 'media_assessment.supporting_assessments.image_cnn.label'));
         $this->assertStringContainsString('OpenFake SigLIP2 + DINOv2', $d->signals['deepfake_cnn'][0]['label']);
         $this->get(route('detections.result', $d))->assertOk()->assertSee('Likely AI-Generated')
             ->assertSee('OpenFake SigLIP2 + DINOv2 AI-origin detector')
-            ->assertDontSee('Additional image screening')->assertDontSee('The classifiers disagree.')
+            ->assertSee('Additional image screening')->assertDontSee('The classifiers disagree.')
             ->assertSee('Method references')
             ->assertDontSee('"fake_probability"');
         Http::assertNothingSent();
@@ -102,10 +110,9 @@ class AiOriginWorkflowTest extends TestCase
         $this->assertSame('INCONCLUSIVE', $d->fact_check_result['verdict']);
         $this->assertNull($d->fact_check_result['score']['value']);
         $summary = $d->fact_check_result['summary'];
-        $this->assertGreaterThanOrEqual(100, str_word_count($summary));
-        $this->assertStringContainsString('neither AI generation nor human origin has been established', $summary);
-        $this->assertStringContainsString('does not verify the people, events, captions, or factual claims', $summary);
-        $this->assertStringContainsString('a traceable first publication', $summary);
+        $this->assertStringContainsString('required 90% class-decision threshold', $summary);
+        $this->assertStringContainsString('does not establish either AI generation or human origin', $summary);
+        $this->assertStringContainsString('does not verify any caption or factual claim', $summary);
         $this->assertSame($summary, $d->explanation_summary);
         $this->getJson(route('detections.result', $d))->assertJsonPath('media_assessment.origin_inconclusive', true)
             ->assertJsonPath('summary', $summary);
@@ -136,7 +143,7 @@ class AiOriginWorkflowTest extends TestCase
 
         $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame(.45, $result['media_assessment']['fake_probability']);
-        $this->assertStringContainsString('neither AI generation nor human origin has been established', $result['summary']);
+        $this->assertStringContainsString('does not establish either AI generation or human origin', $result['summary']);
     }
 
     public function test_disabled_origin_model_does_not_silently_reenable_mobilenet(): void

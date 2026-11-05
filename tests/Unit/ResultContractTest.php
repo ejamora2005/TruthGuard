@@ -93,7 +93,9 @@ class ResultContractTest extends TestCase
         $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame('Inconclusive', $result['assessment_label']);
         $this->assertTrue($result['media_assessment']['origin_inconclusive']);
-        $this->assertStringContainsString('Neither AI generation nor human origin has been established', $result['summary']);
+        $this->assertStringContainsString('recorded AI-signal score of 55%', $result['summary']);
+        $this->assertStringContainsString('required 90% class-decision threshold', $result['summary']);
+        $this->assertStringNotContainsString('unavailable', strtolower($result['summary']));
     }
 
     public function test_explicitly_unreviewed_sources_and_their_citations_are_excluded(): void

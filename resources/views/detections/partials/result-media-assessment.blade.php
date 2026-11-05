@@ -28,7 +28,11 @@
             <p class="tg-result-muted">{{ $result['media_claim_notice']['message'] }}</p>
             <form method="POST" action="{{ route('detections.fact-check-media-claim', $selectedDetection) }}" class="tg-result-assessment-actions">
                 @csrf
-                <button class="tg-result-button" type="submit">Fact-check the visible claim</button>
+                <button class="tg-result-button inline-flex min-h-12 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-cyan-600 px-4 py-3 font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:shadow-xl" type="submit">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4a7 7 0 1 0 4.9 12L20 20m-8-11v6m-3-3h6" /></svg>
+                    <span>Fact-check the visible claim</span>
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" /></svg>
+                </button>
             </form>
         </div>
     @endif

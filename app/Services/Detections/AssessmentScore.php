@@ -133,11 +133,14 @@ class AssessmentScore
             $raw = self::media($media);
             if (($raw['type'] ?? '') !== 'unavailable') {
                 $raw['type'] = 'model_score';
-                $raw['label'] = 'AI-generation score';
+                $raw['label'] = 'AI-signal score';
                 $raw['value'] = (float) $media['fake_probability'];
 
-                return ['title' => self::display($raw), 'description' => 'Uncalibrated; origin remains inconclusive',
-                    'detail' => 'The recorded AI-class output, not confidence in an origin verdict. The detector did not separate the classes strongly enough to resolve origin.',
+                $minimum = (float) ($media['origin_policy']['minimum_class_score']
+                    ?? config('services.ai_origin.minimum_class_score', .9));
+
+                return ['title' => self::display($raw), 'description' => 'Below the '.round($minimum * 100).'% decision threshold; origin remains inconclusive',
+                    'detail' => 'This is an uncalibrated AI-signal score, not the probability that the image is AI-generated. It did not meet the configured threshold for an origin verdict.',
                     'has_percentage' => true, 'type' => 'model_score'];
             }
         }

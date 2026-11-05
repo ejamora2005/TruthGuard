@@ -158,7 +158,9 @@ class QuestionDirectedAnalysisTest extends TestCase
         $this->assertStringNotContainsString('is this real', strtolower($result['claim']));
         $this->assertLessThan(180, str_word_count($result['summary']));
         $this->getJson(route('detections.result', $detection))->assertExactJson(ResultContract::forPresentation($result));
-        $this->get(route('detections.result', $detection))->assertOk()->assertSeeInOrder([$result['assessment_label'], 'View details', 'Source verification', 'Open source']);
+        $this->get(route('detections.result', $detection))->assertOk()
+            ->assertSeeInOrder([$result['assessment_label'], 'View details', 'Claims checked', 'Something wrong with this result?', 'Source verification', 'Open source'])
+            ->assertDontSee('What was established');
         $this->assertSame($result, $detection->fresh()->fact_check_result);
         Http::assertSent(fn ($r) => str_contains($r->url(), 'factchecktools') && str_contains($r['query'], 'PHIVOLCS') && str_contains($r['query'], 'LEYTE'));
     }

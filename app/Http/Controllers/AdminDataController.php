@@ -19,9 +19,9 @@ class AdminDataController extends Controller
 {
     public function factCheckReviews(): JsonResponse
     {
-        $feedback = Schema::hasTable('detection_feedback')
-            ? DB::table('detection_feedback')->selectRaw('detection_id, count(*) as feedback_count')
-                ->groupBy('detection_id')->pluck('feedback_count', 'detection_id') : collect();
+        $feedbackRows = Schema::hasTable('detection_feedback')
+            ? DB::table('detection_feedback')->orderBy('created_at')->get()->groupBy('detection_id') : collect();
+        $feedback = $feedbackRows->map->count();
         $items = Detection::query()->with('user')->latest()->limit(100)->get()
             ->filter(fn (Detection $detection) => ($feedback[$detection->id] ?? 0) > 0
                 || data_get($detection->fact_check_result, 'editorial_review.required') === true)
@@ -31,6 +31,11 @@ class AdminDataController extends Controller
                 'verdict' => data_get($detection->fact_check_result, 'verdict'),
                 'review_reasons' => data_get($detection->fact_check_result, 'editorial_review.reasons', []),
                 'feedback_count' => (int) ($feedback[$detection->id] ?? 0),
+                'feedback' => collect($feedbackRows[$detection->id] ?? [])->map(fn ($row) => [
+                    'category' => $row->category,
+                    'details' => isset($row->details) && is_string($row->details) ? json_decode($row->details, true) : null,
+                    'reported_at' => isset($row->created_at) ? Carbon::parse($row->created_at)->toIso8601String() : null,
+                ])->values()->all(),
                 'updated_at' => $detection->updated_at?->toIso8601String(),
             ])->values();
 

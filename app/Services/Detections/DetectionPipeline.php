@@ -298,6 +298,11 @@ class DetectionPipeline
                 : ['status' => 'unavailable', 'media_type' => 'image', 'task' => 'AI-generation classification',
                     'reason' => $uploadedFile ? 'disabled' : 'missing_media',
                     'label' => null, 'fake_probability' => null, 'model_version' => null];
+            $inputAssessment = MediaInputAssessment::inspect($uploadedFile);
+            $supportingAssessment = $uploadedFile && ($mediaClassification['status'] ?? '') === 'completed'
+                && config('services.deepfake_cnn.enabled', false)
+                ? $this->deepfakeCnnClassifier->classify($uploadedFile, 'image') : null;
+            $mediaClassification = MediaOriginDecisionPolicy::apply($mediaClassification, $supportingAssessment, $inputAssessment);
         } elseif ($mediaType === 'video') {
             $mediaClassification = $this->deepfakeCnnClassifier->classify($uploadedFile, $mediaType);
         }
@@ -393,8 +398,10 @@ class DetectionPipeline
                     config('services.openai.media_explanation_enabled', true), config('services.openai.media_explanation_max_tokens', 400),
                     config('services.openai.model')],
                 'deepfake' => Arr::except(config('services.deepfake_cnn', []), ['python_binary', 'timeout']),
-                'origin' => Arr::only(config('services.ai_origin', []), ['enabled', 'model_path']),
-                ...($mediaType === 'image' ? ['image_detector_policy' => 'primary-origin-only-v1'] : []),
+                'origin' => Arr::only(config('services.ai_origin', []), ['enabled', 'model_path', 'minimum_class_score',
+                    'require_detector_agreement', 'supporting_minimum_class_score']),
+                ...($mediaType === 'image' ? ['image_detector_policy' => MediaOriginDecisionPolicy::VERSION,
+                    'input_assessment' => MediaInputAssessment::VERSION] : []),
                 ...($mediaType === 'video' ? ['video_detector_policy' => VideoScreeningPolicy::VERSION] : []),
                 'article_model' => Arr::except(config('services.filipino_news_classifier', []), ['timeout', 'connect_timeout']),
                 'artifacts' => $this->modelArtifactIdentity(),

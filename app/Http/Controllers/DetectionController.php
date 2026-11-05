@@ -34,11 +34,24 @@ class DetectionController extends Controller
     public function feedback(Request $request, Detection $detection): RedirectResponse
     {
         abort_unless((int) $detection->user_id === (int) $request->user()->id, 403);
-        $validated = $request->validate(['category' => ['required', 'in:wrong_interpretation,unsupported_source,verdict_review,unclear_explanation']]);
+        $validated = $request->validate(['category' => ['required', 'in:wrong_interpretation,unsupported_source,verdict_review,unclear_explanation,media_false_positive,media_false_negative']]);
+        $media = is_array($detection->fact_check_result['media_assessment'] ?? null)
+            ? $detection->fact_check_result['media_assessment'] : [];
+        $details = in_array($validated['category'], ['media_false_positive', 'media_false_negative'], true) ? [
+            'review_status' => 'unverified_user_report',
+            'reported_origin' => $validated['category'] === 'media_false_positive' ? 'real' : 'ai_generated',
+            'detector_version' => $media['model_version'] ?? null,
+            'detector_label' => $media['label'] ?? null,
+            'raw_ai_signal' => $media['fake_probability'] ?? null,
+            'decision_threshold' => data_get($media, 'origin_policy.minimum_class_score'),
+            'quality_flags' => data_get($media, 'input_assessment.quality_flags', []),
+            'media_checksum' => $detection->media_checksum,
+        ] : null;
         DB::table('detection_feedback')->updateOrInsert([
             'detection_id' => $detection->id, 'user_id' => $request->user()->id,
             'category' => $validated['category'],
-        ], ['updated_at' => now(), 'created_at' => now()]);
+        ], ['details' => $details === null ? null : json_encode($details, JSON_UNESCAPED_SLASHES),
+            'updated_at' => now(), 'created_at' => now()]);
 
         return back()->with('status', 'Thank you. This report was flagged for quality review.');
     }

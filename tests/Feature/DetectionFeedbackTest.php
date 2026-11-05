@@ -36,4 +36,24 @@ class DetectionFeedbackTest extends TestCase
             'category' => 'verdict_review',
         ])->assertForbidden();
     }
+
+    public function test_media_correction_keeps_a_reviewable_detector_snapshot(): void
+    {
+        $user = User::factory()->create(['privacy_policy_accepted_at' => now()]);
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'upload',
+            'media_checksum' => str_repeat('a', 64), 'processing_status' => 'completed', 'verdict' => 'review', 'fake_score' => 0,
+            'fact_check_result' => ['media_assessment' => ['label' => 'fake', 'fake_probability' => .95,
+                'model_version' => 'fixture-model', 'origin_policy' => ['minimum_class_score' => .9],
+                'input_assessment' => ['quality_flags' => ['screenshot_or_composite_likely']]]]]);
+
+        $this->actingAs($user)->post(route('detections.feedback', $detection), [
+            'category' => 'media_false_positive',
+        ])->assertRedirect();
+
+        $details = json_decode(DB::table('detection_feedback')->value('details'), true);
+        $this->assertSame('unverified_user_report', $details['review_status']);
+        $this->assertSame('real', $details['reported_origin']);
+        $this->assertSame(.95, $details['raw_ai_signal']);
+        $this->assertSame(['screenshot_or_composite_likely'], $details['quality_flags']);
+    }
 }

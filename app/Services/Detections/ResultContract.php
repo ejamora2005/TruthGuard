@@ -80,7 +80,7 @@ class ResultContract
             && is_numeric($rawAiScore)
             && is_finite((float) $rawAiScore)
             && max((float) $rawAiScore, 1 - (float) $rawAiScore) < $minimumClassScore;
-        if ($borderlineImage && in_array($verdict, ['AI_GENERATED', 'LIKELY_AI_GENERATED', 'LIKELY_NOT_AI_GENERATED'], true)) {
+        if ($borderlineImage && in_array($verdict, ['AI_GENERATED', 'LIKELY_AI_GENERATED', 'LIKELY_NOT_AI_GENERATED', 'INCONCLUSIVE'], true)) {
             $verdict = 'INCONCLUSIVE';
             $result['summary'] = 'The recorded AI-generation score is not decisive enough to determine this image’s origin. Neither AI generation nor human origin has been established. This result must not be treated as proof that the image is generated, authentic, or unedited.';
             $result['score'] = AssessmentScore::unavailable('The detector output falls inside the configured uncertainty band.');
@@ -90,6 +90,7 @@ class ResultContract
             ], is_array($media['origin_policy'] ?? null) ? $media['origin_policy'] : [], [
                 'inconclusive' => true,
             ]);
+            $result['summary'] = MediaAnalysisReport::inconclusiveOriginSummary($result['media_assessment']);
             $errors[] = 'borderline_media_verdict_suppressed';
         }
         $result['claim'] = self::text($result['claim'] ?? null) ?? '';
@@ -619,8 +620,34 @@ class ResultContract
             'frames_used' => is_int($media['frames_used'] ?? null) ? $media['frames_used'] : null,
             'detector_disagreement' => ($media['detector_disagreement'] ?? false) === true,
             'origin_inconclusive' => ($media['origin_policy']['inconclusive'] ?? false) === true,
+            'decision_threshold' => is_numeric($media['origin_policy']['minimum_class_score'] ?? null)
+                ? (float) $media['origin_policy']['minimum_class_score'] : null,
+            'decision_reasons' => self::publicMediaDecisionReasons($media['origin_policy']['reasons'] ?? []),
+            'input_assessment' => is_array($media['input_assessment'] ?? null) ? [
+                'status' => $media['input_assessment']['status'] ?? 'unavailable',
+                'scope' => $media['input_assessment']['scope'] ?? null,
+                'quality_flags' => self::texts($media['input_assessment']['quality_flags'] ?? []),
+                'reliability_limited' => ($media['input_assessment']['reliability_limited'] ?? false) === true,
+                'content_credentials_present' => ($media['input_assessment']['provenance']['content_credentials_present'] ?? false) === true,
+                'camera_record_present' => ($media['input_assessment']['provenance']['camera_record_present'] ?? false) === true,
+                'limitations' => self::texts($media['input_assessment']['limitations'] ?? []),
+            ] : null,
             'supporting_assessments' => $depth < 1 && is_array($media['supporting_assessments']['image_cnn'] ?? null)
                 ? ['image_cnn' => self::publicMedia($media['supporting_assessments']['image_cnn'], $depth + 1)] : []];
+    }
+
+    private static function publicMediaDecisionReasons(mixed $reasons): array
+    {
+        if (! is_array($reasons)) return [];
+
+        return array_values(array_unique(array_filter(array_map(fn ($reason) => match ($reason) {
+            'primary_below_decision_threshold' => 'The primary AI signal is below the decision threshold.',
+            'supporting_below_decision_threshold' => 'The independent supporting signal is below its decision threshold.',
+            'supporting_detector_unavailable' => 'An independent supporting finding was not available.',
+            'detector_disagreement' => 'The independent detectors produced different findings.',
+            'input_quality_or_composition_limited' => 'The uploaded file quality or composition limits origin screening.',
+            default => null,
+        }, $reasons))));
     }
 
     private static function publicSource(array $source): array

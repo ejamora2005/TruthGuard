@@ -1123,9 +1123,23 @@
                                 <strong id="detected-media-claim-title" class="block">Potential factual claim detected</strong>
                                 <p class="mt-2 rounded-lg bg-white/80 p-3 font-medium">{{ $mediaClaimNotice['text'] }}</p>
                                 <p class="mt-2 text-xs leading-5">{{ $mediaClaimNotice['message'] }}</p>
-                                <form method="POST" action="{{ route('detections.fact-check-media-claim', $selectedDetection) }}" class="mt-3" x-data="{ submitting: false }" @submit="submitting = true">
+                                <form method="POST" action="{{ route('detections.fact-check-media-claim', $selectedDetection) }}" class="mt-4" x-data="{ submitting: false }" @submit="submitting = true">
                                     @csrf
-                                    <button type="submit" :disabled="submitting" class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"><span x-show="!submitting">Fact-check the visible claim</span><span x-show="submitting" x-cloak>Starting separate fact-check…</span></button>
+                                    <button type="submit" :disabled="submitting" :aria-busy="submitting"
+                                        class="group relative flex min-h-14 w-full items-center gap-3 overflow-hidden rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 px-4 py-3 text-left text-white shadow-lg shadow-blue-600/20 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-600/25 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:translate-y-0 disabled:cursor-wait disabled:opacity-70 sm:w-auto sm:min-w-[19rem]">
+                                        <span class="absolute inset-0 translate-x-[-110%] bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 group-hover:translate-x-[110%]" aria-hidden="true"></span>
+                                        <span class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 ring-1 ring-white/20" aria-hidden="true">
+                                            <svg x-show="!submitting" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4a7 7 0 1 0 4.9 12L20 20m-8-11v6m-3-3h6" /></svg>
+                                            <svg x-show="submitting" x-cloak class="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-30" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" /><path class="opacity-90" fill="currentColor" d="M21 12a9 9 0 0 0-9-9v3a6 6 0 0 1 6 6h3Z" /></svg>
+                                        </span>
+                                        <span class="relative min-w-0 flex-1">
+                                            <span class="block text-sm font-black" x-show="!submitting">Fact-check the visible claim</span>
+                                            <span class="block text-sm font-black" x-show="submitting" x-cloak>Preparing fact-check…</span>
+                                            <span class="mt-0.5 block text-[11px] font-semibold text-blue-100" x-show="!submitting">Review the text separately using trusted sources</span>
+                                            <span class="mt-0.5 block text-[11px] font-semibold text-blue-100" x-show="submitting" x-cloak>This may take a moment</span>
+                                        </span>
+                                        <svg class="relative h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m9 18 6-6-6-6" /></svg>
+                                    </button>
                                 </form>
                             </aside>
                         @endif
@@ -1222,44 +1236,6 @@
         </div>
     </article>
 
-    @if (($publicResult['atomic_claims'] ?? []) !== [])
-        <section class="tg-ai-surface p-5 sm:p-6" aria-labelledby="claim-findings-title">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div><p class="tg-card-eyebrow text-blue-700">Claim-by-claim review</p><h3 id="claim-findings-title" class="mt-1 text-lg font-bold text-slate-900">What was established</h3></div>
-                @if (($publicResult['editorial_review']['required'] ?? false) === true)
-                    <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">Human review recommended</span>
-                @endif
-            </div>
-            <div class="mt-4 space-y-3">
-                @foreach ($publicResult['atomic_claims'] as $atomicClaim)
-                    <article class="rounded-xl border border-slate-200 p-4">
-                        <div class="flex flex-wrap items-center justify-between gap-2"><strong class="text-sm text-slate-900">{{ $atomicClaim['text'] }}</strong><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{{ Illuminate\Support\Str::headline($atomicClaim['outcome']) }}</span></div>
-                        @if (($atomicClaim['limitation'] ?? '') !== '')<p class="mt-2 text-xs leading-5 text-slate-500">{{ $atomicClaim['limitation'] }}</p>@endif
-                    </article>
-                @endforeach
-            </div>
-            <dl class="mt-4 grid gap-3 text-xs text-slate-600 sm:grid-cols-3">
-                <div><dt class="font-bold text-slate-800">Independent evidence families</dt><dd>{{ count($publicResult['evidence_families'] ?? []) }}</dd></div>
-                <div><dt class="font-bold text-slate-800">Verdict audit</dt><dd>{{ Illuminate\Support\Str::headline($publicResult['verdict_audit']['status'] ?? 'unavailable') }}</dd></div>
-                <div><dt class="font-bold text-slate-800">Freshness</dt><dd>{{ Illuminate\Support\Str::headline($publicResult['freshness']['status'] ?? 'not recorded') }}</dd></div>
-            </dl>
-        </section>
-    @endif
-
-    <section class="tg-ai-surface p-5 sm:p-6" aria-labelledby="result-feedback-title">
-        <h3 id="result-feedback-title" class="text-sm font-bold text-slate-900">Something wrong with this result?</h3>
-        <p class="mt-1 text-xs text-slate-500">Flag the specific problem. Your current report remains available.</p>
-        <div class="mt-3 flex flex-wrap gap-2">
-            @foreach (['wrong_interpretation' => 'Wrong interpreted claim', 'unsupported_source' => 'Source does not support this', 'verdict_review' => 'Verdict needs review', 'unclear_explanation' => 'Explanation is unclear'] as $feedbackValue => $feedbackLabel)
-                <form method="POST" action="{{ route('detections.feedback', $selectedDetection) }}">
-                    @csrf
-                    <input type="hidden" name="category" value="{{ $feedbackValue }}">
-                    <button type="submit" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">{{ $feedbackLabel }}</button>
-                </form>
-            @endforeach
-        </div>
-    </section>
-
     @foreach ($publicResult['secondary_assessments'] ?? [] as $secondary)
         <section class="tg-ai-surface p-5 sm:p-7" aria-label="{{ $secondary['assessment_label'] }}">
             <p class="tg-card-eyebrow">{{ match ($secondary['primary_task']) { 'media' => 'AI-generation assessment', 'manipulation' => 'Manipulation assessment', 'context' => 'Context assessment', default => 'Factual claim assessment' } }}</p>
@@ -1280,6 +1256,48 @@
         </summary>
         <p class="mt-4 text-xs text-slate-500">Evidence cutoff: {{ $publicResult['evidence_cutoff'] ?? 'Not recorded' }}</p>
         <div class="tg-report-method-body space-y-5">
+            @if (($publicResult['atomic_claims'] ?? []) !== [])
+                @php
+                    $claimOutcomePresentation = [
+                        'supported' => ['label' => 'True', 'classes' => 'bg-emerald-100 text-emerald-800'],
+                        'refuted' => ['label' => 'False', 'classes' => 'bg-red-100 text-red-800'],
+                        'insufficient' => ['label' => 'Not enough evidence', 'classes' => 'bg-amber-100 text-amber-800'],
+                        'conflicting' => ['label' => 'Conflicting evidence', 'classes' => 'bg-amber-100 text-amber-800'],
+                        'needs_context' => ['label' => 'Needs context', 'classes' => 'bg-blue-100 text-blue-800'],
+                    ];
+                @endphp
+                <section class="rounded-2xl border border-slate-200 bg-white/80 p-4 sm:p-5" aria-labelledby="claim-findings-title">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <p class="tg-card-eyebrow text-blue-700">Claim-by-claim review</p>
+                            <h3 id="claim-findings-title" class="mt-1 text-base font-bold text-slate-900">Claims checked</h3>
+                        </div>
+                        @if (($publicResult['editorial_review']['required'] ?? false) === true)
+                            <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">Human review recommended</span>
+                        @endif
+                    </div>
+                    <div class="mt-4 space-y-3">
+                        @foreach ($publicResult['atomic_claims'] as $atomicClaim)
+                            @php
+                                $outcome = $claimOutcomePresentation[$atomicClaim['outcome'] ?? '']
+                                    ?? ['label' => 'Unclear', 'classes' => 'bg-slate-100 text-slate-700'];
+                            @endphp
+                            <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <strong class="min-w-0 flex-1 text-sm leading-6 text-slate-900">{{ $atomicClaim['text'] }}</strong>
+                                    <span class="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold {{ $outcome['classes'] }}">{{ $outcome['label'] }}</span>
+                                </div>
+                                @if (($atomicClaim['limitation'] ?? '') !== '')<p class="mt-2 text-xs leading-5 text-slate-500">{{ $atomicClaim['limitation'] }}</p>@endif
+                            </article>
+                        @endforeach
+                    </div>
+                    <dl class="mt-4 grid gap-3 text-xs text-slate-600 sm:grid-cols-3">
+                        <div><dt class="font-bold text-slate-800">Independent source groups</dt><dd>{{ count($publicResult['evidence_families'] ?? []) }}</dd></div>
+                        <div><dt class="font-bold text-slate-800">Result check</dt><dd>{{ Illuminate\Support\Str::headline($publicResult['verdict_audit']['status'] ?? 'unavailable') }}</dd></div>
+                        <div><dt class="font-bold text-slate-800">Time sensitivity</dt><dd>{{ Illuminate\Support\Str::headline($publicResult['freshness']['status'] ?? 'not recorded') }}</dd></div>
+                    </dl>
+                </section>
+            @endif
             @php
                 $recordedMedia = data_get($selectedDetection->fact_check_result, 'media_assessment');
                 $additionalMedia = is_array($recordedMedia) ? data_get($recordedMedia, 'supporting_assessments.image_cnn') : null;
@@ -1295,6 +1313,23 @@
                     @endif
                     @if (($recordedMedia['detector_disagreement'] ?? false) === true)
                         <p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-800">The classifiers disagree. Their findings are recorded separately; review the original source before relying on this result.</p>
+                    @endif
+                    @if (is_array($recordedMedia['input_assessment'] ?? null))
+                        @php($inputAssessment = $recordedMedia['input_assessment'])
+                        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <p class="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Uploaded-file quality</p>
+                                <p class="mt-1 text-sm font-bold text-slate-800">{{ ($inputAssessment['reliability_limited'] ?? false) ? 'Limited for origin screening' : 'No major limitation detected' }}</p>
+                                @foreach ($inputAssessment['limitations'] ?? [] as $inputLimitation)
+                                    <p class="mt-1 text-xs leading-5 text-slate-600">{{ $inputLimitation }}</p>
+                                @endforeach
+                            </div>
+                            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                <p class="text-xs font-black uppercase tracking-[0.1em] text-slate-500">Origin records</p>
+                                <p class="mt-1 text-sm font-bold text-slate-800">{{ ($inputAssessment['provenance']['content_credentials_present'] ?? false) || ($inputAssessment['provenance']['camera_record_present'] ?? false) ? 'Metadata signal found' : 'No origin record found in this file' }}</p>
+                                <p class="mt-1 text-xs leading-5 text-slate-600">Missing metadata is not evidence that an image was generated by AI.</p>
+                            </div>
+                        </div>
                     @endif
                     @if (! empty($selectedDetection->fact_check_result['method_references']))
                         <p class="mt-3 text-sm font-bold text-slate-800">Method references</p>
@@ -1326,7 +1361,7 @@
 
             <dl class="tg-report-metrics">
                 @foreach (array_values(array_filter([
-                    $showAiScore ? ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : 'AI assessment score', 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']] : null,
+                    $showAiScore ? ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : 'AI-signal score', 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']] : null,
                     ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
                     ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
                     ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
@@ -1520,6 +1555,45 @@
             </div>
         </div>
     </details>
+
+    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" aria-labelledby="result-feedback-title">
+        <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div class="flex min-w-0 items-start gap-3">
+                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700" aria-hidden="true">
+                    <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.5m0 3.5h.01M10.3 3.9 2.8 17a2 2 0 0 0 1.74 3h14.92a2 2 0 0 0 1.74-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+                    </svg>
+                </span>
+                <div>
+                    <h3 id="result-feedback-title" class="text-sm font-black text-slate-950">Something wrong with this result?</h3>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">Tell us what needs attention. Reporting a problem will not remove your current result.</p>
+                </div>
+            </div>
+            <span class="hidden shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500 sm:inline-flex">Report an issue</span>
+        </div>
+        <div class="grid gap-2 border-t border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-2 sm:p-5 lg:grid-cols-3">
+            @foreach ([
+                'wrong_interpretation' => ['Claim was misunderstood', 'M12 3v18m9-9H3'],
+                'unsupported_source' => ['Source does not support it', 'M10.5 13.5 13.5 10.5m-5.25 7.25-1.5 1.5a3.18 3.18 0 0 1-4.5-4.5l3-3a3.18 3.18 0 0 1 4.5 0m6-3.5 1.5-1.5a3.18 3.18 0 0 1 4.5 4.5l-3 3a3.18 3.18 0 0 1-4.5 0'],
+                'verdict_review' => ['Verdict needs review', 'M12 3 5 6v5.2c0 4.3 2.8 7.5 7 9.3 4.2-1.8 7-5 7-9.3V6l-7-3Z'],
+                'unclear_explanation' => ['Explanation is unclear', 'M9.1 9a3 3 0 1 1 4.5 2.6c-1 .6-1.6 1.1-1.6 2.4m0 3h.01'],
+            ] + (($publicResult['primary_task'] ?? '') === 'media' ? [
+                'media_false_positive' => ['This is a real image', 'M5 12.5 9.5 17 19 7.5'],
+                'media_false_negative' => ['This is AI-generated', 'M12 3 14 9.5 21 12l-7 2.5L12 21l-2-6.5L3 12l7-2.5L12 3Z'],
+            ] : []) as $feedbackValue => [$feedbackLabel, $feedbackIcon])
+                <form method="POST" action="{{ route('detections.feedback', $selectedDetection) }}" class="min-w-0">
+                    @csrf
+                    <input type="hidden" name="category" value="{{ $feedbackValue }}">
+                    <button type="submit" class="group flex h-full w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-left text-xs font-bold leading-5 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-blue-50 group-hover:text-blue-700" aria-hidden="true">
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ $feedbackIcon }}" /></svg>
+                        </span>
+                        <span>{{ $feedbackLabel }}</span>
+                    </button>
+                </form>
+            @endforeach
+        </div>
+    </section>
 
     @unless($mediaOnlyReport)
     <article id="source-verification" tabindex="-1" class="tg-ai-surface tg-report-sources p-5 sm:p-7">

@@ -36,8 +36,9 @@ class AssessmentScoreBadgeTest extends TestCase
         $saved = $this->media(.55, true);
         $before = $saved;
         $badge = AssessmentScore::badge($saved);
-        $this->assertSame('AI-generation score: 55%', $badge['title']);
-        $this->assertSame('Uncalibrated; origin remains inconclusive', $badge['description']);
+        $this->assertSame('AI-signal score: 55%', $badge['title']);
+        $this->assertSame('Below the 90% decision threshold; origin remains inconclusive', $badge['description']);
+        $this->assertStringContainsString('not the probability', $badge['detail']);
         $this->assertSame($before, $saved);
         $this->assertSame('INCONCLUSIVE', $saved['verdict']);
         $this->assertNull($saved['score']['value']);

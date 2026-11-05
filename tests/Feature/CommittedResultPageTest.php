@@ -128,7 +128,7 @@ class CommittedResultPageTest extends TestCase
         config()->set('services.media_calibration.enabled', false);
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->times(2)->andReturn(['items' => []]);
         $user = User::factory()->create();
-        foreach ([[.97, false, 'Model score: 97%'], [.55, true, 'AI-generation score: 55%']] as [$value, $uncertain, $expected]) {
+        foreach ([[.97, false, 'Model score: 97%'], [.55, true, 'AI-signal score: 55%']] as [$value, $uncertain, $expected]) {
             $result = ReportAnswer::complete(MediaAnalysisReport::result([
                 'status' => 'completed', 'media_type' => 'image', 'label' => 'fake', 'fake_probability' => $value,
                 'label_mapping' => ['real', 'fake'], 'origin_policy' => ['inconclusive' => $uncertain],
