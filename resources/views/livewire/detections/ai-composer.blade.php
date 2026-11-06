@@ -426,6 +426,31 @@ new class extends Component
             box-shadow: 0 12px 26px rgba(37, 99, 235, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
 
+        .truthguard-mobile-dashboard { display: none; }
+        @media (max-width: 640px) {
+            .truthguard-mobile-dashboard {
+                display: inline-flex;
+                flex-shrink: 0;
+                align-items: center;
+                justify-content: center;
+                gap: .4rem;
+                min-width: 44px;
+                min-height: 44px;
+                padding: .5rem .65rem;
+                border: 1px solid var(--workspace-line, #bfdbfe);
+                border-radius: .65rem;
+                background: var(--workspace-surface, #fff);
+                color: var(--workspace-accent, #2563eb);
+                font-size: .75rem;
+                font-weight: 600;
+            }
+            .truthguard-mobile-dashboard:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+            .truthguard-mobile-dashboard-label { display: none; }
+        }
+        @media (min-width: 360px) and (max-width: 640px) {
+            .truthguard-mobile-dashboard-label { display: inline; }
+        }
+
         .truthguard-agent-pill-icon {
             height: 0.55rem;
             width: 0.55rem;
@@ -5021,11 +5046,18 @@ new class extends Component
                 <span class="truthguard-workspace-hero-glint" aria-hidden="true"></span>
                 <div class="grid items-center gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
                     <div class="truthguard-workspace-intro min-w-0 max-w-3xl">
-                        <div class="flex min-w-0 items-center gap-2">
+                        <div class="truthguard-agent-header flex min-w-0 items-center justify-between gap-2">
                             <div class="truthguard-agent-pill inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold">
                                 <span class="truthguard-agent-pill-icon" aria-hidden="true"></span>
                                 <span>TruthGuard Agent AI</span>
                             </div>
+                            <a href="{{ auth()->user()?->isAdmin() ? route('admin.dashboard') : route('dashboard') }}"
+                                class="truthguard-mobile-dashboard" aria-label="Go to dashboard" title="Dashboard">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m3 10 9-7 9 7M5 9v11h5v-6h4v6h5V9" />
+                                </svg>
+                                <span class="truthguard-mobile-dashboard-label">Dashboard</span>
+                            </a>
                         </div>
 
                         <h2 class="truthguard-workspace-title mt-3 text-[2rem] font-bold leading-tight sm:text-4xl lg:text-[2.65rem]">
