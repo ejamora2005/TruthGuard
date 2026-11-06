@@ -132,9 +132,11 @@ class AssessmentScore
         if ($result['primary_task'] === 'media' && $result['verdict'] === 'INCONCLUSIVE' && is_array($media)) {
             $raw = self::media($media);
             if (($raw['type'] ?? '') !== 'unavailable') {
+                $isCalibrated = in_array($raw['validation'] ?? '', ['calibrated', 'calibrated_benchmark'], true);
+                $calibrationExplanation = $raw['explanation'] ?? '';
                 $raw['type'] = 'model_score';
-                $raw['label'] = 'AI-signal score';
-                $raw['value'] = (float) $media['fake_probability'];
+                $raw['label'] = $isCalibrated ? 'Calibrated AI-signal score' : 'AI-signal score';
+                $raw['value'] = $isCalibrated ? (float) $raw['calibrated_positive_score'] : (float) $media['fake_probability'];
 
                 $minimum = (float) ($media['origin_policy']['minimum_class_score']
                     ?? config('services.ai_origin.minimum_class_score', .9));
@@ -156,7 +158,7 @@ class AssessmentScore
                 };
 
                 return ['title' => self::display($raw), 'description' => '',
-                    'detail' => 'This is an uncalibrated AI-signal score, not the probability that the image is AI-generated. '.$description.'.',
+                    'detail' => ($isCalibrated ? $calibrationExplanation : 'This is an uncalibrated AI-signal score, not the probability that the image is AI-generated.').' '.$description.'.',
                     'has_percentage' => true, 'type' => 'model_score'];
             }
         }

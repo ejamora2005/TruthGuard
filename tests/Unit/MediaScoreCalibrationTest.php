@@ -118,6 +118,24 @@ class MediaScoreCalibrationTest extends TestCase
         }
     }
 
+    public function test_inconclusive_badge_preserves_benchmark_calibration_instead_of_reverting_to_raw_score(): void
+    {
+        $this->plattArtifact(['output_mode' => 'benchmark_model_score', 'grouping_method' => 'sha256-prompt-dhash64-v1',
+            'screened_group_counts' => ['calibration' => ['real' => 100, 'fake' => 100], 'test' => ['real' => 100, 'fake' => 100]],
+            'population' => ['representative_of_deployment' => false, 'benchmark_reviewed' => true,
+                'review_sha256' => str_repeat('a', 64)]]);
+        foreach ([[$this->media(.9), '75%'], [$this->media(.1, 'real'), '4%']] as [$media, $expected]) {
+            $media['origin_policy'] = ['inconclusive' => true, 'reasons' => ['detector_disagreement']];
+            $result = MediaAnalysisReport::result($media, []);
+            $badge = AssessmentScore::badge($result);
+            $this->assertSame('INCONCLUSIVE', $result['verdict']);
+            $this->assertSame('Calibrated AI-signal score: '.$expected, $badge['title']);
+            $this->assertStringNotContainsString('uncalibrated', $badge['detail']);
+            $this->assertStringContainsString('calibrated and tested', $badge['detail']);
+            $this->assertSame('', $badge['description']);
+        }
+    }
+
     public function test_reviewed_benchmark_mapping_is_a_calibrated_score_and_preserves_the_verdict(): void
     {
         $this->plattArtifact(['output_mode' => 'benchmark_model_score', 'grouping_method' => 'sha256-prompt-dhash64-v1',
