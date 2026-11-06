@@ -15,6 +15,7 @@ use App\Services\Detections\Evidence\SubmissionExtractor;
 use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\MediaAnalysisReport;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\SubmissionTask;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -106,14 +107,21 @@ class EnhancedEvidenceIntegrationTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_an_exact_saved_review_avoids_both_planning_and_evidence_model_calls(): void
+    public static function exactReviewRequestModes(): array
+    {
+        return [['plain'], ['preset']];
+    }
+
+    #[DataProvider('exactReviewRequestModes')]
+    public function test_an_exact_saved_review_avoids_both_planning_and_evidence_model_calls(string $mode): void
     {
         $claim = 'Suan filed a resolution against Bato';
         $this->mock(ClaimPlanner::class)->shouldNotReceive('plan');
         $this->partialMock(StructuredAnalysis::class)->shouldNotReceive('ask');
         $this->review($claim);
         $result = app(EvidenceVerificationService::class)->apply(['signals' => []], [
-            'analysis_task' => 'claim', 'media_type' => 'text', 'caption_text' => $claim,
+            'analysis_task' => 'claim', 'media_type' => 'text',
+            'caption_text' => $mode === 'preset' ? SubmissionTask::CLAIM_INSTRUCTION.'. '.$claim : $claim,
         ])['fact_check_result'];
 
         $this->assertSame('FALSE', $result['verdict']);

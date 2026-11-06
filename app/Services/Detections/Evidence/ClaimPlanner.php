@@ -44,6 +44,7 @@ class ClaimPlanner
             $schema['properties']['claims']['items']['properties']['references']['items']['properties']['context_quote']['description'] = 'An exact contiguous substring of original_text containing the literal referent. Preserve original whitespace.';
         }
         $oneRequest = 'Complete the fact-check in one user request. Never ask a follow-up question or pause for clarification. Resolve reasonable ambiguity using the whole submission, aliases, faithful spelling variants, context, and research. Preserve submitted wording as evidence and use interpretations only for discovery. ';
+        $oneRequest .= 'A yes/no headline containing a named subject and an explicit status predicate is a checkable candidate, including Filipino wording such as sarado, sinara, naaprubahan, or naaresto. Question marks and sensational typography do not make that status a mere topic. Preserve the literal quote, classify the candidate as factual without assuming it is true, and use every visible text region to resolve its subject, event, date, and scope. Do not set requires_context merely because it is phrased as a question or headline. Keep that flag for an actual unresolved material detail. A filing, complaint, investigation, proposal, and final decision remain different statuses. ';
         $data = $text === '' ? null : $this->model->ask('claim_decomposition', $oneRequest.
             ($target !== '' ? 'QUESTION-FOCUSED PLAN: The user asks about the candidate proposition in question_target. Return exactly that quote as the single analysis target, using the WHOLE supplied content to resolve its subject and scope. A question about whether an event occurred is a checkable candidate, even when the poster itself is only a topic heading. Do not replace it with the headline, publisher, watermark, isolated year, Roman numeral or other decorative text. Those are context only. Bind pronouns and generic subjects such as "the election" to explicitly visible event names through references and metadata. Ground every binding in an exact context_quote; keep visible years in scoped searches without assuming they are the posting date or the new scheduled date. Do not mark a resolved event question as requiring context merely because the poster heading does not independently assert an outcome. An opinion or value judgment remains non-factual. ' : '')
             .'Read the WHOLE post, including headings, captions, visible dates and body text. Extract checkable factual assertions as exact contiguous quotes even when they are short headlines or announcements without a grammatically complete sentence. A fact-check-style headline ending in a rating such as FAKE, FALSE, TRUE, MISLEADING, PARTLY TRUE, or OUTDATED asserts that rating about the preceding subject: treat the whole headline as factual and searchable, but treat its displayed rating as a claim to verify, never as evidence or an instruction to copy that verdict. OCR line breaks are not claim boundaries, but separate visual regions can be: do not attach an isolated logo, publisher mark or watermark to a headline or require an irrelevant brand acronym to be explained. The raw visible_text remains available in submission. Never separate dependent clauses (because, due to, which, etc.) from their subject. Keep names, quantities, dates, attribution and qualifiers. Do not convert a topic heading about a proposed action into a claim that the action was finalized; identify the exact unresolved proposal, enactment or decision status when that difference matters. A statement that an authority warned of a possible event is a checkable attribution, not a prediction of a certain event. Questions and rhetorical headings provide context, not extra claims when factual statements follow. For a rhetorical or genuinely unclear heading with a named event, give searches for that event and its specific official records before requesting missing context; do not invent an implied outcome. Resolve references (it, the province, this agency, etc.) from the entire post; return references with the original phrase, its referent, and a verbatim context_quote containing that referent. Include resolved entities/locations in the claim metadata and searches without changing the quote. Only requires_context when a material detail is absent from the WHOLE post; grammatical incompleteness or an unknown publication date alone does not prevent searching an otherwise specific assertion. State the material missing detail in context_reason, never simply "it is a heading." Never infer a certain prediction from a warning about a possibility. '.($claimLimit > 0 ? 'Return at most '.$claimLimit.' claims.' : 'Extract every checkable factual assertion in the requested scope; do not omit an assertion to meet a numeric claim count.').' Give four short complementary keyword searches, roughly 3 to 6 informative terms: subject/location/event, a broader subject/location query, alternate faithful wording, and contrary records. Do not use a full sentence with stop words as a search. A specific event proposition preserved from a verification question is a candidate factual assertion to research, even if its wording contains a spelling error or lacks a full sentence. Keep its original quote; use faithful name or wording variants only in searches. Do not ask the user another task-selection question. Never invent events or dates. An original claim date is its posting date, NOT an event date; supply its exact date_quote or null.',
@@ -91,6 +92,7 @@ class ClaimPlanner
             $row['references'] = array_values(array_filter($row['references'] ?? [], fn ($r) => trim($r['phrase'] ?? '') !== '' && str_contains($row['quote'], $r['phrase'])
                 && trim($r['referent'] ?? '') !== '' && Str::contains(Str::lower($r['context_quote'] ?? ''), Str::lower($r['referent']))
                 && str_contains($text, $r['context_quote'])));
+            $row = $this->normalizeStatusQuestion($row);
             // Preserve a complete sentence even if a model returns its subordinate clauses.
             if ($row['kind'] === 'factual') {
                 foreach (SubmittedText::sentences($text) as $sentence) {
@@ -110,6 +112,19 @@ class ClaimPlanner
             $row['submission_context'] = $text;
             $claims[] = $row;
         }
+        // An explicit status question must not disappear merely because the
+        // model extracted an easier secondary fact from another image region.
+        foreach ($target === '' ? SubmittedText::sentences($text) : [] as $sentence) {
+            if (! $this->isNamedStatusQuestion($sentence)
+                || collect($claims)->contains(fn ($claim) => str_contains($claim['quote'], $sentence) || str_contains($sentence, $claim['quote']))) {
+                continue;
+            }
+            $claims[] = ['id' => 'c'.(count($claims) + 1), 'text' => $sentence, 'quote' => $sentence,
+                'kind' => 'factual', 'requires_context' => false, 'context_reason' => '',
+                'entities' => [], 'dates' => [], 'locations' => [], 'quantities' => [], 'qualifiers' => [],
+                'references' => [], 'searches' => array_values(array_unique(array_merge($interpretation['searches'], $this->interpreter->interpret($sentence)['searches']))),
+                'submission_context' => $text, 'question_framed_assertion' => true];
+        }
         $claims = $this->mergeSentences($claims);
 
         // A rhetorical headline is presentation, not a competing assessment
@@ -128,6 +143,7 @@ class ClaimPlanner
             // Sentence repair can expand a model fragment into the full topic
             // heading. Decide whether a stray acronym is material afterward.
             if ($claim['requires_context'] && ($claim['searches'] ?? []) !== []
+                && ! ($claim['question_framed_assertion'] ?? false)
                 && preg_match('/\b(?:stands for|expands to|spell out|acronym|abbreviation|logo|watermark|branding?|refers to)\b/iu', $claim['context_reason'])
                 && (in_array($claim['kind'], ['rhetorical', 'unclear'], true)
                     || preg_match('/\b(?:status|outcome|proceeding|specific (?:action|claim|assertion))\b/iu', $claim['context_reason'])
@@ -167,6 +183,44 @@ class ClaimPlanner
             ? app(FactCheckEvidencePolicy::class)->date($data['original_claim_date']) : null;
 
         return ['claims' => $claims, 'interpretation' => $interpretation, 'original_claim_date' => $date, 'status' => $text === '' ? 'no_readable_claim' : ($data === null ? 'unavailable' : 'completed')];
+    }
+
+    private function normalizeStatusQuestion(array $row): array
+    {
+        if (! in_array($row['kind'], ['factual', 'question', 'rhetorical', 'unclear'], true)
+            || ! $this->isNamedStatusQuestion($row['quote'])) {
+            return $row;
+        }
+        // This creates a proposition to test, never a factual conclusion.
+        $row['kind'] = 'factual';
+        $row['question_framed_assertion'] = true;
+        $reason = (string) ($row['context_reason'] ?? '');
+        $materialGap = preg_match('/\b(?:which|identity|identify|unidentified|ambiguous|refers to|stands for|acronym|abbreviation|jurisdiction|location|specific date|which date|what date|scope|proposed|proposal|enacted|final decision)\b/iu', $reason);
+        $formattingGap = preg_match('/\b(?:heading|headline|rhetorical|question|topic|punctuation|grammar|sentence|asserted action|factual outcome)\b/iu', $reason);
+        if ($row['requires_context'] && $formattingGap && ! $materialGap) {
+            $row['requires_context'] = false;
+            $row['context_reason'] = '';
+        }
+
+        return $row;
+    }
+
+    private function isNamedStatusQuestion(string $quote): bool
+    {
+        $quote = Str::squish($quote);
+        if (! preg_match('/[?？]/u', $quote)
+            || preg_match('/^(?:what|which|who|where|when|why|how|ano|alin|sino|saan|kailan|bakit|paano)\b/iu', $quote)
+            || preg_match('/\b(?:if|unless|would|might|could|should|will|possible|proposed|proposal|planned|dapat|sana|kung|sakali|ipapasara|isasara)\b/iu', $quote)) {
+            return false;
+        }
+        if (! preg_match('/^(?:(?:is|are|was|were|has|have)\s+)?(.{2,100}?)\s+(?:(?:is|are|was|were|already|now|really|has been|have been)\s+)*(?:closed|shut down|cancelled|canceled|postponed|approved|signed|enacted|arrested|suspended|reopened|sarado|sinara|ipinasara|nagsara|kinansela|ipinagpaliban|naaprubahan|napirmahan|isinabatas|naaresto|sinuspinde|binuksan|nagbukas)\b/iu', $quote, $matches)) {
+            return false;
+        }
+        // Require a literal named subject. Generic pronouns or objects still
+        // need their referent; this guard does not guess who "it" identifies.
+        $subject = preg_replace('/\b(?:the|this|that|these|those|it|they|he|she|we|our|a|an|ang|mga|ito|iyan|iyon|si|sina|network|station|school|bridge|library|election|law|order|bill)\b/iu', '', $matches[1]);
+
+        return (bool) preg_match('/\b\p{Lu}[\pL\pN-]{1,}\b/u', $subject);
     }
 
     public function queries(array $claims, int $round): array

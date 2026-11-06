@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v19';
+    public const VERSION = 'evidence-v20';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -294,7 +294,7 @@ class EvidenceVerificationService
         $exactPlan = null;
         if (! $budget->freshSources && in_array($extraction['status'] ?? '', ['completed', 'retrieved'], true)
             && ($context['primary_task'] ?? 'claim') === 'claim'
-            && trim($context['question'] ?? '') === ''
+            && SubmissionTask::questionClaim($context['question'] ?? '') === ''
             && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)) {
             $records = array_replace($records, $this->search->prefetchExactReviews($extraction['analysis_text'], $budget, $cutoff));
             $probe = $this->exactFactCheckReconciler->apply(['claim' => $extraction['analysis_text']], array_values($records));
@@ -370,7 +370,7 @@ class EvidenceVerificationService
                 ? max(count($records), (int) ceil(config('fact_check.retrieval.max_candidates', 40) / 2)) : null;
             $records = $this->search->retrieve($queries, $budget, $cutoff, $records, $reserveNextRound, $candidateCeiling, 'providers');
             if (! $budget->freshSources && ($context['primary_task'] ?? 'claim') === 'claim'
-                && trim($context['question'] ?? '') === '' && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)
+                && SubmissionTask::questionClaim($context['question'] ?? '') === '' && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)
                 && isset($this->exactFactCheckReconciler->apply(['claim' => $extraction['analysis_text'], 'claims' => $plan['claims']], array_values($records))['exact_fact_check'])) {
                 // A newly discovered exact published review also needs no
                 // paid relationship inference or additional web search.

@@ -119,14 +119,14 @@ required by this project. OpenSSL fixture validation uses that installation's
 | --- | --- |
 | Initial focused units and relevant feature workflows | **273 tests, 1,820 assertions; passed** |
 | Source-coverage follow-up selections | **38 tests / 262 assertions and 107 tests / 972 assertions; passed** |
-| Latest complete PHPUnit suite | **806 tests, 5,486 assertions; 24 failures, 0 errors, 4 skipped, 2 risky** |
+| Latest complete PHPUnit suite | **824 tests, 5,591 assertions; 24 failures, 0 errors, 4 skipped, 2 risky** |
 | Pint on every changed PHP file, including new tests | Passed |
 | `git diff --check` | Passed |
 | Original `tmp/` and unrelated untracked files | Untouched |
 | Commit / push | Explicitly requested after disclosure of the 24 remaining failures |
 
 The earlier broad run had 719 tests, 4,946 assertions, 57 failures and 5 errors.
-The audit's subsequent 780-test run had 24 failures. The latest 806-test run has
+The audit's subsequent 780-test run had 24 failures. The latest 824-test run has
 exactly the same 24 failing test-case names, with no added or removed failures.
 Every remaining failing test name also failed in the earlier broad run. This comparison
 does not turn a failing full suite into a release approval. The final broad run
@@ -344,14 +344,47 @@ procedures remain as documented in `docs/DEPLOYMENT.md`.
 
 ## Remaining limitations
 
+Question-headline follow-up: a production screenshot showed the generic preset
+instruction, full GMA/court/Mel Tiangco thumbnail, and a rhetorical-only
+`GMA SARADO NA?!` target. The planner's `requires_context` classification caused
+the judge to downgrade every decisive relationship. The earlier GMA integration
+test mocked the planner and did not cover this actual path. The fix recognizes
+literal named-subject status questions as candidates without assigning truth,
+preserves the whole OCR context, and restores an explicit status question if
+only a secondary fact was extracted. Real identity/location/legal-scope gaps,
+open-ended questions, proposals, opinions, and conditional claims retain their
+existing protections. Directly relevant passages inside a fact-check can be
+assessed as direct reporting; inheriting a published rating still requires an
+exact claim match. A generic preset also no longer blocks time-insensitive exact
+review lookup merely because it is nonempty. Fresh-status research is preserved.
+The pipeline version is `evidence-v20`, excluding the older unresolved result
+from fresh-submission reuse. Existing reports require a fresh recheck.
+
+The user supplied the Rappler URL ending
+`no-court-order-gma-network-shutdown-over-libel-complaint/`. Its article body was
+not accessible through this session's browser tool. Frozen OCR and explicitly
+synthetic article passages test this code path; no live factual verdict about
+that article is claimed. The focused planner, evidence, matching, input-budget,
+and meaning-guard selection passed 188 tests / 1,236 assertions. Regression
+coverage rejects transferring an unrelated older Marcos shutdown rating and
+preserves a specific user question's single target without adding competing
+poster headlines. Artifacts: `storage/logs/truthguard-headline-focused.xml` and
+`storage/logs/truthguard-headline-final.xml` / `.txt`.
+The final full run completed 824 tests / 5,591 assertions, with the identical
+24 failing case names from the cost follow-up, zero errors, four skipped, and
+two risky. No frontend files changed in this follow-up; Pint and diff checks
+passed. This fix is packaged as
+`fix: verify question-framed headlines against full submission` under the user's
+existing authorization to commit and push the fact-checking fixes to `main`.
+
 Report-voice follow-up: generated research narration such as "I researched",
 "I checked", and "I reviewed" is rejected by the presentation contract, and
 those legacy narration sentences are omitted while preserving the actual
 finding and source IDs. Static verification/context failure messages now use
 neutral report language. This cleanup requires no additional model request.
 The focused wording, public-contract, generation, evidence, and headline checks
-passed 88 tests / 592 assertions. The last full-suite result remains the
-806-test run recorded above; this presentation follow-up did not rerun it.
+passed 88 tests / 592 assertions. That presentation follow-up used the earlier
+806-test full-suite baseline without rerunning the suite at that stage.
 
 - Matching is deliberately conservative. Unrecognized cross-language paraphrases
   can remain unresolved; shared keywords are not enough to inherit a verdict.
