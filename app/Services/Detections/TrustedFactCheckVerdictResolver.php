@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 
 class TrustedFactCheckVerdictResolver
 {
-    public const POLICY_VERSION = '2026-07-28-source-v2';
+    public const POLICY_VERSION = '2026-11-06-collected-catalog-v3';
 
     /**
      * @param  array<string, mixed>  $analysis

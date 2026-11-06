@@ -13,10 +13,13 @@ return [
     'pending_stale_minutes' => (int) env('FACT_CHECK_PENDING_STALE_MINUTES', 10),
     'result_reuse' => [
         'enabled' => env('FACT_CHECK_RESULT_REUSE_ENABLED', true),
-        'generation' => env('FACT_CHECK_RESULT_REUSE_GENERATION', 'fresh-start-2026-10-16-v2'),
+        'generation' => env('FACT_CHECK_RESULT_REUSE_GENERATION', 'trusted-catalog-2026-11-06-v3'),
         'media_seconds' => (int) env('FACT_CHECK_RESULT_REUSE_MEDIA_SECONDS', 604800),
         'claim_seconds' => (int) env('FACT_CHECK_RESULT_REUSE_CLAIM_SECONDS', 86400),
-        'unresolved_seconds' => (int) env('FACT_CHECK_RESULT_REUSE_UNRESOLVED_SECONDS', 300),
+        // Unresolved does not mean unusable. Reuse an identical, time-insensitive
+        // submission for one evidence day instead of paying for the same full
+        // research repeatedly. Current-status claims are excluded in the pipeline.
+        'unresolved_seconds' => (int) env('FACT_CHECK_RESULT_REUSE_UNRESOLVED_SECONDS', 86400),
         'wait_seconds' => 240,
     ],
     'openai_retry' => [

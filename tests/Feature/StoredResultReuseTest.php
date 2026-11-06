@@ -197,6 +197,10 @@ class StoredResultReuseTest extends TestCase
         $this->assertSame($first->id, $second->reused_from_detection_id);
         $this->assertSame($first->fact_check_result['evidence_cutoff'], $second->fact_check_result['evidence_cutoff']);
         $this->travel(6)->minutes();
+        $third = $this->submitFixture($user, $input);
+        $this->assertSame($first->id, $third->reused_from_detection_id);
+        $this->assertSame(0, $third->signals['openai_usage']['total_tokens']);
+        $this->travel(1)->days();
         $this->assertNull($this->submitFixture($user, $input)->reused_from_detection_id);
         Http::assertNothingSent();
     }
