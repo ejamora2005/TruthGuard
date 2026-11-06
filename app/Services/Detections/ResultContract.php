@@ -235,6 +235,9 @@ class ResultContract
             $result['summary'] = 'The saved assessment did not resolve the requested check. No origin or factual conclusion was established.';
             $result['answer_segments'] = [['text' => $result['summary'], 'source_ids' => []]];
         }
+        if ($result['primary_task'] === 'media' && $result['verdict'] === 'INCONCLUSIVE') {
+            $result['assessment_label'] = 'AI origin inconclusive';
+        }
         $public = array_intersect_key($result, array_flip([
             'schema_version', 'verdict_version', 'assessment_group', 'processing_status', 'completed_tasks', 'primary_task', 'verdict',
             'assessment_label', 'claim', 'summary', 'answer_segments', 'score', 'score_display',

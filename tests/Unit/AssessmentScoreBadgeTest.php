@@ -44,6 +44,29 @@ class AssessmentScoreBadgeTest extends TestCase
         $this->assertNull($saved['score']['value']);
     }
 
+    public function test_high_ai_signal_explains_disagreement_instead_of_claiming_it_is_below_threshold(): void
+    {
+        $saved = $this->media(.9999, true);
+        $saved['media_assessment']['origin_policy']['reasons'] = ['detector_disagreement', 'input_quality_or_composition_limited'];
+        $saved['media_assessment']['detector_disagreement'] = true;
+        $badge = AssessmentScore::badge($saved);
+        $this->assertStringContainsString('>99%', $badge['title']);
+        $this->assertSame('Detectors disagree; AI origin remains inconclusive', $badge['description']);
+        $this->assertStringNotContainsString('Below', $badge['description']);
+        $public = ReportAnswer::forPresentation($saved);
+        $this->assertSame('INCONCLUSIVE', $public['verdict']);
+        $this->assertSame('AI origin inconclusive', $public['assessment_label']);
+    }
+
+    public function test_strong_real_class_does_not_compare_low_ai_signal_to_real_class_threshold(): void
+    {
+        $saved = $this->media(.01, true);
+        $saved['media_assessment']['origin_policy']['reasons'] = ['input_quality_or_composition_limited'];
+        $badge = AssessmentScore::badge($saved);
+        $this->assertStringContainsString('Input quality', $badge['description']);
+        $this->assertStringNotContainsString('Below', $badge['description']);
+    }
+
     public function test_unverified_and_missing_context_show_evidence_status_without_a_made_up_percentage(): void
     {
         foreach (['UNVERIFIED' => 'Evidence insufficient', 'MISSING_CONTEXT' => 'Missing claim context'] as $verdict => $title) {

@@ -139,8 +139,24 @@ class AssessmentScore
                 $minimum = (float) ($media['origin_policy']['minimum_class_score']
                     ?? config('services.ai_origin.minimum_class_score', .9));
 
-                return ['title' => self::display($raw), 'description' => 'Below the '.round($minimum * 100).'% decision threshold; origin remains inconclusive',
-                    'detail' => 'This is an uncalibrated AI-signal score, not the probability that the image is AI-generated. It did not meet the configured threshold for an origin verdict.',
+                $classScore = ($media['label'] ?? '') === 'real'
+                    ? 1 - (float) $media['fake_probability'] : (float) $media['fake_probability'];
+                $reasons = $media['origin_policy']['reasons'] ?? [];
+                $description = match (true) {
+                    $classScore < $minimum => 'Below the '.round($minimum * 100).'% decision threshold; origin remains inconclusive',
+                    in_array('detector_disagreement', $reasons, true), ($media['detector_disagreement'] ?? false) === true
+                        => 'Detectors disagree; AI origin remains inconclusive',
+                    in_array('input_quality_or_composition_limited', $reasons, true)
+                        => 'Input quality or composition limits the AI-origin finding',
+                    in_array('supporting_detector_unavailable', $reasons, true)
+                        => 'Supporting detector unavailable; AI origin remains inconclusive',
+                    in_array('supporting_below_decision_threshold', $reasons, true)
+                        => 'Supporting signal is below its threshold; AI origin remains inconclusive',
+                    default => 'The primary score alone does not resolve AI origin',
+                };
+
+                return ['title' => self::display($raw), 'description' => $description,
+                    'detail' => 'This is an uncalibrated AI-signal score, not the probability that the image is AI-generated. '.$description.'.',
                     'has_percentage' => true, 'type' => 'model_score'];
             }
         }
