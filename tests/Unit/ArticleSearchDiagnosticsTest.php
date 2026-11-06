@@ -26,6 +26,7 @@ class ArticleSearchDiagnosticsTest extends TestCase
             'services.gnews.key' => '',
             'services.newsapi.key' => '',
             'fact_check.web_search.enabled' => false,
+            'fact_check.retrieval.max_rounds' => 2,
             'fact_check.retrieval.max_search_requests' => 2,
             'fact_check.retrieval.max_pages' => 0,
         ]);
@@ -51,8 +52,8 @@ class ArticleSearchDiagnosticsTest extends TestCase
                 'possible Magnitude 7 earthquake Leyte', 'PHIVOLCS warning clarification']];
 
         $planner = app(ClaimPlanner::class);
-        $this->assertSame(['PHIVOLCS Leyte magnitude 7 warning', 'LEYTE earthquake fault'], $planner->queries([$row], 0));
-        $this->assertSame(['Leyte active fault PHIVOLCS', 'PHIVOLCS LEYTE earthquake fault site:phivolcs.dost.gov.ph'], $planner->queries([$row], 1));
+        $this->assertSame(['PHIVOLCS Leyte magnitude 7 warning', 'PHIVOLCS LEYTE earthquake fault site:phivolcs.dost.gov.ph'], $planner->queries([$row], 0));
+        $this->assertSame(['LEYTE earthquake fault', 'Leyte active fault PHIVOLCS'], $planner->queries([$row], 1));
     }
 
     public function test_weather_and_election_claims_select_the_responsible_philippine_institution(): void
@@ -65,7 +66,7 @@ class ArticleSearchDiagnosticsTest extends TestCase
             $claim = ['kind' => 'factual', 'text' => $text, 'submission_context' => $text.' An unrelated PHIVOLCS item appears elsewhere.',
                 'entities' => [$agency], 'locations' => [$location], 'dates' => [], 'quantities' => [],
                 'searches' => [$agency.' '.$location, $location.' announcement', 'alternate wording']];
-            $round = $planner->queries([$claim], 1);
+            $round = $planner->queries([$claim], 0);
             $this->assertCount(2, $round);
             $this->assertStringEndsWith('site:'.$domain, $round[1]);
         }

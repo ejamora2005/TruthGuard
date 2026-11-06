@@ -3,6 +3,8 @@
 namespace App\Services\Detections;
 
 use App\Models\CanonicalFactCheckResult;
+use App\Services\Detections\Evidence\ReportApiBudget;
+use App\Services\Detections\Evidence\ReportBudgetExceeded;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -75,6 +77,7 @@ class FactCheckResultService
         }
 
         try {
+            app(ReportApiBudget::class)->beforeRequest();
             $response = Http::withToken((string) config('services.openai.key'))->acceptJson()->asJson()
                 ->timeout((int) config('services.openai.timeout', 40))
                 ->post('https://api.openai.com/v1/responses', [
@@ -107,7 +110,9 @@ class FactCheckResultService
         } catch (\Throwable $exception) {
             Log::warning('Canonical fact-check could not be verified.', ['error' => $exception::class]);
 
-            return $this->analysisUnavailable($claim, $identity, 'The evidence analysis could not be completed or validated. Retry the assessment to obtain a factual finding.');
+            return $this->analysisUnavailable($claim, $identity, $exception instanceof ReportBudgetExceeded
+                ? 'Further paid verification stopped at this report’s processing budget. The supplied evidence has not been fully assessed.'
+                : 'The evidence analysis could not be completed or validated. Retry the assessment to obtain a factual finding.');
         }
     }
 

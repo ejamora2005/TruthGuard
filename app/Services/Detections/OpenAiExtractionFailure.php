@@ -33,6 +33,7 @@ final class OpenAiExtractionFailure
     public static function explanation(array $extraction): ?string
     {
         return match (self::recordedReason($extraction)) {
+            'report_budget_exhausted' => 'Further image reading stopped at this report’s processing budget. No additional image text was extracted; the unread portion has not been fact-checked.',
             'access_denied' => 'OpenAI denied access to the image-reading request (HTTP 403). No image text was extracted, so TruthGuard could not assess the claim. This is an API access problem, not a finding that the claim is true or false.',
             'model_unavailable' => 'The configured image-reading model is not available to this API project. No image text was extracted, so TruthGuard could not assess the claim. An administrator must enable the model or select an accessible model before retrying.',
             'authentication_failed' => 'OpenAI did not accept the API credentials used to read this image. The image text was not extracted, so no factual conclusion was reached. An administrator must check the API credentials before retrying.',
@@ -48,6 +49,7 @@ final class OpenAiExtractionFailure
     public static function action(array $extraction): string
     {
         return match (self::recordedReason($extraction)) {
+            'report_budget_exhausted' => 'Review the available source records and any completed findings before relying on this report.',
             'access_denied', 'model_unavailable', 'authentication_failed', 'not_configured' => 'Ask an administrator to check the API key and model access, then retry this assessment.',
             'quota_exhausted' => 'Ask an administrator to restore API billing before retrying this assessment.',
             'unsupported_region' => 'Ask an administrator to check the API service availability for this deployment region.',

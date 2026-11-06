@@ -47,4 +47,32 @@ class EvidenceMeaningGuardTest extends TestCase
             'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true),
             'basis' => 'primary_record', 'supersedes_source_ids' => [], 'supersession_excerpt' => ''];
     }
+
+    public function test_an_interested_denial_alone_cannot_refute_the_underlying_claim(): void
+    {
+        $excerpt = 'Suan denied filing the resolution against Bato dela Rosa.';
+        $row = $this->relationship($excerpt);
+        $row['stance'] = 'contradicting';
+        $claim = ['id' => 'c1', 'text' => 'Suan filed a resolution against Bato dela Rosa.', 'kind' => 'factual', 'requires_context' => false];
+        $source = ['id' => 's1', 'text' => $excerpt];
+        $reviewed = app(EvidenceJudge::class)->validate([$row], [$claim], [$source]);
+        $this->assertSame('insufficient', $reviewed[0]['stance']);
+        $this->assertStringContainsString('interested party', $reviewed[0]['validation_limitation']);
+
+        $claim['text'] = $excerpt;
+        $row['stance'] = 'supporting';
+        $attribution = app(EvidenceJudge::class)->validate([$row], [$claim], [$source]);
+        $this->assertSame('supporting', $attribution[0]['stance']);
+    }
+
+    public function test_related_fact_check_rating_cannot_become_decisive_by_model_assertion(): void
+    {
+        $excerpt = 'The publisher rated a different resolution claim false.';
+        $row = array_replace($this->relationship($excerpt), ['basis' => 'fact_check', 'stance' => 'contradicting']);
+        $claim = ['id' => 'c1', 'text' => 'Suan filed a resolution against Bato', 'kind' => 'factual', 'requires_context' => false];
+        $source = ['id' => 's1', 'text' => $excerpt, 'reviewed_claim' => 'Suan filed a resolution against Duterte'];
+        $reviewed = app(EvidenceJudge::class)->validate([$row], [$claim], [$source]);
+        $this->assertSame('insufficient', $reviewed[0]['stance']);
+        $this->assertStringContainsString('materially different claim', $reviewed[0]['validation_limitation']);
+    }
 }

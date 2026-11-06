@@ -583,10 +583,7 @@ class LiveVerificationEvidenceService
                     return null;
                 }
 
-                $match = $this->claimMatcher()->assess($claimText, collect([
-                    $item['headline'] ?? null,
-                    $item['claim'] ?? null,
-                ])->filter()->implode(' '));
+                $match = $this->claimMatcher()->assess($claimText, (string) (($item['claim'] ?? '') ?: ($item['headline'] ?? '')));
                 if ($match['level'] === 'unrelated') {
                     return null;
                 }
@@ -1031,7 +1028,7 @@ class LiveVerificationEvidenceService
 
                         $match = $this->claimMatcher()->assess(
                             $submittedClaim !== '' ? $submittedClaim : $claimText,
-                            collect([$claimText, $title])->filter()->implode(' '),
+                            $claimText !== '' ? $claimText : $title,
                         );
                         if ($match['level'] === 'unrelated') {
                             return null;

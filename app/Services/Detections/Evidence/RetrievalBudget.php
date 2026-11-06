@@ -26,6 +26,8 @@ final class RetrievalBudget
 
     public bool $freshSources = false;
 
+    public array $fetchedPages = [];
+
     private float $started;
 
     public function __construct()

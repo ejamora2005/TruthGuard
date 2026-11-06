@@ -10,8 +10,8 @@ class EvidenceVerdictCalibration
     public static function identity(): string
     {
         $files = ['EvidenceVerdictCalibration.php', 'EvidenceVerificationService.php', 'AssessmentVerdict.php', 'ResultContract.php', 'ReportAnswer.php',
-            'SubmissionTask.php', 'FactCheckEvidencePolicy.php', 'Evidence/ClaimPlanner.php', 'Evidence/EvidenceJudge.php',
-            'Evidence/ArticleSearch.php', 'Evidence/OpenAiWebSearch.php', 'Evidence/SafeArticleFetcher.php',
+            'SubmissionTask.php', 'EvidenceSummary.php', 'FactCheckEvidencePolicy.php', 'FactCheckClaimMatcher.php', 'ExactFactCheckReconciler.php', 'Evidence/ClaimPlanner.php', 'Evidence/EvidenceJudge.php',
+            'Evidence/ArticleSearch.php', 'Evidence/EvidencePassages.php', 'Evidence/ReportApiBudget.php', 'Evidence/OpenAiWebSearch.php', 'Evidence/SafeArticleFetcher.php',
             'Evidence/SubmissionExtractor.php', 'Evidence/SubmittedText.php', 'Evidence/RetrievalBudget.php', 'Evidence/StructuredAnalysis.php', 'Evidence/ResponsesTransport.php'];
         $hashes = [];
         foreach ($files as $file) {

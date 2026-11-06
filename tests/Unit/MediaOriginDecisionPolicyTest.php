@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\Detections\MediaAnalysisReport;
 use App\Services\Detections\MediaInputAssessment;
 use App\Services\Detections\MediaOriginDecisionPolicy;
 use Illuminate\Http\UploadedFile;
@@ -64,5 +65,46 @@ class MediaOriginDecisionPolicyTest extends TestCase
         $this->assertTrue($result['provenance']['absence_is_not_evidence']);
         $this->assertArrayHasKey('scope', $result);
         $this->assertArrayHasKey('decision_limited', $result);
+    }
+
+    public function test_required_agreement_cannot_be_disabled_by_an_unavailable_detector(): void
+    {
+        config()->set('services.deepfake_cnn.enabled', false);
+        $result = MediaOriginDecisionPolicy::apply($this->finding('fake', .99), null, ['decision_limited' => false]);
+        $this->assertTrue($result['origin_policy']['agreement_required']);
+        $this->assertTrue($result['origin_policy']['inconclusive']);
+        $this->assertContains('supporting_detector_unavailable', $result['origin_policy']['reasons']);
+    }
+
+    public function test_borderline_compressed_screenshot_remains_inconclusive_with_agreement(): void
+    {
+        $result = MediaOriginDecisionPolicy::apply($this->finding('fake', .89), $this->finding('fake', .95),
+            ['status' => 'completed', 'decision_limited' => true, 'quality_flags' => ['heavy_compression_or_resizing', 'screenshot_or_composite_likely']]);
+        $report = MediaAnalysisReport::result($result, []);
+        $this->assertSame('INCONCLUSIVE', $report['verdict']);
+        $this->assertSame(.89, $result['fake_probability']);
+        $this->assertContains('primary_below_decision_threshold', $result['origin_policy']['reasons']);
+    }
+
+    public function test_label_must_match_its_own_confidence_threshold(): void
+    {
+        $report = MediaAnalysisReport::result($this->finding('fake', .05), []);
+        $this->assertSame('INCONCLUSIVE', $report['verdict']);
+    }
+
+    public function test_primary_detector_abstention_is_preserved_even_with_strong_agreement(): void
+    {
+        $primary = $this->finding('fake', .99);
+        $primary['origin_policy']['inconclusive'] = true;
+        $result = MediaOriginDecisionPolicy::apply($primary, $this->finding('fake', .99),
+            ['status' => 'completed', 'decision_limited' => false]);
+        $this->assertTrue($result['origin_policy']['inconclusive']);
+        $this->assertContains('primary_detector_abstained', $result['origin_policy']['reasons']);
+    }
+
+    public function test_borderline_sampled_video_score_cannot_become_a_positive_origin_verdict(): void
+    {
+        $media = array_replace($this->finding('fake', .89), ['media_type' => 'video', 'frames_used' => 4]);
+        $this->assertSame('INCONCLUSIVE', MediaAnalysisReport::result($media, [])['verdict']);
     }
 }

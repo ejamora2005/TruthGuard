@@ -115,6 +115,7 @@ class EvidenceVerificationTest extends TestCase
 
     public function test_a_current_status_question_checks_subsequent_records_even_after_first_round_coverage(): void
     {
+        config()->set(['fact_check.retrieval.max_rounds' => 2, 'fact_check.retrieval.max_candidates' => 40]);
         $target = 'the library reopening postponed';
         $old = 'The demonstration library reopening will proceed on October 10, 2026.';
         $new = 'The September 28 order postpones the demonstration library reopening to November 10, 2026 and explicitly supersedes the September 1 schedule.';
@@ -192,6 +193,7 @@ class EvidenceVerificationTest extends TestCase
         $this->fake($text, 'factual', '', claims: $claims, judgeOutput: fn ($sources) => array_map(fn ($source) => $this->relationship($source['id'] === 's1' || $conflict ? 'c1' : 'c2', $source['id'],
             $source['id'] === 's1' ? 'supporting' : 'contradicting', $source['text']), $sources));
         $this->mock(ArticleSearch::class, function ($mock) use ($records) {
+            $mock->shouldReceive('prefetchExactReviews')->andReturn([]);
             $mock->shouldReceive('retrieve')->andReturn($records);
             $mock->shouldReceive('isGenericLandingPage')->andReturn(false);
         });
@@ -209,7 +211,7 @@ class EvidenceVerificationTest extends TestCase
         parent::setUp();
         $this->travelTo(now()->setDate(2026, 10, 13)->setTime(9, 0));
         $this->fixture = json_decode(file_get_contents(base_path('tests/Fixtures/evidence/bske-headline.json')), true);
-        config()->set(['fact_check.enhanced_enabled' => true, 'fact_check.web_search.enabled' => false,
+        config()->set(['fact_check.enhanced_enabled' => true, 'fact_check.queue_enabled' => false, 'fact_check.web_search.enabled' => false,
             'services.openai.key' => 'test-key', 'services.openai.analysis_enabled' => true,
             'services.openai.claim_extraction_enabled' => true, 'services.filipino_news_classifier.enabled' => false,
             'services.deepfake_cnn.enabled' => false, 'services.live_verification.enabled' => true,
@@ -360,13 +362,15 @@ class EvidenceVerificationTest extends TestCase
     {
         $claim = $this->fixture['primary_claim'];
         $text = $this->fixture['primary_text'].str_repeat(' Additional background material.', 1000);
-        config()->set('fact_check.max_model_input_bytes', 9000);
+        // Leave room for the current grounding instructions while still forcing
+        // this deliberately long article to be reviewed only in part.
+        config()->set('fact_check.max_model_input_bytes', 18000);
         $this->fake($claim, 'factual', $text, judgeOutput: fn ($sources) => [$this->relationship('c1', $sources[0]['id'], 'supporting', $this->fixture['primary_text'])]);
         $result = $this->runAnalysis($claim);
         $this->assertSame('TRUE', $result['verdict']);
         $this->assertTrue($result['diagnostics']['candidate_records'][0]['review_text_truncated']);
         $this->assertStringContainsString('remaining content was not assessed', implode(' ', $result['limitations']));
-        Http::assertSent(fn ($r) => data_get($r->data(), 'text.format.name') === 'evidence_relationships_0' && strlen($r['input'][1]['content']) < 9000);
+        Http::assertSent(fn ($r) => data_get($r->data(), 'text.format.name') === 'evidence_relationships_0' && strlen($r['input'][1]['content']) < 18000);
     }
 
     public function test_future_or_modified_after_cutoff_and_undated_historical_pages_are_excluded(): void
@@ -551,7 +555,7 @@ class EvidenceVerificationTest extends TestCase
         $this->assertSame(4, $detection->fact_check_result['schema_version']);
         $html = view('detections.partials.canonical-result-card', ['selectedDetection' => $detection, 'result' => $detection->fact_check_result, 'userReportNumber' => 1])->render();
         $this->assertStringContainsString('Supports the claim', $html);
-        $this->assertStringContainsString('Sources to verify', $html);
+        $this->assertStringContainsString($this->url, $html);
         $this->assertStringNotContainsString('Unique articles reviewed', $html);
         $this->assertStringNotContainsString('role="meter"', $html);
         $this->assertStringNotContainsString('Claim Assessment', $html);
@@ -592,7 +596,8 @@ class EvidenceVerificationTest extends TestCase
         $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'link', 'media_type' => 'text', 'processing_status' => 'processing', 'verdict' => 'review', 'fake_score' => 0]);
         (new AnalyzeDetectionEvidence($detection->id, []))->failed(new \RuntimeException('private error'));
         $this->actingAs($user)->getJson(route('detections.result', $detection))->assertJsonPath('processing_status', 'failed');
-        $this->assertNull($detection->fresh()->fact_check_result);
+        $this->assertSame('ANALYSIS_UNAVAILABLE', $detection->fresh()->fact_check_result['verdict']);
+        $this->assertSame([], $detection->fresh()->fact_check_result['sources']);
         Http::assertNothingSent();
     }
 

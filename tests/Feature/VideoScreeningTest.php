@@ -2,39 +2,49 @@
 
 namespace Tests\Feature;
 
+use App\Models\Detection;
+use App\Models\User;
+use App\Services\Detections\DeepfakeCnnClassifier;
+use App\Services\Detections\Evidence\ClaimPlanner;
+use App\Services\Detections\Evidence\SubmissionExtractor;
+use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\MediaAnalysisReport;
 use App\Services\Detections\ReportAnswer;
 use App\Services\Detections\SubmissionTask;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class VideoScreeningTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
+    use RefreshDatabase;
 
     public function test_video_upload_answers_origin_question_without_news_search(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
-        \Illuminate\Support\Facades\Http::preventStrayRequests();
+        Storage::fake('public');
+        Http::preventStrayRequests();
         config()->set(['fact_check.enhanced_enabled' => true, 'fact_check.queue_enabled' => false,
             'services.openai.analysis_enabled' => false, 'services.filipino_news_classifier.enabled' => false,
             'services.live_verification.enabled' => false, 'playwright.related_posts_inline' => false]);
-        $this->mock(\App\Services\Detections\DeepfakeCnnClassifier::class)->shouldReceive('classify')->once()
+        $this->mock(DeepfakeCnnClassifier::class)->shouldReceive('classify')->once()
             ->andReturn(['status' => 'completed', 'media_type' => 'video', 'label' => 'real',
                 'frames_used' => 12, 'fake_probability' => .37, 'threshold' => .68]);
-        $this->mock(\App\Services\Detections\Evidence\SubmissionExtractor::class)->shouldReceive('extract')
+        $this->mock(SubmissionExtractor::class)->shouldReceive('extract')
             ->andReturn(['analysis_text' => '', 'visible_text' => '', 'status' => 'completed']);
-        $this->mock(\App\Services\Detections\Evidence\ClaimPlanner::class)->shouldNotReceive('plan');
-        $this->mock(\App\Services\Detections\GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn([]);
-        $this->actingAs(\App\Models\User::factory()->create())->post(route('detections.store'), [
-            'media_file' => \Illuminate\Http\UploadedFile::fake()->create('clip.mp4', 10, 'video/mp4'),
+        $this->mock(ClaimPlanner::class)->shouldNotReceive('plan');
+        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn([]);
+        $this->actingAs(User::factory()->create())->post(route('detections.store'), [
+            'media_file' => UploadedFile::fake()->create('clip.mp4', 10, 'video/mp4'),
             'caption_text' => 'please please please verify this video if it is ai generated or not',
         ])->assertSessionHasNoErrors()->assertRedirect();
-        $detection = \App\Models\Detection::sole();
+        $detection = Detection::sole();
         $this->assertSame('media', $detection->fact_check_result['primary_task']);
         $this->assertSame('INCONCLUSIVE', $detection->fact_check_result['verdict']);
         $this->get(route('detections.result', $detection))->assertOk()->assertSee('Inconclusive')
             ->assertDontSee('Likely Not AI-Generated')->assertSee('Retry media analysis');
-        \Illuminate\Support\Facades\Http::assertNothingSent();
+        Http::assertNothingSent();
     }
 
     public function test_repeated_polite_video_request_routes_to_origin_screening(): void
@@ -53,7 +63,7 @@ class VideoScreeningTest extends TestCase
         $result = ReportAnswer::complete(MediaAnalysisReport::result($raw, []));
         $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertNull($result['score']['value']);
-        $this->assertSame($raw, $result['media_assessment']);
+        $this->assertSame($raw, array_intersect_key($result['media_assessment'], $raw));
         $this->assertStringContainsString('does not establish', $result['summary']);
     }
 
@@ -92,7 +102,8 @@ class VideoScreeningTest extends TestCase
     {
         foreach (['video' => 'fake', 'image' => 'real'] as $kind => $label) {
             $result = ReportAnswer::complete(MediaAnalysisReport::result(['status' => 'completed',
-                'media_type' => $kind, 'frames_used' => 16, 'label' => $label], []));
+                'media_type' => $kind, 'frames_used' => 16, 'label' => $label,
+                'fake_probability' => $label === 'fake' ? .99 : .01], []));
             $this->assertSame($kind === 'video' ? 'LIKELY_AI_GENERATED' : 'LIKELY_NOT_AI_GENERATED', $result['verdict']);
         }
     }

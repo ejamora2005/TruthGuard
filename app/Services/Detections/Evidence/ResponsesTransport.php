@@ -16,11 +16,12 @@ class ResponsesTransport
         $deadline = microtime(true) + max(1, $timeout);
         $retries = max(0, min(2, (int) config('fact_check.openai_retry.max_retries', 1)));
         for ($attempt = 0; ; $attempt++) {
+            app(ReportApiBudget::class)->beforeRequest();
             $available = min($deadline - microtime(true), $remaining ? $remaining() : $timeout);
             $response = Http::withToken((string) config('services.openai.key'))->acceptJson()
                 ->connectTimeout(min(3, max(1, $available)))->timeout(max(1, $available))
                 ->post('https://api.openai.com/v1/responses', $payload);
-            $this->attempts[] = ['http_status' => $response->status()];
+            $this->attempts[] = ['http_status' => $response->status(), 'usage' => TokenUsage::measure((array) $response->json('usage', []))];
             if ($attempt >= $retries || self::quotaExhausted($response) || ! in_array($response->status(), [429, 502, 503, 504], true)) {
                 return $response;
             }

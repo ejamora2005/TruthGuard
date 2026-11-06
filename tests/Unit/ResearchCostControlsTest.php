@@ -124,7 +124,7 @@ class ResearchCostControlsTest extends TestCase
         Http::assertSent(fn ($request) => $request['model'] === 'gpt-5.4-mini');
     }
 
-    public function test_unchanged_review_is_reused_but_new_contrary_source_still_sends_all_sources(): void
+    public function test_unchanged_review_is_reused_and_new_contrary_source_is_reviewed_without_resending_old_documents(): void
     {
         Http::fake(['api.openai.com/*' => Http::response(['status' => 'completed', 'output' => [
             ['type' => 'message', 'content' => [['type' => 'output_text', 'text' => '{"relationships":[],"context_findings":[]}']]],
@@ -142,7 +142,7 @@ class ResearchCostControlsTest extends TestCase
             'text' => 'Correction: the fictional library opened in 2025, replacing the previous 2024 report.']);
         $judge->assess($claims, [$source, $contrary], '2026-10-16T00:00:00Z', 1);
         Http::assertSentCount(2);
-        Http::assertSent(fn ($request) => array_column(json_decode($request['input'][1]['content'], true)['sources'], 'id') === ['s1', 's2']);
+        Http::assertSent(fn ($request) => array_column(json_decode($request['input'][1]['content'], true)['sources'], 'id') === ['s2']);
         $judge->reset();
         $judge->assess($claims, [$source], '2026-10-16T00:00:00Z', 0);
         Http::assertSentCount(3);

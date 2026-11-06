@@ -26,6 +26,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
                 'name' => 'Rappler',
                 'source_type' => 'fact_check',
                 'rating' => 'False',
+                'claim_match' => ['level' => 'exact'],
                 'summary' => 'Google Fact Check found a related claim review rated False.',
                 'purpose' => 'Fact check article about the matching claim.',
                 'url' => 'https://www.rappler.com/newsbreak/fact-check/example',
@@ -52,6 +53,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
                 'name' => 'Trusted Fact Check',
                 'source_type' => 'fact_check',
                 'rating' => 'False',
+                'claim_match' => ['level' => 'exact'],
                 'summary' => 'The matched article says the image is AI-generated, misinformation.',
                 'purpose' => 'Fact check article about synthetic media.',
                 'url' => 'https://www.reuters.com/fact-check/example',
@@ -59,8 +61,8 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
         ]);
 
         $this->assertSame('fake', $resolved['verdict']);
-        $this->assertStringContainsString('AI-generated, misinformation', $resolved['explanation_summary']);
-        $this->assertSame('AI-generated, misinformation', $resolved['signals']['trusted_fact_check'][0]['rating']);
+        $this->assertStringContainsString('False', $resolved['explanation_summary']);
+        $this->assertSame('False', $resolved['signals']['trusted_fact_check'][0]['rating']);
     }
 
     public function test_trusted_true_rating_keeps_report_low_risk(): void
@@ -76,6 +78,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
                 'name' => 'Reuters Fact Check',
                 'source_type' => 'fact_check',
                 'rating' => 'True',
+                'claim_match' => ['level' => 'exact'],
                 'url' => 'https://www.reuters.com/fact-check/example',
             ],
         ]);
@@ -98,6 +101,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
                 'name' => 'Vera Files',
                 'source_type' => 'fact_check',
                 'rating' => 'Missing context',
+                'claim_match' => ['level' => 'exact'],
                 'url' => 'https://verafiles.org/articles/example',
             ],
         ]);
@@ -147,5 +151,25 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
             'No official confirmation found',
             $resolved['signals']['verification_status'][0]['rating'],
         );
+    }
+
+    public function test_conflicting_exact_reviews_cannot_be_resolved_by_false_rating_priority(): void
+    {
+        $source = ['name' => 'Rappler', 'source_type' => 'fact_check', 'claim_match' => ['level' => 'exact'],
+            'url' => 'https://rappler.com/review', 'rating' => 'False'];
+        $other = array_replace($source, ['name' => 'AFP', 'url' => 'https://factcheck.afp.com/review', 'rating' => 'True']);
+        $result = (new TrustedFactCheckVerdictResolver)->apply(['verdict' => 'real', 'fake_score' => 8], [], [$source, $other]);
+        $this->assertSame('review', $result['verdict']);
+        $this->assertStringContainsString('Human review', $result['analysis_summary']);
+    }
+
+    public function test_unmatched_or_spoofed_publisher_sources_cannot_control_a_verdict(): void
+    {
+        $source = ['name' => 'Rappler', 'source_type' => 'fact_check', 'rating' => 'False', 'url' => 'https://rappler.com/review'];
+        $resolver = new TrustedFactCheckVerdictResolver;
+        $this->assertNull($resolver->decide([], [$source]));
+        $source['claim_match'] = ['level' => 'exact'];
+        $source['url'] = 'https://rappler.com.attacker.test/review';
+        $this->assertNull($resolver->decide([], [$source]));
     }
 }

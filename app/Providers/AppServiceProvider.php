@@ -7,6 +7,7 @@ use App\Models\Detection;
 use App\Models\PushSubscription;
 use App\Observers\DetectionNotificationObserver;
 use App\Services\Auth\RememberedLogin;
+use App\Services\Detections\Evidence\ReportApiBudget;
 use App\Services\Detections\Evidence\StructuredAnalysis;
 use App\Services\Usage\OpenAiUsageRecorder;
 use Illuminate\Auth\Events\Login;
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(StructuredAnalysis::class);
+        $this->app->scoped(ReportApiBudget::class);
     }
 
     /**
@@ -38,6 +40,9 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(ResponseReceived::class, [OpenAiUsageRecorder::class, 'handle']);
+        Event::listen(ResponseReceived::class, function (ResponseReceived $event): void {
+            app(ReportApiBudget::class)->recordResponse($event);
+        });
         RateLimiter::for('detection-retry', function (Request $request) {
             $detection = $request->route('detection');
             $id = $detection instanceof Detection ? $detection->getKey() : $detection;

@@ -7,7 +7,7 @@ use Illuminate\Http\UploadedFile;
 /** Read-only input and provenance signals. Missing metadata is never evidence of AI generation. */
 class MediaInputAssessment
 {
-    public const VERSION = 'media-input-assessment-v1';
+    public const VERSION = 'media-input-assessment-v2';
 
     public static function inspect(?UploadedFile $file): array
     {
@@ -37,7 +37,9 @@ class MediaInputAssessment
             || stripos($sample, 'contentauth') !== false || stripos($sample, 'content credentials') !== false;
 
         $flags = [];
-        if (min($width, $height) < 384) $flags[] = 'low_resolution';
+        if (min($width, $height) < 384) {
+            $flags[] = 'low_resolution';
+        }
         if (in_array($mime, ['image/jpeg', 'image/webp'], true) && $bytesPerPixel < .08) {
             $flags[] = 'heavy_compression_or_resizing';
         }
@@ -45,12 +47,20 @@ class MediaInputAssessment
         $screenshotLikely = ! $hasCameraRecord
             && in_array($mime, ['image/png', 'image/webp'], true)
             && ($ratio >= 1.55 || ($height > $width && $height >= 900));
-        if ($screenshotLikely) $flags[] = 'screenshot_or_composite_likely';
+        if ($screenshotLikely) {
+            $flags[] = 'screenshot_or_composite_likely';
+        }
 
         $limitations = [];
-        if (in_array('low_resolution', $flags, true)) $limitations[] = 'The image is small, which can hide or distort detector signals.';
-        if (in_array('heavy_compression_or_resizing', $flags, true)) $limitations[] = 'The file appears heavily compressed or resized, which can reduce detector reliability.';
-        if ($screenshotLikely) $limitations[] = 'The upload appears to be a screenshot or composite; the surrounding interface, text, and embedded photograph cannot be treated as one original camera image.';
+        if (in_array('low_resolution', $flags, true)) {
+            $limitations[] = 'The image is small, which can hide or distort detector signals.';
+        }
+        if (in_array('heavy_compression_or_resizing', $flags, true)) {
+            $limitations[] = 'The file appears heavily compressed or resized, which can reduce detector reliability.';
+        }
+        if ($screenshotLikely) {
+            $limitations[] = 'The upload appears to be a screenshot or composite; the surrounding interface, text, and embedded photograph cannot be treated as one original camera image.';
+        }
 
         return [
             'version' => self::VERSION,
@@ -65,7 +75,7 @@ class MediaInputAssessment
             'region_analysis' => $screenshotLikely ? 'embedded_media_not_isolated' : 'not_required',
             'reliability_limited' => $flags !== [],
             'decision_limited' => in_array('low_resolution', $flags, true)
-                || in_array('heavy_compression_or_resizing', $flags, true),
+                || in_array('heavy_compression_or_resizing', $flags, true) || $screenshotLikely,
             'provenance' => [
                 'content_credentials_present' => $hasContentCredentials,
                 'camera_record_present' => $hasCameraRecord,

@@ -81,6 +81,10 @@ class StoredResultReuseTest extends TestCase
         $this->assertTrue($second->analyzed_at->eq($first->analyzed_at));
         $this->assertNotSame($first->media_path, $second->media_path);
         $this->assertSame(0, $second->signals['openai_usage']['total_tokens']);
+        $this->assertTrue($second->signals['result_cache']['hit']);
+        $this->assertTrue($second->fact_check_result['diagnostics']['result_cache_hit']);
+        $this->assertSame(0, $second->fact_check_result['diagnostics']['api_usage']['total_tokens']);
+        $this->assertFalse($first->signals['result_cache']['hit']);
         $this->assertTrue($second->signals['result_reuse']['wording_refreshed_locally']);
         $this->assertSame(120, $second->signals['result_reuse']['original_openai_usage']['total_tokens']);
         $this->assertSame($snapshot, $first->fresh()->getRawOriginal());
@@ -250,5 +254,105 @@ class StoredResultReuseTest extends TestCase
             $this->assertNull($this->submitFixture($user, $extra)->reused_from_detection_id);
         }
         Http::assertNothingSent();
+    }
+
+    public function test_reencoded_media_only_uploads_reuse_the_saved_result_in_auto_mode(): void
+    {
+        $this->mockAnalysis(1);
+        $user = User::factory()->create();
+        $image = imagecreatefrompng(base_path('tests/Fixtures/evidence/media/notice.png'));
+        try {
+            ob_start();
+            imagepng($image, null, 0);
+            $uncompressed = ob_get_clean();
+            ob_start();
+            imagepng($image, null, 9);
+            $compressed = ob_get_clean();
+        } finally {
+            imagedestroy($image);
+        }
+        $first = app(DetectionPipeline::class)->run($user, ['analysis_task' => 'auto'],
+            UploadedFile::fake()->createWithContent('image.png', $uncompressed));
+        $second = app(DetectionPipeline::class)->run($user, ['analysis_task' => 'auto'],
+            UploadedFile::fake()->createWithContent('image.png', $compressed));
+
+        $this->assertNotSame($first->media_checksum, $second->media_checksum);
+        $this->assertSame($first->id, $second->reused_from_detection_id);
+        $this->assertSame(0, $second->signals['openai_usage']['total_tokens']);
+    }
+
+    public function test_perceptual_reuse_cannot_bypass_factual_verification_after_auto_routing(): void
+    {
+        $this->mockAnalysis(2, 'claim', 2);
+        $user = User::factory()->create();
+        $first = app(DetectionPipeline::class)->run($user, ['analysis_task' => 'auto'], $this->upload('one encoding'));
+        $second = app(DetectionPipeline::class)->run($user, ['analysis_task' => 'auto'], $this->upload('another encoding'));
+        $this->assertSame($first->media_perceptual_hash, $second->media_perceptual_hash);
+        $this->assertNull($second->reused_from_detection_id);
+    }
+
+    public function test_explicit_refresh_reaches_the_evidence_service(): void
+    {
+        $this->mock(AiOriginClassifier::class)->shouldNotReceive('classify');
+        $this->mock(EvidenceVerificationService::class)->shouldReceive('apply')->once()
+            ->withArgs(fn ($analysis, $context) => $context['force_refresh'] === true)
+            ->andReturnUsing(fn ($analysis) => array_replace($analysis, ['fact_check_result' => ReportAnswer::complete([
+                'schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'UNVERIFIED', 'summary' => 'Fresh evidence was requested.',
+            ])]));
+        $result = app(DetectionPipeline::class)->run(User::factory()->create(), [
+            'analysis_task' => 'claim', 'caption_text' => 'The bridge opened in 2010.', 'force_refresh' => true,
+        ], null);
+        $this->assertNull($result->reused_from_detection_id);
+    }
+
+    public function test_failed_optional_narration_does_not_repeat_a_completed_detector_analysis(): void
+    {
+        $this->mockAnalysis(1);
+        $user = User::factory()->create();
+        $first = $this->submitFixture($user);
+        $signals = $first->signals;
+        $signals['media_explanation'] = [['status' => 'unavailable', 'failure_reason' => 'request_or_validation_failed']];
+        $first->update(['signals' => $signals]);
+        $second = $this->submitFixture($user);
+        $this->assertSame($first->id, $second->reused_from_detection_id);
+        $this->assertSame(0, $second->signals['openai_usage']['total_tokens']);
+    }
+
+    public function test_perceptually_identical_png_jpeg_and_webp_reuse_an_abstaining_media_result(): void
+    {
+        $this->mockAnalysis(1);
+        $user = User::factory()->create();
+        $first = null;
+        foreach (['png', 'jpg', 'webp'] as $extension) {
+            $file = UploadedFile::fake()->createWithContent('notice.'.$extension,
+                file_get_contents(base_path('tests/Fixtures/evidence/media/notice.'.$extension)));
+            $result = app(DetectionPipeline::class)->run($user, ['analysis_task' => 'media'], $file);
+            if ($first === null) {
+                $first = $result;
+            } else {
+                $this->assertNotSame($first->media_checksum, $result->media_checksum);
+                $this->assertSame($first->id, $result->reused_from_detection_id);
+                $this->assertSame('INCONCLUSIVE', $result->fact_check_result['verdict']);
+            }
+        }
+    }
+
+    public function test_different_images_with_the_same_dhash_do_not_reuse_a_verdict(): void
+    {
+        $this->mockAnalysis(2);
+        $user = User::factory()->create();
+        $detections = [];
+        foreach ([[255, 0, 0], [0, 0, 255]] as $rgb) {
+            $image = imagecreatetruecolor(640, 640);
+            imagefill($image, 0, 0, imagecolorallocate($image, ...$rgb));
+            ob_start();
+            imagepng($image);
+            $bytes = ob_get_clean();
+            imagedestroy($image);
+            $detections[] = app(DetectionPipeline::class)->run($user, ['analysis_task' => 'media'],
+                UploadedFile::fake()->createWithContent('image.png', $bytes));
+        }
+        $this->assertSame($detections[0]->media_perceptual_hash, $detections[1]->media_perceptual_hash);
+        $this->assertNull($detections[1]->reused_from_detection_id);
     }
 }

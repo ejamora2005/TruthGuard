@@ -2,7 +2,10 @@
 
 namespace App\Services\Detections;
 
+use App\Services\Detections\Evidence\ReportApiBudget;
+use App\Services\Detections\Evidence\ReportBudgetExceeded;
 use App\Services\Detections\Evidence\ResponsesTransport;
+use App\Services\Detections\Evidence\TokenUsage;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -11,7 +14,7 @@ use Illuminate\Support\Str;
 /** Narrates an existing media finding; never runs another detector or search. */
 class OpenAiMediaExplanation
 {
-    public const VERSION = 'media-explanation-v3';
+    public const VERSION = 'media-explanation-v4';
 
     public function apply(array $analysis): array
     {
@@ -54,16 +57,21 @@ class OpenAiMediaExplanation
         }
         try {
             // One attempt: narration failure never triggers paid retries or searches.
+            app(ReportApiBudget::class)->beforeRequest();
             $response = Http::withToken((string) config('services.openai.key'))->acceptJson()->connectTimeout(3)
                 ->timeout(max(1, min(30, (int) config('services.openai.timeout', 40))))
                 ->post('https://api.openai.com/v1/responses', $payload);
             $record['model'] = $response->json('model', $payload['model']);
             $usage = $analysis['signals']['openai_usage']
                 ?? data_get($analysis, 'signals.submission_extraction.0.usage', []);
+            $record['usage'] = TokenUsage::measure((array) $response->json('usage', []));
             foreach (['input_tokens', 'output_tokens', 'total_tokens'] as $key) {
-                $record['usage'][$key] = max(0, (int) $response->json('usage.'.$key, 0));
                 $usage[$key] = max(0, (int) ($usage[$key] ?? 0)) + $record['usage'][$key];
             }
+            if (! isset($usage['by_stage']) && ($extractionUsage = data_get($analysis, 'signals.submission_extraction.0.usage', [])) !== []) {
+                $usage['by_stage']['extraction'] = TokenUsage::measure($extractionUsage) + ['requests' => 1, 'retries' => 0];
+            }
+            $usage['by_stage']['media_explanation'] = $record['usage'] + ['requests' => 1, 'retries' => 0];
             $analysis['signals']['openai_usage'] = $usage + ['provider' => 'OpenAI', 'model' => $record['model']];
             if (! $response->successful() || $response->json('status') !== 'completed') {
                 $record['failure_reason'] = match (true) {
@@ -78,7 +86,8 @@ class OpenAiMediaExplanation
                 $answer = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
                 $copy = ResultWording::accept($result, $answer);
                 if (! $copy || $copy['source_ids'] !== []
-                    || preg_match('/%/', implode(' ', [$copy['explanation'], $copy['result_summary'], $copy['recommended_action']]))) {
+                    || preg_match('/%/', implode(' ', [$copy['explanation'], $copy['result_summary'], $copy['recommended_action']]))
+                    || $this->unsupportedDetail($copy)) {
                     throw new \UnexpectedValueException('Invalid media explanation');
                 }
                 $prose = $copy['explanation'];
@@ -88,11 +97,21 @@ class OpenAiMediaExplanation
                 $record['status'] = 'completed';
             }
         } catch (\Throwable $error) {
-            $record['failure_reason'] = 'request_or_validation_failed';
+            $record['failure_reason'] = $error instanceof ReportBudgetExceeded ? 'report_budget_exhausted' : 'request_or_validation_failed';
             Log::notice('Media explanation unavailable; keeping detector findings.', ['error_type' => $error::class]);
         }
         $analysis['signals']['media_explanation'] = [$record];
+        $analysis['signals']['api_budget'] = app(ReportApiBudget::class)->snapshot();
 
         return $analysis;
+    }
+
+    private function unsupportedDetail(array $copy): bool
+    {
+        // No pixels or provenance records are supplied to this text-only call.
+        // Reject concrete feature/generator claims rather than relying on the prompt.
+        $text = implode(' ', [$copy['explanation'], $copy['result_summary'], $copy['recommended_action']]);
+
+        return (bool) preg_match('/\b(?:extra|missing|six|seven|too many|distorted|deformed|unnatural|inconsistent|warped|mismatched|blurry)\s+(?:fingers?|hands?|faces?|teeth|shadows?|textures?|lighting|reflections?|edges?)\b|\b(?:midjourney|dall[ -]?e|stable diffusion|sora)\b|\b(?:metadata|watermark|exif|provenance|c2pa)\s+(?:shows?|proves?|confirms?|indicates?)\b/iu', $text);
     }
 }

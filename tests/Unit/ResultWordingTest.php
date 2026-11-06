@@ -123,12 +123,13 @@ class ResultWordingTest extends TestCase
         $result = ResultWording::ensure([
             'verdict' => 'UNVERIFIED', 'primary_task' => 'claim',
             'summary' => 'Internal search output that should not be displayed.',
+            'claim' => 'The fictional bridge reopened in 2026.',
             'sources' => [], 'contextual_sources' => [],
-            'diagnostics' => ['retrieval_status' => 'completed_no_results'],
+            'diagnostics' => ['retrieval_status' => 'completed_no_results', 'outcome_reason' => 'no_search_results'],
         ]);
 
         $copy = ResultWording::saved($result);
-        $this->assertSame('The available searches did not find reliable evidence that directly confirms or disproves the claim. This does not mean the claim is false; it means TruthGuard cannot reach a supported conclusion with the sources and search access currently available.', $copy['explanation']);
+        $this->assertSame('The claim “The fictional bridge reopened in 2026.” remains unverified. The completed searches returned no usable matching source documents.', $copy['explanation']);
         $this->assertSame('No reliable matching source was available to support a factual conclusion.', $copy['result_summary']);
         $this->assertSame([], $copy['source_ids']);
         Http::assertNothingSent();
@@ -181,5 +182,16 @@ class ResultWordingTest extends TestCase
         $this->assertStringContainsString('could not read the linked page', $copy['explanation']);
         $this->assertStringContainsString('upload a clear screenshot', $copy['recommended_action']);
         $this->assertStringContainsString('provide this only once', $copy['recommended_action']);
+    }
+
+    public function test_internal_service_failure_does_not_request_a_screenshot(): void
+    {
+        $result = ResultWording::ensure(['verdict' => 'ANALYSIS_UNAVAILABLE', 'summary' => 'The analysis service is temporarily unavailable; retry this saved report later.',
+            'sources' => [], 'extraction' => ['failure_reason' => 'quota_exhausted', 'source_record' => [
+                'url' => 'https://news.example.test/story', 'status' => 'http_403', 'text' => '',
+            ]], 'diagnostics' => ['outcome_reason' => 'analysis_failure']], 'Retry this saved report later.');
+        $copy = ResultWording::saved($result);
+        $this->assertStringNotContainsString('screenshot', $copy['recommended_action']);
+        $this->assertStringContainsString('retry', strtolower($copy['explanation']));
     }
 }

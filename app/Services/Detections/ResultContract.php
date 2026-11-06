@@ -364,6 +364,10 @@ class ResultContract
                 'context_only' => $context || ($row['context_only'] ?? false) === true,
                 'relationships' => self::relationships($row['relationships'] ?? null),
                 'possible_copy_of' => self::text($row['possible_copy_of'] ?? null),
+                ...array_filter([
+                    'published_rating' => self::text($row['published_rating'] ?? null),
+                    'reviewed_claim' => self::text($row['reviewed_claim'] ?? null),
+                ], fn ($value) => $value !== null),
             ];
         }
 
@@ -387,7 +391,9 @@ class ResultContract
 
     private static function correction(mixed $value): ?array
     {
-        if (! is_array($value) || ! ($reason = self::text($value['reason'] ?? null))) return null;
+        if (! is_array($value) || ! ($reason = self::text($value['reason'] ?? null))) {
+            return null;
+        }
 
         return ['reason' => $reason, 'corrected_at' => self::date($value['corrected_at'] ?? null)];
     }
@@ -638,7 +644,9 @@ class ResultContract
 
     private static function publicMediaDecisionReasons(mixed $reasons): array
     {
-        if (! is_array($reasons)) return [];
+        if (! is_array($reasons)) {
+            return [];
+        }
 
         return array_values(array_unique(array_filter(array_map(fn ($reason) => match ($reason) {
             'primary_below_decision_threshold' => 'The primary AI signal is below the decision threshold.',
@@ -646,6 +654,8 @@ class ResultContract
             'supporting_detector_unavailable' => 'An independent supporting finding was not available.',
             'detector_disagreement' => 'The independent detectors produced different findings.',
             'input_quality_or_composition_limited' => 'The uploaded file quality or composition limits origin screening.',
+            'primary_detector_abstained' => 'The primary detector withheld an origin decision.',
+            'input_inspection_unavailable' => 'The original file could not be inspected reliably.',
             default => null,
         }, $reasons))));
     }
@@ -673,7 +683,8 @@ class ResultContract
         return collect($details)->map(fn ($detail) => self::publicDetail($detail))->filter()->unique()->values()->all();
     }
 
-    private static function publicDetail(mixed $value): ?string
+    /** Apply the same display boundary while assembling an evidence-backed answer. */
+    public static function publicDetail(mixed $value): ?string
     {
         $text = self::text($value);
         if ($text === null) {

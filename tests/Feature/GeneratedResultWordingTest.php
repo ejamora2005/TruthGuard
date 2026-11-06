@@ -27,6 +27,35 @@ class GeneratedResultWordingTest extends TestCase
 
     private const ACTION = 'Read the municipal library record before quoting its opening date.';
 
+    public function test_usage_details_distinguish_stage_tokens_from_zero_cost_saved_result_reuse(): void
+    {
+        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => []]);
+        $user = User::factory()->create();
+        $usage = ['input_tokens' => 100, 'output_tokens' => 20, 'total_tokens' => 120, 'by_stage' => [
+            'evidence_relationships_0' => ['input_tokens' => 100, 'output_tokens' => 20, 'total_tokens' => 120,
+                'cached_input_tokens' => 60, 'requests' => 2, 'retries' => 1],
+        ]];
+        $result = ['schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'UNVERIFIED',
+            'claim' => self::CLAIM, 'summary' => 'The retrieved records did not establish the opening date.',
+            'sources' => [], 'diagnostics' => ['pipeline_version' => EvidenceVerificationService::VERSION, 'api_usage' => $usage]];
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'text', 'media_type' => 'text',
+            'processing_status' => 'completed', 'verdict' => 'review', 'fake_score' => 0,
+            'fact_check_result' => $result, 'signals' => ['openai_usage' => $usage]]);
+        $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
+            ->assertSee('Usage by stage')->assertSee('Cached input')->assertSee('Review evidence (round 1)')
+            ->assertSee('Retries')->assertSee('120');
+
+        $zero = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
+        $result['diagnostics']['api_usage'] = $zero;
+        $detection->update(['fact_check_result' => $result, 'signals' => ['openai_usage' => $zero,
+            'result_reuse' => ['original_openai_usage' => array_replace($usage, ['total_tokens' => 47383]), 'new_api_tokens' => 0]]]);
+        $this->get(route('detections.result', $detection))->assertOk()
+            ->assertSee('New tokens used for this saved result: 0')
+            ->assertSee('Original assessment: 47,383 tokens.')
+            ->assertDontSee('Usage by stage');
+        Http::assertNothingSent();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -65,8 +94,8 @@ class GeneratedResultWordingTest extends TestCase
             } else {
                 $this->assertSame((int) config('fact_check.model_output_tokens'), $request['max_output_tokens']);
                 $this->assertArrayNotHasKey('tools', $request->data());
-                $this->assertSame(1, substr_count($request['input'][0]['content'], '55-95 words'));
-                $this->assertStringContainsString('NEVER repeat the verdict label', $request['input'][0]['content']);
+                $this->assertSame(1, substr_count($request['input'][0]['content'], 'SEPARATION OF FIELDS'));
+                $this->assertStringContainsString(ResultWording::instructions(), $request['input'][0]['content']);
                 $this->assertCount(1, $input['sources']);
                 $data = ['context_findings' => [], 'relationships' => [[
                     'claim_id' => $input['claims'][0]['id'], 'source_id' => 's1', 'stance' => 'supporting',

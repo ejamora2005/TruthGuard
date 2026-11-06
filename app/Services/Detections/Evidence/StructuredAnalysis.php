@@ -16,7 +16,21 @@ class StructuredAnalysis
 
     public array $requestAttempts = [];
 
+    public array $stageUsage = [];
+
     private int $calls = 0;
+
+    public function remainingCalls(): ?int
+    {
+        $limit = max(0, (int) config('fact_check.max_model_calls', 0));
+
+        return $limit === 0 ? null : max(0, $limit - $this->calls);
+    }
+
+    public function canAsk(): bool
+    {
+        return $this->remainingCalls() === null || $this->remainingCalls() > 0;
+    }
 
     public function reset(): void
     {
@@ -24,6 +38,7 @@ class StructuredAnalysis
         $this->stages = [];
         $this->models = [];
         $this->requestAttempts = [];
+        $this->stageUsage = [];
         $this->calls = 0;
     }
 
@@ -40,14 +55,18 @@ class StructuredAnalysis
 
             return null;
         }
-        if ($this->calls++ >= max(0, (int) config('fact_check.max_model_calls', 3))) {
+        if (! $this->canAsk()) {
             $this->stages[$stage] = 'budget_exhausted';
 
             return null;
         }
+        $this->calls++;
+        $requestStarted = false;
+        $usageRecorded = false;
         try {
             $planning = $stage === 'claim_decomposition';
             $model = (string) config($planning ? 'services.openai.planning_model' : 'services.openai.model');
+            $requestStarted = true;
             $response = $this->transport->post([
                 'model' => $model, 'store' => false,
                 // These models support non-reasoning structured output. Avoid
@@ -62,10 +81,12 @@ class StructuredAnalysis
                     ? config('fact_check.plan_output_tokens', 1200) : config('fact_check.model_output_tokens', 3000)))),
             ], (int) config('services.openai.timeout', 40));
             $this->requestAttempts[$stage] = $this->transport->attempts;
+            $this->stageUsage[$stage] = TokenUsage::attempts($this->transport->attempts, (array) $response->json('usage', []));
             $this->models[$stage] = (string) ($response->json('model') ?: $model);
             foreach (array_keys($this->usage) as $key) {
-                $this->usage[$key] += max(0, (int) $response->json('usage.'.$key, 0));
+                $this->usage[$key] += $this->stageUsage[$stage][$key];
             }
+            $usageRecorded = true;
             if (! $response->successful() || $response->json('status') !== 'completed') {
                 $this->stages[$stage] = ResponsesTransport::quotaExhausted($response) ? 'quota_exhausted'
                     : ($response->json('incomplete_details.reason') === 'max_output_tokens'
@@ -94,7 +115,14 @@ class StructuredAnalysis
 
             return $data;
         } catch (\Throwable $error) {
-            $this->stages[$stage] = 'failed_validation_or_request';
+            if ($requestStarted && ! $usageRecorded && $this->transport->attempts !== []) {
+                $this->requestAttempts[$stage] = $this->transport->attempts;
+                $this->stageUsage[$stage] = TokenUsage::attempts($this->transport->attempts);
+                foreach (array_keys($this->usage) as $key) {
+                    $this->usage[$key] += $this->stageUsage[$stage][$key];
+                }
+            }
+            $this->stages[$stage] = $error instanceof ReportBudgetExceeded ? 'report_budget_exhausted' : 'failed_validation_or_request';
             Log::notice('Evidence analysis stage failed.', ['stage' => $stage, 'error_type' => $error::class]);
 
             return null;

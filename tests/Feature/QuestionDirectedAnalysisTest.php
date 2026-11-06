@@ -37,6 +37,7 @@ class QuestionDirectedAnalysisTest extends TestCase
             'fact_check.web_search.enabled' => false,
             'services.ai_origin.enabled' => true, 'services.openai.analysis_enabled' => true, 'services.openai.claim_extraction_enabled' => true, 'services.openai.key' => 'fixture',
             'services.filipino_news_classifier.enabled' => false, 'services.live_verification.enabled' => true,
+            'services.deepfake_cnn.enabled' => false, 'services.ai_origin.require_detector_agreement' => true,
             'services.google_fact_check.key' => 'fixture', 'services.gnews.key' => '', 'services.newsapi.key' => '',
             'fact_check.retrieval.google_pages' => 1, 'fact_check.retrieval.max_search_requests' => 4,
             'fact_check.retrieval.respect_robots' => false, 'services.live_verification.refresh_on_view' => true,
@@ -80,12 +81,13 @@ class QuestionDirectedAnalysisTest extends TestCase
         $detection = $this->upload($question);
         $result = $detection->fact_check_result;
         $this->assertSame('media', $result['primary_task']);
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertNull($result['confidence']);
         $this->assertSame('not_requested', $result['claim_assessment']['status']);
-        $this->assertStringContainsString('does not prove', $result['summary']);
+        $this->assertStringContainsString('does not establish either AI generation or human origin', $result['summary']);
         $this->getJson(route('detections.result', $detection))->assertExactJson(ResultContract::forPresentation($result));
-        $html = $this->get(route('detections.result', $detection))->assertOk()->assertSee($result['assessment_label'])->assertSee($result['summary'])->getContent();
+        $html = $this->get(route('detections.result', $detection))->assertOk()->assertSee($result['assessment_label'])
+            ->assertSee($result['generated_wording']['explanation'])->getContent();
         $this->assertStringContainsString('id="assessment-details"', $html);
         $this->assertStringContainsString('View details', $html);
         $this->assertSame($result, $detection->fresh()->fact_check_result);
@@ -98,7 +100,7 @@ class QuestionDirectedAnalysisTest extends TestCase
         $this->assertSame('media', $result['primary_task']);
         $this->assertSame('is this ai or not', $result['request']['question']);
         $this->assertSame(['media'], $result['request']['tasks']);
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertStringNotContainsString('factual assertion', $result['summary']);
         Http::assertNothingSent();
     }
@@ -119,7 +121,7 @@ class QuestionDirectedAnalysisTest extends TestCase
 
         $this->assertSame('media', $result['primary_task']);
         $this->assertSame(['media', 'manipulation'], $result['request']['tasks']);
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame(['UNSUPPORTED_ANALYSIS'], array_column($result['secondary_assessments'], 'verdict'));
         $this->assertSame('not_requested', $result['claim_assessment']['status']);
         $this->assertSame([], $result['sources']);
@@ -230,6 +232,7 @@ class QuestionDirectedAnalysisTest extends TestCase
     #[DataProvider('discoveryOutcomes')]
     public function test_retrieval_outcomes_are_not_reported_as_missing_context(int $status, bool $unrelated, string $reason, string $retrieval): void
     {
+        config()->set('fact_check.retrieval.max_rounds', 2);
         $this->fakeEvidence(searchStatus: $status, noResults: ! $unrelated, unrelated: $unrelated);
         $result = $this->upload('Is this statement true?')->fact_check_result;
         $this->assertSame('claim', $result['primary_task']);
@@ -373,13 +376,13 @@ class QuestionDirectedAnalysisTest extends TestCase
     public function test_same_original_with_different_questions_keeps_independent_saved_assessments(): void
     {
         $media = $this->upload('Is this AI-generated?');
-        $this->assertSame('Model score: 90%', $media->fact_check_result['score_display']);
+        $this->assertSame('Score unavailable', $media->fact_check_result['score_display']);
         $this->fakeEvidence();
         $factual = $this->upload('Is this statement true?');
         $this->assertSame($media->media_checksum, $factual->media_checksum);
         $this->assertNotSame($media->request_fingerprint, $factual->request_fingerprint);
         $this->assertSame('TRUE', $factual->fact_check_result['verdict']);
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $media->fresh()->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $media->fresh()->fact_check_result['verdict']);
     }
 
     public function test_multiple_questions_produce_separate_media_factual_and_unsupported_manipulation_assessments(): void
@@ -387,7 +390,7 @@ class QuestionDirectedAnalysisTest extends TestCase
         $this->fakeEvidence();
         $detection = $this->upload('Is this AI-generated? Is this statement true? Was this edited?');
         $result = $detection->fact_check_result;
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame(['TRUE', 'UNSUPPORTED_ANALYSIS'], array_column($result['secondary_assessments'], 'verdict'));
         $this->assertSame('evidence_strength', $result['secondary_assessments'][0]['score']['type']);
         $this->assertNull($result['secondary_assessments'][1]['score']['value']);

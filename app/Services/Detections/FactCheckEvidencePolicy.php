@@ -124,6 +124,13 @@ class FactCheckEvidencePolicy
         return false;
     }
 
+    public function isFactCheckUrl(string $url): bool
+    {
+        return filter_var($url, FILTER_VALIDATE_URL) && in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)
+            && parse_url($url, PHP_URL_USER) === null
+            && $this->approvedHost(strtolower((string) parse_url($url, PHP_URL_HOST)), 'fact_check');
+    }
+
     private function matchesHost(string $host, string $domain): bool
     {
         return $host === $domain || str_ends_with($host, '.'.$domain);

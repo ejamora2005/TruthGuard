@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 
 class TrustedFactCheckVerdictResolver
 {
-    public const POLICY_VERSION = '2026-11-06-exact-review-v5';
+    public const POLICY_VERSION = '2026-11-06-exact-review-v6';
 
     /**
      * @param  array<string, mixed>  $analysis
@@ -49,6 +49,14 @@ class TrustedFactCheckVerdictResolver
         $analysis['signals'] = $signals;
         $analysis['verdict'] = $verdict;
         $analysis['fake_score'] = $riskScore;
+
+        if (($decision['status'] ?? null) === 'conflicting') {
+            $summary = 'Exact published fact-check ratings conflict. Human review is required; no firm factual conclusion was reached.';
+            $analysis['analysis_summary'] = $analysis['verification_summary'] = $analysis['explanation_summary'] = $summary;
+            $analysis['recommendation'] = 'Review the conflicting publishers and the exact claim details before sharing.';
+
+            return $analysis;
+        }
 
         if ($verdict === 'fake') {
             $analysis['analysis_summary'] = "TruthGuard found a {$trustLabel} fact-check match and prioritized that source rating over visual-only signals.";
@@ -156,10 +164,13 @@ class TrustedFactCheckVerdictResolver
             $this->candidatesFromFactChecks($factChecks),
         );
 
-        return collect($candidates)
-            ->filter(fn (array $candidate): bool => $candidate['verdict'] !== null)
-            ->sortByDesc(fn (array $candidate): int => $candidate['priority'])
-            ->first();
+        $eligible = collect($candidates)->filter(fn (array $candidate): bool => $candidate['trusted'] && $candidate['verdict'] !== null);
+        if ($eligible->pluck('verdict')->unique()->count() > 1) {
+            return array_replace($eligible->first(), ['status' => 'conflicting', 'verdict' => 'review',
+                'rating' => 'Conflicting published ratings', 'risk_score' => 50, 'signal_weight' => 0]);
+        }
+
+        return $eligible->sortByDesc(fn (array $candidate): int => $candidate['priority'])->first();
     }
 
     /**
@@ -171,21 +182,16 @@ class TrustedFactCheckVerdictResolver
         return collect($sources)
             ->filter(fn ($source) => is_array($source)
                 && ($source['source_type'] ?? null) === 'fact_check'
-                && data_get($source, 'claim_match.level', 'exact') === 'exact')
+                && data_get($source, 'claim_match.level') === 'exact')
             ->map(function (array $source): array {
                 $publisher = trim((string) ($source['name'] ?? 'Fact-check source'));
-                $rating = $this->ratingFromText(collect([
-                    $source['rating'] ?? null,
-                    $source['summary'] ?? null,
-                    $source['purpose'] ?? null,
-                    $source['status'] ?? null,
-                ])->filter()->implode(' '));
+                $rating = $this->ratingFromText((string) ($source['evidence_rating'] ?? $source['rating'] ?? ''));
 
                 return $this->candidate(
                     $publisher,
                     $rating,
                     (string) ($source['url'] ?? ''),
-                    collect([$source['purpose'] ?? null, $source['summary'] ?? null])->filter()->implode(' '),
+                    '',
                 );
             })
             ->values()
@@ -199,6 +205,7 @@ class TrustedFactCheckVerdictResolver
     private function candidatesFromFactChecks(array $factChecks): array
     {
         return collect($factChecks)
+            ->filter(fn ($claim) => is_array($claim) && data_get($claim, 'claim_match.level') === 'exact')
             ->flatMap(function (array $claim): array {
                 $reviews = $claim['claimReview'] ?? [];
 
@@ -208,7 +215,7 @@ class TrustedFactCheckVerdictResolver
 
                 return collect($reviews)
                     ->filter(fn ($review) => is_array($review))
-                    ->map(function (array $review) use ($claim): array {
+                    ->map(function (array $review): array {
                         $publisher = trim((string) ($review['publisher']['name'] ?? 'Fact-check source'));
                         $rating = $this->ratingFromText((string) ($review['textualRating'] ?? ''));
 
@@ -216,7 +223,7 @@ class TrustedFactCheckVerdictResolver
                             $publisher,
                             $rating,
                             (string) ($review['url'] ?? ''),
-                            collect([$review['title'] ?? null, $claim['text'] ?? null])->filter()->implode(' '),
+                            '',
                         );
                     })
                     ->all();
@@ -350,26 +357,19 @@ class TrustedFactCheckVerdictResolver
 
     private function isTrustedPublisher(string $publisher, string $url): bool
     {
-        $haystack = Str::lower($publisher.' '.$url);
+        $host = Str::lower((string) parse_url($url, PHP_URL_HOST));
+        if (! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true) || parse_url($url, PHP_URL_USER) !== null) {
+            return false;
+        }
 
-        return Str::contains($haystack, [
-            'rappler',
-            'vera files',
-            'verafiles',
-            'afp',
-            'reuters',
-            'associated press',
-            'ap fact check',
-            'snopes',
-            'politifact',
-            'factcheck.org',
-            'full fact',
-            'lead stories',
-            'factly',
-            'boom',
-            'tsek.ph',
-            'pressone',
-            'abs-cbn',
-        ]);
+        foreach (['rappler.com', 'verafiles.org', 'afp.com', 'reuters.com', 'apnews.com', 'snopes.com',
+            'politifact.com', 'factcheck.org', 'fullfact.org', 'leadstories.com', 'factly.in', 'boomlive.in',
+            'tsek.ph', 'pressone.ph', 'abs-cbn.com'] as $domain) {
+            if ($host === $domain || str_ends_with($host, '.'.$domain)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

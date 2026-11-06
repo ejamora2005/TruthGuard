@@ -84,8 +84,8 @@ class PendingReportJsonTest extends TestCase
             'verdict' => 'misleading',
             'fake_score' => 64,
             'fact_check_result' => [
-                'verdict' => 'MISLEADING',
-                'summary' => 'The claim removes important context.',
+                'verdict' => 'UNVERIFIED',
+                'summary' => 'No matching evidence was available to establish the claim.',
                 'sources' => [],
             ],
         ]);

@@ -16,12 +16,22 @@ class SafeArticleFetcher
 {
     public function fetch(string $url, RetrievalBudget $budget, bool $checkRobots = true): array
     {
+        $key = ($checkRobots ? 'page:' : 'robots:').$url;
+        if (isset($budget->fetchedPages[$key])) {
+            return array_replace($budget->fetchedPages[$key], ['cached' => true]);
+        }
+
+        return $budget->fetchedPages[$key] = $this->fetchOnce($url, $budget, $checkRobots);
+    }
+
+    private function fetchOnce(string $url, RetrievalBudget $budget, bool $checkRobots): array
+    {
         $base = ['url' => $url, 'retrieved_at' => now()->utc()->toIso8601String(), 'text' => '', 'published_at' => null, 'updated_at' => null, 'links' => [], 'http_status' => null];
         if (! $budget->take('pages')) {
             return $base + ['status' => 'budget_exhausted'];
         }
         try {
-            $cacheKey = 'evidence-page:v2:'.hash('sha256', $url);
+            $cacheKey = 'evidence-page:v3:'.hash('sha256', $url);
             if (! $budget->freshSources && ($cached = Cache::get($cacheKey))) {
                 return $cached + ['cached' => true];
             }
@@ -59,7 +69,7 @@ class SafeArticleFetcher
                     // repeatedly processing an inaccessible user link.
                     ->retry(2, 150, fn ($exception): bool => $exception instanceof ConnectionException
                         || ($exception instanceof RequestException
-                            && ($exception->response->status() === 429 || $exception->response->serverError())), false)
+                            && (in_array($exception->response->status(), [408, 429], true) || $exception->response->serverError())), false)
                     ->get($url);
                 $base['http_status'] = $response->status();
                 if (in_array($response->status(), [301, 302, 303, 307, 308], true)) {
@@ -107,9 +117,12 @@ class SafeArticleFetcher
             return $base + ['status' => 'redirect_limit'];
         } catch (ConnectionException $error) {
             return $base + ['status' => preg_match('/timed? out|timeout|cURL error 28/i', $error->getMessage()) ? 'timeout' : 'network_failure'];
-        } catch (\Throwable) {
+        } catch (\Throwable $error) {
             // Never log request exceptions: URLs can contain credentials or user content.
-            return $base + ['status' => 'fetch_failed'];
+            $oversized = str_contains($error->getMessage(), 'Response too large')
+                || str_contains($error->getPrevious()?->getMessage() ?? '', 'Response too large');
+
+            return $base + ['status' => $oversized ? 'too_large' : 'fetch_failed'];
         }
     }
 
@@ -252,8 +265,21 @@ class SafeArticleFetcher
         $policy = app(FactCheckEvidencePolicy::class);
         $published = $policy->date($meta('article:published_time') ?: $meta('datePublished') ?: $meta('date'));
         $updated = $policy->date($meta('article:modified_time') ?: $meta('dateModified'));
+        $claimReviews = [];
         foreach ($xpath->query('//script[@type="application/ld+json"]') as $node) {
             $json = json_decode($node->textContent, true);
+            foreach ($this->jsonClaimReviews(is_array($json) ? $json : []) as $review) {
+                $reviewUrl = $review['url'] ?? $url;
+                if (! is_string($reviewUrl) || rtrim(explode('?', $reviewUrl)[0], '/') !== rtrim(explode('?', $url)[0], '/')) {
+                    continue;
+                }
+                $claim = $review['claimReviewed'] ?? null;
+                $rating = $review['reviewRating']['alternateName'] ?? $review['reviewRating']['name'] ?? null;
+                if (is_string($claim) && trim($claim) !== '' && is_string($rating) && trim($rating) !== '') {
+                    $claimReviews[] = ['reviewed_claim' => trim($claim), 'review_rating' => trim($rating)];
+                    $published ??= $policy->date($review['datePublished'] ?? null);
+                }
+            }
             foreach ($this->jsonArticles(is_array($json) ? $json : []) as $article) {
                 if (($article['isAccessibleForFree'] ?? true) === false || ($article['isAccessibleForFree'] ?? '') === 'False') {
                     return ['text' => '', 'title' => $title, 'published_at' => $published, 'updated_at' => $updated, 'links' => []];
@@ -290,7 +316,21 @@ class SafeArticleFetcher
             $text = '';
         }
 
-        return ['text' => $text, 'title' => $title, 'published_at' => $published, 'updated_at' => $updated, 'links' => array_slice(array_values(array_unique($links)), 0, 6)];
+        return ['text' => $text, 'title' => $title, 'published_at' => $published, 'updated_at' => $updated,
+            'claim_reviews' => array_values(array_unique($claimReviews, SORT_REGULAR)),
+            'links' => array_slice(array_values(array_unique($links)), 0, 6)];
+    }
+
+    private function jsonClaimReviews(array $data): array
+    {
+        $rows = in_array('ClaimReview', (array) ($data['@type'] ?? []), true) ? [$data] : [];
+        foreach ($data as $child) {
+            if (is_array($child)) {
+                $rows = array_merge($rows, $this->jsonClaimReviews($child));
+            }
+        }
+
+        return $rows;
     }
 
     private function jsonArticles(array $data): array

@@ -214,16 +214,16 @@
     $openAiExtraction = is_array($openAiExtraction) ? $openAiExtraction : [];
     $openAiUsage = $signalGroups['openai_usage'] ?? data_get($selectedDetection->fact_check_result, 'diagnostics.api_usage') ?? $openAiExtraction['usage'] ?? [];
     $openAiUsage = is_array($openAiUsage) ? $openAiUsage : [];
-    if ($resultReuse) {
-        $openAiUsage = ($resultReuse['original_openai_usage'] ?? []) ?: ($openAiExtraction['usage'] ?? []);
-    }
+    $originalOpenAiUsage = $resultReuse['original_openai_usage'] ?? [];
+    $openAiUsageStages = is_array($openAiUsage['by_stage'] ?? null) ? $openAiUsage['by_stage'] : [];
     $openAiUsed = filled($openAiUsage['provider'] ?? null) || filled($ocrText)
-        || max((int) ($openAiUsage['total_tokens'] ?? 0), (int) ($openAiUsage['input_tokens'] ?? 0), (int) ($openAiUsage['output_tokens'] ?? 0)) > 0;
+        || max((int) ($openAiUsage['total_tokens'] ?? 0), (int) ($openAiUsage['input_tokens'] ?? 0), (int) ($openAiUsage['output_tokens'] ?? 0), (int) ($originalOpenAiUsage['total_tokens'] ?? 0)) > 0;
     $openAiModel = trim((string) ($openAiUsage['model'] ?? $openAiExtraction['response_model'] ?? $openAiExtraction['configured_model'] ?? ''));
     $openAiStages = collect(data_get($selectedDetection->fact_check_result, 'diagnostics.model_stages', []));
     $openAiFailure = \App\Services\Detections\OpenAiExtractionFailure::recordedReason($openAiExtraction) ?? data_get($signalGroups, 'media_explanation.0.failure_reason')
-        ?? ($openAiStages->contains('quota_exhausted') ? 'quota_exhausted' : null);
+        ?? ($openAiStages->contains('report_budget_exhausted') ? 'report_budget_exhausted' : ($openAiStages->contains('quota_exhausted') ? 'quota_exhausted' : null));
     $openAiFailureMessage = match ($openAiFailure) {
+        'report_budget_exhausted' => 'Further AI processing stopped at this report’s processing budget. Completed findings remain available; unfinished checks have no factual conclusion.',
         'quota_exhausted' => 'OpenAI rejected this request because the API account had no remaining credits or had reached its billing limit. API billing must be restored before a new assessment can use OpenAI.',
         'authentication_failed' => 'OpenAI rejected the configured API credentials for this request. The API configuration needs attention before retrying.',
         'access_denied' => 'OpenAI denied access to the requested operation or model. An administrator must check API key and model permissions before retrying.',
@@ -1550,8 +1550,33 @@
                         @endif
                         <p class="text-sm leading-6 text-slate-700">OpenAI may help extract visible claim text, summarize supplied evidence, explain the result in plain language, find related public social context when enabled, and identify limitations or missing context.</p>
                         <p class="text-sm leading-6 text-slate-600">OpenAI is not the final authority and does not replace trusted fact-checkers or official sources. It must not invent sources; the verdict and risk score remain based on TruthGuard's evidence pipeline and trusted-source reconciliation.</p>
-                        @if ((int) ($openAiUsage['total_tokens'] ?? 0) > 0)
-                            <p class="text-xs font-semibold text-slate-500">{{ $resultReuse ? 'Token usage from the original assessment' : 'Token usage recorded for this report' }}: {{ (int) $openAiUsage['total_tokens'] }}</p>
+                        @if ((int) ($openAiUsage['total_tokens'] ?? 0) > 0 || $resultReuse)
+                            <p class="text-xs font-semibold text-slate-500">{{ $resultReuse ? 'New tokens used for this saved result' : 'Token usage recorded for this report' }}: {{ number_format((int) ($openAiUsage['total_tokens'] ?? 0)) }}</p>
+                            @if ($resultReuse)
+                                <p class="text-xs text-slate-500">Original assessment: {{ number_format((int) ($originalOpenAiUsage['total_tokens'] ?? 0)) }} tokens. Reusing it did not repeat the analysis.</p>
+                            @endif
+                            @if ($openAiUsageStages !== [])
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-xs text-slate-600">
+                                        <caption class="mb-2 text-left font-semibold">Usage by stage</caption>
+                                        <thead><tr><th scope="col" class="py-2 pr-3">Stage</th><th scope="col" class="px-2">Input</th><th scope="col" class="px-2">Output</th><th scope="col" class="px-2">Cached input</th><th scope="col" class="pl-2">Retries</th></tr></thead>
+                                        <tbody>
+                                            @foreach ($openAiUsageStages as $stage => $stageUsage)
+                                                <tr class="border-t border-slate-100">
+                                                    <th scope="row" class="py-2 pr-3 font-medium">{{ match (true) { $stage === 'extraction' => 'Read upload', $stage === 'claim_decomposition' => 'Identify claims', $stage === 'web_search' => 'Source search', str_starts_with($stage, 'evidence_relationships_') => 'Review evidence (round '.((int) substr($stage, -1) + 1).')', $stage === 'media_explanation' => 'Explain media result', default => str_replace('_', ' ', $stage) } }}</th>
+                                                    <td class="px-2">{{ number_format((int) ($stageUsage['input_tokens'] ?? 0)) }}</td>
+                                                    <td class="px-2">{{ number_format((int) ($stageUsage['output_tokens'] ?? 0)) }}</td>
+                                                    <td class="px-2">{{ number_format((int) ($stageUsage['cached_input_tokens'] ?? 0)) }}</td>
+                                                    <td class="pl-2">{{ (int) ($stageUsage['retries'] ?? 0) }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="text-xs text-slate-500">Cached input is included in input tokens. Totals include usage reported by failed attempts; requests without reported usage may be absent.</p>
+                            @elseif (! $resultReuse)
+                                <p class="text-xs text-slate-500">A stage breakdown was not recorded for this saved report.</p>
+                            @endif
                         @endif
                     @else
                         <div class="flex flex-wrap items-center gap-2 text-sm">

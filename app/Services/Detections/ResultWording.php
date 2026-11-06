@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 /** Saved presentation copy; never determines a verdict, score, or citation. */
 final class ResultWording
 {
-    public const VERSION = 'result-wording-v6';
+    public const VERSION = 'result-wording-v8';
 
     public static function instructions(): string
     {
@@ -69,8 +69,7 @@ PROMPT;
             }
             $candidate[$key] = $text;
         }
-        if (Str::wordCount($candidate['explanation']) < 12
-            || preg_match('/^(?:review|check) (?:the )?(?:sources|evidence)|^the result (?:is|was) (?:true|false|unclear)/iu', $candidate['explanation'])) {
+        if (preg_match('/^(?:review|check) (?:the )?(?:sources|evidence)|^the result (?:is|was) (?:true|false|unclear)/iu', $candidate['explanation'])) {
             return null;
         }
         // Reject malformed presentation independently of evidence validation.
@@ -165,13 +164,21 @@ PROMPT;
         if (self::saved($result)) {
             return $result;
         }
-        $noSearchEvidence = ($result['diagnostics']['retrieval_status'] ?? null) === 'completed_no_results'
+        $noSearchEvidence = (($result['diagnostics']['retrieval_status'] ?? null) === 'completed_no_results'
             || (in_array($result['verdict'] ?? '', ['UNVERIFIED', 'UNVERIFIABLE'], true)
-                && ($result['sources'] ?? []) === [] && ($result['contextual_sources'] ?? []) === []);
+                && ($result['sources'] ?? []) === [] && ($result['contextual_sources'] ?? []) === []))
+            && ! AssessmentVerdict::technical($result['verdict'] ?? '');
         if ($noSearchEvidence) {
+            $claim = Str::limit(Str::squish((string) ($result['claim'] ?? '')), 240, '…');
+            $reason = match ($result['diagnostics']['outcome_reason'] ?? '') {
+                'source_text_unavailable' => 'The source pages could not be read, and search snippets alone cannot establish the answer.',
+                'partial_api_failure' => 'Some source searches failed, so the evidence coverage was incomplete.',
+                'no_search_results', 'no_usable_candidates' => 'The completed searches returned no usable matching source documents.',
+                default => 'The reviewed passages do not directly establish or refute this assertion.',
+            };
             $result['generated_wording'] = ['version' => self::VERSION] + [
                 'verdict' => $result['verdict'],
-                'explanation' => 'The available searches did not find reliable evidence that directly confirms or disproves the claim. This does not mean the claim is false; it means TruthGuard cannot reach a supported conclusion with the sources and search access currently available.',
+                'explanation' => ($claim !== '' ? 'The claim “'.$claim.'” remains unverified. ' : 'The claim remains unverified. ').$reason,
                 'result_summary' => 'No reliable matching source was available to support a factual conclusion.',
                 'recommended_action' => 'Check the original source, exact wording, date, and official records before sharing the claim.',
                 'source_ids' => [],
@@ -180,6 +187,10 @@ PROMPT;
             return $result;
         }
         $summary = ResultContract::text($result['summary'] ?? null) ?? '';
+        if (str_starts_with($summary, 'The reviewed evidence does not establish every factual claim.')
+            && ($segments = EvidenceSummary::segments($result)) !== []) {
+            $summary = implode(' ', array_column($segments, 'text'));
+        }
         if ($summary === '' || $summary === 'Review the displayed verdict and its supporting evidence before relying on this result.') {
             $summary = implode(' ', array_filter(array_column($result['answer_segments'] ?? [], 'text'),
                 fn ($text) => is_string($text) && trim($text) !== ''
@@ -278,11 +289,15 @@ PROMPT;
     {
         // An unreadable supporting link must not replace an assessment of a
         // separately supplied factual statement with an access-error message.
-        if (! in_array($result['verdict'] ?? '', ['MISSING_CONTEXT', 'UNVERIFIABLE', 'UNVERIFIED', 'UNREADABLE_CONTENT'], true)
+        if (! in_array($result['verdict'] ?? '', ['MISSING_CONTEXT', 'UNVERIFIABLE', 'UNVERIFIED', 'UNREADABLE_CONTENT', 'ANALYSIS_UNAVAILABLE'], true)
             || ($result['sources'] ?? []) !== []) {
             return null;
         }
         $record = $result['extraction']['source_record'] ?? null;
+        if (filled($result['extraction']['failure_reason'] ?? null)
+            || in_array(data_get($result, 'diagnostics.outcome_reason'), ['analysis_failure', 'api_failure', 'no_provider_configured', 'retrieval_disabled'], true)) {
+            return null;
+        }
         if (! is_array($record)) {
             return null;
         }
@@ -295,10 +310,10 @@ PROMPT;
         $status = (string) ($record['status'] ?? '');
         if ($status !== 'retrieved') {
             $accessFailures = [
-                'login_or_unavailable', 'timeout', 'network_failure', 'fetch_failed', 'redirect_limit',
+                'login_or_unavailable', 'timeout', 'network_failure', 'redirect_limit',
                 'blocked_url', 'robots_restricted_or_unavailable', 'restricted', 'too_large',
                 'unsupported_content_type', 'missing_full_text', 'http_401', 'http_403', 'http_404',
-                'http_408', 'http_410', 'http_429', 'http_500', 'http_502', 'http_503', 'http_504',
+                'http_408', 'http_410', 'http_415', 'http_429', 'http_451', 'http_500', 'http_502', 'http_503', 'http_504',
             ];
 
             return in_array($status, $accessFailures, true) ? compact('social', 'status') : null;

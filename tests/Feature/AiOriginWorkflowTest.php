@@ -32,7 +32,9 @@ class AiOriginWorkflowTest extends TestCase
 
     private function submit(array $origin): Detection
     {
-        $path = base_path('tests/Fixtures/evidence/media/notice.png');
+        // A square raster avoids conflating agreement with screenshot limits.
+        $fixture = UploadedFile::fake()->image('submission.png', 640, 640);
+        $path = $fixture->getRealPath();
         $hash = hash_file('sha256', $path);
         if (($origin['status'] ?? '') === 'completed') {
             $supporting = $origin;

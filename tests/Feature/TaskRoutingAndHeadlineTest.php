@@ -120,7 +120,9 @@ class TaskRoutingAndHeadlineTest extends TestCase
         $this->assertGreaterThan(0, $result['diagnostics']['search_requests']);
         $this->assertLessThanOrEqual((int) config('fact_check.retrieval.max_search_requests'), $result['diagnostics']['search_requests']);
         $this->assertSame('completed_no_results', $result['diagnostics']['retrieval_status']);
-        $this->assertStringContainsString('I researched the most likely checkable interpretation', $result['summary']);
+        $this->assertStringContainsString($headline, $result['summary']);
+        $this->assertStringContainsString('does not specify a factual outcome', $result['summary']);
+        $this->assertStringNotContainsString('I researched', $result['summary']);
         $this->assertSame([], $result['sources']);
     }
 

@@ -3,6 +3,8 @@
 namespace App\Services\Detections;
 
 use App\Services\Detections\Evidence\MediaEvidencePreparer;
+use App\Services\Detections\Evidence\ReportApiBudget;
+use App\Services\Detections\Evidence\ReportBudgetExceeded;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -36,6 +38,7 @@ class OpenAiDetectionReportService
         }
 
         try {
+            app(ReportApiBudget::class)->beforeRequest();
             $response = Http::withToken((string) config('services.openai.key'))
                 ->acceptJson()
                 ->asJson()
@@ -103,6 +106,7 @@ class OpenAiDetectionReportService
         }
 
         try {
+            app(ReportApiBudget::class)->beforeRequest();
             $response = Http::withToken((string) config('services.openai.key'))
                 ->acceptJson()
                 ->asJson()
@@ -172,7 +176,7 @@ class OpenAiDetectionReportService
 
             return null;
         } catch (\Throwable $exception) {
-            $this->extractionRecord['failure_reason'] = 'request_exception';
+            $this->extractionRecord['failure_reason'] = $exception instanceof ReportBudgetExceeded ? 'report_budget_exhausted' : 'request_exception';
             Log::warning('OpenAI claim extraction request failed; continuing without image text.', [
                 'analysis_id' => $context['analysis_id'] ?? null, 'reason' => 'request_exception',
                 'error_type' => $exception::class,

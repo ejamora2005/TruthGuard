@@ -23,7 +23,7 @@ class OpenAiMediaExplanationTest extends TestCase
 
     private const PROSE = 'This image is likely AI-generated according to the trained image detector. Its recorded output favors synthetic content over the alternative class. That is a screening finding, not proof of how the image was created. The detector did not identify a specific visual feature that caused its prediction. This result also does not determine whether an accompanying caption or news claim is true.';
 
-    private const SHORT = 'The trained detector favors AI generation, so the image is likely AI-generated. This screening result does not prove its origin or establish whether an accompanying news claim is true.';
+    private const SHORT = 'The trained detector favors the synthetic class, but this screening result does not prove its origin or establish whether an accompanying news claim is true.';
 
     private const ACTION = 'Check the original publication or creation record before sharing this image.';
 
@@ -35,6 +35,7 @@ class OpenAiMediaExplanationTest extends TestCase
             'services.openai.analysis_enabled' => true, 'services.openai.media_explanation_enabled' => true,
             'services.openai.media_explanation_max_tokens' => 400,
             'services.ai_origin.enabled' => true, 'services.filipino_news_classifier.enabled' => false,
+            'services.deepfake_cnn.enabled' => false,
             'services.live_verification.enabled' => false, 'fact_check.enhanced_enabled' => true]);
     }
 
@@ -227,7 +228,8 @@ class OpenAiMediaExplanationTest extends TestCase
         $this->assertSame($first->id, $second->reused_from_detection_id);
         $this->assertSame(self::PROSE, $first->analysis_summary);
         $this->assertSame($first->analysis_summary, $second->analysis_summary);
-        $this->assertSame($first->fresh()->fact_check_result['generated_wording'], $second->fresh()->fact_check_result['generated_wording']);
+        $this->assertSame($first->fact_check_result['verdict'], $second->fact_check_result['verdict']);
+        $this->assertTrue($second->signals['result_reuse']['wording_refreshed_locally']);
         $this->assertSame(0, $second->signals['openai_usage']['total_tokens']);
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => []]);
         $snapshot = $first->fresh()->getRawOriginal();

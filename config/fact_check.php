@@ -26,6 +26,14 @@ return [
         'max_retries' => (int) env('FACT_CHECK_OPENAI_MAX_RETRIES', 1),
         'max_delay_seconds' => (float) env('FACT_CHECK_OPENAI_MAX_RETRY_DELAY', 3),
     ],
+    // Shared by extraction, planning, search, review, narration and retries.
+    // The token threshold stops subsequent requests; hosted search can add
+    // input tokens inside one request, so this is not a provider billing cap.
+    'report_budget' => [
+        // Zero disables a fixed spending stop; deduplication and bounded retries remain active.
+        'max_requests' => (int) env('FACT_CHECK_REPORT_MAX_API_REQUESTS', 0),
+        'stop_after_tokens' => (int) env('FACT_CHECK_REPORT_STOP_AFTER_TOKENS', 0),
+    ],
     'web_search' => [
         'enabled' => env('OPENAI_WEB_SEARCH_ENABLED', env('OPENAI_ANALYSIS_ENABLED', true)),
         'model' => env('OPENAI_WEB_SEARCH_MODEL', env('OPENAI_MODEL', 'gpt-5.4')),
@@ -54,9 +62,9 @@ return [
         // Google's maxAgeDays is relative to now, not a historical cutoff.
         'google_max_age_days' => (int) env('FACT_CHECK_GOOGLE_MAX_AGE_DAYS', 0),
     ],
-    'max_claims' => (int) env('FACT_CHECK_MAX_CLAIMS', 3),
+    'max_claims' => (int) env('FACT_CHECK_MAX_CLAIMS', 0),
     'max_input_chars' => 24000,
-    'max_model_calls' => (int) env('FACT_CHECK_MAX_MODEL_CALLS', 3),
+    'max_model_calls' => (int) env('FACT_CHECK_MAX_MODEL_CALLS', 0),
     'max_model_input_bytes' => (int) env('FACT_CHECK_MAX_MODEL_INPUT_BYTES', 22000),
     'model_output_tokens' => (int) env('FACT_CHECK_MODEL_OUTPUT_TOKENS', 1600),
     'plan_output_tokens' => (int) env('FACT_CHECK_PLAN_OUTPUT_TOKENS', 700),

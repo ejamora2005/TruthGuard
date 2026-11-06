@@ -121,6 +121,10 @@ class ReportAnswer
         if (isset($segments[1]) && $segments[1]['source_ids'] !== []) {
             $segments = array_slice($segments, 1);
             $segments[0]['text'] = $prefix.' '.$segments[0]['text'];
+        } elseif (($segments[0]['source_ids'] ?? []) !== []) {
+            // A concise answer can already consist of one concrete, cited
+            // finding. Preserve its dates and qualifications when answering.
+            $segments[0]['text'] = $prefix.' '.$segments[0]['text'];
         } else {
             $segments[0]['text'] = $prefix.' '.($result['verdict'] === 'TRUE'
                 ? 'The reviewed sources support the event described in your question.'

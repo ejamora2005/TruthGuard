@@ -5,6 +5,7 @@ namespace App\Services\Detections;
 use App\Models\Detection;
 use App\Models\User;
 use App\Services\Detections\Evidence\ClaimPlanner;
+use App\Services\Detections\Evidence\ReportApiBudget;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -37,6 +38,7 @@ class DetectionPipeline
      */
     public function run(User $user, array $validated, ?UploadedFile $uploadedFile, ?Detection $pending = null): Detection
     {
+        app(ReportApiBudget::class)->reset();
         $sourceUrl = $this->nullableString($validated['source_url'] ?? null);
         $captionText = $this->nullableString($validated['caption_text'] ?? null);
         $notes = $this->nullableString($validated['notes'] ?? null);
@@ -104,7 +106,7 @@ class DetectionPipeline
         }
         try {
             $reviewedMedia = ReviewedMediaLookup::analysis($mediaChecksum, $mediaType, $resolvedRequest, $sourceUrl);
-            if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint))) {
+            if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint, $mediaChecksum, $uploadedFile))) {
                 $detection = $this->createReusedDetection($user, $reusableDetection, $sourceUrl, $captionText, $notes, $mediaPath, $mediaChecksum, $mediaPerceptualHash, $requestFingerprint, $pending);
                 Log::info('TruthGuard analysis reused a saved result without inference.', ['analysis_id' => $analysisId,
                     'detection_id' => $detection->id, 'reused_from_detection_id' => $reusableDetection->id]);
@@ -126,6 +128,7 @@ class DetectionPipeline
                         'media_type' => $mediaType, 'platform' => $platform,
                         'analysis_task' => $validated['analysis_task'] ?? 'auto',
                         'analysis_id' => $analysisId,
+                        'force_refresh' => $forceRefresh,
                         'resolved_request' => $resolvedRequest,
                     ] + $weatherContext, $uploadedFile, $pending ? function (string $stage, array $domains = []) use ($pending): void {
                         $signals = $pending->signals ?? [];
@@ -177,7 +180,9 @@ class DetectionPipeline
             $analysis['fact_check_result'] = ResultWording::ensure($analysis['fact_check_result'], $analysis['recommendation'] ?? '');
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
             // Older saved reports have not been admitted to this fresh cache.
-            $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation')];
+            $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation'), 'hit' => false];
+            $analysis['fact_check_result']['diagnostics']['result_cache_hit'] = false;
+            $analysis['signals']['api_budget'] = $analysis['fact_check_result']['diagnostics']['api_budget'] = app(ReportApiBudget::class)->snapshot();
 
             $attributes = [
                 'user_id' => $user->id,
@@ -402,9 +407,9 @@ class DetectionPipeline
             // A visual hash is safe for origin-only screening. Factual checks
             // retain byte identity because a small changed text overlay can
             // change the claim without materially changing the picture hash.
-            'media_identity' => $analysisTask === 'media' && $mediaPerceptualHash !== null
+            'media_identity' => ($requestContext['tasks'] ?? []) === ['media'] && $mediaPerceptualHash !== null
                 ? $mediaPerceptualHash : $this->normalizeFingerprintString($mediaChecksum),
-            'media_identity_method' => $analysisTask === 'media' && $mediaPerceptualHash !== null
+            'media_identity_method' => ($requestContext['tasks'] ?? []) === ['media'] && $mediaPerceptualHash !== null
                 ? MediaPerceptualHash::VERSION : 'sha256',
             'analysis_task' => $analysisTask,
             'request_context' => $requestContext,
@@ -460,7 +465,7 @@ class DetectionPipeline
         return $normalized !== '' ? $normalized : null;
     }
 
-    private function findReusableDetection(?string $requestFingerprint): ?Detection
+    private function findReusableDetection(?string $requestFingerprint, ?string $mediaChecksum, ?UploadedFile $file): ?Detection
     {
         if ($requestFingerprint === null) {
             return null;
@@ -476,7 +481,28 @@ class DetectionPipeline
             ->applyRetentionWindow($query)
             ->latest('analyzed_at')
             ->cursor()
-            ->first(fn (Detection $candidate): bool => $this->canReuseResult($candidate));
+            ->first(function (Detection $candidate) use ($mediaChecksum, $file): bool {
+                if (! $this->canReuseResult($candidate)) {
+                    return false;
+                }
+                if ($candidate->media_checksum !== $mediaChecksum) {
+                    if (($candidate->fact_check_result['primary_task'] ?? '') !== 'media'
+                        || ! empty($candidate->fact_check_result['secondary_assessments'])
+                        || ! $candidate->media_path || ! MediaPerceptualHash::matchesPaths(
+                            Storage::disk('public')->path($candidate->media_path), $file?->getRealPath())) {
+                        return false;
+                    }
+                    $current = MediaInputAssessment::inspect($file);
+                    $original = MediaInputAssessment::inspect(new UploadedFile(Storage::disk('public')->path($candidate->media_path),
+                        basename($candidate->media_path), null, null, true))['quality_flags'] ?? [];
+                    if (($candidate->fact_check_result['verdict'] ?? '') !== 'INCONCLUSIVE'
+                        && array_diff($current['quality_flags'] ?? [], $original) !== []) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
     }
 
     private function canReuseResult(Detection $candidate): bool
@@ -492,15 +518,13 @@ class DetectionPipeline
             || ($result['schema_version'] ?? null) !== 4 || ($result['processing_status'] ?? null) !== 'completed'
             || in_array($result['verdict'] ?? '', ['ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS', 'CLARIFICATION_NEEDED'], true)
             || filled(data_get($candidate->signals, 'submission_extraction.0.failure_reason'))
-            || filled(data_get($candidate->signals, 'media_explanation.0.failure_reason'))
             || collect(data_get($result, 'diagnostics.model_stages', []))->contains(fn ($status) => $status !== 'completed')
             || in_array(data_get($result, 'claim_assessment.status'), ['partial', 'unavailable', 'failed'], true)) {
             return false;
         }
         $question = implode(' ', array_filter([$candidate->caption_text, $candidate->notes,
             $result['claim'] ?? null, data_get($candidate->signals, 'submission_extraction.0.visible_text')]));
-        if (ClaimPlanner::isCurrentStatus($question)
-            || preg_match('/\b(?:today|tonight|tomorrow|yesterday|now|latest|weather|forecast|live|ongoing)\b|ngayon|bukas|kasalukuyan|pinakabago/iu', $question)) {
+        if (ClaimPlanner::requiresFreshEvidence($question)) {
             return false;
         }
         $mediaOnly = ($result['primary_task'] ?? '') === 'media' && empty($result['secondary_assessments']);
@@ -588,6 +612,10 @@ class DetectionPipeline
             'wording_refreshed_locally' => true, 'new_api_tokens' => 0];
         // Preserve historical usage above, but never bill/count it again on a cache hit.
         $analysis['signals']['openai_usage'] = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
+        $analysis['signals']['result_cache']['hit'] = true;
+        $analysis['fact_check_result']['diagnostics']['result_cache_hit'] = true;
+        $analysis['fact_check_result']['diagnostics']['api_usage'] = $analysis['signals']['openai_usage'];
+        $analysis['fact_check_result']['diagnostics']['api_budget'] = app(ReportApiBudget::class)->snapshot();
         unset($analysis['signals']['analysis_progress'], $analysis['signals']['ai_usage'], $analysis['signals']['token_usage'], $analysis['signals']['usage']);
         $attributes = [
             'user_id' => $user->id,

@@ -30,6 +30,12 @@ class MediaAnalysisReport
         if (in_array('input_quality_or_composition_limited', $reasons, true)) {
             $basis .= 'The uploaded file is compressed, small, or appears to be a screenshot/composite, so the visible interface, text, and embedded image may affect screening reliability. ';
         }
+        if (in_array('primary_detector_abstained', $reasons, true)) {
+            $basis .= 'The primary detector withheld an origin decision. ';
+        }
+        if (in_array('input_inspection_unavailable', $reasons, true)) {
+            $basis .= 'The original file could not be inspected reliably. ';
+        }
 
         return $basis
             ."The {$subject}'s origin therefore remains inconclusive: this result does not establish either AI generation or human origin. "
@@ -69,12 +75,11 @@ class MediaAnalysisReport
         $minimumClassScore = (float) config('services.ai_origin.minimum_class_score', .9);
         $rawAiScore = $media['fake_probability'] ?? null;
         $derivedUncertain = $completed
-            && ($media['media_type'] ?? 'image') === 'image'
-            && is_numeric($rawAiScore)
-            && is_finite((float) $rawAiScore)
-            && max((float) $rawAiScore, 1 - (float) $rawAiScore) < $minimumClassScore;
+            && (! is_numeric($rawAiScore) || ! is_finite((float) $rawAiScore) || $rawAiScore < 0 || $rawAiScore > 1
+                || ! in_array($media['label'] ?? null, ['fake', 'real'], true)
+                || (($media['label'] ?? '') === 'fake' ? (float) $rawAiScore : 1 - (float) $rawAiScore) < $minimumClassScore);
         $uncertain = $completed && (($media['origin_policy']['inconclusive'] ?? false) === true || $derivedUncertain);
-        if ($completed && ($media['media_type'] ?? 'image') === 'image') {
+        if ($completed) {
             $media['origin_policy'] = array_replace([
                 'version' => 'origin-selective-v1',
                 'minimum_class_score' => $minimumClassScore,

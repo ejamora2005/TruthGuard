@@ -38,7 +38,6 @@ class OpenAiWebSearch
         $timeout = min(max(1, (int) config('fact_check.web_search.timeout', 20)), max(1, (int) floor($remaining - 6)));
         $query = implode(' ; ', array_slice(array_values(array_filter(array_map('trim', $queries))), 0, 2));
         try {
-            $budget->providerRequests++;
             $response = $this->transport->post([
                 'model' => $model,
                 ...(preg_match('/^gpt-5\.[24](?:-|$)/', $model) ? ['reasoning' => ['effort' => 'none']] : []),
@@ -57,7 +56,7 @@ class OpenAiWebSearch
                     (int) config('services.openai.max_completion_tokens', 1400))),
             ], $timeout, fn () => max(0, $budget->remaining() - 6));
             $metadata['request_attempts'] = $this->transport->attempts;
-            $budget->providerRequests += max(0, count($this->transport->attempts) - 1);
+            $budget->providerRequests += count($this->transport->attempts);
             $data = $response->json();
             $metadata['http_status'] = $response->status();
             $metadata['content_type'] = $response->header('Content-Type');
@@ -66,8 +65,7 @@ class OpenAiWebSearch
             }
             $metadata['response_status'] = $data['status'] ?? null;
             $metadata['response_fields'] = array_keys($data);
-            $metadata['usage'] = array_filter(array_intersect_key((array) ($data['usage'] ?? []),
-                array_flip(['input_tokens', 'output_tokens', 'total_tokens'])), 'is_numeric');
+            $metadata['usage'] = TokenUsage::attempts($this->transport->attempts, (array) ($data['usage'] ?? []));
             if (! $response->successful()) {
                 $metadata['sanitized_error'] = $this->safeError($data, $key);
 
@@ -157,9 +155,14 @@ class OpenAiWebSearch
             return ['status' => preg_match('/timed? out|timeout|cURL error 28/i', $error->getMessage()) ? 'timeout' : 'network_failure',
                 'candidates' => [], 'metadata' => $metadata];
         } catch (\Throwable $error) {
+            $metadata['request_attempts'] = $this->transport->attempts;
+            if ($this->transport->attempts !== []) {
+                $metadata['usage'] = TokenUsage::attempts($this->transport->attempts);
+                $budget->providerRequests += count($this->transport->attempts);
+            }
             $metadata['sanitized_error'] = $error::class;
 
-            return ['status' => 'request_failed', 'candidates' => [], 'metadata' => $metadata];
+            return ['status' => $error instanceof ReportBudgetExceeded ? 'report_budget_exhausted' : 'request_failed', 'candidates' => [], 'metadata' => $metadata];
         }
     }
 

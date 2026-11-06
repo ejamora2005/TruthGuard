@@ -3,6 +3,7 @@
 namespace App\Services\Detections\Evidence;
 
 use App\Services\Detections\AssessmentVerdict;
+use App\Services\Detections\FactCheckClaimMatcher;
 use App\Services\Detections\ResultWording;
 use App\Services\Detections\SubmissionTask;
 use Illuminate\Support\Arr;
@@ -21,6 +22,8 @@ class EvidenceJudge
 
     private array $completedReviews = [];
 
+    private array $reviewedSources = [];
+
     public int $duplicateReviewsSkipped = 0;
 
     public function __construct(private readonly StructuredAnalysis $model, private readonly ArticleSearch $search) {}
@@ -29,6 +32,7 @@ class EvidenceJudge
     {
         $this->reviewScopes = $this->contextFindings = $this->contextualSources = $this->completedReviews = [];
         $this->wordingCandidates = [];
+        $this->reviewedSources = [];
         $this->duplicateReviewsSkipped = 0;
     }
 
@@ -43,7 +47,35 @@ class EvidenceJudge
             return [];
         }
         // Share the input budget across sources; never hide a partial reading.
-        $sources = array_map(fn ($s) => Arr::only($s, ['id', 'url', 'title', 'name', 'source_type', 'published_at', 'updated_at', 'possible_copy_of', 'text']), $sources);
+        $sources = array_map(fn ($s) => Arr::only($s, ['id', 'url', 'title', 'name', 'source_type', 'published_at', 'updated_at', 'possible_copy_of', 'text', 'reviewed_claim', 'review_rating']), $sources);
+        $allSources = $sources;
+        $scope = hash('sha256', json_encode([$reviewable, $cutoff, $request], JSON_THROW_ON_ERROR));
+        $previousRows = [];
+        $previousFindings = [];
+        $pendingSources = [];
+        $sourceKeys = [];
+        $reusedSources = false;
+        foreach ($sources as $source) {
+            $key = hash('sha256', $scope.json_encode($source, JSON_THROW_ON_ERROR));
+            $sourceKeys[$source['id']] = $key;
+            if (isset($this->reviewedSources[$key])) {
+                $reusedSources = true;
+                $previousRows = array_merge($previousRows, $this->reviewedSources[$key]);
+                foreach ($this->reviewedSources[$key] as $row) {
+                    $previousFindings[] = Arr::only($source, ['id', 'name', 'published_at', 'updated_at'])
+                        + Arr::only($row, ['claim_id', 'stance', 'excerpt', 'explanation']);
+                }
+            } else {
+                $pendingSources[] = $source;
+            }
+        }
+        if ($reusedSources) {
+            $this->duplicateReviewsSkipped++;
+        }
+        if ($pendingSources === []) {
+            return $previousRows;
+        }
+        $sources = $pendingSources;
         $string = ['type' => 'string'];
         $matches = StructuredAnalysis::object(array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], [
             'type' => 'boolean',
@@ -90,12 +122,17 @@ class EvidenceJudge
         $input = ['claims' => array_map(fn ($c) => Arr::except($c, ['submission_context', 'relationships', 'outcome']), $reviewable),
             'submission_contexts' => array_values(array_unique(array_filter(array_column($reviewable, 'submission_context')))),
             'sources' => $sources, 'evaluation_cutoff' => $cutoff, 'requested_analysis' => $request,
+            'previous_findings' => $previousFindings,
             'context_rules' => ($questionFocused
                 ? 'The target is the factual candidate in the user question, not a poster heading. Only consider RELATED_STATUS if the claim is marked requires_context for a genuinely missing material detail. '
                 : 'For an unclear/rhetorical heading or a factual heading marked requires_context with no specific asserted outcome, RELATED_STATUS needs a passage directly naming the same event and its dated status; it supplies context only and never a verdict. ')
                 .'Return other context_findings only when a specific reviewed passage establishes the exact submitted content is misleading, reused with a wrong caption/location/date, expired while presented as current, or explicitly identified as satire/parody. Do not infer reuse from similar images or keywords. Copy submitted_quote exactly from the submission. OUTDATED needs an explicit expiry/valid-until passage and its literal date text in valid_until, plus present-tense/current framing in submitted_quote. An old publication date alone is insufficient. Satirical factual assertions still need ordinary claim relationships. No media-origin conclusion can be inferred here. Never invent a visual comparison, issuance time or validity period.',
-            'excerpt_rule' => 'Every decisive excerpt must be 20 to 1200 characters. A RELATED_STATUS excerpt must be 20 to 500 characters and explicitly state the named event or proposal status. review_text_truncated means only the supplied prefix was read; do not claim the rest was reviewed. possible_copy_of flags suspected shared reporting: do not count it as independent confirmation, but check material differences and conflicts.'];
+            'excerpt_rule' => 'Every decisive excerpt must be 20 to 1200 characters. A RELATED_STATUS excerpt must be 20 to 500 characters and explicitly state the named event or proposal status. review_text_truncated means only the selected passages were read; do not claim the rest was reviewed. possible_copy_of flags suspected shared reporting: do not count it as independent confirmation, but check material differences and conflicts.'];
+        $instructions .= ' Sources contain literal passages selected across each document, not necessarily its beginning. Never quote across separate passages. previous_findings are earlier validated passages from this same request, supplied to preserve conflicts and explicit supersession; do not reassess unchanged documents or invent newer status.';
         $sources = $this->fitSources($sources, $input, $instructions);
+        $seenText = array_column($sources, 'text', 'id');
+        $allSources = array_map(fn ($source) => isset($seenText[$source['id']])
+            ? $source + ['reviewed_text' => $seenText[$source['id']]] : $source, $allSources);
         $input['sources'] = $sources;
         // A second search can find no new reviewable text. Reuse only this
         // request's identical completed review; never reuse old saved verdicts.
@@ -110,17 +147,27 @@ class EvidenceJudge
         if ($data === null) {
             $this->wordingCandidates[] = null;
 
-            return [];
+            return $previousRows;
         }
         $this->wordingCandidates[] = is_array($data['wording'] ?? null) && array_is_list($data['wording']) && count($data['wording']) === 1
             ? $data['wording'][0] : null;
-        $findings = $this->validateContext($data['context_findings'], $reviewable, $sources, $cutoff);
+        // Validate against original contiguous source text, so joining selected
+        // windows cannot manufacture a quotation across unrelated passages.
+        $pendingIds = array_column($sources, 'id');
+        $findings = $this->validateContext(array_values(array_filter($data['context_findings'],
+            fn ($row) => in_array($row['source_id'] ?? null, $pendingIds, true))), $reviewable, $allSources, $cutoff);
         $this->contextualSources = array_values(array_unique(array_merge($this->contextualSources,
             array_values(array_filter($findings, fn ($row) => $row['label'] === 'RELATED_STATUS'))), SORT_REGULAR));
         $this->contextFindings = array_values(array_unique(array_merge($this->contextFindings,
             array_values(array_filter($findings, fn ($row) => $row['label'] !== 'RELATED_STATUS'))), SORT_REGULAR));
 
-        return $this->completedReviews[$identity] = $this->validate($data['relationships'], $reviewable, $sources, $cutoff);
+        $rows = $this->validate($data['relationships'], $reviewable, $allSources, $cutoff);
+        $rows = array_values(array_filter($rows, fn ($row) => in_array($row['source_id'], $pendingIds, true)));
+        foreach ($sources as $source) {
+            $this->reviewedSources[$sourceKeys[$source['id']]] = array_values(array_filter($rows, fn ($row) => $row['source_id'] === $source['id']));
+        }
+
+        return $this->completedReviews[$identity] = array_merge($previousRows, $rows);
     }
 
     private function fitSources(array $sources, array $input, string $instructions): array
@@ -128,10 +175,12 @@ class EvidenceJudge
         $limit = max(1024, (int) config('fact_check.max_model_input_bytes', 32768));
         $low = 0;
         $high = max(array_map(fn ($s) => strlen($s['text']), $sources));
-        $cut = fn ($bytes) => array_map(fn ($s) => array_replace($s, [
-            'text' => mb_strcut($s['text'], 0, $bytes, 'UTF-8'),
-            'review_text_truncated' => $bytes < strlen($s['text']),
-        ]), $sources);
+        $cut = fn ($bytes) => array_map(function ($source) use ($bytes, $input) {
+            $passages = EvidencePassages::select($source['text'], $input['claims'], $bytes);
+
+            return array_replace($source, ['text' => implode("\n\n", $passages),
+                'review_text_truncated' => $bytes < strlen($source['text'])]);
+        }, $sources);
         // Measure the actual JSON encoding used by StructuredAnalysis, including
         // escaped newlines/slashes, Unicode, request metadata and instructions.
         while ($low < $high) {
@@ -163,6 +212,7 @@ class EvidenceJudge
             $source = $sources->get($row['source_id']);
             if (! $claim || ! $source || ! $row['exact_subject_match'] || trim($row['explanation']) === ''
                 || mb_strlen($row['excerpt']) < 20 || mb_strlen($row['excerpt']) > 1200 || ! str_contains($source['text'], $row['excerpt'])
+                || (isset($source['reviewed_text']) && ! str_contains($source['reviewed_text'], $row['excerpt']))
                 || trim($row['submitted_quote']) === '' || ! str_contains($claim['submission_context'] ?? $claim['text'], $row['submitted_quote'])) {
                 return false;
             }
@@ -350,11 +400,22 @@ class EvidenceJudge
             $excerpt = trim($row['excerpt']);
             $decisive = in_array($row['stance'], ['supporting', 'contradicting'], true);
             $reason = null;
-            if (mb_strlen($excerpt) < 20 || mb_strlen($excerpt) > 1200 || ! str_contains($source['text'], $excerpt)) {
+            if (mb_strlen($excerpt) < 20 || mb_strlen($excerpt) > 1200 || ! str_contains($source['text'], $excerpt)
+                || (isset($source['reviewed_text']) && ! str_contains($source['reviewed_text'], $excerpt))) {
                 $reason = 'The cited excerpt could not be matched to a sufficiently specific, bounded passage in the retrieved article.';
             }
             if ($decisive && (in_array(false, $row['matches'], true) || $row['basis'] === 'background')) {
                 $reason = 'The article does not address all material parts of the same claim.';
+            }
+            if ($decisive && $row['basis'] === 'fact_check' && filled($source['reviewed_claim'] ?? null)
+                && app(FactCheckClaimMatcher::class)->assess($claim['text'], $source['reviewed_claim'])['level'] !== 'exact') {
+                $reason = 'The published fact-check rating addresses a materially different claim.';
+            }
+            if ($decisive && preg_match('/\b(?:denies|denied|denial|itinanggi|pinabulaanan)\b/iu', $excerpt)
+                && ! preg_match('/\b(?:denies|denied|denial|itinanggi|pinabulaanan)\b/iu', $claim['text'])
+                && ! preg_match('/\b(?:record|document|docket|court)\b.{0,25}\b(?:denies|denied)\b/iu', $excerpt)
+                && ! preg_match('/\b(?:records? (?:show|confirm|establish)|court (?:ruled|held|ordered)|docket (?:shows|records)|documents? (?:show|confirm|establish))\b/iu', $excerpt)) {
+                $reason = 'A denial by an interested party does not independently establish the underlying facts.';
             }
             if ($decisive && preg_match('/\b(?:ruled|ruling|struck down|declared unconstitutional|nagpasya|pinawalang-bisa)\b/iu', $claim['text'])
                 && preg_match('/\b(?:petition|challenge|challenged|asked the court|pending|hinamon)\b/iu', $excerpt)
@@ -388,6 +449,7 @@ class EvidenceJudge
                 if ($id !== $source['id'] && $older && $source['published_at'] && $older['published_at']
                     && strtotime($source['published_at']) > strtotime($older['published_at'])
                     && trim($row['supersession_excerpt']) !== '' && str_contains($source['text'], $row['supersession_excerpt'])
+                    && (! isset($source['reviewed_text']) || str_contains($source['reviewed_text'], $row['supersession_excerpt']))
                     && preg_match('/\b(?:supersed|replac|repeal|correct|revers|amend|rescind|reset|reschedul|postpon|cancel|binawi|pinalitan|itinama)/iu', $row['supersession_excerpt'])) {
                     $superseded[] = $id;
                 }

@@ -27,6 +27,7 @@ class PhotoQuestionWorkflowTest extends TestCase
         Http::preventStrayRequests();
         config()->set(['fact_check.enhanced_enabled' => true, 'fact_check.queue_enabled' => false,
             'fact_check.web_search.enabled' => false, 'services.openai.analysis_enabled' => false,
+            'services.deepfake_cnn.enabled' => false,
             'services.filipino_news_classifier.enabled' => false, 'services.google_fact_check.key' => 'fixture',
             'services.gnews.key' => '', 'services.newsapi.key' => '', 'playwright.related_posts_inline' => false]);
         Http::fake(['factchecktools.googleapis.com/*' => Http::response(['claims' => []], 200)]);
@@ -71,8 +72,8 @@ class PhotoQuestionWorkflowTest extends TestCase
     {
         $d = $this->mediaReport();
         $saved = $d->fact_check_result;
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $saved['verdict']);
-        $this->assertEqualsWithDelta(.9, $saved['score']['value'], .00001);
+        $this->assertSame('INCONCLUSIVE', $saved['verdict']);
+        $this->assertNull($saved['score']['value']);
         $saved['request'] = ['question' => 'was this real?', 'tasks' => ['media'], 'selected_mode' => 'auto', 'resolved_task' => 'media'];
         $d->update(['fact_check_result' => $saved]);
         $this->get(route('detections.result', $d))->assertOk()->assertSee('Fact-check verdict')

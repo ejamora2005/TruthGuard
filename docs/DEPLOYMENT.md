@@ -38,6 +38,16 @@ docker compose --env-file .env.production logs --tail=100 app worker scheduler
 
 In Dokploy, route the existing domain to Compose service `app` on container port `80`, keep HTTPS and the existing certificate resolver, and verify `/up`, registration, login, password reset email, OAuth, a fact check, media upload, and the admin dashboard. Align proxy upload limits to 25 MB and upstream request timeouts to 300 seconds because verification currently runs synchronously. HTTPS is required for the production secure session cookie; for an isolated local HTTP smoke test, run with `-f compose.yaml -f compose.local.yaml`, use `SESSION_SECURE_COOKIE=false`, and set an HTTP `APP_URL` in a separate environment file.
 
+Set fact-check limits in the TruthGuard Compose service's **Environment** editor
+in Dokploy, replacing existing entries rather than adding duplicate keys. The
+shared `x-app-environment` block forwards `FACT_CHECK_MAX_MODEL_CALLS`,
+`FACT_CHECK_REPORT_MAX_API_REQUESTS`, `FACT_CHECK_REPORT_STOP_AFTER_TOKENS`, and
+`FACT_CHECK_MAX_CLAIMS` to the app, both workers, and scheduler. With the updated
+application code, `0` disables the respective fixed cap. Save and redeploy the
+Compose stack with the updated code and `compose.yaml`; container startup rebuilds
+Laravel's configuration cache. The old application code does not support these
+zero semantics.
+
 Do not run the default database seeder in production: it contains demo accounts and is deliberately blocked. Register your real account, then promote that specific verified account using `php artisan tinker` in the app container and its `is_admin` field. If migrating existing data, audit/remove demo accounts (`admin@truthguard.local` and `test@example.com`) and reset any reused passwords before exposure. A fresh Docker database does not import your Laragon database; plan and verify a separate data migration if you need its contents.
 
 ## Updates and operations

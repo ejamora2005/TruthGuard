@@ -32,7 +32,8 @@ class MediaAnalysisWorkflowTest extends TestCase
         config()->set(['fact_check.enhanced_enabled' => true, 'fact_check.queue_enabled' => false,
             'services.openai.analysis_enabled' => false, 'services.filipino_news_classifier.enabled' => false,
             'services.live_verification.enabled' => false, 'playwright.related_posts_inline' => false,
-            'services.ai_origin.enabled' => true]);
+            'services.ai_origin.enabled' => true, 'services.deepfake_cnn.enabled' => false,
+            'services.ai_origin.require_detector_agreement' => true]);
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn([]);
     }
 
@@ -69,15 +70,15 @@ class MediaAnalysisWorkflowTest extends TestCase
         ])->assertSessionHasNoErrors();
         $detection = Detection::sole();
         $result = $detection->fact_check_result;
-        $this->assertSame('LIKELY_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame('fixture-model', $result['media_assessment']['model_version']);
         $this->assertSame('not_requested', $result['claim_assessment']['status']);
         $this->assertNull($result['confidence']);
-        $this->get(route('detections.result', $detection))->assertOk()->assertSee('Likely AI-Generated')->assertDontSee('Missing Context')
+        $this->get(route('detections.result', $detection))->assertOk()->assertSee('Inconclusive')->assertDontSee('Missing Context')
             ->assertDontSee('unsuitable short input')->assertSee('Retry media analysis');
         // GET/JSON reads the saved output; the detector mock is called exactly once.
         $this->assertSame(0.8, $result['media_assessment']['fake_probability']);
-        $this->getJson(route('detections.result', $detection))->assertJsonPath('verdict', 'LIKELY_AI_GENERATED')
+        $this->getJson(route('detections.result', $detection))->assertJsonPath('verdict', 'INCONCLUSIVE')
             ->assertJsonPath('media_assessment.label', 'fake')
             ->assertJsonMissingPath('media_assessment.fake_probability');
     }
@@ -93,7 +94,7 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->actingAs(User::factory()->create())->post(route('detections.store'), ['media_file' => $this->upload()])
             ->assertSessionHasNoErrors();
         $detection = Detection::sole();
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $detection->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $detection->fact_check_result['verdict']);
         $this->assertSame($extraction, $detection->signals['submission_extraction'][0]);
         $this->get(route('detections.result', $detection))->assertOk()->assertSee('Status: API credits exhausted')
             ->assertDontSee('Status: Used for this report');
@@ -109,9 +110,9 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->mock(FilipinoNewsClassifier::class)->shouldNotReceive('inspect');
         $this->actingAs(User::factory()->create())->post(route('detections.store'), ['media_file' => $this->upload()]);
         $result = Detection::sole()->fact_check_result;
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame('not_requested', $result['claim_assessment']['status']);
-        $this->assertStringContainsString('does not prove', $result['summary']);
+        $this->assertStringContainsString('does not establish either AI generation or human origin', $result['summary']);
         $this->assertSame('review', Detection::sole()->verdict);
     }
 
@@ -134,11 +135,11 @@ class MediaAnalysisWorkflowTest extends TestCase
             'media_file' => $this->upload(), 'caption_text' => 'Is this AI-generated? Is this statement true?',
         ])->assertSessionHasNoErrors();
         $result = Detection::sole()->fact_check_result;
-        $this->assertSame('LIKELY_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame('Missing Context', $result['claim_assessment']['result']['assessment_label']);
         $this->assertSame('unavailable', $result['claim_assessment']['result']['trained_model']['status']);
         $this->assertStringNotContainsString('Check whether', $result['claim_assessment']['result']['claim']);
-        $this->get(route('detections.result', Detection::sole()))->assertOk()->assertSeeInOrder(['Likely AI-Generated', 'Factual claim assessment', 'Missing Context']);
+        $this->get(route('detections.result', Detection::sole()))->assertOk()->assertSeeInOrder(['Inconclusive', 'Factual claim assessment', 'Missing Context']);
     }
 
     public function test_text_exception_cannot_erase_successful_media_analysis(): void
@@ -146,7 +147,7 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->detector();
         $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->andThrow(new \RuntimeException('fixture text outage'));
         $this->actingAs(User::factory()->create())->post(route('detections.store'), ['media_file' => $this->upload()])->assertSessionHasNoErrors();
-        $this->assertSame('LIKELY_AI_GENERATED', Detection::sole()->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', Detection::sole()->fact_check_result['verdict']);
         $this->assertSame('not_requested', Detection::sole()->fact_check_result['claim_assessment']['status']);
     }
 
@@ -169,7 +170,7 @@ class MediaAnalysisWorkflowTest extends TestCase
 
         $detection = Detection::sole();
         $result = $detection->fact_check_result;
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
         $this->assertSame('not_requested', $result['claim_assessment']['status']);
         $this->assertSame('claim_detected', $result['media_claim_notice']['status']);
         $this->assertSame($visibleClaim, $result['media_claim_notice']['text']);
@@ -190,14 +191,14 @@ class MediaAnalysisWorkflowTest extends TestCase
         $result = Detection::sole()->fact_check_result;
         $this->assertSame('claim', $result['primary_task']);
         $this->assertSame('ANALYSIS_UNAVAILABLE', $result['verdict']);
-        $this->assertSame('LIKELY_AI_GENERATED', $result['secondary_assessments'][0]['verdict']);
+        $this->assertSame('INCONCLUSIVE', $result['secondary_assessments'][0]['verdict']);
         $this->assertSame('partial', $result['processing_status']);
         $this->assertSame(['media'], $result['completed_tasks']);
         $this->getJson(route('detections.result', Detection::sole()))
-            ->assertJsonPath('secondary_assessments.0.verdict', 'LIKELY_AI_GENERATED')
+            ->assertJsonPath('secondary_assessments.0.verdict', 'INCONCLUSIVE')
             ->assertJsonPath('secondary_assessments.0.processing_status', 'completed');
         $this->get(route('detections.result', Detection::sole()))->assertOk()
-            ->assertSee('Content verification report')->assertSee('Likely AI-Generated')->assertDontSee('internal outage');
+            ->assertSee('Content verification report')->assertSee('Inconclusive')->assertDontSee('internal outage');
     }
 
     public function test_missing_backend_original_produces_processing_failure_even_with_a_saved_preview_path(): void
@@ -218,8 +219,7 @@ class MediaAnalysisWorkflowTest extends TestCase
             $job->failed($error);
         }
         $this->assertSame('failed', $detection->fresh()->processing_status);
-        $this->get(route('detections.result', $detection))
-            ->assertRedirect(route('detections.create', ['pending' => $detection->id]));
+        $this->get(route('detections.result', $detection))->assertOk()->assertSee('Analysis Unavailable');
         $this->getJson(route('detections.result', $detection))->assertJsonPath('processing_status', 'failed');
         Http::assertNothingSent();
     }
@@ -238,7 +238,7 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->detector();
         $this->post(route('detections.retry-media', $detection))->assertRedirect(route('detections.result', $detection));
         $this->assertSame(1, Detection::count());
-        $this->assertSame('LIKELY_AI_GENERATED', $detection->fresh()->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $detection->fresh()->fact_check_result['verdict']);
     }
 
     public function test_queued_upload_uses_saved_bytes_and_preserves_explicit_media_task(): void
@@ -254,7 +254,7 @@ class MediaAnalysisWorkflowTest extends TestCase
 
             return true;
         });
-        $this->assertSame('LIKELY_AI_GENERATED', Detection::sole()->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', Detection::sole()->fact_check_result['verdict']);
     }
 
     public function test_unavailable_runtime_reports_failure_instead_of_falling_back_to_a_fact_verdict(): void
@@ -280,8 +280,8 @@ class MediaAnalysisWorkflowTest extends TestCase
         }
         $reports = Detection::orderBy('id')->get();
         $this->assertCount(2, $reports);
-        $this->assertSame('LIKELY_AI_GENERATED', $reports[0]->fact_check_result['verdict']);
-        $this->assertSame('LIKELY_NOT_AI_GENERATED', $reports[1]->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $reports[0]->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', $reports[1]->fact_check_result['verdict']);
         $this->assertNull($reports[1]->reused_from_detection_id);
     }
 
@@ -293,6 +293,6 @@ class MediaAnalysisWorkflowTest extends TestCase
         $this->actingAs(User::factory()->create())->post(route('detections.store'), [
             'media_file' => $this->upload(), 'caption_text' => SubmissionTask::MEDIA_INSTRUCTION,
         ])->assertSessionHasNoErrors();
-        $this->assertSame('LIKELY_AI_GENERATED', Detection::sole()->fact_check_result['verdict']);
+        $this->assertSame('INCONCLUSIVE', Detection::sole()->fact_check_result['verdict']);
     }
 }

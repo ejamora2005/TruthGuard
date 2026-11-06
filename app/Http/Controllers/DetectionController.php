@@ -5,17 +5,18 @@ namespace App\Http\Controllers;
 use App\Jobs\AnalyzeDetectionEvidence;
 use App\Models\Detection;
 use App\Services\Automation\RelatedPostScraper;
+use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Detections\DetectionPipeline;
 use App\Services\Detections\DetectionRetentionService;
 use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\FactCheckResultService;
 use App\Services\Detections\GoogleFactCheckFeedService;
-use App\Services\Detections\LiveVerificationEvidenceService;
 use App\Services\Detections\KnownFactCheckCatalog;
+use App\Services\Detections\LiveVerificationEvidenceService;
 use App\Services\Detections\OpenAiDetectionReportService;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\ReviewedClaimLookup;
 use App\Services\Detections\SubmissionInput;
-use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Detections\TrustedFactCheckVerdictResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -60,8 +61,7 @@ class DetectionController extends Controller
         Request $request,
         DetectionRetentionService $retentionService,
         ActiveDetectionManager $activeDetectionManager,
-    ): View|RedirectResponse
-    {
+    ): View|RedirectResponse {
         if (! $request->user()->isAdmin()) {
             try {
                 $retentionService->archiveExpired($request->user()->id);
@@ -240,7 +240,6 @@ class DetectionController extends Controller
             $payload = is_array($selectedDetection->fact_check_result)
                 ? ReportAnswer::forPresentation($selectedDetection->fact_check_result)
                 : ReportAnswer::forLegacyDetection($selectedDetection);
-            $payload['processing_status'] = 'completed';
 
             return response()->json($payload);
         }
@@ -259,6 +258,11 @@ class DetectionController extends Controller
      */
     private function restoreKnownFactCheck(Detection $detection): Detection
     {
+        // A catalogue shortcut must not replace newly researched evidence,
+        // especially a fresh assessment that found conflicting reviews.
+        if (data_get($detection->fact_check_result, 'diagnostics.pipeline_version') === EvidenceVerificationService::VERSION) {
+            return $detection;
+        }
         if ((bool) data_get($detection->fact_check_result, 'diagnostics.known_fact_check')
             && data_get($detection->fact_check_result, 'diagnostics.known_fact_check_version') === KnownFactCheckCatalog::VERSION) {
             return $detection;
@@ -273,13 +277,15 @@ class DetectionController extends Controller
             data_get($extraction, 'reconstructed_text'),
             data_get($extraction, 'visible_text'),
         ]));
-        $knownResult = \App\Services\Detections\ReviewedClaimLookup::lookup($text)
+        $knownResult = ReviewedClaimLookup::lookup($text)
             ?? KnownFactCheckCatalog::match($text);
         if ($knownResult === null) {
             foreach (['analysis_text', 'reconstructed_text', 'visible_text'] as $key) {
                 $candidate = (string) data_get($extraction, $key, '');
-                $knownResult = \App\Services\Detections\ReviewedClaimLookup::lookup($candidate);
-                if ($knownResult !== null) break;
+                $knownResult = ReviewedClaimLookup::lookup($candidate);
+                if ($knownResult !== null) {
+                    break;
+                }
                 if (KnownFactCheckCatalog::matchesReviewedVariant($candidate)) {
                     $knownResult = KnownFactCheckCatalog::match($candidate);
                     break;
@@ -292,7 +298,9 @@ class DetectionController extends Controller
         }
         if (data_get($detection->fact_check_result, 'diagnostics.reviewed_claim_id') === data_get($knownResult, 'diagnostics.reviewed_claim_id')
             && data_get($detection->fact_check_result, 'summary') === $knownResult['summary']
-            && data_get($detection->fact_check_result, 'verdict') === $knownResult['verdict']) return $detection;
+            && data_get($detection->fact_check_result, 'verdict') === $knownResult['verdict']) {
+            return $detection;
+        }
         $knownResult['diagnostics']['api_usage'] = data_get($detection->fact_check_result, 'diagnostics.api_usage',
             data_get($detection->signals, 'openai_usage', $knownResult['diagnostics']['api_usage']));
 
@@ -459,7 +467,16 @@ class DetectionController extends Controller
 
                 return redirect()->route('detections.result', $detection)->with('status', 'Assessment retry queued. Your saved result will be replaced after the new assessment finishes.');
             }
-            $pipeline->run($detection->user, $context, $file, $detection);
+            $previousStatus = $detection->processing_status;
+            $detection->forceFill(['processing_status' => 'processing'])->saveQuietly();
+            try {
+                $pipeline->run($detection->user, $context, $file, $detection);
+            } finally {
+                // Release a synchronous retry that failed before persistence,
+                // while preserving a cancellation or a successfully saved result.
+                Detection::whereKey($detection->id)->where('processing_status', 'processing')
+                    ->update(['processing_status' => $previousStatus]);
+            }
         } finally {
             $lock->release();
         }

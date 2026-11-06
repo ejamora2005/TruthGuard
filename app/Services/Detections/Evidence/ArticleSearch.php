@@ -2,11 +2,14 @@
 
 namespace App\Services\Detections\Evidence;
 
+use App\Models\PublicClaimReview;
+use App\Services\Detections\FactCheckClaimMatcher;
 use App\Services\Detections\FactCheckEvidencePolicy;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class ArticleSearch
@@ -17,7 +20,7 @@ class ArticleSearch
         private readonly OpenAiWebSearch $webSearch,
     ) {}
 
-    public function retrieve(array $queries, RetrievalBudget $budget, string $cutoff, array $records = [], bool $reserveNextRound = false, ?int $candidateCeiling = null): array
+    public function retrieve(array $queries, RetrievalBudget $budget, string $cutoff, array $records = [], bool $reserveNextRound = false, ?int $candidateCeiling = null, string $discovery = 'all'): array
     {
         $budget->historicalCutoff ??= Carbon::parse($cutoff)->lt(now()->subMinute());
         if (! config('services.live_verification.enabled', true)) {
@@ -25,10 +28,23 @@ class ArticleSearch
 
             return $records;
         }
+        foreach ($this->collectedReviews($budget->researchContext['claims'] ?? [], $cutoff) as $item) {
+            $key = $this->canonicalUrl($item['url']);
+            if ($key !== null) {
+                $records[$key] = isset($records[$key]) ? array_replace($records[$key], array_intersect_key($item,
+                    array_flip(['reviewed_claim', 'review_rating', 'name']))) : $item;
+            }
+        }
         $limit = max(0, (int) config('fact_check.retrieval.max_candidates', 40));
         $limit = $candidateCeiling === null ? $limit : min($limit, max(0, $candidateCeiling));
         $searchCeiling = max(0, (int) config('fact_check.retrieval.max_search_requests', 12));
         $overallSearchCeiling = $searchCeiling;
+        if ($discovery === 'providers' && $searchCeiling > 1 && config('fact_check.web_search.enabled', true) && filled(config('services.openai.key'))) {
+            // Leave one discovery slot for a paid fallback, only if review of
+            // ordinary provider documents leaves a real evidence gap.
+            $searchCeiling--;
+            $overallSearchCeiling = $searchCeiling;
+        }
         $pageCeiling = max(0, (int) config('fact_check.retrieval.max_pages', 12));
         if ($reserveNextRound) {
             $searchCeiling = $budget->searches + (int) ceil(max(0, $searchCeiling - $budget->searches) / 2);
@@ -40,7 +56,7 @@ class ArticleSearch
                 $searchCeiling = min($overallSearchCeiling, max($searchCeiling, $budget->searches + 2));
             }
         }
-        if ($queries !== [] && count($records) < $limit && $budget->searches < $searchCeiling) {
+        if ($discovery !== 'providers' && $queries !== [] && count($records) < $limit && $budget->searches < $searchCeiling) {
             $web = $this->webSearch->discover($queries, $budget, $cutoff);
             $status = $web['status'];
             if ($status !== 'skipped' || ! isset($budget->providers['openai_web_search'])) {
@@ -96,7 +112,7 @@ class ArticleSearch
         if ($records !== []) {
             $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, 2, $limit);
         }
-        foreach ($queries as $index => $query) {
+        foreach ($discovery === 'web' ? [] : $queries as $index => $query) {
             foreach (['google_fact_check', 'gnews', 'newsapi'] as $provider) {
                 if (count($records) >= $limit || $budget->remaining() < 8 || $budget->searches >= $searchCeiling) {
                     break 2;
@@ -124,6 +140,15 @@ class ArticleSearch
                         if (isset($records[$key])) {
                             $rejected['duplicate_url']++;
                             $records[$key]['discovered_by'] = array_values(array_unique([...($records[$key]['discovered_by'] ?? [$records[$key]['provider']]), $provider]));
+                            // Discovery order must not discard an exact review's
+                            // published rating when web search found its URL first.
+                            if ($provider === 'google_fact_check') {
+                                $records[$key] = array_replace($records[$key], array_intersect_key($item,
+                                    array_flip(['reviewed_claim', 'review_rating', 'claim_date', 'name'])));
+                                if ($this->policy->isFactCheckUrl($item['url'])) {
+                                    $records[$key]['source_type'] = 'fact_check';
+                                }
+                            }
 
                             continue;
                         }
@@ -164,6 +189,46 @@ class ArticleSearch
         $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, null, $limit);
 
         return $this->deduplicate($records);
+    }
+
+    /** Search every saved review locally; do not trigger feed refresh or preview inference. */
+    public function collectedReviews(array $claims, string $cutoff): array
+    {
+        if ($claims === [] || ! Schema::hasTable('public_claim_reviews')) {
+            return [];
+        }
+        $records = [];
+        $matcher = app(FactCheckClaimMatcher::class);
+        foreach (PublicClaimReview::query()->where(fn ($query) => $query->whereNull('published_at')->orWhere('published_at', '<=', $cutoff))->cursor() as $review) {
+            if (! $this->policy->isFactCheckUrl((string) $review->url)) {
+                continue;
+            }
+            $reviewed = (string) data_get($review->source_payload, 'full_claim', $review->claim);
+            if (! collect($claims)->contains(fn ($claim) => $matcher->assess((string) ($claim['text'] ?? ''), $reviewed)['level'] !== 'unrelated')) {
+                continue;
+            }
+            $key = $this->canonicalUrl($review->url);
+            $records[$key] = ['id' => 's'.substr(hash('sha256', $key), 0, 16), 'url' => $review->url,
+                'title' => (string) $review->headline, 'name' => (string) $review->publisher,
+                'source_type' => 'fact_check', 'published_at' => $review->published_at?->utc()->toIso8601String(),
+                'reviewed_claim' => $reviewed, 'review_rating' => data_get($review->source_payload, 'source_rating') ?: $review->rating,
+                'provider' => 'collected_review', 'discovered_by' => ['collected_review'], 'retrieval_status' => 'discovered'];
+        }
+
+        return $records;
+    }
+
+    /** Retrieve exact saved publisher reviews without a paid search or model call. */
+    public function prefetchExactReviews(string $claim, RetrievalBudget $budget, string $cutoff): array
+    {
+        if (! config('services.live_verification.enabled', true) || trim($claim) === '') {
+            return [];
+        }
+        $records = array_filter($this->collectedReviews([['text' => $claim]], $cutoff),
+            fn ($record) => app(FactCheckClaimMatcher::class)->assess($claim, $record['reviewed_claim'])['level'] === 'exact');
+        $this->fetchCandidates($records, $budget, $cutoff, (int) config('fact_check.retrieval.max_pages', 50));
+
+        return $records;
     }
 
     private function fetchCandidates(array &$records, RetrievalBudget $budget, string $cutoff, int $pageCeiling, ?int $maxDocuments = null, ?int $candidateCeiling = null): void
@@ -529,6 +594,10 @@ class ArticleSearch
         $record['source_type'] = in_array($resolvedType, ['official_government', 'institution', 'research'], true)
             ? $resolvedType : ($record['source_type'] === 'fact_check' && $resolvedType !== 'unapproved' ? 'fact_check' : $resolvedType);
         $record['text'] = $page['text'];
+        if ($this->policy->isFactCheckUrl($page['url']) && count($page['claim_reviews'] ?? []) === 1) {
+            $record = array_replace($record, $page['claim_reviews'][0]);
+            $record['source_type'] = 'fact_check';
+        }
         $record['content_hash'] = $page['content_hash'] ?? null;
         $record['text_truncated'] = $page['text_truncated'] ?? false;
         $record['content_type'] = $page['content_type'] ?? null;
@@ -556,6 +625,12 @@ class ArticleSearch
             foreach ($seen as $other) {
                 $union = count(array_unique(array_merge($tokens, $other['tokens'])));
                 if ($record['content_hash'] && $record['content_hash'] === $other['hash']) {
+                    if (filled($record['review_rating'] ?? null) && filled($other['rating'])
+                        && $record['review_rating'] !== $other['rating']) {
+                        $records[$key]['possible_copy_of'] = $other['id'];
+
+                        continue;
+                    }
                     $records[$key]['retrieval_status'] = 'duplicate';
                     $records[$key]['duplicate_of'] = $other['id'];
 
@@ -567,7 +642,7 @@ class ArticleSearch
                     $records[$key]['possible_copy_of'] = $other['id'];
                 }
             }
-            $seen[] = ['id' => $record['id'], 'hash' => $record['content_hash'], 'tokens' => $tokens];
+            $seen[] = ['id' => $record['id'], 'hash' => $record['content_hash'], 'tokens' => $tokens, 'rating' => $record['review_rating'] ?? null];
         }
 
         return $records;
