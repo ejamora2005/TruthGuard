@@ -37,7 +37,8 @@ class AssessmentScoreBadgeTest extends TestCase
         $before = $saved;
         $badge = AssessmentScore::badge($saved);
         $this->assertSame('AI-signal score: 55%', $badge['title']);
-        $this->assertSame('Below the 90% decision threshold; origin remains inconclusive', $badge['description']);
+        $this->assertSame('', $badge['description']);
+        $this->assertStringNotContainsString('90%', $badge['detail']);
         $this->assertStringContainsString('not the probability', $badge['detail']);
         $this->assertSame($before, $saved);
         $this->assertSame('INCONCLUSIVE', $saved['verdict']);
@@ -51,7 +52,8 @@ class AssessmentScoreBadgeTest extends TestCase
         $saved['media_assessment']['detector_disagreement'] = true;
         $badge = AssessmentScore::badge($saved);
         $this->assertStringContainsString('>99%', $badge['title']);
-        $this->assertSame('Detectors disagree; AI origin remains inconclusive', $badge['description']);
+        $this->assertSame('', $badge['description']);
+        $this->assertStringContainsString('Detectors disagree', $badge['detail']);
         $this->assertStringNotContainsString('Below', $badge['description']);
         $public = ReportAnswer::forPresentation($saved);
         $this->assertSame('INCONCLUSIVE', $public['verdict']);
@@ -63,7 +65,8 @@ class AssessmentScoreBadgeTest extends TestCase
         $saved = $this->media(.01, true);
         $saved['media_assessment']['origin_policy']['reasons'] = ['input_quality_or_composition_limited'];
         $badge = AssessmentScore::badge($saved);
-        $this->assertStringContainsString('Input quality', $badge['description']);
+        $this->assertSame('', $badge['description']);
+        $this->assertStringContainsString('Input quality', $badge['detail']);
         $this->assertStringNotContainsString('Below', $badge['description']);
     }
 

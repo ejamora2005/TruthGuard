@@ -143,7 +143,7 @@ class AssessmentScore
                     ? 1 - (float) $media['fake_probability'] : (float) $media['fake_probability'];
                 $reasons = $media['origin_policy']['reasons'] ?? [];
                 $description = match (true) {
-                    $classScore < $minimum => 'Below the '.round($minimum * 100).'% decision threshold; origin remains inconclusive',
+                    $classScore < $minimum => 'The primary signal does not resolve AI origin',
                     in_array('detector_disagreement', $reasons, true), ($media['detector_disagreement'] ?? false) === true
                         => 'Detectors disagree; AI origin remains inconclusive',
                     in_array('input_quality_or_composition_limited', $reasons, true)
@@ -155,7 +155,7 @@ class AssessmentScore
                     default => 'The primary score alone does not resolve AI origin',
                 };
 
-                return ['title' => self::display($raw), 'description' => $description,
+                return ['title' => self::display($raw), 'description' => '',
                     'detail' => 'This is an uncalibrated AI-signal score, not the probability that the image is AI-generated. '.$description.'.',
                     'has_percentage' => true, 'type' => 'model_score'];
             }
