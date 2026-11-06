@@ -341,6 +341,7 @@ class ArticleSearch
         try {
             $budget->providerRequests++;
             $response = Http::acceptJson()->withHeaders($provider === 'newsapi' ? ['X-Api-Key' => $key] : [])
+                ->beforeSending(fn () => app(ReportApiBudget::class)->assertActive())
                 ->connectTimeout(min(2, max(1, $budget->remaining())))
                 ->timeout(min(max(1, $budget->remaining()), max(1, (int) config('services.'.$provider.'.timeout', 3))))
                 ->withOptions(['allow_redirects' => false, 'on_headers' => function ($r) {

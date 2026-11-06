@@ -1,5 +1,6 @@
 import './bootstrap';
 import './dialog';
+import './analysis-stop';
 import './result-speech';
 import './pwa';
 import './push-notifications';

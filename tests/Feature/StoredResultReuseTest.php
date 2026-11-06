@@ -335,6 +335,7 @@ class StoredResultReuseTest extends TestCase
         $this->travel(2)->minutes();
         $fresh = $this->submitFixture($user);
         $this->assertNull($fresh->reused_from_detection_id);
+        $fresh->update(['processing_status' => 'processing']); // The retry controller claims the report before running it.
         $retried = $this->submitFixture($user, [], $fresh);
         $this->assertSame($fresh->id, $retried->id);
         $this->assertNull($retried->reused_from_detection_id);

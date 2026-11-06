@@ -2,6 +2,8 @@
 
 namespace App\Services\Detections\Evidence;
 
+use App\Models\Detection;
+use App\Services\Detections\AnalysisStopped;
 use Illuminate\Http\Client\Events\ResponseReceived;
 
 /** Request-scoped circuit breaker, not an estimate of a provider's final bill. */
@@ -13,6 +15,28 @@ final class ReportApiBudget
 
     private ?string $blocked = null;
 
+    private ?int $detectionId = null;
+
+    private ?string $retryId = null;
+
+    public function trackDetection(?Detection $detection): void
+    {
+        $this->detectionId = $detection?->id;
+        $this->retryId = data_get($detection?->signals, 'analysis_retry.id');
+    }
+
+    public function assertActive(?Detection $detection = null): void
+    {
+        if ($this->detectionId === null) {
+            return;
+        }
+        $detection ??= Detection::select('id', 'processing_status', 'signals')->find($this->detectionId);
+        if (! $detection || $detection->processing_status !== 'processing'
+            || data_get($detection->signals, 'analysis_retry.id') !== $this->retryId) {
+            throw new AnalysisStopped('This assessment is no longer running.');
+        }
+    }
+
     public function reset(): void
     {
         $this->requests = $this->reportedTokens = 0;
@@ -21,6 +45,7 @@ final class ReportApiBudget
 
     public function beforeRequest(): void
     {
+        $this->assertActive();
         $maxRequests = max(0, (int) config('fact_check.report_budget.max_requests', 0));
         $tokenStop = max(0, (int) config('fact_check.report_budget.stop_after_tokens', 0));
         $this->blocked = match (true) {

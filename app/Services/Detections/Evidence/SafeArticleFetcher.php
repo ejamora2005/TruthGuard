@@ -48,6 +48,7 @@ class SafeArticleFetcher
                 $port = parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80;
                 $maxBytes = max(1024, (int) config('fact_check.retrieval.max_bytes', 2097152));
                 $response = Http::withHeaders(['User-Agent' => 'TruthGuardEvidence/1.0', 'Accept' => 'text/html,text/plain,application/pdf', 'Accept-Encoding' => 'identity'])
+                    ->beforeSending(fn () => app(ReportApiBudget::class)->assertActive())
                     ->connectTimeout(min(2, max(1, $budget->remaining())))
                     ->timeout(min(max(1, $budget->remaining()), max(1, (int) config('fact_check.retrieval.timeout', 5))))
                     ->withOptions([

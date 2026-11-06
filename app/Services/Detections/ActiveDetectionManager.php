@@ -7,6 +7,36 @@ use Illuminate\Support\Facades\DB;
 
 class ActiveDetectionManager
 {
+    public function stopForUser(int $detectionId, int $userId): ?Detection
+    {
+        return DB::transaction(function () use ($detectionId, $userId): ?Detection {
+            $detection = Detection::whereKey($detectionId)->where('user_id', $userId)->lockForUpdate()->first();
+            if (! $detection || ! in_array($detection->processing_status, ['queued', 'processing'], true)) {
+                return $detection;
+            }
+            $signals = $detection->signals ?? [];
+            unset($signals['analysis_progress']);
+            $signals['analysis_cancellation'] = ['reason' => 'user_stopped', 'cancelled_at' => now()->toIso8601String()];
+            if ($detection->fact_check_result !== null) {
+                // Stopping a retry preserves the original report and its usage.
+                $previousStatus = data_get($signals, 'analysis_retry.previous_status', $detection->fact_check_result['processing_status'] ?? 'completed');
+                $signals['analysis_retry']['status'] = 'cancelled';
+                $detection->forceFill(['processing_status' => in_array($previousStatus, ['completed', 'partial', 'failed', 'unsupported', 'needs_clarification'], true) ? $previousStatus : 'completed',
+                    'signals' => $signals])->saveQuietly();
+            } else {
+                $request = SubmissionTask::resolve(['caption_text' => $detection->caption_text, 'notes' => $detection->notes, 'media_type' => $detection->media_type]);
+                $result = ReportAnswer::complete(['schema_version' => 4, 'primary_task' => $request['resolved_task'],
+                    'verdict' => 'ANALYSIS_UNAVAILABLE', 'summary' => 'You stopped this fact check before it finished. No conclusion was reached.',
+                    'request' => $request, 'sources' => []]);
+                $detection->forceFill(['processing_status' => 'failed', 'signals' => $signals,
+                    'fact_check_result' => $result, 'analysis_summary' => $result['summary'],
+                    'explanation_summary' => $result['summary'], 'verdict' => 'review'])->saveQuietly();
+            }
+
+            return $detection;
+        });
+    }
+
     /**
      * Close abandoned jobs so an idle Fact Check page cannot look busy forever.
      */
@@ -35,8 +65,11 @@ class ActiveDetectionManager
 
                 // A timed-out retry must not destroy a previously saved report.
                 if ($detection->fact_check_result !== null) {
-                    if (isset($signals['analysis_retry'])) $signals['analysis_retry']['status'] = 'failed';
+                    if (isset($signals['analysis_retry'])) {
+                        $signals['analysis_retry']['status'] = 'failed';
+                    }
                     $detection->forceFill(['processing_status' => 'completed', 'signals' => $signals])->saveQuietly();
+
                     continue;
                 }
 

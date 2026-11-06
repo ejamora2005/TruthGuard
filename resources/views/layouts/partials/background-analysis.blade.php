@@ -22,10 +22,13 @@
         checking: false,
         connectionError: false,
         failures: 0,
+        stopped: false,
+        stopPromptOpen: false,
+        stopping: false,
         message: 'Your upload is saved. Checking its progress.',
         get elapsedLabel() { return Math.floor(this.elapsed / 60) + 'm ' + (this.elapsed % 60) + 's elapsed'; },
-        get complete() { return this.status === 'completed'; },
-        get failed() { return this.status === 'failed'; },
+        get complete() { return this.status === 'completed' && !this.stopped; },
+        get failed() { return this.stopped || !['queued', 'processing', 'completed'].includes(this.status); },
         dismiss() {
             this.showPrompt = false;
             if (this.complete || this.failed) this.visible = false;
@@ -35,12 +38,13 @@
             this.timer = window.setInterval(() => this.refresh(), 5000);
         },
         get statusLabel() {
+            if (this.stopped) return 'Fact check stopped';
             if (this.complete) return 'Fact check complete — open result';
             if (this.failed) return 'Fact check needs attention — open report';
             return this.stage || (this.status === 'queued' ? 'Fact check queued' : 'Fact check analysis in progress');
         },
         async refresh() {
-            if (this.checking) return;
+            if (this.checking || this.complete || this.failed) return;
             this.checking = true;
             const controller = new AbortController();
             const timeout = window.setTimeout(() => controller.abort(), 12000);
@@ -60,6 +64,7 @@
                 }
                 if (!response.ok) throw new Error('Status unavailable');
                 const data = await response.json();
+                if (this.complete || this.failed) return;
                 this.failures = 0;
                 this.connectionError = false;
                 this.elapsed = data.elapsed_seconds || 0;
@@ -67,6 +72,7 @@
                 const nextStatus = data.processing_status || (data.verdict ? 'completed' : this.status);
                 const wasPending = !this.complete && !this.failed;
                 this.status = nextStatus;
+                this.stopped = data.cancelled === true;
                 this.stage = data.stage || this.stage;
                 if (this.complete || this.failed) {
                     this.href = @js($resultUrl);
@@ -76,6 +82,7 @@
                     this.startPolling();
                 }
             } catch (error) {
+                if (this.complete || this.failed) return;
                 this.connectionError = true;
                 this.message = 'Progress updates are unavailable. Your upload is saved. Check again in a moment.';
                 if (++this.failures >= 3) {
@@ -87,6 +94,27 @@
             } finally {
                 window.clearTimeout(timeout);
                 this.checking = false;
+            }
+        },
+        async requestStopAnalysis() {
+            if (this.complete || this.failed || this.stopPromptOpen || this.stopping) return;
+            this.stopPromptOpen = true;
+            try {
+                const data = await window.TruthGuardAnalysis.stop(@js(route('detections.stop', $detection)), {
+                    onConfirmed: () => { this.stopping = true; },
+                });
+                if (!data) return;
+                this.status = data.processing_status;
+                this.stopped = data.cancelled === true;
+                this.message = this.stopped ? 'You stopped this fact check. Your saved reports are still available.' : 'The check has already finished.';
+                this.showPrompt = true;
+                if (this.complete || this.failed) window.clearInterval(this.timer);
+            } catch (error) {
+                this.message = 'Stop could not be confirmed. Check the current status and try again.';
+                this.showPrompt = true;
+            } finally {
+                this.stopPromptOpen = false;
+                this.stopping = false;
             }
         },
         init() {
@@ -131,6 +159,10 @@
         <span class="sr-only" x-text="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"></span>
     </button>
 
+    <button type="button" class="truthguard-analysis-stop" x-show="!complete && !failed" x-cloak
+        @click="requestStopAnalysis()" :disabled="stopping" :aria-busy="stopping"
+        x-text="stopping ? 'Stopping…' : 'Stop'"></button>
+
     <div
         x-show="showPrompt"
         x-cloak
@@ -160,7 +192,7 @@
             </svg>
         </span>
         <div class="min-w-0">
-            <strong x-text="complete ? 'Your fact check is ready' : (failed ? 'Your fact check needs attention' : (connectionError ? 'Progress connection interrupted' : 'Fact check in progress'))"></strong>
+            <strong x-text="stopped ? 'Fact check stopped' : (complete ? 'Your fact check is ready' : (failed ? 'Your fact check needs attention' : (connectionError ? 'Progress connection interrupted' : 'Fact check in progress')))"></strong>
             <p x-text="connectionError ? 'Status temporarily unavailable' : statusLabel"></p>
             <p x-text="elapsedLabel"></p>
             <div x-show="!connectionError && !failed" class="truthguard-analysis-progress" :class="{ 'is-running': !complete }" role="status" aria-label="Fact check progress">

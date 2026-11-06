@@ -133,22 +133,38 @@ class DetectionController extends Controller
         $manager->expireStaleForUser($request->user()->id);
         $detection->refresh();
         $status = $detection->processing_status;
+        $cancelled = ! in_array($status, ['queued', 'processing'], true)
+            && data_get($detection->signals, 'analysis_cancellation.reason') === 'user_stopped';
 
         return response()->json([
             'processing_status' => $status,
-            'stage' => data_get($detection->signals, 'analysis_progress.0.label')
+            'cancelled' => $cancelled,
+            'stop_url' => route('detections.stop', $detection),
+            'stage' => $cancelled ? 'Fact check stopped' : (data_get($detection->signals, 'analysis_progress.0.label')
                 ?: match ($status) {
                     'queued' => 'Waiting for an analysis worker',
                     'processing' => 'Reading submitted content',
                     'completed' => 'Analysis complete',
                     default => 'Analysis could not finish',
-                },
+                }),
             'elapsed_seconds' => max(0, (int) $detection->created_at->diffInSeconds(now())),
-            'message' => $status === 'failed'
+            'message' => $cancelled ? 'You stopped this fact check. You can start a new one whenever you are ready.' : ($status === 'failed'
                 ? 'The analysis could not finish. Open the report to review its status and retry.'
-                : ($status === 'queued' ? 'Your upload is saved and waiting to start. You can continue using TruthGuard.' : 'You can continue using TruthGuard while this check runs.'),
+                : ($status === 'queued' ? 'Your upload is saved and waiting to start. You can continue using TruthGuard.' : 'You can continue using TruthGuard while this check runs.')),
             'result_url' => route('detections.result', $detection),
         ])->header('Cache-Control', 'no-store, private');
+    }
+
+    public function stop(Request $request, Detection $detection, ActiveDetectionManager $manager): JsonResponse
+    {
+        abort_unless((int) $detection->user_id === (int) $request->user()->id, 404);
+        $request->validate(['confirmed' => ['required', 'accepted']]);
+        $detection = $manager->stopForUser($detection->id, $request->user()->id);
+        abort_unless($detection, 404);
+
+        return response()->json(['processing_status' => $detection->processing_status,
+            'cancelled' => data_get($detection->signals, 'analysis_cancellation.reason') === 'user_stopped',
+            'result_url' => route('detections.result', $detection)])->header('Cache-Control', 'no-store, private');
     }
 
     public function result(
@@ -262,6 +278,10 @@ class DetectionController extends Controller
      */
     private function restoreKnownFactCheck(Detection $detection): Detection
     {
+        // Opening a stopped report must not restart or replace its assessment.
+        if (data_get($detection->signals, 'analysis_cancellation.reason') === 'user_stopped') {
+            return $detection;
+        }
         // A catalogue shortcut must not replace newly researched evidence,
         // especially a fresh assessment that found conflicting reviews.
         if (data_get($detection->fact_check_result, 'diagnostics.pipeline_version') === EvidenceVerificationService::VERSION) {
@@ -397,6 +417,7 @@ class DetectionController extends Controller
                 return response()->json([
                     'processing_status' => 'queued',
                     'result_url' => route('detections.result', $detection),
+                    'stop_url' => route('detections.stop', $detection),
                 ], 202);
             }
 
@@ -457,8 +478,8 @@ class DetectionController extends Controller
                 $previousSignals = $detection->signals;
                 $retryId = (string) Str::uuid();
                 $signals = $previousSignals ?? [];
-                unset($signals['analysis_progress']);
-                $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'queued'];
+                unset($signals['analysis_progress'], $signals['analysis_cancellation']);
+                $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'queued', 'previous_status' => $previousStatus];
                 $detection->forceFill(['processing_status' => 'queued', 'signals' => $signals])->saveQuietly();
                 try {
                     AnalyzeDetectionEvidence::dispatch($detection->id, $context, $retryId, $previousStatus);
@@ -472,13 +493,18 @@ class DetectionController extends Controller
                 return redirect()->route('detections.result', $detection)->with('status', 'Assessment retry queued. Your saved result will be replaced after the new assessment finishes.');
             }
             $previousStatus = $detection->processing_status;
-            $detection->forceFill(['processing_status' => 'processing'])->saveQuietly();
+            $retryId = (string) Str::uuid();
+            $signals = $detection->signals ?? [];
+            unset($signals['analysis_progress'], $signals['analysis_cancellation']);
+            $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'processing', 'previous_status' => $previousStatus];
+            $detection->forceFill(['processing_status' => 'processing', 'signals' => $signals])->saveQuietly();
             try {
                 $pipeline->run($detection->user, $context, $file, $detection);
             } finally {
                 // Release a synchronous retry that failed before persistence,
                 // while preserving a cancellation or a successfully saved result.
                 Detection::whereKey($detection->id)->where('processing_status', 'processing')
+                    ->where('signals->analysis_retry->id', $retryId)
                     ->update(['processing_status' => $previousStatus]);
             }
         } finally {

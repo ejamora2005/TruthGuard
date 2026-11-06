@@ -3491,6 +3491,10 @@ new class extends Component
             progressClock: null,
             progressStartedAt: null,
             progressDisposed: false,
+            progressGeneration: 0,
+            stopPromptOpen: false,
+            stopping: false,
+            analysisNotice: null,
             previewUrl: null,
             previewName: null,
             previewKind: null,
@@ -3821,6 +3825,7 @@ new class extends Component
                 }
             },
             trackPendingResult(url) {
+                this.progressGeneration++;
                 window.clearTimeout(this.progressTimer);
                 window.clearInterval(this.progressClock);
                 this.progressElapsed = 0;
@@ -3833,11 +3838,13 @@ new class extends Component
                 this.progressFailures = 0;
                 this.submitting = true;
                 this.composerError = null;
+                this.analysisNotice = null;
                 this.progressMessage = 'Your analysis is starting. You can hide this card.';
                 this.refreshPendingResult();
             },
             async refreshPendingResult() {
                 const url = this.pendingResultUrl;
+                const generation = this.progressGeneration;
                 if (!url || this.progressDisposed) return;
                 const controller = new AbortController();
                 const timeout = window.setTimeout(() => controller.abort(), 12000);
@@ -3848,17 +3855,23 @@ new class extends Component
                         signal: controller.signal,
                         cache: 'no-store',
                     });
-                    if (this.progressDisposed) return;
+                    if (this.progressDisposed || generation !== this.progressGeneration) return;
                     if ([401, 403, 404, 419].includes(response.status) || response.redirected) {
                         this.stopPendingResult('This report could not be opened. Sign in again or check your History.');
                         return;
                     }
                     if (!response.ok) throw new Error('Status unavailable');
                     const data = await response.json();
+                    if (generation !== this.progressGeneration) return;
                     this.progressFailures = 0;
                     this.progressElapsed = Math.max(this.progressElapsed, data.elapsed_seconds || 0);
                     this.progressStartedAt = Date.now() - this.progressElapsed * 1000;
                     this.progressState = data.processing_status;
+                    if (data.cancelled) {
+                        this.stopPendingResult(null);
+                        this.analysisNotice = 'Fact check stopped. You can start a new check.';
+                        return;
+                    }
                     if (this.progressDisposed) return;
                     if (data.processing_status === 'failed') {
                         window.clearInterval(this.progressClock);
@@ -3879,24 +3892,48 @@ new class extends Component
                         ? 'Your analysis is starting. You can hide this card.'
                         : (data.stage || 'Your analysis is running. You can hide this card.');
                 } catch (error) {
+                    if (generation !== this.progressGeneration) return;
                     this.progressMessage = 'Reconnecting to your analysis. You can hide this card and check History later.';
                     if (++this.progressFailures >= 3) {
                         this.progressMessage = 'Connection interrupted. Your upload is saved; reconnecting automatically.';
                     }
                 } finally {
                     window.clearTimeout(timeout);
-                    if (this.pendingResultUrl && !this.progressDisposed) {
+                    if (this.pendingResultUrl && !this.progressDisposed && generation === this.progressGeneration) {
                         this.progressTimer = window.setTimeout(() => this.refreshPendingResult(), this.progressFailures >= 3 ? 15000 : 5000);
                     }
                 }
             },
             stopPendingResult(message) {
+                this.progressGeneration++;
                 window.clearTimeout(this.progressTimer);
                 window.clearInterval(this.progressClock);
                 this.pendingResultUrl = null;
                 this.progressMessage = null;
                 this.submitting = false;
                 this.composerError = message;
+            },
+            async requestStopAnalysis() {
+                if (!this.pendingResultUrl || this.stopPromptOpen || this.stopping) return;
+                const resultUrl = this.pendingResultUrl;
+                this.stopPromptOpen = true;
+                try {
+                    const data = await window.TruthGuardAnalysis.stop(resultUrl.replace(/\/result(?:\?.*)?$/, '/stop'), {
+                        onConfirmed: () => { this.stopping = true; },
+                    });
+                    if (!data) return;
+                    if (data.cancelled) {
+                        this.stopPendingResult(null);
+                        this.analysisNotice = 'Fact check stopped. You can start a new check.';
+                    } else if (!['queued', 'processing'].includes(data.processing_status)) {
+                        window.location.assign(resultUrl);
+                    }
+                } catch (error) {
+                    this.analysisNotice = 'Stop could not be confirmed. Check the current status and try again.';
+                } finally {
+                    this.stopPromptOpen = false;
+                    this.stopping = false;
+                }
             },
             requestLocation() {
                 if (this.locationRequestInFlight || this.locationStatus === 'requesting') {
@@ -5257,6 +5294,10 @@ new class extends Component
 
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
+                    <button type="button" class="truthguard-analysis-stop" @click="requestStopAnalysis()"
+                        :disabled="!pendingResultUrl || stopping" :aria-busy="stopping"
+                        x-text="stopping ? 'Stopping…' : 'Stop fact check'"></button>
+                    <p class="truthguard-verify-copy" x-show="!pendingResultUrl">Saving your upload before the check starts.</p>
                     <p class="truthguard-verify-copy" x-show="progressFailures > 0" x-text="'Reconnecting to progress updates…'"></p>
                     <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed'"></p>
                     <div class="truthguard-analysis-progress" :class="{ 'is-running': progressState !== 'completed' }" style="width: min(100%, 20rem)" role="status" aria-label="Fact check progress">
@@ -5910,7 +5951,12 @@ new class extends Component
                                 x-text="`${composerCharacterCount()}/${composerMaxCharacters}`"
                                 aria-live="polite"
                             ></span>
+                        <p x-show="analysisNotice" x-cloak role="status" class="text-sm font-semibold text-slate-600" x-text="analysisNotice"></p>
                         <button x-show="submitting" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore truthguard-analyze-button truthguard-analyze-ready" @click="progressHidden = false; progressMinimized = false"><span class="truthguard-progress-dot" aria-hidden="true"></span><span>View progress</span></button>
+                        <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak type="button"
+                            class="truthguard-analysis-stop" @click="requestStopAnalysis()"
+                            :disabled="!pendingResultUrl || stopping" :aria-busy="stopping"
+                            x-text="stopping ? 'Stopping…' : 'Stop fact check'"></button>
                         <button
                             x-show="!submitting"
                             type="button"

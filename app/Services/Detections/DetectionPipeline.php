@@ -11,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -39,6 +40,7 @@ class DetectionPipeline
     public function run(User $user, array $validated, ?UploadedFile $uploadedFile, ?Detection $pending = null): Detection
     {
         app(ReportApiBudget::class)->reset();
+        app(ReportApiBudget::class)->trackDetection($pending);
         $sourceUrl = $this->nullableString($validated['source_url'] ?? null);
         $captionText = $this->nullableString($validated['caption_text'] ?? null);
         $notes = $this->nullableString($validated['notes'] ?? null);
@@ -105,6 +107,7 @@ class DetectionPipeline
             throw ValidationException::withMessages(['media_file' => 'An identical submission is still being analyzed. Retry after it finishes; no duplicate analysis was started.']);
         }
         try {
+            app(ReportApiBudget::class)->assertActive();
             $reviewedSnapshot = ReviewedClaimLookup::dependencySnapshot();
             $reviewedMedia = ReviewedMediaLookup::analysis($mediaChecksum, $mediaType, $resolvedRequest, $sourceUrl);
             if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint, $mediaChecksum, $uploadedFile, $reviewedSnapshot))) {
@@ -120,6 +123,7 @@ class DetectionPipeline
             } else {
                 $analysis = $this->buildLocalAnalysis($uploadedFile, $sourceUrl, $captionText, $notes, $mediaType, $platform,
                     $primaryTask !== 'claim', $runMediaDetector);
+                app(ReportApiBudget::class)->assertActive();
                 $platform = $this->nullableString($analysis['platform'] ?? null) ?? $platform;
                 $mediaType = $this->nullableString($analysis['media_type'] ?? null) ?? $mediaType;
 
@@ -132,10 +136,14 @@ class DetectionPipeline
                         'force_refresh' => $forceRefresh,
                         'resolved_request' => $resolvedRequest,
                     ] + $weatherContext, $uploadedFile, $pending ? function (string $stage, array $domains = []) use ($pending): void {
-                        $signals = $pending->signals ?? [];
-                        $signals['analysis_progress'] = [['label' => $stage, 'weight' => 0,
-                            'source_domains' => $domains ?: data_get($signals, 'analysis_progress.0.source_domains', [])]];
-                        $pending->forceFill(['signals' => $signals])->saveQuietly();
+                        DB::transaction(function () use ($pending, $stage, $domains): void {
+                            $current = Detection::whereKey($pending->id)->lockForUpdate()->first();
+                            app(ReportApiBudget::class)->assertActive($current);
+                            $signals = $current->signals ?? [];
+                            $signals['analysis_progress'] = [['label' => $stage, 'weight' => 0,
+                                'source_domains' => $domains ?: data_get($signals, 'analysis_progress.0.source_domains', [])]];
+                            $current->forceFill(['signals' => $signals])->saveQuietly();
+                        });
                     } : null);
                 } else {
                     $openAiExtractedClaim = $this->openAiDetectionReportService->extractClaimText([
@@ -172,6 +180,7 @@ class DetectionPipeline
                 }
             }
             $analysis = $this->markVerificationPolicyVersion($analysis);
+            app(ReportApiBudget::class)->assertActive();
             // Every route, including the legacy fallback, crosses the same typed
             // answer boundary before it can be compared, saved or displayed.
             $analysis['fact_check_result'] = ReportAnswer::complete($analysis['fact_check_result']);
@@ -179,6 +188,7 @@ class DetectionPipeline
                 $analysis = $this->mediaExplanation->apply($analysis, $uploadedFile);
             }
             $analysis['fact_check_result'] = ResultWording::ensure($analysis['fact_check_result'], $analysis['recommendation'] ?? '');
+            app(ReportApiBudget::class)->assertActive();
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
             // Older saved reports have not been admitted to this fresh cache.
             $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation'), 'hit' => false];
@@ -228,7 +238,7 @@ class DetectionPipeline
                     return $pending;
                 }
 
-                $pending->fill($attributes)->save();
+                $pending = $this->persistPending($pending, $attributes);
                 Log::info('TruthGuard analysis persisted.', ['analysis_id' => $analysisId, 'detection_id' => $pending->id, 'source_count' => count($analysis['fact_check_result']['sources'] ?? [])]);
 
                 return $pending;
@@ -239,6 +249,9 @@ class DetectionPipeline
 
             return $detection;
         } catch (\Throwable $error) {
+            if ($error instanceof AnalysisStopped && $pending) {
+                return $pending->fresh();
+            }
             // Validation remains an input error. Provider/model failures must
             // leave a report instead of an abandoned spinner or a bare 500.
             if ($error instanceof ValidationException) {
@@ -257,9 +270,8 @@ class DetectionPipeline
                 if (isset($signals['analysis_retry'])) {
                     $signals['analysis_retry']['status'] = 'failed';
                 }
-                $pending->forceFill(['processing_status' => 'completed', 'signals' => $signals])->saveQuietly();
 
-                return $pending->fresh();
+                return $this->persistPending($pending, ['processing_status' => 'completed', 'signals' => $signals]);
             }
             $result = ReportAnswer::complete([
                 'schema_version' => 4, 'primary_task' => $primaryTask,
@@ -283,13 +295,13 @@ class DetectionPipeline
                 }
                 $signals = $pending->signals ?? [];
                 unset($signals['analysis_progress']);
-                $pending->forceFill($attributes + ['signals' => $signals])->saveQuietly();
 
-                return $pending->fresh();
+                return $this->persistPending($pending, $attributes + ['signals' => $signals]);
             }
 
             return Detection::create($attributes);
         } finally {
+            app(ReportApiBudget::class)->trackDetection(null);
             $reuseLock?->release();
         }
     }
@@ -322,6 +334,7 @@ class DetectionPipeline
                 : ['status' => 'unavailable', 'media_type' => 'image', 'task' => 'AI-generation classification',
                     'reason' => $uploadedFile ? 'disabled' : 'missing_media',
                     'label' => null, 'fake_probability' => null, 'model_version' => null];
+            app(ReportApiBudget::class)->assertActive();
             $inputAssessment = MediaInputAssessment::inspect($uploadedFile);
             $supportingAssessment = $uploadedFile && ($mediaClassification['status'] ?? '') === 'completed'
                 && config('services.deepfake_cnn.enabled', false)
@@ -663,12 +676,27 @@ class DetectionPipeline
         ];
 
         if ($pending) {
-            $pending->fill($attributes)->save();
+            $pending = $this->persistPending($pending, $attributes);
 
             return $pending;
         }
 
         return Detection::create($attributes);
+    }
+
+    private function persistPending(Detection $pending, array $attributes): Detection
+    {
+        return DB::transaction(function () use ($pending, $attributes): Detection {
+            $current = Detection::whereKey($pending->id)->lockForUpdate()->first();
+            try {
+                app(ReportApiBudget::class)->assertActive($current);
+            } catch (AnalysisStopped) {
+                return $current;
+            }
+            $current->fill($attributes)->save();
+
+            return $current;
+        });
     }
 
     /**

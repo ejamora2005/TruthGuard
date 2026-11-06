@@ -54,8 +54,11 @@ class AnalyzeDetectionEvidence implements ShouldBeUnique, ShouldQueue
             return;
         }
         // Claim once even if the broker redelivers a job or its unique lock expires.
-        if (! Detection::whereKey($this->detectionId)->where('processing_status', 'queued')
-            ->update(['processing_status' => 'processing'])) {
+        $claim = Detection::whereKey($this->detectionId)->where('processing_status', 'queued');
+        $this->retryId === null
+            ? $claim->whereNull('fact_check_result')
+            : $claim->where('signals->analysis_retry->id', $this->retryId);
+        if (! $claim->update(['processing_status' => 'processing'])) {
             return;
         }
         $detection->refresh();
@@ -68,7 +71,9 @@ class AnalyzeDetectionEvidence implements ShouldBeUnique, ShouldQueue
             $file = new UploadedFile($path, basename($path), null, null, true);
         }
         $completed = $pipeline->run($detection->user, $this->context, $file, $detection);
-        if ($completed->processing_status === 'completed' && config('playwright.related_posts_inline', false)) {
+        if ($completed->processing_status === 'completed'
+            && data_get($completed->signals, 'analysis_cancellation.reason') !== 'user_stopped'
+            && config('playwright.related_posts_inline', false)) {
             app(RelatedPostScraper::class)->scrapeForDetection($completed, $this->context);
         }
     }

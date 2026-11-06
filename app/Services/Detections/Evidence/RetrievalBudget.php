@@ -50,6 +50,7 @@ final class RetrievalBudget
 
     public function take(string $kind): bool
     {
+        app(ReportApiBudget::class)->assertActive();
         $limit = $kind === 'searches' ? 'max_search_requests' : 'max_pages';
         if ($this->remaining() < 1 || max(0, (int) config('fact_check.retrieval.'.$limit)) <= $this->$kind) {
             return false;
