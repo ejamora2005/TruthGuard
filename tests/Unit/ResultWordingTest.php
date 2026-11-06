@@ -10,6 +10,26 @@ use Tests\TestCase;
 
 class ResultWordingTest extends TestCase
 {
+    public function test_research_narration_is_rejected_and_legacy_openings_are_removed_without_losing_the_finding(): void
+    {
+        Http::preventStrayRequests();
+        $finding = 'The municipal record gives May 1, 2024 as the library opening date.';
+        foreach (['I researched the submitted claim.', 'I checked the available sources.', 'I reviewed the original record.'] as $opening) {
+            $result = ['verdict' => 'TRUE', 'primary_task' => 'claim', 'summary' => $opening.' '.$finding,
+                'sources' => [['id' => 's1']], 'contextual_sources' => []];
+            $candidate = ['verdict' => 'TRUE', 'explanation' => $result['summary'],
+                'result_summary' => 'The opening date is confirmed by the municipal record.',
+                'recommended_action' => 'Read the original municipal record.', 'source_ids' => ['s1']];
+            $this->assertNull(ResultWording::accept($result, $candidate));
+            $copy = ResultWording::saved(ResultWording::ensure($result));
+            $this->assertNotNull($copy);
+            $this->assertSame($finding, $copy['explanation']);
+            $this->assertSame('TRUE', $copy['verdict']);
+            $this->assertSame(['s1'], $copy['source_ids']);
+        }
+        Http::assertNothingSent();
+    }
+
     public function test_fallback_keeps_specific_evidence_when_summary_contains_a_link(): void
     {
         Http::preventStrayRequests();

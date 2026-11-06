@@ -544,7 +544,7 @@ class EvidenceVerificationService
                 $contextSourceIds = array_values(array_intersect([$finding['source_id']], array_column($result['sources'], 'id')));
             } elseif (! AssessmentVerdict::technical($result['verdict']) && $result['verdict'] !== 'MISSING_CONTEXT') {
                 $result['verdict'] = 'UNVERIFIED';
-                $result['summary'] = 'I could not determine whether the submitted content is misleading or out of context. The reviewed sources did not establish its original event, date, location, or reuse context. The factual wording is assessed separately.';
+                $result['summary'] = 'The reviewed sources did not establish the submitted content’s original event, date, location, or reuse context. Its context remains unverified. The factual wording is assessed separately.';
                 $result['ui']['show_missing_context'] = false;
                 $result['ui']['missing_context'] = null;
                 $result['ui']['show_evidence_warning'] = true;
@@ -673,10 +673,10 @@ class EvidenceVerificationService
                 ?? 'The submitted content could not be read because text extraction was unavailable. Retry or supply the statement as text; no factual conclusion was reached.',
             'unreadable_content' => 'No readable factual content could be extracted. Supply a clearer original or paste the statement to verify. This is an input limitation, not a finding that the content is false.',
             'analysis_failure' => 'The factual analysis could not finish because an analysis service failed or returned an unusable response. This is not a finding that the post is false or lacks context.',
-            'retrieval_disabled' => 'I could not verify this statement because source discovery is disabled. No factual conclusion was reached.',
-            'no_provider_configured' => 'I could not verify this statement because no source-search provider is configured. No factual conclusion was reached.',
-            'api_failure' => $claimLead.'I could not verify it because the source-search services failed. Retry verification when those services are available.',
-            'partial_api_failure' => $claimLead.'I could not verify it with the evidence retrieved. Some source searches failed, so coverage was incomplete.',
+            'retrieval_disabled' => 'The statement could not be verified because source discovery is disabled. No factual conclusion was reached.',
+            'no_provider_configured' => 'The statement could not be verified because no source-search provider is configured. No factual conclusion was reached.',
+            'api_failure' => $claimLead.'The source-search services failed, preventing verification. Retry verification when those services are available.',
+            'partial_api_failure' => $claimLead.'The retrieved evidence did not resolve this claim. Some source searches failed, so coverage was incomplete.',
             'archive_limited' => $claimLead.'The searches returned no accessible source documents. GNews reported that its account archive limit removed matching articles; no factual conclusion was reached.',
             'no_search_results' => $claimLead.'The configured source searches completed but returned no indexed results within their available coverage. This does not establish whether the claim is true or false.',
             'no_usable_candidates' => $claimLead.'The search responses contained no usable article links, so no source document was reviewed.',

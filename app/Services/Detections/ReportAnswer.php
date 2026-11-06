@@ -154,7 +154,7 @@ class ReportAnswer
         // Context-only quotations are background, not the conclusion of the assessment.
         $copy = preg_split('/\bA related source dated\b/u', $explanation, 2)[0];
         $sentences = collect(SubmittedText::sentences($copy))
-            ->reject(fn ($sentence) => preg_match('/^(?:I|We|TruthGuard)\s+(?:searched|browsed|queried|looked for)\b/iu', $sentence))
+            ->reject(fn ($sentence) => preg_match('/^(?:I|We|TruthGuard)\s+(?:researched|checked|reviewed|searched|browsed|queried|looked for)\b/iu', $sentence))
             ->unique()->values();
         $summary = $sentences->take(2)->implode(' ');
         if ($summary === '') {

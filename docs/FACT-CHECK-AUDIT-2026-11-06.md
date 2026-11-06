@@ -344,6 +344,15 @@ procedures remain as documented in `docs/DEPLOYMENT.md`.
 
 ## Remaining limitations
 
+Report-voice follow-up: generated research narration such as "I researched",
+"I checked", and "I reviewed" is rejected by the presentation contract, and
+those legacy narration sentences are omitted while preserving the actual
+finding and source IDs. Static verification/context failure messages now use
+neutral report language. This cleanup requires no additional model request.
+The focused wording, public-contract, generation, evidence, and headline checks
+passed 88 tests / 592 assertions. The last full-suite result remains the
+806-test run recorded above; this presentation follow-up did not rerun it.
+
 - Matching is deliberately conservative. Unrecognized cross-language paraphrases
   can remain unresolved; shared keywords are not enough to inherit a verdict.
 - Missing, blocked, truncated, or unindexed publisher content still limits evidence.
