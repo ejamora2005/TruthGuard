@@ -71,6 +71,9 @@ class DetectionPipeline
         ]);
         $platform = $selectedPlatform ?? $this->detectPlatform($sourceUrl, $captionText, $notes);
         $mediaChecksum = $this->buildMediaChecksum($uploadedFile);
+        $mediaPerceptualHash = $uploadedFile && $mediaType === 'image'
+            ? MediaPerceptualHash::fromPath($this->resolveUploadedFilePath($uploadedFile))
+            : null;
         $requestFingerprint = $this->buildRequestFingerprint(
             $sourceUrl,
             $captionText,
@@ -78,6 +81,7 @@ class DetectionPipeline
             $mediaType,
             $platform,
             $mediaChecksum,
+            $mediaPerceptualHash,
             $validated['analysis_task'] ?? 'auto',
             ['tasks' => $requestedTasks, 'weather' => $weatherContext, 'locale' => app()->getLocale()],
         );
@@ -101,7 +105,7 @@ class DetectionPipeline
         try {
             $reviewedMedia = ReviewedMediaLookup::analysis($mediaChecksum, $mediaType, $resolvedRequest, $sourceUrl);
             if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint))) {
-                $detection = $this->createReusedDetection($user, $reusableDetection, $sourceUrl, $captionText, $notes, $mediaPath, $mediaChecksum, $requestFingerprint, $pending);
+                $detection = $this->createReusedDetection($user, $reusableDetection, $sourceUrl, $captionText, $notes, $mediaPath, $mediaChecksum, $mediaPerceptualHash, $requestFingerprint, $pending);
                 Log::info('TruthGuard analysis reused a saved result without inference.', ['analysis_id' => $analysisId,
                     'detection_id' => $detection->id, 'reused_from_detection_id' => $reusableDetection->id]);
 
@@ -182,6 +186,7 @@ class DetectionPipeline
                 'source_url' => $sourceUrl,
                 'media_path' => $mediaPath,
                 'media_checksum' => $mediaChecksum,
+                'media_perceptual_hash' => $mediaPerceptualHash,
                 'media_type' => $mediaType,
                 'request_fingerprint' => $requestFingerprint,
                 'reused_from_detection_id' => null,
@@ -228,17 +233,24 @@ class DetectionPipeline
         } catch (\Throwable $error) {
             // Validation remains an input error. Provider/model failures must
             // leave a report instead of an abandoned spinner or a bare 500.
-            if ($error instanceof ValidationException) throw $error;
+            if ($error instanceof ValidationException) {
+                throw $error;
+            }
             Log::warning('TruthGuard assessment ended without a conclusion.', [
                 'analysis_id' => $analysisId, 'error_type' => $error::class,
             ]);
             if ($pending?->fact_check_result !== null) {
                 $pending->refresh();
-                if (! in_array($pending->processing_status, ['queued', 'processing'], true)) return $pending;
+                if (! in_array($pending->processing_status, ['queued', 'processing'], true)) {
+                    return $pending;
+                }
                 $signals = $pending->signals ?? [];
                 unset($signals['analysis_progress']);
-                if (isset($signals['analysis_retry'])) $signals['analysis_retry']['status'] = 'failed';
+                if (isset($signals['analysis_retry'])) {
+                    $signals['analysis_retry']['status'] = 'failed';
+                }
                 $pending->forceFill(['processing_status' => 'completed', 'signals' => $signals])->saveQuietly();
+
                 return $pending->fresh();
             }
             $result = ReportAnswer::complete([
@@ -258,12 +270,16 @@ class DetectionPipeline
             ];
             if ($pending) {
                 $pending->refresh();
-                if (! in_array($pending->processing_status, ['queued', 'processing'], true)) return $pending;
+                if (! in_array($pending->processing_status, ['queued', 'processing'], true)) {
+                    return $pending;
+                }
                 $signals = $pending->signals ?? [];
                 unset($signals['analysis_progress']);
                 $pending->forceFill($attributes + ['signals' => $signals])->saveQuietly();
+
                 return $pending->fresh();
             }
+
             return Detection::create($attributes);
         } finally {
             $reuseLock?->release();
@@ -373,6 +389,7 @@ class DetectionPipeline
         string $mediaType,
         ?string $platform,
         ?string $mediaChecksum,
+        ?string $mediaPerceptualHash,
         string $analysisTask = 'auto',
         array $requestContext = [],
     ): ?string {
@@ -382,7 +399,13 @@ class DetectionPipeline
             'notes' => $this->normalizeFingerprintString($notes),
             'media_type' => $this->normalizeFingerprintString($mediaType),
             'platform' => $this->normalizeFingerprintString($platform),
-            'media_checksum' => $this->normalizeFingerprintString($mediaChecksum),
+            // A visual hash is safe for origin-only screening. Factual checks
+            // retain byte identity because a small changed text overlay can
+            // change the claim without materially changing the picture hash.
+            'media_identity' => $analysisTask === 'media' && $mediaPerceptualHash !== null
+                ? $mediaPerceptualHash : $this->normalizeFingerprintString($mediaChecksum),
+            'media_identity_method' => $analysisTask === 'media' && $mediaPerceptualHash !== null
+                ? MediaPerceptualHash::VERSION : 'sha256',
             'analysis_task' => $analysisTask,
             'request_context' => $requestContext,
             'reuse_version' => 'exact-submission-v1',
@@ -461,7 +484,9 @@ class DetectionPipeline
         $result = $candidate->fact_check_result;
         // Recheck the registry on every request so disabled or revised entries
         // cannot survive through the ordinary detector-result cache.
-        if (isset($candidate->signals['reviewed_media'])) return false;
+        if (isset($candidate->signals['reviewed_media'])) {
+            return false;
+        }
         if (! $this->hasCurrentVerificationPolicyVersion($candidate) || ! is_array($result)
             || data_get($candidate->signals, 'result_cache.generation') !== (string) config('fact_check.result_reuse.generation')
             || ($result['schema_version'] ?? null) !== 4 || ($result['processing_status'] ?? null) !== 'completed'
@@ -519,6 +544,7 @@ class DetectionPipeline
         ?string $notes,
         ?string $mediaPath,
         ?string $mediaChecksum,
+        ?string $mediaPerceptualHash,
         ?string $requestFingerprint,
         ?Detection $pending = null,
     ): Detection {
@@ -570,6 +596,7 @@ class DetectionPipeline
             'source_url' => $sourceUrl,
             'media_path' => $mediaPath,
             'media_checksum' => $mediaChecksum,
+            'media_perceptual_hash' => $mediaPerceptualHash,
             'media_type' => $reusableDetection->media_type,
             'request_fingerprint' => $requestFingerprint,
             'reused_from_detection_id' => $sourceDetection->id,

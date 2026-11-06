@@ -9,7 +9,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
 {
     public function test_trusted_false_rating_overrides_low_risk_analysis(): void
     {
-        $resolver = new TrustedFactCheckVerdictResolver();
+        $resolver = new TrustedFactCheckVerdictResolver;
 
         $analysis = [
             'verdict' => 'real',
@@ -41,7 +41,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
 
     public function test_ai_generated_misinformation_label_is_preserved(): void
     {
-        $resolver = new TrustedFactCheckVerdictResolver();
+        $resolver = new TrustedFactCheckVerdictResolver;
 
         $resolved = $resolver->apply([
             'verdict' => 'real',
@@ -65,7 +65,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
 
     public function test_trusted_true_rating_keeps_report_low_risk(): void
     {
-        $resolver = new TrustedFactCheckVerdictResolver();
+        $resolver = new TrustedFactCheckVerdictResolver;
 
         $resolved = $resolver->apply([
             'verdict' => 'review',
@@ -87,7 +87,7 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
 
     public function test_context_rating_stays_in_review(): void
     {
-        $resolver = new TrustedFactCheckVerdictResolver();
+        $resolver = new TrustedFactCheckVerdictResolver;
 
         $resolved = $resolver->apply([
             'verdict' => 'real',
@@ -107,9 +107,23 @@ class TrustedFactCheckVerdictResolverTest extends TestCase
         $this->assertStringContainsString('needs more context', $resolved['explanation_summary']);
     }
 
+    public function test_related_fact_check_cannot_control_the_verdict(): void
+    {
+        $resolver = new TrustedFactCheckVerdictResolver;
+        $decision = $resolver->decide([], [[
+            'name' => 'Rappler',
+            'source_type' => 'fact_check',
+            'rating' => 'False',
+            'url' => 'https://www.rappler.com/fact-check/related-story',
+            'claim_match' => ['level' => 'related'],
+        ]]);
+
+        $this->assertNull($decision);
+    }
+
     public function test_low_risk_result_without_authoritative_confirmation_is_marked_unconfirmed(): void
     {
-        $resolver = new TrustedFactCheckVerdictResolver();
+        $resolver = new TrustedFactCheckVerdictResolver;
 
         $resolved = $resolver->apply([
             'verdict' => 'real',

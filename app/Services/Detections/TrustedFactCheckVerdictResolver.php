@@ -6,7 +6,7 @@ use Illuminate\Support\Str;
 
 class TrustedFactCheckVerdictResolver
 {
-    public const POLICY_VERSION = '2026-11-06-collected-catalog-v3';
+    public const POLICY_VERSION = '2026-11-06-structured-match-v4';
 
     /**
      * @param  array<string, mixed>  $analysis
@@ -54,7 +54,7 @@ class TrustedFactCheckVerdictResolver
             $analysis['analysis_summary'] = "TruthGuard found a {$trustLabel} fact-check match and prioritized that source rating over visual-only signals.";
             $analysis['verification_summary'] = "Trusted source match: the matched fact-check source rated the related claim {$rating}. This explicit public fact-check rating is the strongest verification signal for this report.";
             $analysis['explanation_summary'] = "Based on the source, this claim should be treated as not true. The matched public fact-check rated the related claim {$rating}, so TruthGuard marks this report as Likely Fake with a {$riskScore}% risk score. Image appearance and AI-generation cues are kept as supporting context, but the source rating is the primary basis.";
-            $analysis['recommendation'] = "Do not share this as true. Open the linked fact-check source, compare the title and details with the uploaded content, and cite that source if you need to explain the correction.";
+            $analysis['recommendation'] = 'Do not share this as true. Open the linked fact-check source, compare the title and details with the uploaded content, and cite that source if you need to explain the correction.';
 
             return $analysis;
         }
@@ -64,15 +64,15 @@ class TrustedFactCheckVerdictResolver
             $analysis['analysis_summary'] = "TruthGuard found a {$trustLabel} fact-check match that supports the claim and prioritized that source rating over visual-only signals.";
             $analysis['verification_summary'] = "Trusted source match: the matched fact-check source rated the related claim {$rating}. This source-backed rating supports a low-risk result.";
             $analysis['explanation_summary'] = "Based on the source, the related claim is supported by a public fact-check rated {$rating}. TruthGuard marks this report as Real with {$confidence}% confidence while still recommending source review before resharing.";
-            $analysis['recommendation'] = "You may treat this as low risk, but open the linked source and compare it with the uploaded content before presenting it as verified.";
+            $analysis['recommendation'] = 'You may treat this as low risk, but open the linked source and compare it with the uploaded content before presenting it as verified.';
 
             return $analysis;
         }
 
-        $analysis['analysis_summary'] = "TruthGuard found a public fact-check match, but the rating requires context rather than a simple true-or-false result.";
+        $analysis['analysis_summary'] = 'TruthGuard found a public fact-check match, but the rating requires context rather than a simple true-or-false result.';
         $analysis['verification_summary'] = "Source match: the matched fact-check source rated the related claim {$rating}. The result needs careful reading before it is shared.";
         $analysis['explanation_summary'] = "Based on the source, this claim needs more context. The matched public fact-check rated it {$rating}, so TruthGuard keeps the report in Review with a {$riskScore}% risk score instead of treating the image alone as proof.";
-        $analysis['recommendation'] = "Read the linked source review and compare the exact claim, date, and context before sharing or correcting the post.";
+        $analysis['recommendation'] = 'Read the linked source review and compare the exact claim, date, and context before sharing or correcting the post.';
 
         return $analysis;
     }
@@ -169,7 +169,9 @@ class TrustedFactCheckVerdictResolver
     private function candidatesFromSources(array $sources): array
     {
         return collect($sources)
-            ->filter(fn ($source) => is_array($source) && ($source['source_type'] ?? null) === 'fact_check')
+            ->filter(fn ($source) => is_array($source)
+                && ($source['source_type'] ?? null) === 'fact_check'
+                && data_get($source, 'claim_match.level', 'exact') === 'exact')
             ->map(function (array $source): array {
                 $publisher = trim((string) ($source['name'] ?? 'Fact-check source'));
                 $rating = $this->ratingFromText(collect([

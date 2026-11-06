@@ -130,13 +130,15 @@ class StoredResultReuseTest extends TestCase
 
     public function test_different_image_question_notes_task_and_model_settings_require_new_analysis(): void
     {
-        $this->mockAnalysis(6, 'media', 5);
+        $this->mockAnalysis(5, 'media', 4);
         $user = User::factory()->create();
         $first = $this->submitFixture($user);
         foreach ([['caption_text' => 'Is this event real?'], ['notes' => 'Check a different context.'], ['analysis_task' => 'claim']] as $extra) {
             $this->assertNull($this->submitFixture($user, $extra)->reused_from_detection_id);
         }
-        $this->assertNull($this->submitFixture($user, [], null, 'different image bytes')->reused_from_detection_id);
+        // Appending transport bytes does not change the decoded picture, so an
+        // origin-only request safely reuses the visual identity.
+        $this->assertSame($first->id, $this->submitFixture($user, [], null, 'different image bytes')->reused_from_detection_id);
         config()->set('services.deepfake_cnn.threshold', .7);
         $this->assertNull($this->submitFixture($user)->reused_from_detection_id);
         $this->assertNotNull($first->request_fingerprint);

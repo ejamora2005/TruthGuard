@@ -24,6 +24,7 @@ final class FactCheckEditorialReview
         $result['freshness'] = self::freshness($result);
         $result['source_assessments'] = array_map([self::class, 'sourceAssessment'], $sources);
         $result['verdict_audit'] = self::verdictAudit($result);
+        $result['publication_gate'] = self::publicationGate($result);
         $result['editorial_review'] = self::editorialReview($result);
 
         return $result;
@@ -58,7 +59,9 @@ final class FactCheckEditorialReview
         $ids = array_fill_keys(array_filter(array_column($sources, 'id'), 'is_string'), true);
         $families = [];
         foreach ($sources as $source) {
-            if (! is_array($source) || ! is_string($source['id'] ?? null)) continue;
+            if (! is_array($source) || ! is_string($source['id'] ?? null)) {
+                continue;
+            }
             $root = is_string($source['possible_copy_of'] ?? null) && isset($ids[$source['possible_copy_of']])
                 ? $source['possible_copy_of'] : $source['id'];
             $families[$root] ??= ['id' => 'family-'.$root, 'root_source_id' => $root, 'source_ids' => [], 'independent_unit' => true];
@@ -72,7 +75,9 @@ final class FactCheckEditorialReview
     {
         $supporting = $contradicting = [];
         foreach ($claims as $claim) {
-            if (! is_array($claim)) continue;
+            if (! is_array($claim)) {
+                continue;
+            }
             $supporting = array_merge($supporting, self::relationshipIds($claim['relationships'] ?? [], 'supporting'));
             $contradicting = array_merge($contradicting, self::relationshipIds($claim['relationships'] ?? [], 'contradicting'));
         }
@@ -97,7 +102,9 @@ final class FactCheckEditorialReview
         $verdict = $result['verdict'] ?? '';
         $applicable = in_array($verdict, ['UNVERIFIED', 'UNVERIFIABLE', 'MISSING_CONTEXT'], true);
         $attempts = $result['diagnostics']['search_attempts'] ?? [];
-        if (is_int($attempts)) $attempts = [];
+        if (is_int($attempts)) {
+            $attempts = [];
+        }
 
         return ['applicable' => $applicable, 'absence_treated_as_disproof' => false,
             'search_scope_recorded' => is_array($attempts) && $attempts !== [],
@@ -163,5 +170,16 @@ final class FactCheckEditorialReview
             'reasons' => array_values(array_filter([$highImpact ? 'Consequential public-interest claim.' : null,
                 $auditFailed ? 'Independent verdict audit failed.' : null, $conflict ? 'Reliable evidence conflicts.' : null])),
             'status' => ($highImpact || $auditFailed || $conflict) ? 'pending' : 'not_required'];
+    }
+
+    private static function publicationGate(array $result): array
+    {
+        $auditFailed = ($result['verdict_audit']['status'] ?? '') === 'failed';
+
+        return [
+            'status' => $auditFailed ? 'blocked' : 'passed',
+            'reasons' => $auditFailed ? ['Independent verdict audit failed.'] : [],
+            'method' => 'deterministic-publication-gate-v1',
+        ];
     }
 }

@@ -14,8 +14,8 @@ class LiveVerificationEvidenceService
     public function __construct(
         private readonly TrustedFactCheckVerdictResolver $trustedFactCheckVerdictResolver,
         private readonly GoogleFactCheckFeedService $googleFactCheckFeedService,
-    ) {
-    }
+        private readonly ?FactCheckClaimMatcher $factCheckClaimMatcher = null,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $analysis
@@ -57,7 +57,7 @@ class LiveVerificationEvidenceService
             $this->buildOfficialSources($context, $topic, $weatherSnapshot, $weatherForecast),
             $this->buildSourceTraceCard($context),
             $this->buildCrossPlatformSocialSources($claimText, $context),
-            $this->buildFactCheckSources($factChecks),
+            $this->buildFactCheckSources($factChecks, $claimText),
             $this->buildPublisherFeedFactCheckSources($publisherFactChecks),
             $this->buildManagedSourceRoutes($factCheckQuery ?? $newsQuery ?? $claimText),
         );
@@ -71,7 +71,7 @@ class LiveVerificationEvidenceService
         );
 
         if ($verificationSources === []) {
-            return $this->trustedFactCheckVerdictResolver->apply($analysis, $factChecks, []);
+            return $this->trustedFactCheckVerdictResolver->apply($analysis, [], []);
         }
 
         $analysis['verification_sources'] = $verificationSources;
@@ -103,7 +103,9 @@ class LiveVerificationEvidenceService
             (string) ($analysis['recommendation'] ?? ''),
         );
 
-        return $this->trustedFactCheckVerdictResolver->apply($analysis, $factChecks, $verificationSources);
+        // Structured source records are the admission gate. Raw provider rows
+        // must never bypass exact-claim matching and directly decide a verdict.
+        return $this->trustedFactCheckVerdictResolver->apply($analysis, [], $verificationSources);
     }
 
     private function isEnabled(): bool
@@ -565,7 +567,7 @@ class LiveVerificationEvidenceService
 
         return collect($feed['items'] ?? [])
             ->filter(fn ($item) => is_array($item))
-            ->map(function (array $item) use ($topic, $keywords, $quotedPhrases): ?array {
+            ->map(function (array $item) use ($claimText, $topic, $keywords, $quotedPhrases): ?array {
                 $body = Str::lower(collect([
                     $item['publisher'] ?? null,
                     $item['headline'] ?? null,
@@ -581,7 +583,16 @@ class LiveVerificationEvidenceService
                     return null;
                 }
 
+                $match = $this->claimMatcher()->assess($claimText, collect([
+                    $item['headline'] ?? null,
+                    $item['claim'] ?? null,
+                ])->filter()->implode(' '));
+                if ($match['level'] === 'unrelated') {
+                    return null;
+                }
+
                 $item['_match_score'] = $score;
+                $item['_claim_match'] = $match;
 
                 return $item;
             })
@@ -990,10 +1001,10 @@ class LiveVerificationEvidenceService
     /**
      * @return array<int, array<string, string>>
      */
-    private function buildFactCheckSources(array $factChecks): array
+    private function buildFactCheckSources(array $factChecks, string $submittedClaim = ''): array
     {
         return collect($factChecks)
-            ->flatMap(function (array $claim): array {
+            ->flatMap(function (array $claim) use ($submittedClaim): array {
                 $claimText = trim((string) ($claim['text'] ?? ''));
                 $reviews = $claim['claimReview'] ?? [];
 
@@ -1004,7 +1015,7 @@ class LiveVerificationEvidenceService
                 return collect($reviews)
                     ->filter(fn ($review) => is_array($review))
                     ->take(2)
-                    ->map(function (array $review) use ($claimText): ?array {
+                    ->map(function (array $review) use ($claimText, $submittedClaim): ?array {
                         $url = trim((string) ($review['url'] ?? ''));
                         $publisher = trim((string) ($review['publisher']['name'] ?? 'Fact-check source'));
                         $title = trim((string) ($review['title'] ?? ''));
@@ -1018,6 +1029,14 @@ class LiveVerificationEvidenceService
                             return null;
                         }
 
+                        $match = $this->claimMatcher()->assess(
+                            $submittedClaim !== '' ? $submittedClaim : $claimText,
+                            collect([$claimText, $title])->filter()->implode(' '),
+                        );
+                        if ($match['level'] === 'unrelated') {
+                            return null;
+                        }
+
                         return [
                             'name' => $publisher,
                             'status' => 'Fact-check match',
@@ -1027,9 +1046,10 @@ class LiveVerificationEvidenceService
                             'summary' => $claimText !== ''
                                 ? "Google Fact Check found a related claim review rated {$rating}."
                                 : "Google Fact Check returned a public review rated {$rating}.",
-                            'source_type' => 'fact_check',
-                            'label' => 'Fact-check',
+                            'source_type' => $match['level'] === 'exact' ? 'fact_check' : 'reference',
+                            'label' => $match['level'] === 'exact' ? 'Fact-check' : 'Related reference',
                             'rating' => $rating,
+                            'claim_match' => $match,
                             'published_at' => $review['reviewDate'] ?? null,
                             'claim_text' => $claimText,
                             'evidence_rating' => trim((string) ($review['textualRating'] ?? '')),
@@ -1058,6 +1078,9 @@ class LiveVerificationEvidenceService
                 $headline = trim((string) ($item['headline'] ?? 'Open the public fact-check review tied to this claim.'));
                 $claim = trim((string) ($item['claim'] ?? ''));
                 $rating = $this->specificFactCheckRating(trim((string) ($item['rating'] ?? 'Reviewed')), $headline, $claim);
+                $match = is_array($item['_claim_match'] ?? null)
+                    ? $item['_claim_match']
+                    : ['level' => 'related', 'version' => FactCheckClaimMatcher::VERSION];
 
                 return [
                     'name' => $publisher,
@@ -1068,9 +1091,10 @@ class LiveVerificationEvidenceService
                     'summary' => $claim !== ''
                         ? "A matched fact-check source reviewed a matching claim: {$claim}"
                         : 'A matched fact-check source returned a related public review.',
-                    'source_type' => 'fact_check',
-                    'label' => 'Fact-check',
+                    'source_type' => ($match['level'] ?? null) === 'exact' ? 'fact_check' : 'reference',
+                    'label' => ($match['level'] ?? null) === 'exact' ? 'Fact-check' : 'Related reference',
                     'rating' => $rating,
+                    'claim_match' => $match,
                     'published_at' => trim((string) ($item['date_label'] ?? '')),
                     'claim_text' => $claim,
                     'evidence_rating' => trim((string) ($item['rating'] ?? '')),
@@ -1081,6 +1105,11 @@ class LiveVerificationEvidenceService
             ->take(2)
             ->values()
             ->all();
+    }
+
+    private function claimMatcher(): FactCheckClaimMatcher
+    {
+        return $this->factCheckClaimMatcher ?? new FactCheckClaimMatcher;
     }
 
     /**
@@ -1361,7 +1390,6 @@ class LiveVerificationEvidenceService
     }
 
     /**
-     * @param  mixed  $sources
      * @return array<int, array<string, string>>
      */
     private function normalizeLegacySources(mixed $sources): array
@@ -1609,7 +1637,7 @@ class LiveVerificationEvidenceService
         array $locationContext,
         string $fallback,
     ): string {
-        $factCheckCount = count($this->buildFactCheckSources($factChecks));
+        $factCheckCount = collect($verificationSources)->where('source_type', 'fact_check')->count();
         $newsCount = count($gnewsArticles) + count($newsApiArticles);
         $officialCount = collect($verificationSources)
             ->whereIn('source_type', ['official', 'weather', 'source_trace'])
@@ -1726,7 +1754,7 @@ class LiveVerificationEvidenceService
             if ($forecastSummary !== '') {
                 $sourceLine = $newsNames !== '' ? " and recent reporting from {$newsNames}" : '';
 
-                return "According to PAGASA guidance, forecast references for ".($weatherForecast['label'] ?? 'the monitored area')."{$sourceLine}, the upcoming weather outlook is {$forecastSummary}. TruthGuard marked this case as {$verdictLabel} at {$fakeScore}% because {$topSignalLabel}.";
+                return 'According to PAGASA guidance, forecast references for '.($weatherForecast['label'] ?? 'the monitored area')."{$sourceLine}, the upcoming weather outlook is {$forecastSummary}. TruthGuard marked this case as {$verdictLabel} at {$fakeScore}% because {$topSignalLabel}.";
             }
         }
 

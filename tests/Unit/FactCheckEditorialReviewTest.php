@@ -49,6 +49,8 @@ class FactCheckEditorialReviewTest extends TestCase
         ]);
 
         $this->assertSame('failed', $result['verdict_audit']['status']);
+        $this->assertSame('pending', $result['editorial_review']['status']);
+        $this->assertSame('blocked', $result['publication_gate']['status']);
         $this->assertTrue($result['quality_review']['human_review_recommended']);
     }
 }

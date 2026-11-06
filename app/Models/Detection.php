@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Model;
-use App\Models\ScrapedPost;
 
 class Detection extends Model
 {
@@ -16,6 +15,7 @@ class Detection extends Model
         'source_url',
         'media_path',
         'media_checksum',
+        'media_perceptual_hash',
         'media_type',
         'request_fingerprint',
         'reused_from_detection_id',
