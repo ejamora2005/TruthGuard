@@ -36,10 +36,10 @@ class AssessmentScoreBadgeTest extends TestCase
         $saved = $this->media(.55, true);
         $before = $saved;
         $badge = AssessmentScore::badge($saved);
-        $this->assertSame('AI-signal score: 55%', $badge['title']);
+        $this->assertSame('Model score: 55%', $badge['title']);
         $this->assertSame('', $badge['description']);
         $this->assertStringNotContainsString('90%', $badge['detail']);
-        $this->assertStringContainsString('not the probability', $badge['detail']);
+        $this->assertStringContainsString('not measured accuracy', $badge['detail']);
         $this->assertSame($before, $saved);
         $this->assertSame('INCONCLUSIVE', $saved['verdict']);
         $this->assertNull($saved['score']['value']);
@@ -53,11 +53,11 @@ class AssessmentScoreBadgeTest extends TestCase
         $badge = AssessmentScore::badge($saved);
         $this->assertStringContainsString('>99%', $badge['title']);
         $this->assertSame('', $badge['description']);
-        $this->assertStringContainsString('Detectors disagree', $badge['detail']);
+        $this->assertStringContainsString('disagreed', ReportAnswer::forPresentation($saved)['summary']);
         $this->assertStringNotContainsString('Below', $badge['description']);
         $public = ReportAnswer::forPresentation($saved);
-        $this->assertSame('INCONCLUSIVE', $public['verdict']);
-        $this->assertSame('AI origin inconclusive', $public['assessment_label']);
+        $this->assertSame('LIKELY_AI_GENERATED', $public['verdict']);
+        $this->assertSame('Likely AI-Generated', $public['assessment_label']);
     }
 
     public function test_strong_real_class_does_not_compare_low_ai_signal_to_real_class_threshold(): void
@@ -66,7 +66,7 @@ class AssessmentScoreBadgeTest extends TestCase
         $saved['media_assessment']['origin_policy']['reasons'] = ['input_quality_or_composition_limited'];
         $badge = AssessmentScore::badge($saved);
         $this->assertSame('', $badge['description']);
-        $this->assertStringContainsString('Input quality', $badge['detail']);
+        $this->assertStringContainsString('compression', ReportAnswer::forPresentation($saved)['summary']);
         $this->assertStringNotContainsString('Below', $badge['description']);
     }
 

@@ -42,8 +42,8 @@ class VideoScreeningTest extends TestCase
         $detection = Detection::sole();
         $this->assertSame('media', $detection->fact_check_result['primary_task']);
         $this->assertSame('INCONCLUSIVE', $detection->fact_check_result['verdict']);
-        $this->get(route('detections.result', $detection))->assertOk()->assertSee('Inconclusive')
-            ->assertDontSee('Likely Not AI-Generated')->assertSee('Retry media analysis');
+        $this->get(route('detections.result', $detection))->assertOk()->assertSee('Likely Not AI-Generated')
+            ->assertSee('detector prediction')->assertSee('Retry media analysis');
         Http::assertNothingSent();
     }
 

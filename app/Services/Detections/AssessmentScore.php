@@ -119,7 +119,7 @@ class AssessmentScore
         $score = $result['score'];
         $text = self::display($score);
         if ($text !== 'Score unavailable') {
-            return ['title' => $text, 'description' => match ($score['type']) {
+            return ['title' => $text, 'description' => isset($result['media_prediction']) ? '' : match ($score['type']) {
                 'confidence' => 'Calibrated on validation data',
                 'evidence_strength' => 'Provisional evidence assessment',
                 default => ($score['validation'] ?? '') === 'calibrated_benchmark'

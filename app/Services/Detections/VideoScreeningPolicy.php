@@ -18,7 +18,7 @@ class VideoScreeningPolicy
         $negative = in_array($result['verdict'], ['LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL'], true)
             || ($media['label'] ?? '') === 'real';
         $noFrames = ($media['frames_used'] ?? 0) < 1;
-        if (! $negative && ! $noFaces && ! $noFrames) return $result;
+        if ((! $negative || ($result['media_prediction']['basis'] ?? '') === 'detector_class') && ! $noFaces && ! $noFrames) return $result;
 
         $summary = $noFaces
             ? 'No usable human faces were found in the sampled frames. The deployed video detector is designed for face screening, so it cannot determine the origin of this clip. Animal, animated, and other non-face content needs a detector validated for that content.'

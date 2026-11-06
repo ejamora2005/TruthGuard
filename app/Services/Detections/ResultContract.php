@@ -74,7 +74,7 @@ class ResultContract
         $media = is_array($result['media_assessment'] ?? null) ? $result['media_assessment'] : null;
         $rawAiScore = $media['fake_probability'] ?? null;
         $minimumClassScore = (float) config('services.ai_origin.minimum_class_score', .9);
-        $borderlineImage = $task === 'media'
+        $borderlineImage = $task === 'media' && ! isset($result['media_prediction'])
             && ($media['status'] ?? '') === 'completed'
             && ($media['media_type'] ?? 'image') === 'image'
             && is_numeric($rawAiScore)
@@ -238,13 +238,14 @@ class ResultContract
         if ($result['primary_task'] === 'media' && $result['verdict'] === 'INCONCLUSIVE') {
             $result['assessment_label'] = 'AI origin inconclusive';
         }
+        $result = MediaDetectorPrediction::present($result);
         $public = array_intersect_key($result, array_flip([
             'schema_version', 'verdict_version', 'assessment_group', 'processing_status', 'completed_tasks', 'primary_task', 'verdict',
             'assessment_label', 'claim', 'summary', 'answer_segments', 'score', 'score_display',
             'key_findings', 'limitations', 'sources', 'contextual_sources', 'official_references', 'method_references',
             'context_assessments', 'secondary_assessments', 'ui', 'request', 'assessed_at',
             'evidence_cutoff', 'original_claim_date', 'evidence_strength', 'claim_assessment',
-            'media_assessment',
+            'media_assessment', 'media_prediction',
             'quality_review',
             'interpretation',
             'atomic_claims', 'evidence_families', 'evidence_balance', 'claim_origin', 'negative_evidence',

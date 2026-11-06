@@ -71,7 +71,7 @@ class ResultContractTest extends TestCase
         $this->assertSame('A visible headline claim.', $public['media_claim_notice']['text']);
     }
 
-    public function test_old_saved_borderline_media_verdict_is_suppressed_when_read(): void
+    public function test_old_saved_borderline_media_displays_prediction_with_weak_signal_warning(): void
     {
         $saved = [
             'schema_version' => 4,
@@ -90,11 +90,11 @@ class ResultContractTest extends TestCase
 
         $result = ResultContract::forPresentation($saved);
 
-        $this->assertSame('INCONCLUSIVE', $result['verdict']);
-        $this->assertSame('Inconclusive', $result['assessment_label']);
+        $this->assertSame('LIKELY_AI_GENERATED', $result['verdict']);
+        $this->assertSame('Likely AI-Generated', $result['assessment_label']);
         $this->assertTrue($result['media_assessment']['origin_inconclusive']);
-        $this->assertStringContainsString('recorded AI-signal score of 55%', $result['summary']);
-        $this->assertStringContainsString('required 90% class-decision threshold', $result['summary']);
+        $this->assertStringContainsString('detector prediction', $result['summary']);
+        $this->assertStringContainsString('detector signal is weak', $result['summary']);
         $this->assertStringNotContainsString('unavailable', strtolower($result['summary']));
     }
 
