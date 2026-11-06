@@ -7,6 +7,8 @@ use Illuminate\Support\Str;
 /** Best-effort interpretation used for discovery only; never replaces submitted evidence. */
 final class PoorPromptInterpreter
 {
+    public const VERSION = 'poor-prompt-v2';
+
     public function interpret(string $text): array
     {
         $original = Str::squish($text);
@@ -34,14 +36,19 @@ final class PoorPromptInterpreter
     private function expandAliases(string $text): string
     {
         $aliases = preg_match('/\b(?:suan|shoot|kill|resolution)\b/iu', $text)
-            ? ['Bato' => 'Ronald “Bato” dela Rosa', 'Suan' => 'Lordan Suan'] : [];
+            ? ['Bato dela Rosa' => 'Ronald “Bato” dela Rosa', 'Bato' => 'Ronald “Bato” dela Rosa', 'Suan' => 'Lordan Suan'] : [];
         $aliases += ['BBM' => 'Ferdinand Marcos Jr.', 'PRRD' => 'Rodrigo Duterte',
             'COMELEC' => 'Commission on Elections', 'DOH' => 'Department of Health',
             'DepEd' => 'Department of Education', 'PAGASA' => 'PAGASA weather agency',
             'PHIVOLCS' => 'PHIVOLCS earthquake and volcano agency'];
-        foreach ($aliases as $alias => $name) {
-            $text = preg_replace('/\b'.preg_quote($alias, '/').'\b/iu', $name, $text);
-        }
+        // Match complete names before nicknames, in one pass. Sequential
+        // replacements duplicated surnames and re-expanded names already present.
+        $lookup = array_change_key_case($aliases, CASE_LOWER);
+        $phrases = array_unique([...array_keys($aliases), ...array_values($aliases)]);
+        usort($phrases, fn ($left, $right) => mb_strlen($right) <=> mb_strlen($left));
+        $fullBatoName = "Ronald\\s+[\"“‘']?Bato[\"”’']?\\s+dela\\s+Rosa";
+        $pattern = '/\b(?:'.$fullBatoName.'|'.implode('|', array_map(fn ($phrase) => preg_quote($phrase, '/'), $phrases)).')\b/iu';
+        $text = preg_replace_callback($pattern, fn ($match) => $lookup[Str::lower($match[0])] ?? $match[0], $text);
 
         return Str::squish($text);
     }

@@ -267,3 +267,20 @@ pre-existing score-caption assertion also failed against the unchanged baseline;
 it now expects the existing Model score label without changing score behavior.
 Final targeted verification passed **125 tests / 1,135 assertions**, Pint and
 the Vite production build. No paid model calls were used during verification.
+
+## Text-only name expansion
+
+The submitted text `shoot to kill order for bato dela rosa` exposed a discovery
+defect: replacing the nickname inside a complete name produced a duplicate
+surname. Sequential expansion also duplicated already-complete names such as
+Lordan Suan and already-expanded agency labels. The interpreter now matches
+complete names first and expands aliases in one pass, preserving original text
+and its first search. An interpretation version participates in submission-cache
+identity. This changes discovery wording only; it does not assign a verdict or
+add Suan to an order question that does not name him.
+
+Targeted validation passed **58 tests / 430 assertions** across interpretation,
+question-focused planning, reviewed answers and result reuse. No paid model calls
+were made. The screenshot confirms the text was accepted, but does not identify
+which exact sources, passages or rejection reasons produced this report. The
+search defect is confirmed; its role in that production result remains unproven.

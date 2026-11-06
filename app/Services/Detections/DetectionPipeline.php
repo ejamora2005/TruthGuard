@@ -5,6 +5,7 @@ namespace App\Services\Detections;
 use App\Models\Detection;
 use App\Models\User;
 use App\Services\Detections\Evidence\ClaimPlanner;
+use App\Services\Detections\Evidence\PoorPromptInterpreter;
 use App\Services\Detections\Evidence\ReportApiBudget;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\UploadedFile;
@@ -431,6 +432,7 @@ class DetectionPipeline
             'request_context' => $requestContext,
             'reuse_version' => 'exact-submission-v1',
             'wording_version' => ResultWording::VERSION,
+            'interpretation_version' => PoorPromptInterpreter::VERSION,
             'inference_settings' => [
                 'enhanced' => config('fact_check.enhanced_enabled'),
                 'openai_enabled' => config('services.openai.analysis_enabled'),
