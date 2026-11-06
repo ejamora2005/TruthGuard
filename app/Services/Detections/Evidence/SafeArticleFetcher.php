@@ -6,6 +6,7 @@ use App\Services\Detections\FactCheckEvidencePolicy;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -53,7 +54,13 @@ class SafeArticleFetcher
                                 throw new \RuntimeException('Response too large');
                             }
                         },
-                    ])->get($url);
+                    ])
+                    // One bounded retry reduces transient failures without
+                    // repeatedly processing an inaccessible user link.
+                    ->retry(2, 150, fn ($exception): bool => $exception instanceof ConnectionException
+                        || ($exception instanceof RequestException
+                            && ($exception->response->status() === 429 || $exception->response->serverError())), false)
+                    ->get($url);
                 $base['http_status'] = $response->status();
                 if (in_array($response->status(), [301, 302, 303, 307, 308], true)) {
                     $location = $response->header('Location');

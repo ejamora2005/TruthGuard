@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\Detections\Evidence\SubmittedText;
 use App\Services\Detections\ResultWording;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -109,10 +110,10 @@ class ResultWordingTest extends TestCase
         $this->assertStringContainsString('scientific evidence', $copy['explanation']);
         $this->assertStringContainsString('mathematical population model', $copy['explanation']);
         $this->assertStringContainsString('United Nations projections', $copy['explanation']);
-        $this->assertCount(4, \App\Services\Detections\Evidence\SubmittedText::sentences($copy['explanation']));
+        $this->assertCount(4, SubmittedText::sentences($copy['explanation']));
         $this->assertStringNotContainsString('Misleading', $copy['explanation']);
         $this->assertSame('The claim presents the information without its proper context, creating an inaccurate overall impression.', $copy['result_summary']);
-        $this->assertCount(1, \App\Services\Detections\Evidence\SubmittedText::sentences($copy['result_summary']));
+        $this->assertCount(1, SubmittedText::sentences($copy['result_summary']));
         Http::assertNothingSent();
     }
 
@@ -164,5 +165,21 @@ class ResultWordingTest extends TestCase
         $this->assertStringStartsWith('TruthGuard could not access the linked social-media post.', $copy['explanation']);
         $result['extraction']['submitted_text'] = 'The bridge reopened yesterday.';
         $this->assertStringNotContainsString('TruthGuard could not access', ResultWording::saved(ResultWording::ensure($result))['explanation']);
+    }
+
+    public function test_failed_article_link_requests_one_screenshot_or_visible_claim(): void
+    {
+        $result = ResultWording::ensure([
+            'verdict' => 'UNVERIFIED', 'primary_task' => 'claim',
+            'sources' => [], 'contextual_sources' => [],
+            'extraction' => ['submitted_text' => '', 'submitted_notes' => '', 'source_record' => [
+                'url' => 'https://news.example.test/story', 'status' => 'http_503', 'text' => '',
+            ]],
+        ]);
+
+        $copy = ResultWording::saved($result);
+        $this->assertStringContainsString('could not read the linked page', $copy['explanation']);
+        $this->assertStringContainsString('upload a clear screenshot', $copy['recommended_action']);
+        $this->assertStringContainsString('provide this only once', $copy['recommended_action']);
     }
 }

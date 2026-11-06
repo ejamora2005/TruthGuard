@@ -4,6 +4,7 @@ namespace App\Services\Detections;
 
 use App\Services\Detections\Evidence\StructuredAnalysis;
 use App\Services\Detections\Evidence\SubmittedText;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /** Saved presentation copy; never determines a verdict, score, or citation. */
@@ -87,7 +88,9 @@ PROMPT;
         if (! is_array($copy) || ($copy['version'] ?? '') !== self::VERSION) {
             return null;
         }
-        if (($copy['explanation'] ?? '') === 'Review the displayed verdict and its supporting evidence before relying on this result.') return null;
+        if (($copy['explanation'] ?? '') === 'Review the displayed verdict and its supporting evidence before relying on this result.') {
+            return null;
+        }
         unset($copy['version']);
 
         return self::accept($result, $copy);
@@ -143,12 +146,17 @@ PROMPT;
     /** Generation-time fallback when no usable final AI copy exists. No requests. */
     public static function ensure(array $result, string $recommendation = ''): array
     {
-        if (self::inaccessibleSocialLink($result)) {
+        if (($linkFailure = self::inaccessibleLink($result)) !== null) {
+            $social = $linkFailure['social'];
             $result['generated_wording'] = ['version' => self::VERSION] + [
                 'verdict' => $result['verdict'],
-                'explanation' => 'TruthGuard could not access the linked social-media post. The post may be private, require sign-in, have been deleted, or be restricted in this location, so its caption and content could not be verified.',
-                'result_summary' => 'The original post was not publicly accessible, so there was not enough content for a factual conclusion.',
-                'recommended_action' => 'Paste the exact caption or claim, or upload a clear screenshot or copy of the post.',
+                'explanation' => $social
+                    ? 'TruthGuard could not access the linked social-media post. The post may be private, require sign-in, have been deleted, or be restricted in this location, so its caption and content could not be verified.'
+                    : 'TruthGuard could not read the linked page after its safe retrieval attempt. The page may be unavailable, blocked, deleted, temporarily offline, or in an unsupported format, so its visible claim could not be verified.',
+                'result_summary' => $social
+                    ? 'The original post was not publicly accessible, so there was not enough content for a factual conclusion.'
+                    : 'The linked page could not be read, so there was not enough content for a factual conclusion.',
+                'recommended_action' => 'Paste the exact visible claim and date, or upload a clear screenshot of the post or page; provide this only once.',
                 'source_ids' => [],
             ];
 
@@ -176,7 +184,9 @@ PROMPT;
             $summary = implode(' ', array_filter(array_column($result['answer_segments'] ?? [], 'text'),
                 fn ($text) => is_string($text) && trim($text) !== ''
                     && trim($text) !== 'Review the displayed verdict and its supporting evidence before relying on this result.'));
-            if ($summary === '') $summary = implode(' ', array_filter(array_column($result['sources'] ?? [], 'used_for')));
+            if ($summary === '') {
+                $summary = implode(' ', array_filter(array_column($result['sources'] ?? [], 'used_for')));
+            }
         }
         // A raw URL in an otherwise useful explanation used to reject the
         // entire paragraph. Links remain in the source cards; keep the facts.
@@ -189,7 +199,9 @@ PROMPT;
             ->unique()->values();
         $selected = [];
         foreach ($sentences as $sentence) {
-            if (count($selected) >= 4 || Str::wordCount(implode(' ', [...$selected, $sentence])) > 155) break;
+            if (count($selected) >= 4 || Str::wordCount(implode(' ', [...$selected, $sentence])) > 155) {
+                break;
+            }
             $selected[] = $sentence;
         }
         $explanation = implode(' ', $selected);
@@ -205,7 +217,7 @@ PROMPT;
         $cutoff = $result['evidence_cutoff'] ?? null;
         if ($timeSensitive && is_string($cutoff) && $cutoff !== '' && ! str_starts_with(Str::lower($explanation), 'as of ')) {
             try {
-                $date = \Illuminate\Support\Carbon::parse($cutoff)->format('F j, Y');
+                $date = Carbon::parse($cutoff)->format('F j, Y');
                 $explanation = 'As of '.$date.', '.lcfirst($explanation);
             } catch (\Throwable) {
                 // Keep the validated explanation when an older record has an invalid cutoff.
@@ -232,7 +244,7 @@ PROMPT;
         }
         if ($timeSensitive && is_string($cutoff) && $cutoff !== '' && ! str_starts_with(Str::lower($copy['explanation']), 'as of ')) {
             try {
-                $copy['explanation'] = 'As of '.\Illuminate\Support\Carbon::parse($cutoff)->format('F j, Y').', '.lcfirst($copy['explanation']);
+                $copy['explanation'] = 'As of '.Carbon::parse($cutoff)->format('F j, Y').', '.lcfirst($copy['explanation']);
             } catch (\Throwable) {
                 // Keep the validated fallback when an older cutoff is malformed.
             }
@@ -261,38 +273,45 @@ PROMPT;
         };
     }
 
-    /** Detect a social post that could not be publicly read; no model call. */
-    private static function inaccessibleSocialLink(array $result): bool
+    /** Detect a submitted page that could not be publicly read; no model call. */
+    private static function inaccessibleLink(array $result): ?array
     {
         // An unreadable supporting link must not replace an assessment of a
         // separately supplied factual statement with an access-error message.
         if (! in_array($result['verdict'] ?? '', ['MISSING_CONTEXT', 'UNVERIFIABLE', 'UNVERIFIED', 'UNREADABLE_CONTENT'], true)
             || ($result['sources'] ?? []) !== []) {
-            return false;
+            return null;
         }
         $record = $result['extraction']['source_record'] ?? null;
         if (! is_array($record)) {
-            return false;
+            return null;
         }
         $host = Str::lower((string) parse_url((string) ($record['url'] ?? ''), PHP_URL_HOST));
         $social = Str::contains($host, ['facebook.com', 'fb.com', 'instagram.com', 'tiktok.com', 'youtube.com', 'youtu.be']);
-        if (! $social) {
-            return false;
-        }
         $supplied = trim(str_replace((string) ($record['url'] ?? ''), '', (string) ($result['extraction']['submitted_text'] ?? '')));
         if ($supplied !== '' || trim((string) ($result['extraction']['submitted_notes'] ?? '')) !== '') {
-            return false;
+            return null;
         }
-        if (($record['status'] ?? '') !== 'retrieved') {
-            return true;
+        $status = (string) ($record['status'] ?? '');
+        if ($status !== 'retrieved') {
+            $accessFailures = [
+                'login_or_unavailable', 'timeout', 'network_failure', 'fetch_failed', 'redirect_limit',
+                'blocked_url', 'robots_restricted_or_unavailable', 'restricted', 'too_large',
+                'unsupported_content_type', 'missing_full_text', 'http_401', 'http_403', 'http_404',
+                'http_408', 'http_410', 'http_429', 'http_500', 'http_502', 'http_503', 'http_504',
+            ];
+
+            return in_array($status, $accessFailures, true) ? compact('social', 'status') : null;
         }
 
         $text = Str::lower(Str::squish((string) ($record['text'] ?? $result['extraction']['article_text'] ?? '')));
 
-        return $text === '' || Str::contains($text, [
+        $inaccessible = $text === '' || Str::contains($text, [
             'log in to continue', 'login to continue', 'sign in to continue', 'you must log in',
             'this account is private', 'private account', 'content isn\'t available',
             'content is not available', 'post is unavailable', 'video unavailable',
         ]);
+
+        return $inaccessible ? compact('social', 'status') : null;
     }
 }
