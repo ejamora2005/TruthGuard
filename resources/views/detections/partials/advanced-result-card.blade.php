@@ -901,7 +901,7 @@
             .tg-ai-report .tg-report-title { flex: 1 1 auto; flex-basis: auto; min-width: 0; overflow: hidden; }
             .tg-ai-report .tg-report-header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; }
             .tg-ai-report .tg-report-kicker, .tg-ai-report .tg-report-subtitle, .tg-ai-report .tg-report-reference > span { display: none; }
-            .tg-ai-report .tg-report-page-title { margin: 0; overflow: hidden; font-size: .875rem; line-height: 1.3; white-space: nowrap; text-overflow: ellipsis; }
+            .tg-ai-report .tg-report-page-title { margin: 0; overflow: hidden; font-size: 1.0625rem; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
             .tg-ai-report .tg-report-reference { display: none; }
             .tg-ai-report .tg-report-new-check { min-height: 32px; padding: .35rem .5rem; font-size: .6875rem !important; }
             .tg-ai-report .tg-report-evidence { gap: .75rem; }

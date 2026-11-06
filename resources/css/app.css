@@ -443,7 +443,8 @@ body.truthguard-fact-check-create-route .truthguard-composer-actions .truthguard
         position: absolute;
         top: auto;
         right: auto;
-        bottom: calc(100% + .75rem);
+        /* Keep the restore control visibly above the upload/input surface. */
+        bottom: calc(100% + 1.25rem);
         left: 50%;
         z-index: 20;
         width: auto;
