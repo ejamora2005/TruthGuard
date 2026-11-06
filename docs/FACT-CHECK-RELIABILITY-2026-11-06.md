@@ -1,0 +1,153 @@
+# Fact-check reliability investigation — November 6, 2026
+
+Status: development diagnostics completed; independent deployment accuracy is **not measured**.
+
+## What was run
+
+The working application made real provider/model requests using the configured
+GPT-5.4 analysis, planning, extraction and search models. The four fixed limits
+requested by the owner were zero in these CLI processes. No `.env` settings,
+weights, live confidence calibration, or deployed production service were changed.
+The local application URL is localhost; this investigation does not certify
+Dokploy's deployed version or workers.
+
+Read-only collection produced **353 candidate claims** from the local public
+review database and three bounded public Fact Check API requests. They contain
+255 candidate False labels, 19 Misleading, 9 Missing Context, 4 True and 66
+unmapped labels. These are publisher metadata and stored answers, not independent
+review of the exact submitted wording. All human-review flags remain false.
+The pool is heavily imbalanced and its event grouping needs review.
+
+Four live diagnostic runs contain 22 complete checks of 11 distinct text/media
+inputs. They deliberately include development cases and related variants.
+The initial GMA transcript reproduced Missing Context at 20,517 reported tokens.
+Two intermediate attempts remained unresolved; those failed attempts are retained.
+The final complete live run returned:
+
+| Input | Outcome | Reported model tokens |
+| --- | --- | ---: |
+| GMA poster transcript, retaining its OCR wording | False | 11,712 |
+| Original locally saved Suan image | False | 739 |
+| PAGASA's stated annual PAR average | True | 9,649 |
+| Constructed tenfold alteration of that average | False | 26,406 |
+
+Earlier controls returned True for the documented Apollo 11 landing and Martian
+moons, and False for constructed year/count alterations. These few source-checked
+development examples do not establish representative accuracy or calibration.
+The GMA original upload is unavailable locally: its case is a **text transcript**,
+not a live OCR reproduction. The Suan case uses the original local image/hash.
+
+One initial PAGASA control returned Unverified because the pilot's earlier fixed
+cutoff correctly excluded an undated page. This was a live-benchmark setup error,
+not proof that the underlying statement was false. Live captures now explicitly
+record their actual per-case cutoff; fixed historical evaluations retain their
+stricter source-date policy. Reports separate these modes.
+
+The four runs used **209,757 provider-reported tokens in total**, including the
+unsuccessful investigations. A final live model review against frozen source
+records used another **9,936**, returning refuted for both GMA status candidates.
+Total observed model usage: **219,693 tokens**. This is not a dollar invoice;
+cached input pricing and search-tool charges require billing records. No full
+353-case paid run was made before independent review.
+
+## Defects repaired
+
+- An initial identity/context flag prevented usable retrieved evidence from
+  establishing the meaning of a quoted post. `evidence-v22` can bind an ambiguous
+  subject to a publisher's named reviewed subject when the actual article quotes
+  the heading and a separate phrase together. Binding preserves the original
+  claim, dates, numbers and negation; it does not assign a verdict. A normal
+  validated relationship still needs a literal supporting/refuting passage.
+- Shared contiguous phrases can identify an OCR-corrupted subtitle without
+  rewriting its wording. A subjectless fragment can become checkable only when
+  it has an explicit status/decision term. Unrelated source passages, untrusted
+  publisher URLs, conflicting subjects, missing dates/outcomes and photograph
+  identity questions cannot use this automatic binding. Optional model-proposed
+  bindings have their own literal grounding checks and request-local lifetime.
+- Greeting/farewell-only headlines naming an entity remain context rather than
+  invented claims of dismissal or appointment. Extra explicit factual wording is
+  preserved. Source quotations and identity bindings remain auditable.
+- Automatic image routing can reuse a reviewed answer after OCR selects the
+  factual task. Whole-submission reviewed answers cannot use a review written
+  after the requested cutoff.
+- Guide-only submissions are rejected without paid analysis, including previously
+  shipped shortcuts. Failed retries show an unavailable result instead of stale
+  findings while preserving the prior saved evidence. Queue-mode pending resume
+  remains owner-scoped; synchronous mode does not resume background work.
+- The projected safe historical summary takes precedence over old task-choice
+  narration. Recommended actions do not repeat the explanation. Exact-file origin
+  provenance survives as a method reference rather than disappearing from a
+  media-only report or becoming factual-claim evidence.
+
+## Software tests
+
+Queue execution settings are isolated in PHPUnit rather than inherited from the
+developer's `.env`. Explicit queued tests still enable the evidence queue. Obsolete
+assertions were updated to the existing report contract: image submissions can be
+factual reports; borderline/blank media findings are inconclusive; unfinished
+reports redirect to progress; reused findings retain the same evidence but do not
+repeat historical token usage. These changes do not restore unsafe old verdicts
+or turn the tests into an accuracy benchmark.
+
+The final full run completed **862 tests / 5,949 assertions with zero failures,
+zero errors and four skipped tests**. Validation artifacts are under
+`storage/logs/truthguard-reliability-final-v2.*`. The evaluation metric checks
+also passed 15 Python tests (including the pre-existing assessment evaluator).
+The Python metric tests cover abstention/coverage, source retrieval versus use,
+input/hash/cutoff binding, reuse separation, unavailable measurements and rejection
+of incomplete independent-review declarations. New evidence guards test original
+literal source text and source boundaries, including adversarial mismatches.
+
+## Reproduce the diagnostics
+
+The local, ignored artifact directory is
+`output/validation/fact-check-2026-11-06-v1/`. It contains immutable candidate
+manifests, all four predictions/source archives, per-run JSON/CSV/HTML reports,
+the original Suan hash, a blind independent-review CSV, frozen-source replays and
+the investigation summary. Original detections are not overwritten by capture;
+normal canonical/source caches may be populated by the application.
+
+Prepare a new candidate export without model enrichment or database writes:
+
+```powershell
+php automation/evaluation/prepare_fact_check_cases.php --output=path/to/new-cases.jsonl --google-pages=1
+python automation/evaluation/prepare_fact_check_review.py --cases path/to/new-cases.jsonl --output path/to/new-review.csv
+```
+
+Validate before making paid requests, then capture a small pilot:
+
+```powershell
+php artisan truthguard:capture-evidence path/to/cases.jsonl path/to/new-predictions.jsonl --dry-run
+php artisan truthguard:capture-evidence path/to/cases.jsonl path/to/new-predictions.jsonl --take=6
+python automation/evaluation/audit_fact_checks.py --cases path/to/cases.jsonl --predictions path/to/new-predictions.jsonl --reports path/to/new-predictions.jsonl.reports.jsonl --output-dir path/to/new-report
+```
+
+Outputs cannot overwrite an earlier capture/report. All media hashes and dates
+are checked before any paid case runs. Labels, review notes and expected source
+URLs are never sent to the analyzer. `--force-research` explicitly tests fresh
+research instead of saved-answer reuse. Default fixed-cutoff cases must have a
+valid, nonfuture ISO UTC `evaluation_cutoff`. For a live development check, declare
+`cutoff_policy="capture_time"`; predictions and archives record both the declared
+and actual cutoff. These live outputs need review at their actual cutoff before
+being used with the stricter independent-label evaluator/calibrator.
+
+## Remaining release gate
+
+Select and freeze at least 200 independently reviewed event groups before a final
+run. Add enough true and genuinely unresolved cases to assess wrong-False errors
+and abstention; the four True publisher candidates are insufficient. Include
+Filipino and English, original screenshots, multiple assertions, dates, attribution
+and qualifiers. Keep related events/images/paraphrases together. Exclude these
+development failures and their event variants from the final held-out group.
+
+Reviewers must verify exact claim scope, expected verdict, date cutoff and literal
+source passages, and record their names, dates and evidence basis. Do not fill
+those declarations from a model prediction or a publisher rating alone. The blind
+review sheet contains no TruthGuard predictions. Define acceptable error and
+answerable-coverage thresholds before the held-out run; report class results,
+uncertainty, citation entailment, cost and failures. The current audit intentionally
+returns `release_ready=false` and does not enable a Confidence percentage.
+
+Fresh deployment checks, the HTTP/worker/browser path and continuing source
+availability must also be verified on Dokploy. The local software tests and
+service-level captures are evidence for their recorded scope only.

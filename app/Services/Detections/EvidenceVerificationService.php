@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v21';
+    public const VERSION = 'evidence-v22';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -41,6 +41,8 @@ class EvidenceVerificationService
         $primary = $resolved['resolved_task'];
         $request = $context;
         $question = $resolved['question'];
+        $knownCutoff = ClaimPlanner::cutoff($question,
+            $this->policy->date($context['evidence_cutoff'] ?? null) ?? now()->utc()->toIso8601String());
         $tasks = $resolved['tasks'];
         $context['caption_text'] = SubmissionTask::claimText($context['caption_text'] ?? null);
         $context['notes'] = SubmissionTask::claimText($context['notes'] ?? null);
@@ -64,7 +66,7 @@ class EvidenceVerificationService
                 ? null : ReviewedClaimLookup::lookup(implode(' ', array_filter([
                     $context['caption_text'] ?? null,
                     $context['notes'] ?? null,
-                ])));
+                ])), $knownCutoff);
             $extraction = $submittedKnownResult
                     ? [
                         'status' => 'completed',
@@ -90,6 +92,9 @@ class EvidenceVerificationService
             $context['primary_task'] = $primary;
             $context['question'] = $question;
             $context['media_attached'] = $file !== null;
+            $wholeAnswerAllowed = $primary === 'claim'
+                && SubmissionTask::questionClaim($question) === ''
+                && ! in_array('context', $tasks, true);
             if ($detectorOnly || $primary === 'clarification') {
                 $analysis['claim_assessment'] = ['status' => 'not_requested', 'task' => 'Factual claim verification',
                     'result' => null, 'reason' => 'Factual verification was not requested. Visible text, when available, is recorded only as an optional claim notice.'];
@@ -97,7 +102,7 @@ class EvidenceVerificationService
                 $knownResult = ! $wholeAnswerAllowed || $extractionBudget->freshSources
                     || ClaimPlanner::requiresFreshEvidence((string) ($extraction['analysis_text'] ?? ''))
                     ? null : ($submittedKnownResult
-                    ?? ReviewedClaimLookup::lookup((string) ($extraction['analysis_text'] ?? '')));
+                    ?? ReviewedClaimLookup::lookup((string) ($extraction['analysis_text'] ?? ''), $knownCutoff));
                 $analysis = $knownResult
                     ? $this->applyKnownResult($analysis, $knownResult, $context, $extraction)
                     : $this->applyClaims($analysis, $context, $file, $progress, $extraction, $extractionBudget->pages);
@@ -505,6 +510,8 @@ class EvidenceVerificationService
                 ['reviewed_claim_id', 'reviewed_claim_slug', 'claim_variation_id', 'reviewed_at', 'match_method']), $reviewedAnswers),
             'exact_review_without_model' => $exactPlan !== null,
             'duplicate_reviews_skipped' => $this->judge->duplicateReviewsSkipped,
+            'scope_resolutions' => $this->judge->scopeResolutions,
+            'scope_resolution_attempts' => $this->judge->scopeResolutionAttempts,
             'research_context' => $budget->researchContext,
             'model_request_attempts' => $this->model->requestAttempts,
             'analysis_elapsed_ms' => (int) round((microtime(true) - $started) * 1000), 'pipeline_version' => self::VERSION,

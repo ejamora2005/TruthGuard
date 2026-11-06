@@ -135,7 +135,8 @@ class DetectionPipelineTest extends TestCase
 
         $response->assertRedirect(route('detections.result', $detection));
 
-        $this->assertSame('LIKELY_AI_GENERATED', $detection->fact_check_result['verdict']);
+        // The artificial blank upload is not evidence of a generated origin.
+        $this->assertSame('INCONCLUSIVE', $detection->fact_check_result['verdict']);
         $this->assertSame('media', $detection->fact_check_result['request']['resolved_task']);
         $this->assertSame(91, $detection->fake_score);
         $this->assertSame('fake', $detection->signals['deepfake_cnn'][0]['verdict']);
@@ -191,7 +192,8 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame('video', $detection->signals['deepfake_cnn'][0]['media_type']);
         $this->assertSame('top5_mean', $detection->signals['deepfake_cnn'][0]['aggregation_method']);
         $this->assertSame(16, $detection->signals['deepfake_cnn'][0]['frames_used']);
-        $this->assertSame('LIKELY_AI_GENERATED', $detection->fact_check_result['verdict']);
+        // A 0.71 raw screening output is inside the selective uncertainty band.
+        $this->assertSame('INCONCLUSIVE', $detection->fact_check_result['verdict']);
         $this->assertSame('media', $detection->fact_check_result['request']['resolved_task']);
     }
 
@@ -528,7 +530,10 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame($firstDetection->request_fingerprint, $secondDetection->request_fingerprint);
         $this->assertSame($firstDetection->fake_score, $secondDetection->fake_score);
         $this->assertSame($firstDetection->verdict, $secondDetection->verdict);
-        $this->assertSame($firstDetection->fact_check_result, $secondDetection->fact_check_result);
+        foreach (['verdict', 'claim', 'claims', 'sources', 'primary_task', 'request'] as $field) {
+            $this->assertSame($firstDetection->fact_check_result[$field] ?? null, $secondDetection->fact_check_result[$field] ?? null);
+        }
+        $this->assertSame(0, data_get($secondDetection->fact_check_result, 'diagnostics.api_usage.total_tokens'));
         $this->assertSame($firstDetection->id, $secondDetection->reused_from_detection_id);
         $this->assertStringContainsString('reused the stored result', (string) $secondDetection->preprocessing_summary);
     }

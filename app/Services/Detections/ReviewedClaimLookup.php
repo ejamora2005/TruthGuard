@@ -10,11 +10,11 @@ use Illuminate\Support\Str;
 
 class ReviewedClaimLookup
 {
-    public static function lookup(string $text): ?array
+    public static function lookup(string $text, ?string $cutoff = null): ?array
     {
         // Retain the shipped catalog only on installations not migrated yet.
         if (! self::available()) {
-            return KnownFactCheckCatalog::match($text);
+            return self::reviewedByCutoff(KnownFactCheckCatalog::match($text), $cutoff);
         }
         $result = self::match($text);
         if ($result === null && KnownFactCheckCatalog::matchesReviewedVariant($text)) {
@@ -23,6 +23,20 @@ class ReviewedClaimLookup
             if ($result !== null) {
                 $result['diagnostics']['match_method'] = 'approved_november_13_variant';
             }
+        }
+
+        return self::reviewedByCutoff($result, $cutoff);
+    }
+
+    private static function reviewedByCutoff(?array $result, ?string $cutoff): ?array
+    {
+        if ($result === null || $cutoff === null) {
+            return $result;
+        }
+        $reviewed = $result['diagnostics']['reviewed_at'] ?? null;
+        if (($reviewed && Carbon::parse($reviewed)->gt($cutoff))
+            || (! $reviewed && Carbon::parse($cutoff)->lt(now()->subMinute()))) {
+            return null;
         }
 
         return $result;

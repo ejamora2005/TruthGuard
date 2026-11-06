@@ -298,7 +298,7 @@ class CanonicalFactCheckResultTest extends TestCase
             ->assertJsonMissingPath('source_snapshot_id')
             ->assertJsonMissingPath('legacy_model_estimate');
         $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
-            ->assertSee('Historical: Unverified')->assertSee('Evidence insufficient')->assertSee('Evidence cutoff')
+            ->assertSee('Historical: Unverified')->assertSee('What the evidence shows')->assertSee('Evidence cutoff')
             ->assertSee('Recheck the submission')->assertDontSee('LOW-RISK CLAIM');
         $this->actingAs(User::factory()->create())->getJson(route('detections.result', $detection))->assertNotFound();
         Http::assertNothingSent();

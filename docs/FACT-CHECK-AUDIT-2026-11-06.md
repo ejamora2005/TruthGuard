@@ -456,3 +456,13 @@ proposition. This change does not turn those introductory paragraphs or bare
 source-card titles into decisive evidence. Retrieved text, exact scope and
 published-review validation still apply to that path. Existing saved reports
 require a recheck after deployment; they are not rewritten by this patch.
+
+### Live reliability investigation after the database fix
+
+See [FACT-CHECK-RELIABILITY-2026-11-06.md](FACT-CHECK-RELIABILITY-2026-11-06.md)
+for the actual live failures, source-grounded identity repair in `evidence-v22`,
+corrected capture-time semantics, token accounting, software-test repairs and
+independent-review gate. The final full suite passed 862 tests / 5,949 assertions,
+with zero failures/errors and four skipped tests. The updated working checker
+returned False for the GMA transcript and original Suan upload in live diagnostic
+runs. This does not establish an independently measured deployment accuracy.

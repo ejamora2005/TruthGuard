@@ -19,13 +19,18 @@ class SubmissionTask
         self::CLAIM_INSTRUCTION,
         self::CONTEXT_INSTRUCTION,
         self::SOURCES_INSTRUCTION,
+        // Previously shipped shortcuts still appear in saved submissions.
+        'Is this image or video AI-generated or manipulated',
+        'Is the claim in this post true',
+        'Has this claim already been fact-checked, and what ratings did trusted sources give it',
+        'Fact-check this claim against trusted public sources and explain the evidence',
     ];
 
     public static function isPresetInstruction(?string $text): bool
     {
-        $text = trim((string) $text);
+        $text = mb_strtolower(rtrim(trim((string) $text), '.!?'));
         foreach (self::INSTRUCTIONS as $instruction) {
-            if ($text === $instruction.'.') {
+            if ($text === mb_strtolower($instruction)) {
                 return true;
             }
         }

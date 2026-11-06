@@ -93,6 +93,22 @@ class ClaimPlanner
                 && trim($r['referent'] ?? '') !== '' && Str::contains(Str::lower($r['context_quote'] ?? ''), Str::lower($r['referent']))
                 && str_contains($text, $r['context_quote'])));
             $row = $this->normalizeStatusQuestion($row);
+            // A farewell or greeting alone does not assert a firing, departure
+            // or appointment. Preserve it as context alongside explicit facts.
+            if ($target === '' && in_array($row['kind'], ['factual', 'unclear'], true)
+                && preg_match('/^(?:bye(?:[- ]+bye)?|goodbye|farewell|hello|welcome|paalam|kumusta)\s+([^.!?]{1,100})\?+[!?.]*$/iu', trim($row['quote']), $farewell)
+                && in_array(Str::lower(Str::squish($farewell[1])), array_map(fn ($entity) => Str::lower(Str::squish($entity)), $row['entities']), true)) {
+                $row['kind'] = 'rhetorical';
+            }
+            if ($target === '' && $row['kind'] === 'unclear' && $row['requires_context']
+                && str_contains($row['quote'], '?')
+                && array_merge($row['entities'], $row['dates'], $row['locations'], $row['quantities']) === []
+                && ! preg_match('/\d|\b(?:closed|shutdown|shut down|cancelled|canceled|postponed|approved|confirmed|decided|ruled|ordered|signed|enacted|arrested|suspended|reopened|sarado|sinara|ipinasara|nagsara|kinansela|ipinagpaliban|naaprubahan|napirmahan|isinabatas|naaresto|sinuspinde|binuksan|nagbukas|kinumpirma|nagpasya|inutos)\b/iu', $row['quote'])
+                && preg_match('/\bno subject\b|does not (?:state|specify).{0,40}(?:assertion|outcome)|topic heading/iu', $row['context_reason'])) {
+                // A subjectless rhetorical subtitle supplies context for the
+                // concrete assertion. It cannot independently assert a ruling.
+                $row['kind'] = 'rhetorical';
+            }
             // Preserve a complete sentence even if a model returns its subordinate clauses.
             if ($row['kind'] === 'factual') {
                 foreach (SubmittedText::sentences($text) as $sentence) {

@@ -197,7 +197,7 @@ class CommittedResultPageTest extends TestCase
         $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new \DOMXPath($document);
-        $this->assertSame($summary, trim($xpath->query('//p[contains(@class, "tg-interpretation-copy")]')->item(0)->textContent));
+        $this->assertSame('Important details needed to understand the claim accurately are missing.', trim($xpath->query('//p[contains(@class, "tg-interpretation-copy")]')->item(0)->textContent));
         $this->assertSame(0, $xpath->query('//details[contains(@class, "tg-interpretation-summary")]')->length);
         $this->assertSame($nextStep, trim($xpath->query('//p[contains(@class, "tg-interpretation-recommendation")]')->item(0)->textContent));
         $this->assertSame(1, $xpath->query('//aside[contains(@class, "tg-interpretation-action")]//a[@href="https://example.com/recorded-reference"]')->length);
@@ -252,6 +252,12 @@ class CommittedResultPageTest extends TestCase
             ->times(3)->andReturn(['items' => []]);
 
         foreach ([[$owner, $first, 1], [$owner, $second, 2], [$owner, $queued, 3], [$other, $otherFirst, 1]] as [$user, $report, $number]) {
+            if ($report->processing_status === 'queued') {
+                $this->actingAs($user)->get(route('detections.result', $report))
+                    ->assertRedirect(route('detections.create', ['pending' => $report->id]));
+
+                continue;
+            }
             $this->actingAs($user)->get(route('detections.result', $report))->assertOk()
                 ->assertViewHas('userReportNumber', $number)
                 ->assertSee('<strong>TG-'.str_pad((string) $number, 2, '0', STR_PAD_LEFT).'</strong>', false);
@@ -287,9 +293,9 @@ class CommittedResultPageTest extends TestCase
         $this->mock(LiveVerificationEvidenceService::class)->shouldNotReceive('verify');
 
         $html = $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
-            ->assertSee('Media analysis report')->assertSee('Your question')->assertSee('What the evidence shows')
+            ->assertSee('Fact-check report')->assertSee('Your question')->assertSee('What the evidence shows')
             ->assertDontSee('Evidence insufficient')->assertDontSee('No calibrated confidence recorded')->assertSee($saved['summary'])
-            ->assertSee('Saved explanation tied to the original source record.')->assertSee('Source result')->assertSee('False')
+            ->assertDontSee('Saved explanation tied to the original source record.')->assertSee('Source result')->assertSee('False')
             ->assertSee('Source verification')->assertSee('Original saved source title')->assertSee('Original saved relevance explanation.')
             ->assertSee('href="https://example.com/saved-source"', false)->assertSee('Enlarge submitted image')
             ->assertDontSee('tg-result-report')->getContent();

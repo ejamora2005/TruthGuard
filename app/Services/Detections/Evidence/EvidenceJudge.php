@@ -4,7 +4,9 @@ namespace App\Services\Detections\Evidence;
 
 use App\Services\Detections\AssessmentVerdict;
 use App\Services\Detections\FactCheckClaimMatcher;
+use App\Services\Detections\FactCheckEvidencePolicy;
 use App\Services\Detections\ResultWording;
+use App\Services\Detections\ReviewedClaimLookup;
 use App\Services\Detections\SubmissionTask;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -20,6 +22,13 @@ class EvidenceJudge
 
     public array $wordingCandidates = [];
 
+    /** Literal publisher passages linking ambiguous submission text to its subject. */
+    public array $scopeResolutions = [];
+
+    public array $scopeResolutionAttempts = [];
+
+    private array $scopeConflicts = [];
+
     private array $completedReviews = [];
 
     private array $reviewedSources = [];
@@ -32,6 +41,9 @@ class EvidenceJudge
     {
         $this->reviewScopes = $this->contextFindings = $this->contextualSources = $this->completedReviews = [];
         $this->wordingCandidates = [];
+        $this->scopeResolutions = [];
+        $this->scopeResolutionAttempts = [];
+        $this->scopeConflicts = [];
         $this->reviewedSources = [];
         $this->duplicateReviewsSkipped = 0;
     }
@@ -49,6 +61,12 @@ class EvidenceJudge
         // Share the input budget across sources; never hide a partial reading.
         $sources = array_map(fn ($s) => Arr::only($s, ['id', 'url', 'title', 'name', 'source_type', 'published_at', 'updated_at', 'possible_copy_of', 'text', 'reviewed_claim', 'review_rating']), $sources);
         $allSources = $sources;
+        $photoIdentityQuestion = ($request['media_attached'] ?? false)
+            && preg_match('/\b(?:this|that|pictured|shown)\s+(?:old\s+|elderly\s+)?(?:woman|man|lady|person|people|image|photo(?:graph)?|picture|video|footage)\b/iu', $request['question'] ?? '');
+        if (! $photoIdentityQuestion) {
+            $this->resolveQuotedPostSubjects($reviewable, $allSources);
+        }
+        $reviewable = $this->resolveClaims($reviewable);
         $scope = hash('sha256', json_encode([$reviewable, $cutoff, $request], JSON_THROW_ON_ERROR));
         $previousRows = [];
         $previousFindings = [];
@@ -93,6 +111,10 @@ class EvidenceJudge
             'excerpt' => $string, 'explanation' => $string, 'matches' => $matches,
             'basis' => ['type' => 'string', 'enum' => ['primary_record', 'direct_reporting', 'fact_check', 'background']],
             'supersedes_source_ids' => ['type' => 'array', 'items' => $string], 'supersession_excerpt' => $string,
+        ])], 'scope_resolutions' => ['type' => 'array', 'items' => StructuredAnalysis::object([
+            'claim_id' => $string, 'source_id' => $string, 'resolved_subject' => $string,
+            'excerpts' => ['type' => 'array', 'items' => $string],
+            'matched_submission_quotes' => ['type' => 'array', 'items' => $string],
         ])], 'wording' => ['type' => 'array', 'maxItems' => 1,
             'items' => ResultWording::schema(array_merge(AssessmentVerdict::FACTUAL, AssessmentVerdict::CONTEXT))]]);
         $instructions = 'Compare each exact claim with retrieved article text. Give relationships for relevant candidates; omit unrelated/background pairs, which remain insufficient. Shared keywords are not a match. All decisive relationships require a verbatim contiguous excerpt from text and matching event, people, location, date, quantities, qualifiers and asserted action. Mark unspecified dimensions true only when they impose no constraint. A fact-check of a different claim is insufficient regardless of its rating. A petition or constitutional challenge is not a final ruling; a bill is not an enacted law. An official statement only establishes what that body can directly establish. News describing a statement does not automatically prove the statement. Do not infer truth from image authenticity or model scores. Distinguish past accuracy from current accuracy at the supplied cutoff. Only mark supersession when newer text explicitly replaces/corrects the older record, and quote that passage. Explain unresolved conflicts; never select a preferred verdict. For rhetorical or unclear headings, or a factual heading marked requires_context, never mark a relationship supporting or contradicting: the missing material detail prevents a specific outcome. A directly relevant, dated passage about the named event or its proposal/enactment/decision status may instead be returned as a RELATED_STATUS context_finding, with a short explanation limited to what the passage establishes at its date. Unrelated claims or merely shared topic words cannot be RELATED_STATUS. Cite ONLY provided claim IDs and source IDs. Summaries and search snippets are not article text.'
@@ -113,6 +135,7 @@ class EvidenceJudge
         $instructions .= ' For current_status_question, an older dated report establishes what was known then, not necessarily the status at the evaluation cutoff. A provisional statement that an event will proceed unless a new law or decision changes it cannot refute a later postponement. Check subsequent enactments, cancellations and corrections. When a later passage explicitly establishes a changed schedule for the SAME event, identify the older source it supersedes and quote the changed schedule. A court challenge alone does not overturn an enacted law.';
         $instructions .= ' Keep evidence notes brief. Name the supplied publisher and distinguish reporting from established facts. Prefer a directly relevant responsible-government record over secondary repetition, but only within that body\'s competence. An official statement establishes what the body stated or controls, not every allegation. No invented reasons, unrelated ratings, or follow-up questions.';
         $instructions .= ' A question_framed_assertion is a literal named-subject status proposition to verify, not an assertion already accepted as true and not a mere topic heading. Evaluate its candidate outcome using the complete submission_contexts, including accompanying court/action wording, people, and dates. The word sarado means a closed/shutdown status; punctuation alone never prevents checking it. A complaint or filing does not establish a shutdown order. A fact-check page can supply direct_reporting evidence through a literal passage that directly resolves this candidate; use basis=fact_check only when inheriting its published rating for the exact reviewed proposition. Never transfer the rating of an older or different event just because the network or people overlap.';
+        $instructions .= ' SOURCE-RESOLVED SCOPE: Identity gaps are provisional. Return scope_resolutions only when literal source excerpts identify the resolved_subject and connect two phrases from the SAME submitted post: its whole claim (or a shared contiguous fragment of at least three words when OCR differs) and a separate accompanying phrase of at least two words. Every phrase must occur in both submission and source; never repair quoted words. Separate literal excerpts may identify the subject and quote the post. Only this grounded identity overrides requires_context; an unclear fragment also needs an explicit status/decision term to become factual. Retain the original claim, dates, negation and qualifiers. Never resolve a missing date/outcome, infer a final ruling from a proposal, authenticate a photograph or inherit a broader rating. Assess that candidate in this SAME response using ordinary relationships and all material match checks. Return [] without this proof.';
         $instructions .= ' Keep output compact: omit claim/source pairs with no relevant passage; missing pairs mean insufficient evidence, never support. Include every relevant contrary finding and explicit supersession. Use the shortest complete verbatim excerpt that establishes the finding, preferably 20 to 400 characters, retaining material qualifiers; the 1200-character validation limit still applies.';
         $instructions .= ' In wording return at most one presentation candidate for the overall requested task, with its evidence-supported verdict; return [] if unresolved conflicts or scope prevent a consistent explanation. This copy never overrides server validation or decides the verdict. '.ResultWording::instructions();
         // The planner stores the whole submission on every claim for validation.
@@ -143,7 +166,7 @@ class EvidenceJudge
 
             return $this->completedReviews[$identity];
         }
-        $data = $this->model->ask('evidence_relationships_'.$round, $instructions, $input, $schema, ['wording']);
+        $data = $this->model->ask('evidence_relationships_'.$round, $instructions, $input, $schema, ['wording', 'scope_resolutions']);
 
         if ($data === null) {
             $this->wordingCandidates[] = null;
@@ -155,6 +178,14 @@ class EvidenceJudge
         // Validate against original contiguous source text, so joining selected
         // windows cannot manufacture a quotation across unrelated passages.
         $pendingIds = array_column($sources, 'id');
+        if (! $photoIdentityQuestion) {
+            $resolutions = $data['scope_resolutions'] ?? [];
+            if (is_array($resolutions) && array_is_list($resolutions)) {
+                $this->scopeResolutionAttempts = array_merge($this->scopeResolutionAttempts, array_slice($resolutions, 0, 10));
+                $this->validateScopeResolutions($resolutions, $reviewable, $allSources, $pendingIds);
+            }
+        }
+        $reviewable = $this->resolveClaims($reviewable);
         $findings = $this->validateContext(array_values(array_filter($data['context_findings'],
             fn ($row) => in_array($row['source_id'] ?? null, $pendingIds, true))), $reviewable, $allSources, $cutoff);
         $this->contextualSources = array_values(array_unique(array_merge($this->contextualSources,
@@ -385,7 +416,7 @@ class EvidenceJudge
 
     public function validate(array $rows, array $claims, array $sources, ?string $cutoff = null): array
     {
-        $claims = collect($claims)->keyBy('id');
+        $claims = collect($this->resolveClaims($claims))->keyBy('id');
         $sources = collect($sources)->keyBy('id');
         $valid = [];
         foreach ($rows as $row) {
@@ -488,6 +519,7 @@ class EvidenceJudge
 
     public function outcomes(array $claims, array $relationships): array
     {
+        $claims = $this->resolveClaims($claims);
         foreach ($claims as &$claim) {
             $rows = array_values(array_filter($relationships, fn ($r) => $r['claim_id'] === $claim['id']));
             $decisive = array_filter($rows, fn ($r) => $r['stance'] !== 'insufficient');
@@ -511,5 +543,156 @@ class EvidenceJudge
         unset($claim);
 
         return $claims;
+    }
+
+    private function resolveClaims(array $claims): array
+    {
+        foreach ($claims as &$claim) {
+            if (isset($this->scopeResolutions[$claim['id']])) {
+                $claim['kind'] = 'factual';
+                $claim['requires_context'] = false;
+                $claim['context_reason'] = null;
+                $claim['scope_resolution'] = $this->scopeResolutions[$claim['id']];
+            }
+        }
+
+        return $claims;
+    }
+
+    private function validateScopeResolutions(array $rows, array $claims, array $sources, array $pendingIds): void
+    {
+        $claims = collect($claims)->keyBy('id');
+        $sources = collect($sources)->keyBy('id');
+        $norm = ReviewedClaimLookup::normalize(...);
+        foreach ($rows as $row) {
+            if (! is_array($row) || ! is_string($row['claim_id'] ?? null) || ! is_string($row['source_id'] ?? null)) {
+                continue;
+            }
+            $claim = $claims->get($row['claim_id'] ?? '');
+            $source = $sources->get($row['source_id'] ?? '');
+            if (! $claim || ! $source || ! in_array($row['source_id'], $pendingIds, true)
+                || isset($this->scopeConflicts[$claim['id']])
+                || ! in_array($claim['kind'], ['factual', 'unclear'], true) || ! ($claim['requires_context'] ?? false)
+                || ($claim['kind'] === 'unclear' && ! preg_match('/\b(?:closed|closure|shutdown|ruling|judgment|judgement|verdict|arrested|approved|enacted|sarado|sinara|hatol|naaresto|naaprubahan|isinabatas)\b/iu', $claim['text']))
+                || ! is_string($row['resolved_subject'] ?? null) || mb_strlen($row['resolved_subject']) < 3) {
+                continue;
+            }
+            $excerpts = $row['excerpts'] ?? [];
+            if (! is_array($excerpts) || $excerpts === [] || count($excerpts) > 4
+                || collect($excerpts)->contains(fn ($excerpt) => ! is_string($excerpt)
+                    || mb_strlen($excerpt) < 20 || mb_strlen($excerpt) > 1200
+                    || ! str_contains($source['text'], $excerpt)
+                    || ! str_contains($source['reviewed_text'] ?? $source['text'], $excerpt))) {
+                continue;
+            }
+            $passages = $norm(implode(' ', $excerpts));
+            $subject = $norm($row['resolved_subject']);
+            $literal = $norm($claim['text']);
+            $reason = (string) ($claim['context_reason'] ?? '');
+            if (str_contains(' '.$literal.' ', ' '.$subject.' ')
+                || ! preg_match('/refers? to|stands for|acronym|abbreviation|identit|identif|which.{0,45}(?:school|organization|company|agency|network|station)|\bsubject\b/iu', $reason)
+                || preg_match('/and (?:the )?(?:date|time|year|outcome|role)|(?:date|time|year).{0,25}(?:unknown|unclear|missing|not established)|(?:does not|doesn.t) specify.{0,40}(?:outcome|role|action|from what)/iu', $reason)) {
+                continue;
+            }
+            $submission = $norm($claim['submission_context'] ?? $claim['text']);
+            $quotes = $row['matched_submission_quotes'] ?? [];
+            if (! is_array($quotes) || count($quotes) < 2 || count($quotes) > 6
+                || collect($quotes)->contains(fn ($q) => ! is_string($q) || trim($q) === '')
+                || ! str_contains(' '.$passages.' ', ' '.$subject.' ')) {
+                continue;
+            }
+            $quotes = array_values(array_unique(array_map($norm, $quotes)));
+            $other = array_filter($quotes, fn ($quote) => $quote !== $literal
+                && ! str_contains($literal, $quote) && ! str_contains($quote, $literal)
+                && str_word_count($quote) >= 2 && strlen($quote) >= 8);
+            $claimFragments = array_filter($quotes, fn ($quote) => $quote === $literal
+                || (str_word_count($quote) >= 3 && str_contains(' '.$literal.' ', ' '.$quote.' ')));
+            if ($claimFragments === [] || $other === []
+                || collect($quotes)->contains(fn ($quote) => ! str_contains(' '.$submission.' ', ' '.$quote.' ')
+                    || ! str_contains(' '.$passages.' ', ' '.$quote.' '))) {
+                continue;
+            }
+            if (isset($this->scopeResolutions[$claim['id']])
+                && $norm($this->scopeResolutions[$claim['id']]['resolved_subject']) !== $subject) {
+                unset($this->scopeResolutions[$claim['id']]);
+                $this->scopeConflicts[$claim['id']] = true;
+
+                continue;
+            }
+            $this->scopeResolutions[$claim['id']] = array_intersect_key($row,
+                array_flip(['source_id', 'resolved_subject', 'excerpts', 'matched_submission_quotes']));
+            $this->scopeResolutions[$claim['id']]['original_kind'] = $claim['kind'];
+        }
+    }
+
+    /** Match a quoted post to a publisher's named subject, without deciding its truth. */
+    private function resolveQuotedPostSubjects(array $claims, array $sources): void
+    {
+        foreach ($sources as $source) {
+            if (($source['source_type'] ?? '') !== 'fact_check' || empty($source['reviewed_claim'])
+                || ! app(FactCheckEvidencePolicy::class)->isFactCheckUrl((string) ($source['url'] ?? ''))) {
+                continue;
+            }
+            foreach ($claims as $anchor) {
+                if (! preg_match_all('/\b[A-Z]{2,8}\b/u', $anchor['text'], $acronyms)
+                    || ! ($heading = $this->literalPassage($anchor['text'], $source['text']))) {
+                    continue;
+                }
+                foreach ($acronyms[0] as $acronym) {
+                    if (! preg_match('/\b'.preg_quote($acronym, '/').'(?:\s+[A-Z][a-z]+){1,3}\b/u', $source['reviewed_claim'], $named)
+                        || ! ($subject = $this->literalPassage($named[0], $source['text']))) {
+                        continue;
+                    }
+                    foreach (SubmittedText::sentences($anchor['submission_context'] ?? '') as $region) {
+                        $other = $this->sharedLiteralPhrase($region, $source['text']);
+                        if (! $other || str_contains(ReviewedClaimLookup::normalize($anchor['text']), ReviewedClaimLookup::normalize($other))
+                            || ! str_contains(' '.ReviewedClaimLookup::normalize($heading).' ', ' '.ReviewedClaimLookup::normalize($other).' ')) {
+                            continue;
+                        }
+                        $otherPassage = $this->literalPassage($other, $source['text']);
+                        $resolutions = array_map(fn ($claim) => [
+                            'claim_id' => $claim['id'], 'source_id' => $source['id'], 'resolved_subject' => $named[0],
+                            'excerpts' => array_values(array_unique([$heading, $subject, $otherPassage])),
+                            'matched_submission_quotes' => [$anchor['text'], $other],
+                        ], $claims);
+                        $this->validateScopeResolutions($resolutions, $claims, [$source], [$source['id']]);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Return an original contiguous source passage, never a reconstructed quote. */
+    private function literalPassage(string $phrase, string $text): ?string
+    {
+        $words = explode(' ', ReviewedClaimLookup::normalize($phrase));
+        if ($words === [''] || ! preg_match('/(?<![\pL\pN])'.implode('[^\pL\pN]+', array_map(fn ($word) => preg_quote($word, '/'), $words)).'(?![\pL\pN])/iu', $text, $match, PREG_OFFSET_CAPTURE)) {
+            return null;
+        }
+        $position = mb_strlen(substr($text, 0, $match[0][1]));
+        $start = max(0, $position - 80);
+
+        return mb_substr($text, $start, mb_strlen($match[0][0]) + ($position - $start) + 80);
+    }
+
+    private function sharedLiteralPhrase(string $region, string $text): ?string
+    {
+        $words = explode(' ', ReviewedClaimLookup::normalize($region));
+        // Only compact submission regions can be identity anchors; long article
+        // paragraphs continue through ordinary evidence review.
+        if (count($words) > 80) {
+            return null;
+        }
+        $source = ' '.ReviewedClaimLookup::normalize($text).' ';
+        for ($length = count($words); $length >= 3; $length--) {
+            for ($offset = 0; $offset + $length <= count($words); $offset++) {
+                $phrase = implode(' ', array_slice($words, $offset, $length));
+                if (str_contains($source, ' '.$phrase.' ')) {
+                    return $phrase;
+                }
+            }
+        }
+
+        return null;
     }
 }

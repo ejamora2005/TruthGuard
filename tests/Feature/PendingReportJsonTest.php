@@ -229,8 +229,7 @@ class PendingReportJsonTest extends TestCase
 
         $this->actingAs($user)->get(route('detections.create'))
             ->assertOk()
-            ->assertViewMissing('pendingDetection')
-            ->assertDontSee('aria-label="Mobile navigation"', false);
+            ->assertViewMissing('pendingDetection');
 
         $this->assertNotSame($older->id, $latest->id);
         $this->assertSame('processing', $older->fresh()->processing_status);

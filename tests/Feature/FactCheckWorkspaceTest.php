@@ -239,8 +239,8 @@ class FactCheckWorkspaceTest extends TestCase
             ]],
         ])->render();
 
-        $this->assertStringContainsString('Media analysis report', $html);
-        $this->assertStringContainsString('Assessment', $html);
+        $this->assertStringContainsString('Fact-check report', $html);
+        $this->assertStringContainsString('What the evidence shows', $html);
         $this->assertStringContainsString('Submitted Evidence', $html);
         $this->assertStringContainsString('/storage/detections/report-evidence.jpg', $html);
         $this->assertStringContainsString('Enlarge submitted image', $html);
@@ -327,7 +327,7 @@ class FactCheckWorkspaceTest extends TestCase
 
         $this->assertStringContainsString('No official confirmation found', $html);
         $this->assertStringContainsString('No official or trusted source confirmed this claim.', $html);
-        $this->assertStringContainsString('No official confirmation was found for the exact claim.', $html);
+        $this->assertStringContainsString('No official source or trusted fact-check rating confirmed the exact claim.', $html);
         $this->assertStringNotContainsString('Likely Real</h2>', $html);
         $this->assertStringNotContainsString('The supplied verdict remains Likely Real.', $html);
     }

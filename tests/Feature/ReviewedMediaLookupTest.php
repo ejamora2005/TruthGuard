@@ -54,7 +54,9 @@ class ReviewedMediaLookupTest extends TestCase
         $result = ReviewedMediaLookup::analysis($record->sha256, 'image', self::REQUEST)['fact_check_result'];
         $this->assertSame('LIKELY_NOT_AI_GENERATED', $result['verdict']);
         $this->assertStringStartsWith('Real photograph.', $result['summary']);
-        $this->assertCount(1, $result['sources']);
+        $this->assertSame([], $result['sources']);
+        $this->assertCount(1, $result['method_references']);
+        $this->assertSame('https://commons.wikimedia.org/wiki/File:Domestic_Cat.jpg', $result['method_references'][0]['url']);
         $this->assertNull($result['confidence']);
     }
 

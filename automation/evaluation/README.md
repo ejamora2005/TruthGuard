@@ -1,5 +1,28 @@
 # Held-out fact-check evaluation
 
+## Development diagnostics and review preparation
+
+The November 6 fact-check investigation, real pilot outcomes, full token accounting
+and independent-review requirements are documented in
+[the reliability report](../../docs/FACT-CHECK-RELIABILITY-2026-11-06.md).
+`prepare_fact_check_cases.php` exports draft publisher/stored-answer references;
+`prepare_fact_check_review.py` prepares a blind review CSV without model predictions.
+Neither marks metadata as independently reviewed ground truth.
+
+`truthguard:capture-evidence` supports `--dry-run`, `--take=N` and an explicit
+`--force-research` mode. It validates all media hashes before any paid case,
+preserves immutable predictions/source archives, and records usage, origin,
+runtime settings and cutoff policy. `audit_fact_checks.py` reports development
+reference agreement, coverage, source retrieval/use and token consumption
+separately for research and saved-answer reuse. It always reports
+`release_ready=false`; it cannot create a confidence calibration artifact.
+
+Fixed-cutoff evaluation and live checks are different modes. For live development
+cases, `cutoff_policy="capture_time"` records each actual start timestamp in both
+prediction and archive. Independent labels must be reviewed at that effective
+cutoff before using the stricter evaluator/calibrator below. An old fixed cutoff
+may correctly exclude an undated official page that is usable in a current check.
+
 ## Factual and context verdict reliability
 
 The application now supports optional empirical calibration of agreement with independent reviewers, separately for each assigned task/verdict. This answers “How often did independently reviewed cases receiving this verdict agree with it in this population?” It is not the probability a statement is true. A False verdict can have high agreement; the evidence heuristic is never relabeled as a probability. Unverified, conflicting, missing-context and technical outputs do not acquire confidence badges.

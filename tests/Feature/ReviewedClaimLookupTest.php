@@ -4,13 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\ClaimVariation;
 use App\Models\ReviewedClaim;
-use App\Services\Detections\ReviewedClaimLookup;
-use App\Services\Detections\EvidenceVerificationService;
-use App\Services\Detections\Evidence\SubmissionExtractor;
 use App\Services\Detections\Evidence\ArticleSearch;
-use Illuminate\Support\Facades\Http;
+use App\Services\Detections\Evidence\ClaimPlanner;
+use App\Services\Detections\Evidence\SubmissionExtractor;
+use App\Services\Detections\EvidenceVerificationService;
+use App\Services\Detections\ReviewedClaimLookup;
 use Database\Seeders\ReviewedClaimSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ReviewedClaimLookupTest extends TestCase
@@ -80,6 +81,32 @@ class ReviewedClaimLookupTest extends TestCase
         $this->assertNull(ReviewedClaimLookup::lookup($claim->claim));
         $claim->update(['active' => true, 'expires_at' => now()->subSecond()]);
         $this->assertNull(ReviewedClaimLookup::lookup($claim->claim));
+    }
+
+    public function test_a_saved_answer_reviewed_after_the_requested_cutoff_is_not_reused(): void
+    {
+        $this->seed(ReviewedClaimSeeder::class);
+        $text = 'Lordan Suan threatened a shoot-to-kill resolution against Bato dela Rosa.';
+        $this->assertNull(ReviewedClaimLookup::lookup($text, '2026-11-01T00:00:00Z'));
+        $this->assertSame('FALSE', ReviewedClaimLookup::lookup($text, '2026-11-06T00:00:00Z')['verdict']);
+    }
+
+    public function test_automatic_image_routing_can_reuse_the_reviewed_answer_after_ocr_selects_the_claim_task(): void
+    {
+        $this->seed(ReviewedClaimSeeder::class);
+        $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->once()->andReturn([
+            'status' => 'completed', 'analysis_text' => 'SHOOT-TO-KILL KAY SEN. BATO, IHAHAIN?!',
+            'input_scope' => 'visible image text', 'usage' => ['input_tokens' => 700, 'output_tokens' => 39, 'total_tokens' => 739],
+        ]);
+        $this->mock(ClaimPlanner::class)->shouldNotReceive('plan');
+        $this->mock(ArticleSearch::class)->shouldNotReceive('retrieve');
+        $result = app(EvidenceVerificationService::class)->apply(['signals' => []], [
+            'media_type' => 'image', 'analysis_task' => 'auto',
+        ])['fact_check_result'];
+        $this->assertSame('FALSE', $result['verdict']);
+        $this->assertSame('claim', $result['primary_task']);
+        $this->assertSame(739, $result['diagnostics']['api_usage']['total_tokens']);
+        Http::assertNothingSent();
     }
 
     public function test_reviewed_science_image_variant_reuses_db_answer_without_search(): void

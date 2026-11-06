@@ -46,11 +46,18 @@ class ResultSourceRenderingTest extends TestCase
             $attributes = $this->detectionAttributes($owner, $result);
             $attributes['processing_status'] = $status;
             $detection = Detection::create($attributes);
-            $html = $this->actingAs($owner)->get(route('detections.result', $detection))->assertOk()->getContent();
+            $response = $this->actingAs($owner)->get(route('detections.result', $detection));
+            if ($status !== 'failed') {
+                $response->assertRedirect(route('detections.create', ['pending' => $detection->id]));
 
-            $this->assertStringContainsString('Assessment status', $html);
+                continue;
+            }
+            $html = $response->assertOk()->getContent();
+
+            $this->assertStringContainsString('Your upload is saved.', $html);
             $this->assertStringNotContainsString('Stale reviewed document', $html);
             $this->assertStringNotContainsString('Sources to verify', $html);
+            $this->assertSame($result, $detection->fresh()->fact_check_result);
         }
     }
 

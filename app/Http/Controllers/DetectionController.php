@@ -88,12 +88,9 @@ class DetectionController extends Controller
         $pendingDetectionId = $request->integer('pending');
         $selectedDetectionId = $pendingDetectionId ?: $request->integer('detection');
 
-        if ($selectedDetectionId <= 0) {
-            $pendingDetection = Detection::query()
-                ->where('user_id', $request->user()->id)
-                ->whereIn('processing_status', ['queued', 'processing'])
-                ->latest('id')->first();
-
+        if ($selectedDetectionId <= 0 && config('fact_check.queue_enabled')) {
+            $pendingDetection = Detection::query()->where('user_id', $request->user()->id)
+                ->whereIn('processing_status', ['queued', 'processing'])->latest('id')->first();
             if ($pendingDetection) {
                 return view('detections.create', ['selectedDetection' => null, 'pendingDetection' => $pendingDetection]);
             }
@@ -196,7 +193,9 @@ class DetectionController extends Controller
 
         $selectedDetection = $this->restoreKnownFactCheck($selectedDetection);
 
-        if ($selectedDetection->processing_status === 'failed' && $selectedDetection->fact_check_result === null) {
+        if ($selectedDetection->processing_status === 'failed'
+            && data_get($selectedDetection->fact_check_result, 'verdict') !== 'ANALYSIS_UNAVAILABLE') {
+            $hasSavedResult = $selectedDetection->fact_check_result !== null;
             $failure = ReportAnswer::complete([
                 'schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'ANALYSIS_UNAVAILABLE',
                 'summary' => 'The analysis could not finish. Your upload is saved. Retry the assessment to try again.',
@@ -204,7 +203,12 @@ class DetectionController extends Controller
             ]);
             $selectedDetection->forceFill(['fact_check_result' => $failure,
                 'analysis_summary' => $failure['summary'], 'explanation_summary' => $failure['summary'],
-            ])->saveQuietly();
+            ]);
+            // Hide stale findings on a failed retry without overwriting its
+            // previously saved evidence during a read-only result request.
+            if (! $hasSavedResult) {
+                $selectedDetection->saveQuietly();
+            }
         }
 
         // Include archived submissions so retention does not renumber the owner's reports.

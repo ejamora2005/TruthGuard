@@ -16,7 +16,9 @@ class ReviewedMediaLookup
             return null;
         }
         $record = DB::table('reviewed_media')->where('sha256', $checksum)->where('active', true)->first();
-        if (! $record || ! hash_equals($record->sha256, $checksum)) return null;
+        if (! $record || ! hash_equals($record->sha256, $checksum)) {
+            return null;
+        }
 
         $provenance = json_decode($record->provenance, true, 512, JSON_THROW_ON_ERROR);
         $ai = $record->origin === 'ai_generated';
@@ -29,7 +31,7 @@ class ReviewedMediaLookup
         $result = ReportAnswer::complete([
             'schema_version' => 4, 'primary_task' => 'media',
             'verdict' => $ai ? 'AI_GENERATED' : 'LIKELY_NOT_AI_GENERATED',
-            'summary' => $record->summary, 'sources' => $sources,
+            'summary' => $record->summary, 'sources' => [], 'method_references' => $sources,
             'answer_segments' => [['text' => $record->summary, 'source_ids' => array_column($sources, 'id')]],
             'request' => $request,
             'score' => AssessmentScore::unavailable('Origin is established by an exact file match to a documented record; no detector probability was calculated.'),

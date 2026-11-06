@@ -17,16 +17,7 @@ class SubmissionInput
         $text = preg_replace('/\p{Cf}/u', '', (string) $text);
         $text = preg_replace('/^[\s\p{Z}]+|[\s\p{Z}]+$/u', '', $text);
 
-        if (SubmissionTask::isPresetInstruction($text)) {
-            return false;
-        }
-
-        foreach (self::GUIDE_PROMPTS as $prompt) {
-            if ($text === $prompt || preg_match('/^'.preg_quote($prompt, '/').'\s/u', $text)) {
-                $text = substr($text, strlen($prompt));
-                break;
-            }
-        }
+        $text = SubmissionTask::claimText($text);
 
         // This is an input check, not a factual verdict or language classifier.
         return preg_match('/[\p{L}\p{N}]/u', $text) === 1;

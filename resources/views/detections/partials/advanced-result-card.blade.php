@@ -98,7 +98,8 @@
     };
     $savedAssessment = is_array($selectedDetection->fact_check_result) ? $selectedDetection->fact_check_result : $publicResult;
     $presentationAdjusted = $publicResult['primary_task'] !== ($savedAssessment['primary_task'] ?? $publicResult['primary_task'])
-        || $publicResult['verdict'] !== ($savedAssessment['verdict'] ?? $publicResult['verdict']);
+        || $publicResult['verdict'] !== ($savedAssessment['verdict'] ?? $publicResult['verdict'])
+        || $publicResult['summary'] !== ($savedAssessment['summary'] ?? $publicResult['summary']);
     $scoreBadge = \App\Services\Detections\AssessmentScore::badge($presentationAdjusted ? $publicResult : $savedAssessment);
     $showAiScore = $isMediaReport && ($scoreBadge['has_percentage'] ?? false);
     $isUnconfirmed = ! $presentationAdjusted && $verdictPresenter::isNoOfficialConfirmation($selectedDetection);

@@ -236,7 +236,7 @@ PROMPT;
         }
         $short = self::verdictRationale($result);
         // Retain a complete short sentence; never pay for a fallback rewrite.
-        $action = SubmittedText::sentences(ReportAnswer::interpretationAction($short, $recommendation))[0] ?? '';
+        $action = SubmittedText::sentences(ReportAnswer::interpretationAction($explanation, $recommendation))[0] ?? '';
         $fallbackAction = ($result['primary_task'] ?? '') === 'media'
             ? 'Check the original publication or creation record before relying on this media.'
             : 'Review the original statement and the available source records before sharing.';
