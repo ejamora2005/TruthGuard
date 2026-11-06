@@ -22,10 +22,11 @@ fi
 mkdir -p storage/app/public storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/framework/views-runtime storage/logs
 mkdir -p "${VIEW_COMPILED_PATH:-bootstrap/cache/views}"
 php artisan config:cache
-# The web container installs schema and reviewed media records before serving.
+# The web container installs schema and missing reviewed answers before serving.
 # Workers share the database and must not run concurrent deployment migrations.
 if [ "${1:-}" = "apache2-foreground" ]; then
     php artisan migrate --force --isolated=75
+    php artisan db:seed --class=ReviewedClaimSeeder --force
     php artisan db:seed --class=ReviewedMediaSeeder --force
 fi
 php artisan route:cache

@@ -2,10 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Models\ClaimVariation;
 use App\Models\ReviewedClaim;
 use App\Services\Detections\KnownFactCheckCatalog;
 use App\Services\Detections\ReportAnswer;
 use App\Services\Detections\ResultWording;
+use App\Services\Detections\ReviewedClaimLookup;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -116,10 +118,16 @@ class ReviewedClaimSeeder extends Seeder
 
     private function store(string $slug, string $text, array $result, array $variations, ?string $expiry): void
     {
-        $claim = ReviewedClaim::updateOrCreate(['slug' => $slug], ['claim' => $text,
+        $claim = ReviewedClaim::firstOrCreate(['slug' => $slug], ['claim' => $text,
             'result' => $result, 'active' => true, 'reviewed_at' => '2026-11-04 00:00:00', 'expires_at' => $expiry]);
+        // Deployment installs missing defaults; existing reviews, expiry dates,
+        // disabled entries and their approved variations belong to the reviewer.
+        if (! $claim->wasRecentlyCreated) {
+            return;
+        }
         foreach (array_unique([$text, $result['claim'] ?? $text, ...$variations]) as $variation) {
-            $claim->variations()->updateOrCreate(['text' => $variation], ['text' => $variation]);
+            ClaimVariation::firstOrCreate(['text_hash' => hash('sha256', ReviewedClaimLookup::normalize($variation))],
+                ['reviewed_claim_id' => $claim->id, 'text' => $variation]);
         }
     }
 }

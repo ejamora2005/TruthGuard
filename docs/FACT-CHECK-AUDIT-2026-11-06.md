@@ -404,3 +404,55 @@ passed 88 tests / 592 assertions. That presentation follow-up used the earlier
 - These tests establish control flow and safeguards, not empirical detector accuracy,
   production provider availability, or the truth of the example real-world claims.
   Accuracy is not guaranteed.
+
+### Reviewed database answers and deployment follow-up
+
+The narration commit changed report wording; it did not repair database lookup.
+Read-only inspection of the actual local database found an active, unexpired
+`suan-fabricated-bato-shoot-to-kill-quote` reviewed answer (ID 7, False), with
+eight approved variations. The whole-submission hash lookup misses when a known
+assertion is accompanied by other OCR regions. After planning, the pipeline did
+not previously consult these reviewed answers for individual assertions.
+
+`evidence-v21` now checks complete, literal planned assertions against approved
+database variations before researching unresolved assertions. Saved True/False
+findings participate in the ordinary per-claim aggregation; one saved answer
+cannot resolve additional unsupported claims. No fuzzy keyword verdict matching
+was added. Inactive/expired reviews, reviews newer than the requested cutoff,
+changed scope, context-bound dates/qualifiers and unresolved references remain
+ineligible. Other saved rating categories retain their existing whole-submission
+reuse and evidence/context paths rather than being converted into binary findings.
+Forced refresh, fresh-status research and context requests retain research.
+An exact text caption no longer skips reading an attached image or a separate
+specific question. Provenance appears in `diagnostics.reviewed_answers`, and
+saved findings are marked `reviewed_database`, never falsely reported as newly
+retrieved article bodies. OCR/planning usage remains counted.
+
+The production entrypoint migrated the tables but seeded only reviewed media.
+It now also installs missing packaged reviewed text answers. The text seeder
+preserves existing results, disabled state, expiry dates, approved variations
+and variation ownership. Production contents have not been inspected; missing
+production rows are a deployment risk established from the startup script,
+not a claim about the live database.
+
+A read-only check against actual local review #7 used the wrapped uploaded
+headline plus separate date/publisher regions. The old whole-text match was
+false; the new per-claim match returned False, the correct reviewed ID/slug,
+and zero lookup API tokens. Regression tests use real database models, lookup,
+planner postprocessing, aggregation and report formatting with external OCR and
+model responses fixed as test inputs. They do not reproduce a live model run.
+Final focused checks passed 58 tests / 286 assertions. The full run before the
+final region/scope guards completed 832 tests / 5,627 assertions, 24 failures,
+zero errors, four skipped and two risky. XML comparison confirmed all 24 failing
+case names are identical to the preceding 824-test audit. Artifacts:
+`storage/logs/truthguard-reviewed-database-final.xml` / `.txt` and
+`storage/logs/truthguard-reviewed-database-focused.xml`. Pint and diff checks
+passed; no frontend changes or environment/model/limit changes were made.
+
+The separate `public_claim_reviews` feed is discovery metadata, not the curated
+reviewed-answer table. Some stored `full_claim` values contain article
+introductions, including denials and background, rather than a literal reviewed
+proposition. This change does not turn those introductory paragraphs or bare
+source-card titles into decisive evidence. Retrieved text, exact scope and
+published-review validation still apply to that path. Existing saved reports
+require a recheck after deployment; they are not rewritten by this patch.

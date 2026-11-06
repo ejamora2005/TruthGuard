@@ -1119,9 +1119,6 @@
                             @if (is_array($publicResult['correction'] ?? null))
                                 <p class="mb-3 rounded-xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900"><strong>Corrected result:</strong> {{ $publicResult['correction']['reason'] }} @if($publicResult['correction']['corrected_at'])<span class="block text-xs text-violet-700">Updated {{ $publicResult['correction']['corrected_at'] }}</span>@endif</p>
                             @endif
-                            @if (($interpretation['assumption_used'] ?? false) === true)
-                                <p class="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><strong>Interpretation used:</strong> {{ $interpretation['interpreted_claim'] }}</p>
-                            @endif
                             @foreach ($evidenceParagraphs as $paragraph)
                                 <p>{{ $paragraph }}</p>
                             @endforeach
@@ -1203,6 +1200,9 @@
         </header>
         <div class="tg-interpretation-layout">
             <section class="tg-interpretation-reasoning" aria-labelledby="interpretation-basis-title">
+                @if (($interpretation['assumption_used'] ?? false) === true)
+                    <p class="mb-3 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900"><strong>Interpretation used:</strong> {{ $interpretation['interpreted_claim'] }}</p>
+                @endif
                 <h4 id="interpretation-basis-title" class="tg-card-eyebrow">Result summary</h4>
                 <p class="tg-interpretation-copy">{{ $interpretationSummary }}</p>
             </section>

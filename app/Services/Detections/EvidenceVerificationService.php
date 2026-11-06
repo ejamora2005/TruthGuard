@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v20';
+    public const VERSION = 'evidence-v21';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -54,12 +54,17 @@ class EvidenceVerificationService
         $extractionBudget->freshSources = ! $detectorOnly && ((bool) ($context['force_refresh'] ?? false)
             || ClaimPlanner::isCurrentStatus($question)
             || ClaimPlanner::requiresFreshEvidence(implode(' ', array_filter([$context['caption_text'] ?? '', $context['notes'] ?? '']))));
+        $wholeAnswerAllowed = $primary === 'claim'
+            && SubmissionTask::questionClaim($question) === ''
+            && ! in_array('context', $tasks, true);
         try {
             $progress && $progress('Reading submitted content');
-            $submittedKnownResult = $detectorOnly || $extractionBudget->freshSources ? null : ReviewedClaimLookup::lookup(implode(' ', array_filter([
-                $context['caption_text'] ?? null,
-                $context['notes'] ?? null,
-            ])));
+            $submittedKnownResult = ! $wholeAnswerAllowed || $detectorOnly || $extractionBudget->freshSources
+                || ($context['media_type'] ?? 'text') !== 'text' || $file !== null
+                ? null : ReviewedClaimLookup::lookup(implode(' ', array_filter([
+                    $context['caption_text'] ?? null,
+                    $context['notes'] ?? null,
+                ])));
             $extraction = $submittedKnownResult
                     ? [
                         'status' => 'completed',
@@ -89,7 +94,9 @@ class EvidenceVerificationService
                 $analysis['claim_assessment'] = ['status' => 'not_requested', 'task' => 'Factual claim verification',
                     'result' => null, 'reason' => 'Factual verification was not requested. Visible text, when available, is recorded only as an optional claim notice.'];
             } else {
-                $knownResult = $extractionBudget->freshSources ? null : ($submittedKnownResult
+                $knownResult = ! $wholeAnswerAllowed || $extractionBudget->freshSources
+                    || ClaimPlanner::requiresFreshEvidence((string) ($extraction['analysis_text'] ?? ''))
+                    ? null : ($submittedKnownResult
                     ?? ReviewedClaimLookup::lookup((string) ($extraction['analysis_text'] ?? '')));
                 $analysis = $knownResult
                     ? $this->applyKnownResult($analysis, $knownResult, $context, $extraction)
@@ -345,14 +352,37 @@ class EvidenceVerificationService
         $currentStatusQuestion = collect($plan['claims'])->contains(fn ($claim) => ($claim['current_status_question'] ?? false) === true);
         $budget->freshSources = $currentStatusQuestion || (bool) ($context['force_refresh'] ?? false)
             || ClaimPlanner::requiresFreshEvidence($extraction['analysis_text']);
+        $reviewedAnswers = ! $budget->freshSources && ($plan['status'] ?? '') === 'completed'
+            && ($context['primary_task'] ?? 'claim') === 'claim'
+            && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)
+            ? ReviewedClaimLookup::forClaims($plan['claims'], $extraction['analysis_text'], $cutoff) : [];
+        foreach ($reviewedAnswers as $claimId => $answer) {
+            // These are saved reviewed findings, not newly fetched page
+            // bodies. Keep their provenance explicit and out of the model input.
+            $source = $answer['sources'][0];
+            $id = 'reviewed-'.$answer['diagnostics']['reviewed_claim_id'];
+            $records[$id] = array_replace($source, [
+                'id' => $id, 'source_type' => 'reviewed_document', 'retrieval_status' => 'reviewed_database',
+                'text' => '', 'text_truncated' => false, 'published_at' => $source['published_at'] ?? null,
+                'reviewed_at' => $answer['diagnostics']['reviewed_at'],
+                'reviewed_claim_id' => $answer['diagnostics']['reviewed_claim_id'],
+            ]);
+            $relationships[] = [
+                'claim_id' => $claimId, 'source_id' => $id,
+                'stance' => $answer['verdict'] === 'TRUE' ? 'supporting' : 'contradicting',
+                'basis' => 'reviewed_database', 'excerpt' => '', 'explanation' => $answer['summary'],
+                'supersedes_source_ids' => [], 'supersession_excerpt' => '', 'superseded' => false,
+            ];
+        }
+        $researchClaims = array_values(array_filter($plan['claims'], fn ($claim) => ! isset($reviewedAnswers[$claim['id']])));
         $paidDiscoveryTried = false;
         $reviewPass = 0;
-        $review = function (array $records) use ($plan, $budget, $cutoff, $context, &$relationships, &$reviewPass): array {
+        $review = function (array $records) use ($plan, $researchClaims, $budget, $cutoff, $context, &$relationships, &$reviewPass): array {
             $hasDocuments = collect($records)->contains(fn ($record) => ($record['retrieval_status'] ?? '') === 'retrieved'
                 && ($record['source_type'] ?? '') !== 'unapproved');
-            if ($hasDocuments) {
+            if ($hasDocuments && $researchClaims !== []) {
                 $reviewStarted = microtime(true);
-                $judged = $this->judge->assess($plan['claims'], $records, $cutoff, $reviewPass++, Arr::only($context, ['question', 'primary_task', 'media_attached']));
+                $judged = $this->judge->assess($researchClaims, $records, $cutoff, $reviewPass++, Arr::only($context, ['question', 'primary_task', 'media_attached']));
                 $budget->excludeAnalysisTime(microtime(true) - $reviewStarted);
                 $relationships = $this->judge->mergeReviews($relationships, $judged);
             }
@@ -360,7 +390,7 @@ class EvidenceVerificationService
             return $this->judge->outcomes($plan['claims'], $relationships);
         };
         for ($round = 0; $round < min(2, max(1, (int) config('fact_check.retrieval.max_rounds', 2))); $round++) {
-            $queries = $exactPlan ? [] : $this->planner->queries($plan['claims'], $round);
+            $queries = $exactPlan || $researchClaims === [] ? [] : $this->planner->queries($researchClaims, $round);
             if ($queries === []) {
                 break;
             }
@@ -471,6 +501,8 @@ class EvidenceVerificationService
             $usage['by_stage']['web_search'] = TokenUsage::sum($webUsage);
         }
         $result['diagnostics'] = $budget->diagnostics() + ['model_stages' => $this->model->stages, 'api_usage' => $usage,
+            'reviewed_answers' => array_map(fn ($answer) => Arr::only($answer['diagnostics'],
+                ['reviewed_claim_id', 'reviewed_claim_slug', 'claim_variation_id', 'reviewed_at', 'match_method']), $reviewedAnswers),
             'exact_review_without_model' => $exactPlan !== null,
             'duplicate_reviews_skipped' => $this->judge->duplicateReviewsSkipped,
             'research_context' => $budget->researchContext,
