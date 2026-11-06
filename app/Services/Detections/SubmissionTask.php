@@ -4,15 +4,15 @@ namespace App\Services\Detections;
 
 class SubmissionTask
 {
-    public const VERSION = 'tasks-v7';
+    public const VERSION = 'tasks-v9';
 
-    public const MEDIA_INSTRUCTION = 'Check whether this image or video shows signs of AI generation or manipulation, and explain what the detector can and cannot establish';
+    public const MEDIA_INSTRUCTION = 'Check the supplied image or video for AI generation, explain the recorded detector finding and its limits, and do not invent visual evidence or replace the answer with a scene description';
 
-    public const CLAIM_INSTRUCTION = 'Fact-check the exact claim using reliable evidence, including its names, dates, places, numbers, and qualifiers, and explain the verdict and uncertainty';
+    public const CLAIM_INSTRUCTION = 'Fact-check the exact claim in the supplied content against reliable sources, preserve its names, dates and qualifiers, and explain what the evidence supports or contradicts';
 
-    public const CONTEXT_INSTRUCTION = 'Check whether this content is current and shown in its original date, place, event, and context, and explain what changed or was omitted';
+    public const CONTEXT_INSTRUCTION = 'Check the original date, place and context of the supplied content, and explain whether it is current, reused, miscaptioned or missing important context';
 
-    public const SOURCES_INSTRUCTION = 'Find matching fact-checks and primary sources, compare what each one actually establishes, and explain any disagreement';
+    public const SOURCES_INSTRUCTION = 'Fact-check the supplied content using matching fact-checks and primary sources, and explain which references directly address the claim rather than merely discussing the same topic';
 
     private const INSTRUCTIONS = [
         self::MEDIA_INSTRUCTION,
@@ -20,6 +20,11 @@ class SubmissionTask
         self::CONTEXT_INSTRUCTION,
         self::SOURCES_INSTRUCTION,
         // Previously shipped shortcuts still appear in saved submissions.
+        'Check whether this image or video shows signs of AI generation or manipulation, and explain what the detector can and cannot establish',
+        'Fact-check the exact claim using reliable evidence, including its names, dates, places, numbers, and qualifiers, and explain the verdict and uncertainty',
+        'Check whether this content is current and shown in its original date, place, event, and context, and explain what changed or was omitted',
+        'Find matching fact-checks and primary sources, compare what each one actually establishes, and explain any disagreement',
+
         'Is this image or video AI-generated or manipulated',
         'Is the claim in this post true',
         'Has this claim already been fact-checked, and what ratings did trusted sources give it',
@@ -113,6 +118,13 @@ class SubmissionTask
     public static function tasks(array $context): array
     {
         $question = self::question($context);
+        // The shipped AI-screening shortcut names the detector scope; it does
+        // not ask for a separate editing verdict. Preserve explicit mixed tasks.
+        $preset = rtrim(trim((string) ($context['caption_text'] ?? '')), '.?');
+        if (trim((string) ($context['notes'] ?? '')) === ''
+            && in_array($preset, [self::MEDIA_INSTRUCTION, 'Check whether this image or video shows signs of AI generation or manipulation, and explain what the detector can and cannot establish', 'Is this image or video AI-generated or manipulated'], true)) {
+            return ['media'];
+        }
         $found = [];
         foreach (['media' => '/ai[- ](?:generation|generated|made)|(?:generated|made|created) (?:by|with|using) (?:ai|artificial intelligence)|did ai|(?:this|it|image|photo|picture|video)\s+(?:(?:is|was|be|looks?)\s+|made\s+(?:by|with)\s+)?ai\b|\bai\s+(?:or not|ba)\b|(?:gawa|ginawa)\b.*\bai\b|computer[- ]generated|\bsynthetic\b|\bdeepfake\b/iu',
             'manipulation' => '/\b(?:edited|editing|altered|manipulation|manipulated|photoshopped|doctored|spliced|na[- ]?edit|inedit|binago)\b/iu',

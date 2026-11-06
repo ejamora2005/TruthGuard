@@ -163,28 +163,28 @@ new class extends Component
             'id' => 'media',
             'label' => 'Check for AI-made media',
             'task' => 'media',
-            'hint' => 'Analyze this upload for AI or editing signs.',
+            'hint' => 'For images or videos: explain the AI detector finding, not the scenery.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['media'],
         ],
         [
             'id' => 'claim',
             'label' => 'Fact-check this claim',
             'task' => 'claim',
-            'hint' => 'Compare this claim with trusted sources.',
+            'hint' => 'Verify claims from text, images, videos or accessible links.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['claim'],
         ],
         [
             'id' => 'sources',
             'label' => 'Find matching fact-checks',
             'task' => 'claim',
-            'hint' => 'Search related reviews and source ratings.',
+            'hint' => 'Find references that address the exact claim, not just the topic.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['sources'],
         ],
         [
             'id' => 'context',
             'label' => 'Check date and context',
             'task' => 'claim',
-            'hint' => 'Check whether content is old, reused, or missing context.',
+            'hint' => 'Check the date, place and original context across supported content.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['context'],
         ],
     ];
@@ -5236,7 +5236,7 @@ new class extends Component
                 <button type="button" class="truthguard-progress-control" aria-label="Minimize progress" title="Minimize progress" @click="progressMinimized = true; $nextTick(() => $refs.showProgress.focus())">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M5 12h14" /></svg>
                 </button>
-                <button type="button" class="truthguard-progress-control truthguard-progress-control--close" aria-label="Hide progress" title="Hide progress; analysis continues" @click="progressHidden = true; $nextTick(() => $refs.showProgress.focus())"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18" /></svg></button>
+                <button type="button" class="truthguard-progress-control truthguard-progress-control--close" aria-label="Stop fact check" :title="stopping ? 'Stopping fact check' : 'Stop fact check'" :disabled="!pendingResultUrl || stopping" :aria-busy="stopping" @click="requestStopAnalysis()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="m6 6 12 12M18 6 6 18" /></svg></button>
             </div>
             <div class="truthguard-verify-panel relative z-10 flex flex-col items-center justify-center" role="status" aria-live="polite" aria-busy="true">
                 <div class="truthguard-verify-loader mx-auto" aria-hidden="true">
@@ -5326,9 +5326,7 @@ new class extends Component
 
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
-                    <button type="button" class="truthguard-analysis-stop" @click="requestStopAnalysis()"
-                        :disabled="!pendingResultUrl || stopping" :aria-busy="stopping"
-                        x-text="stopping ? 'Stopping…' : 'Stop fact check'"></button>
+
                     <p class="truthguard-verify-copy" x-show="!pendingResultUrl">Saving your upload before the check starts.</p>
                     <p class="truthguard-verify-copy" x-show="progressFailures > 0" x-text="'Reconnecting to progress updates…'"></p>
                     <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed'"></p>
@@ -5371,7 +5369,7 @@ new class extends Component
                                 <div class="min-w-0">
                                     <p class="text-xs font-black uppercase tracking-[0.18em] text-blue-600">Guided prompts</p>
                                     <h3 class="hidden">Start with a structured fact-check template</h3>
-                                    <p class="mt-0 text-center text-xs font-semibold text-slate-500">Choose a guide</p>
+                                    <p class="mt-0 text-center text-xs font-semibold text-slate-500">Choose what to check</p>
                                 </div>
                             </div>
                         </div>
@@ -5986,9 +5984,11 @@ new class extends Component
                         <p x-show="analysisNotice" x-cloak role="status" class="text-sm font-semibold text-slate-600" x-text="analysisNotice"></p>
                         <button x-show="submitting" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore truthguard-analyze-button truthguard-analyze-ready" @click="progressHidden = false; progressMinimized = false"><span class="truthguard-progress-dot" aria-hidden="true"></span><span>View progress</span></button>
                         <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak type="button"
-                            class="truthguard-analysis-stop" @click="requestStopAnalysis()"
+                            class="truthguard-analysis-stop truthguard-analysis-stop--icon" @click="requestStopAnalysis()"
                             :disabled="!pendingResultUrl || stopping" :aria-busy="stopping"
-                            x-text="stopping ? 'Stopping…' : 'Stop fact check'"></button>
+                            aria-label="Stop fact check" :title="stopping ? 'Stopping fact check' : 'Stop fact check'">
+                            <svg viewBox="0 0 24 24" class="h-5 w-5" :class="{ 'animate-pulse': stopping }" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                        </button>
                         <button
                             x-show="!submitting"
                             type="button"
@@ -6066,7 +6066,7 @@ new class extends Component
                 x-show="previewExpanded && previewUrl"
                 x-cloak
                 x-transition.opacity
-                class="fixed inset-0 flex items-center justify-center overflow-hidden p-4 sm:p-6"
+                class="truthguard-expanded-preview fixed inset-0 flex items-center justify-center overflow-hidden p-4 sm:p-6"
                 style="z-index: 2147483645;"
                 @click.self="closePreview()"
             >
@@ -6107,7 +6107,7 @@ new class extends Component
 
                         <button
                             type="button"
-                            class="truthguard-preview-toolbar inline-flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition hover:-translate-y-0.5 hover:text-rose-600"
+                            class="truthguard-preview-toolbar inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-700 transition hover:-translate-y-0.5 hover:text-rose-600"
                             @click="closePreview()"
                             aria-label="Close preview"
                         >

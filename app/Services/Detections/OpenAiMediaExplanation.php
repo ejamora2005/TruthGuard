@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 /** Describes visible media alongside an existing finding; never assigns a detector verdict. */
 class OpenAiMediaExplanation
 {
-    public const VERSION = 'media-explanation-v5';
+    public const VERSION = 'media-explanation-v6';
 
     public function apply(array $analysis, ?UploadedFile $file = null): array
     {
@@ -65,7 +65,7 @@ class OpenAiMediaExplanation
             $schema = MediaVisualExplanation::schema();
             // Observe pixels without the predicted class, avoiding a request to
             // invent visual reasons that agree with a previously supplied label.
-            $basis = ['task' => 'Describe only visible image content and details.'];
+            $basis = ['task' => 'Report only clearly visible possible artifacts or image-quality limitations. Do not describe the scene or ordinary appearance.'];
         }
         $payload = [
             'model' => config('services.openai.model'), 'store' => false,

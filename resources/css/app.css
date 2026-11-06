@@ -322,6 +322,10 @@
     font-size: .8rem;
     font-weight: 700;
 }
+.truthguard-composer-actions .truthguard-progress-restore { position: relative; isolation: isolate; flex-shrink: 0; }
+.truthguard-composer-actions .truthguard-progress-restore::before { pointer-events: none; }
+.truthguard-analysis-stop--icon { width: 2.75rem; height: 2.75rem; flex: 0 0 2.75rem; padding: 0; }
+.truthguard-progress-control--close:disabled { opacity: .55; cursor: wait; }
 .truthguard-analysis-stop:hover { background: #ffe4e6; }
 .truthguard-analysis-stop:focus-visible { outline: 3px solid #fda4af; outline-offset: 3px; }
 .truthguard-analysis-stop:disabled { opacity: .55; cursor: wait; }

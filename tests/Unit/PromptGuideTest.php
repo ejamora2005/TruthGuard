@@ -31,6 +31,32 @@ class PromptGuideTest extends TestCase
         $this->assertSame($claim, SubmissionTask::claimText($prompt."\n\n".$claim));
     }
 
+    public function test_guides_route_to_the_intended_task_for_supported_content_types(): void
+    {
+        foreach (['image', 'video', 'text', 'link'] as $type) {
+            foreach (SubmissionInput::GUIDE_PROMPTS as $guide => $prompt) {
+                $context = ['caption_text' => $prompt, 'media_type' => $type, 'analysis_task' => $guide === 'media' ? 'media' : 'claim'];
+                $expected = $guide === 'context' ? 'context' : ($guide === 'media' ? 'media' : 'claim');
+                $this->assertSame($expected, SubmissionTask::primary($context), $type.': '.$guide);
+                if ($guide === 'media') $this->assertSame(['media'], SubmissionTask::tasks($context));
+            }
+        }
+    }
+
+    public function test_previous_shipped_prompts_remain_instructions_instead_of_becoming_claims(): void
+    {
+        $old = [
+            'Check whether this image or video shows signs of AI generation or manipulation, and explain what the detector can and cannot establish',
+            'Fact-check the exact claim using reliable evidence, including its names, dates, places, numbers, and qualifiers, and explain the verdict and uncertainty',
+            'Check whether this content is current and shown in its original date, place, event, and context, and explain what changed or was omitted',
+            'Find matching fact-checks and primary sources, compare what each one actually establishes, and explain any disagreement',
+        ];
+        foreach ($old as $prompt) {
+            $this->assertSame('', SubmissionTask::claimText($prompt.'.'));
+            $this->assertSame('The bridge reopened.', SubmissionTask::claimText($prompt.'.'."\n\n".'The bridge reopened.'));
+        }
+    }
+
     public function test_result_wording_guide_covers_distinct_result_and_content_types(): void
     {
         $instructions = ResultWording::instructions();

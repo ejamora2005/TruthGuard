@@ -86,8 +86,9 @@ class MediaVisualExplanationTest extends TestCase
         foreach (['verdict', 'score', 'sources', 'media_assessment', 'limitations'] as $key) {
             $this->assertSame($before['fact_check_result'][$key], $after['fact_check_result'][$key]);
         }
-        $this->assertStringContainsString('text notice', $after['fact_check_result']['summary']);
-        $this->assertStringContainsString('The heading: The letters have clean edges.', $after['fact_check_result']['summary']);
+        $this->assertStringNotContainsString('text notice', $after['fact_check_result']['summary']);
+        $this->assertStringNotContainsString('The heading: The letters have clean edges.', $after['fact_check_result']['summary']);
+        $this->assertStringContainsString('recorded model output favoured', $after['fact_check_result']['summary']);
         $this->assertStringNotContainsString('threshold', $after['fact_check_result']['summary']);
         $this->assertStringNotContainsString('Specific visual details were not recorded', $after['fact_check_result']['summary']);
         $this->assertSame('completed', $after['signals']['media_explanation'][0]['status']);
@@ -141,7 +142,24 @@ class MediaVisualExplanationTest extends TestCase
         $this->prepareAndRespond($answer);
         $after = app(OpenAiMediaExplanation::class)->apply($this->analysis(), $this->image());
         $this->assertStringNotContainsString('clean edges', $after['fact_check_result']['summary']);
-        $this->assertStringContainsString('Most of this area is blank', $after['fact_check_result']['summary']);
+        $this->assertStringNotContainsString('Most of this area is blank', $after['fact_check_result']['summary']);
+    }
+
+    public function test_saved_scene_captions_are_not_presented_as_ai_evidence_and_empty_descriptions_are_supported(): void
+    {
+        $result = $this->analysis()['fact_check_result'];
+        $hash = $result['media_assessment']['input_sha256'];
+        $result['visual_observations'] = MediaVisualExplanation::accept([
+            'image_description' => 'A wooden fishing boat rests on a tropical beach.',
+            'observations' => [['region' => 'the foreground', 'detail' => 'Blue nets hang over the wooden hull.',
+                'kind' => 'appearance', 'visibility' => 'clear']]], $hash);
+        $public = ReportAnswer::forPresentation($result);
+        $this->assertStringNotContainsString('wooden', $public['summary']);
+        $this->assertStringNotContainsString('Blue nets', $public['summary']);
+        $this->assertStringContainsString('recorded model output favoured the non-AI class', $public['summary']);
+        $this->assertStringContainsString('does not rule out AI generation', $public['summary']);
+        $this->assertNotNull(MediaVisualExplanation::accept(['image_description' => '', 'observations' => []], $hash));
+        $this->assertStringContainsString('Leave image_description empty', MediaVisualExplanation::instructions());
     }
 
     public function test_saved_observations_must_remain_bound_and_do_not_change_fact_check_presentation(): void
@@ -150,7 +168,7 @@ class MediaVisualExplanationTest extends TestCase
         $hash = $result['media_assessment']['input_sha256'];
         $result['visual_observations'] = MediaVisualExplanation::accept($this->observations(), $hash);
         $public = ReportAnswer::forPresentation($result);
-        $this->assertStringContainsString('clean edges', $public['summary']);
+        $this->assertStringNotContainsString('clean edges', $public['summary']);
         $result['visual_observations']['input_sha256'] = str_repeat('b', 64);
         $this->assertStringNotContainsString('clean edges', ReportAnswer::forPresentation($result)['summary']);
         $result['primary_task'] = 'claim';
@@ -181,7 +199,7 @@ class MediaVisualExplanationTest extends TestCase
         $public = ReportAnswer::forPresentation($after['fact_check_result']);
         $this->assertSame($beforePublic['verdict'], $public['verdict']);
         $this->assertSame($beforePublic['score'], $public['score']);
-        $this->assertStringContainsString('clean edges', $public['summary']);
+        $this->assertStringNotContainsString('clean edges', $public['summary']);
         $analysis['fact_check_result']['media_assessment']['media_type'] = 'video';
         $this->assertSame($analysis, app(OpenAiMediaExplanation::class)->apply($analysis, $this->image()));
         Http::assertSentCount(1);
@@ -196,7 +214,7 @@ class MediaVisualExplanationTest extends TestCase
         $result['visual_observations'] = MediaVisualExplanation::accept($answer, $hash);
         $public = MediaVisualExplanation::present($result);
         $this->assertSame($result['verdict'], $public['verdict']);
-        $this->assertStringContainsString('No clear visible flaw was identified to explain that prediction', $public['summary']);
+        $this->assertStringContainsString('did not record feature-level evidence', $public['summary']);
         $answer['observations'][0]['visibility'] = $answer['observations'][1]['visibility'] = 'uncertain';
         $result['visual_observations'] = MediaVisualExplanation::accept($answer, $hash);
         $this->assertStringNotContainsString('clean edges', MediaVisualExplanation::present($result)['summary']);
@@ -225,12 +243,13 @@ class MediaVisualExplanationTest extends TestCase
             $document = new \DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $node = (new \DOMXPath($document))->query('//div[contains(@class,"tg-verdict-explanation")]')->item(0);
-            $this->assertStringContainsString('The heading: The letters have clean edges.', $node->textContent);
+            $this->assertStringNotContainsString('The heading: The letters have clean edges.', $node->textContent);
+            $this->assertStringContainsString('recorded model output favoured', $node->textContent);
             $this->assertStringNotContainsString('threshold', $node->textContent);
             $this->assertStringNotContainsString('benchmark', $node->textContent);
         }
         $this->getJson(route('detections.result', $first))->assertOk()
-            ->assertJsonPath('summary', fn ($summary) => str_contains($summary, 'clean edges'));
+            ->assertJsonPath('summary', fn ($summary) => str_contains($summary, 'recorded model output favoured'));
         $this->assertSame($before, $first->fresh()->getRawOriginal());
         Http::assertSentCount(1);
     }

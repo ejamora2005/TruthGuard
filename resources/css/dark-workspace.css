@@ -401,3 +401,28 @@ html[data-tg-workspace].dark body .truthguard-progress-control:hover { backgroun
 html[data-tg-workspace].dark body .truthguard-progress-restore { background: #203858; color: #a6caff; }
 html[data-tg-workspace].dark body :is(.truthguard-progress-control, .truthguard-progress-restore):focus-visible { outline-color: #93c5fd; }
 html[data-tg-workspace].dark body .truthguard-verify-progress { background: var(--tg-night-raised); }
+
+/* Expanded upload preview uses dark surfaces independently of the image colors. */
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-backdrop {
+    background: rgba(7, 12, 23, .96) !important;
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+}
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-background-media { opacity: .08 !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview > .pointer-events-none { opacity: .12 !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-toolbar {
+    background: #182438 !important;
+    border-color: #40516b !important;
+    color: #f1f5f9 !important;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 24%);
+}
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-toolbar :is(p, button) {
+    color: #f1f5f9 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-toolbar p:first-child { color: #b8c9e0 !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-toolbar button { background: #263852 !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview .truthguard-preview-toolbar button:hover { background: #354e70 !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview button.truthguard-preview-toolbar { color: #fda4af !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview button.truthguard-preview-toolbar:hover { background: #402434 !important; color: #fecdd3 !important; }
+html[data-tg-workspace].dark body .truthguard-expanded-preview button:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }

@@ -47,6 +47,38 @@ class ReviewedMediaLookupTest extends TestCase
         $this->assertNull(ReviewedMediaLookup::analysis($record->sha256, 'image', self::REQUEST));
     }
 
+    public function test_shipped_ai_shortcut_uses_exact_provenance_instead_of_running_a_detector(): void
+    {
+        Storage::fake('public');
+        Http::preventStrayRequests();
+        $this->seed(ReviewedMediaSeeder::class);
+        $upload = UploadedFile::fake()->image('renamed-beach.png');
+        $checksum = hash_file('sha256', $upload->getRealPath());
+        DB::table('reviewed_media')->where('slug', 'ai-beach-fishing-boat')->update(['sha256' => $checksum]);
+        $this->mock(\App\Services\Detections\AiOriginClassifier::class)->shouldNotReceive('classify');
+        $this->mock(\App\Services\Detections\DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
+        $caption = \App\Services\Detections\SubmissionTask::MEDIA_INSTRUCTION.'.';
+        $request = \App\Services\Detections\SubmissionTask::resolve(['caption_text' => $caption, 'media_type' => 'image', 'analysis_task' => 'media']);
+        $this->assertSame(['media'], $request['tasks']);
+        $detection = app(DetectionPipeline::class)->run(User::factory()->create(), [
+            'analysis_task' => 'media', 'caption_text' => $caption,
+        ], $upload);
+        $this->assertSame('AI_GENERATED', $detection->fact_check_result['verdict']);
+        $this->assertSame('ai-beach-fishing-boat', $detection->fact_check_result['diagnostics']['reviewed_media_slug']);
+        $this->assertNull($detection->fact_check_result['score']['value']);
+        Http::assertNothingSent();
+    }
+
+    public function test_explicit_separate_editing_question_still_does_not_shortcut_a_combined_request(): void
+    {
+        $this->seed(ReviewedMediaSeeder::class);
+        $request = \App\Services\Detections\SubmissionTask::resolve([
+            'caption_text' => 'Is this AI-generated? Was it edited?', 'media_type' => 'image']);
+        $this->assertSame(['media', 'manipulation'], $request['tasks']);
+        $checksum = DB::table('reviewed_media')->where('slug', 'ai-beach-fishing-boat')->value('sha256');
+        $this->assertNull(ReviewedMediaLookup::analysis($checksum, 'image', $request));
+    }
+
     public function test_photo_provenance_has_a_source_and_no_invented_confidence(): void
     {
         $this->seed(ReviewedMediaSeeder::class);
