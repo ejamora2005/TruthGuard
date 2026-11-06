@@ -239,6 +239,7 @@ class ResultContract
             $result['assessment_label'] = 'AI origin inconclusive';
         }
         $result = MediaDetectorPrediction::present($result);
+        $result = MediaVisualExplanation::present($result);
         $public = array_intersect_key($result, array_flip([
             'schema_version', 'verdict_version', 'assessment_group', 'processing_status', 'completed_tasks', 'primary_task', 'verdict',
             'assessment_label', 'claim', 'summary', 'answer_segments', 'score', 'score_display',

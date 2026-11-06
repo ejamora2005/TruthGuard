@@ -176,7 +176,7 @@ class DetectionPipeline
             // answer boundary before it can be compared, saved or displayed.
             $analysis['fact_check_result'] = ReportAnswer::complete($analysis['fact_check_result']);
             if ($reviewedMedia === null) {
-                $analysis = $this->mediaExplanation->apply($analysis);
+                $analysis = $this->mediaExplanation->apply($analysis, $uploadedFile);
             }
             $analysis['fact_check_result'] = ResultWording::ensure($analysis['fact_check_result'], $analysis['recommendation'] ?? '');
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];

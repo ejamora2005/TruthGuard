@@ -143,21 +143,13 @@
     if ($savedWording) {
         $assessment = $savedWording['explanation'];
     }
-    $evidenceParagraphs = collect([$assessment]);
-    if (! $savedWording && $recordedTask === 'media'
-        && data_get($selectedDetection->fact_check_result, 'verdict') === 'INCONCLUSIVE'
-        && \Illuminate\Support\Str::wordCount($assessment) < 100) {
-        $recordedLimitations = collect(data_get($selectedDetection->fact_check_result, 'limitations', []))
-            ->filter(fn ($note): bool => is_string($note) && trim($note) !== '')
-            ->map(fn (string $note): string => trim($note))
-            ->unique()
-            ->reject(fn (string $note): bool => str_contains($assessment, $note))
-            ->take(3);
-
-        if ($recordedLimitations->isNotEmpty()) {
-            $evidenceParagraphs->push($recordedLimitations->implode(' '));
-        }
+    if ($recordedTask === 'media' && data_get($publicResult, 'media_assessment.status') === 'completed') {
+        // Media copy is based on saved, image-bound observations. Legacy
+        // text-only narration cannot replace it with generic detector jargon.
+        $savedWording = null;
+        $assessment = $reasoning = $publicResult['summary'];
     }
+    $evidenceParagraphs = collect([$assessment]);
     $evidenceText = $evidenceParagraphs->implode("\n\n");
     $interpretationSummary = $savedWording['result_summary'] ?? \App\Services\Detections\ReportAnswer::interpretationSummary($publicResult, $reasoning);
     $interpretationAction = $savedWording['recommended_action'] ?? \App\Services\Detections\ReportAnswer::interpretationAction($interpretationSummary, $recommendation);

@@ -93,8 +93,8 @@ class ResultContractTest extends TestCase
         $this->assertSame('LIKELY_AI_GENERATED', $result['verdict']);
         $this->assertSame('Likely AI-Generated', $result['assessment_label']);
         $this->assertTrue($result['media_assessment']['origin_inconclusive']);
-        $this->assertStringContainsString('detector prediction', $result['summary']);
-        $this->assertStringContainsString('detector signal is weak', $result['summary']);
+        $this->assertStringContainsString('The detector flagged', $result['summary']);
+        $this->assertStringContainsString('The detector was not decisive', $result['summary']);
         $this->assertStringNotContainsString('unavailable', strtolower($result['summary']));
     }
 

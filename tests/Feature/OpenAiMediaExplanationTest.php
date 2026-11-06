@@ -210,11 +210,11 @@ class OpenAiMediaExplanationTest extends TestCase
         Http::assertSentCount(1);
     }
 
-    public function test_repeated_image_reuses_saved_explanation_before_any_new_api_call(): void
+    public function test_legacy_text_only_narration_is_preserved_on_reuse_but_is_not_presented_as_visual_evidence(): void
     {
         Storage::fake('public');
         $this->fakeResponse();
-        $analysis = $this->analysis();
+        $analysis = app(OpenAiMediaExplanation::class)->apply($this->analysis());
         $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
         $this->mock(AiOriginClassifier::class)->shouldReceive('classify')->once()->andReturn($analysis['media_assessment']);
         $this->mock(EvidenceVerificationService::class)->shouldReceive('apply')->once()
@@ -234,8 +234,13 @@ class OpenAiMediaExplanationTest extends TestCase
         $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => []]);
         $snapshot = $first->fresh()->getRawOriginal();
         foreach (range(1, 2) as $refresh) {
-            $this->actingAs($user)->get(route('detections.result', $first))->assertOk()->assertSee(self::PROSE)
-                ->assertSee(self::SHORT)->assertSee(self::ACTION)->assertDontSee('View full explanation');
+            $html = $this->actingAs($user)->get(route('detections.result', $first))->assertOk()
+                ->assertSee('Specific visual details were not recorded for this check.')->assertDontSee('View full explanation')->getContent();
+            $document = new \DOMDocument;
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $main = (new \DOMXPath($document))->query('//div[contains(@class,"tg-verdict-explanation")]')->item(0)->textContent;
+            $this->assertStringNotContainsString(self::PROSE, $main);
+            $this->assertStringNotContainsString('threshold', $main);
         }
         $this->assertSame($snapshot, $first->fresh()->getRawOriginal());
         Http::assertSentCount(1);

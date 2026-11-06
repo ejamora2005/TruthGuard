@@ -217,3 +217,53 @@ Then submit the original image as a new normal fact check. Historical report 108
 is retained; loading its page does not manufacture a new assessment. An explicit
 fresh-research request intentionally tests research rather than reviewed-answer
 reuse. This repair adds no environment settings and makes no model calls itself.
+
+## Image-specific AI-media explanations
+
+The media explanation request previously received only the detector class, score
+and limitations. It could not truthfully describe the uploaded image. Long saved
+narration and appended limitations then filled the main explanation with detector
+terminology. Factual claim explanations and verdict logic are unchanged by this
+follow-up.
+
+Image uploads now pass the original file to the existing media explanation stage.
+Its SHA-256 must match the detector input before the bounded image preparer runs.
+One vision request asks for a short scene description and up to two located,
+visible observations. The observer receives neither the detector label nor its
+score. It cannot return a verdict, citations or percentages. Uncertain observations
+are omitted, and origin, metadata and detector-attribution assertions are rejected.
+The server combines accepted observations with the existing detector finding;
+neither the observer nor its description changes the verdict or score.
+
+The main explanation names the visible subject and details in plain language.
+Possible artifacts are identified as possible issues. If no visible flaw explains
+a positive detector result, it says so rather than manufacturing a justification.
+Visible features are observations, not a claim that those features caused a neural
+network's prediction. A vision model can still misdescribe pixels; these checks
+do not independently establish observation accuracy or image provenance.
+
+Saved observations are displayed only with the matching original detector-input
+hash. New uploads and reused results preserve that binding. Historical reports
+without observations get a short detector explanation that explicitly says visual
+details were not recorded. GET/JSON views perform no model calls or database
+rewrites. The existing Details area retains recorded limitations and detector
+information; they are no longer appended wholesale to the main media paragraph.
+
+There is at most one optional image-observation request, without hosted search or
+paid retries. It replaces the text-only narration for supported image uploads and
+can now run for a completed detector whose origin policy is inconclusive. Earlier
+versions skipped narration for that case. Image inputs add billable input tokens;
+actual returned usage remains recorded, while saved-result reuse records zero new
+tokens. The existing explanation enable switch and output budget are retained.
+Image preparation or binding failures preserve the assessment without requesting
+a guessed visual explanation. See the official [OpenAI image-input guide](https://developers.openai.com/api/docs/guides/images-vision)
+for request format, billing and vision limitations.
+
+Tests use fixed external responses, not paid model calls. They cover actual image
+input inclusion, label-blind observation requests, hash mismatches, unreadable
+inputs, rejected origin/provenance claims, uncertain features, unchanged scores
+and verdicts, historical records, HTML/JSON rendering and zero-token reuse. A
+pre-existing score-caption assertion also failed against the unchanged baseline;
+it now expects the existing Model score label without changing score behavior.
+Final targeted verification passed **125 tests / 1,135 assertions**, Pint and
+the Vite production build. No paid model calls were used during verification.
