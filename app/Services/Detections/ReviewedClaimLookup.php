@@ -47,6 +47,60 @@ class ReviewedClaimLookup
         return Schema::hasTable('reviewed_claims') && Schema::hasTable('claim_variations');
     }
 
+    /** One request's registry state, including expiry transitions without a DB write. */
+    public static function dependencySnapshot(): array
+    {
+        if (! self::available()) {
+            return ['available' => false, 'bindings' => []];
+        }
+        $bindings = [];
+        $revisions = [];
+        $instant = now();
+        foreach (ClaimVariation::with('reviewedClaim')->orderBy('text_hash')->get() as $variation) {
+            $claim = $variation->reviewedClaim;
+            if (! $claim) {
+                continue;
+            }
+            $revisions[$claim->id] ??= hash('sha256', json_encode([
+                $claim->claim, $claim->result, $claim->active,
+                $claim->reviewed_at?->toIso8601String(), $claim->expires_at?->toIso8601String(),
+                $claim->active && $claim->reviewed_at?->lte($instant)
+                    && (! $claim->expires_at || $claim->expires_at->gt($instant)),
+            ], JSON_THROW_ON_ERROR));
+            $bindings[$variation->text_hash] = hash('sha256', json_encode([
+                $variation->id, $variation->normalized_text, $claim->id, $revisions[$claim->id],
+            ], JSON_THROW_ON_ERROR));
+        }
+
+        return ['available' => true, 'bindings' => $bindings];
+    }
+
+    /** Changes to unrelated reviews must not invalidate this submission's cache. */
+    public static function dependencySignature(array $texts, array $snapshot): string
+    {
+        $dependencies = [];
+        foreach ($texts as $text) {
+            if (! is_string($text) || trim($text) === '') {
+                continue;
+            }
+            $regions = preg_split('/\n\s*\n/u', $text) ?: [];
+            $candidates = [$text, ...$regions, ...SubmittedText::sentences($text)];
+            if (KnownFactCheckCatalog::matchesReviewedVariant($text)) {
+                // lookup() resolves these approved aliases through this DB entry.
+                $candidates[] = 'The world will end on Friday, November 13, 2026, according to a scientist mathematical prediction.';
+            }
+            foreach ($candidates as $candidate) {
+                $key = hash('sha256', self::normalize($candidate));
+                $dependencies[$key] = $snapshot['bindings'][$key] ?? null;
+            }
+        }
+        ksort($dependencies);
+
+        return hash('sha256', json_encode(['version' => 'reviewed-answer-dependencies-v1',
+            'available' => $snapshot['available'], 'catalog_version' => KnownFactCheckCatalog::VERSION,
+            'dependencies' => $dependencies], JSON_THROW_ON_ERROR));
+    }
+
     /** Reuse complete, literal assertions, never keyword hits or model paraphrases. */
     public static function forClaims(array $claims, string $submission, string $cutoff): array
     {

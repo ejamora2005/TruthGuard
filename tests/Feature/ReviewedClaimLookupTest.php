@@ -83,6 +83,22 @@ class ReviewedClaimLookupTest extends TestCase
         $this->assertNull(ReviewedClaimLookup::lookup($claim->claim));
     }
 
+    public function test_cache_dependencies_cover_complete_ocr_regions_and_approved_catalog_aliases(): void
+    {
+        $this->seed(ReviewedClaimSeeder::class);
+        $texts = ["VERA FILES\n\nSHOOT-TO-KILL\nKAY SEN. BATO,\nIHAHAIN?!",
+            'BIG BREAKING: World will end in Two weeks. World will end on Friday 13 November 2026: According to an old study published in journal Science.'];
+        // The second text still has a reviewed alias even on an older database.
+        ClaimVariation::where('text', $texts[1])->delete();
+        $snapshot = ReviewedClaimLookup::dependencySnapshot();
+        $before = array_map(fn ($text) => ReviewedClaimLookup::dependencySignature([$text], $snapshot), $texts);
+        ReviewedClaim::query()->update(['active' => false]);
+        $snapshot = ReviewedClaimLookup::dependencySnapshot();
+        foreach ($texts as $index => $text) {
+            $this->assertNotSame($before[$index], ReviewedClaimLookup::dependencySignature([$text], $snapshot));
+        }
+    }
+
     public function test_a_saved_answer_reviewed_after_the_requested_cutoff_is_not_reused(): void
     {
         $this->seed(ReviewedClaimSeeder::class);

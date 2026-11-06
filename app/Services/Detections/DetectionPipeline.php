@@ -105,8 +105,9 @@ class DetectionPipeline
             throw ValidationException::withMessages(['media_file' => 'An identical submission is still being analyzed. Retry after it finishes; no duplicate analysis was started.']);
         }
         try {
+            $reviewedSnapshot = ReviewedClaimLookup::dependencySnapshot();
             $reviewedMedia = ReviewedMediaLookup::analysis($mediaChecksum, $mediaType, $resolvedRequest, $sourceUrl);
-            if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint, $mediaChecksum, $uploadedFile))) {
+            if ($reviewedMedia === null && $reuseEnabled && ! $forceRefresh && ($reusableDetection = $this->findReusableDetection($requestFingerprint, $mediaChecksum, $uploadedFile, $reviewedSnapshot))) {
                 $detection = $this->createReusedDetection($user, $reusableDetection, $sourceUrl, $captionText, $notes, $mediaPath, $mediaChecksum, $mediaPerceptualHash, $requestFingerprint, $pending);
                 Log::info('TruthGuard analysis reused a saved result without inference.', ['analysis_id' => $analysisId,
                     'detection_id' => $detection->id, 'reused_from_detection_id' => $reusableDetection->id]);
@@ -182,6 +183,8 @@ class DetectionPipeline
             // Older saved reports have not been admitted to this fresh cache.
             $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation'), 'hit' => false];
             $analysis['fact_check_result']['diagnostics']['result_cache_hit'] = false;
+            $analysis['fact_check_result']['diagnostics']['reviewed_answer_signature'] = $this->reviewedAnswerSignature(
+                $analysis['fact_check_result'], $analysis['signals'] ?? [], $captionText, $notes, $reviewedSnapshot);
             $analysis['signals']['api_budget'] = $analysis['fact_check_result']['diagnostics']['api_budget'] = app(ReportApiBudget::class)->snapshot();
 
             $attributes = [
@@ -465,7 +468,7 @@ class DetectionPipeline
         return $normalized !== '' ? $normalized : null;
     }
 
-    private function findReusableDetection(?string $requestFingerprint, ?string $mediaChecksum, ?UploadedFile $file): ?Detection
+    private function findReusableDetection(?string $requestFingerprint, ?string $mediaChecksum, ?UploadedFile $file, array $reviewedSnapshot): ?Detection
     {
         if ($requestFingerprint === null) {
             return null;
@@ -481,8 +484,8 @@ class DetectionPipeline
             ->applyRetentionWindow($query)
             ->latest('analyzed_at')
             ->cursor()
-            ->first(function (Detection $candidate) use ($mediaChecksum, $file): bool {
-                if (! $this->canReuseResult($candidate)) {
+            ->first(function (Detection $candidate) use ($mediaChecksum, $file, $reviewedSnapshot): bool {
+                if (! $this->canReuseResult($candidate, $reviewedSnapshot)) {
                     return false;
                 }
                 if ($candidate->media_checksum !== $mediaChecksum) {
@@ -505,7 +508,7 @@ class DetectionPipeline
             });
     }
 
-    private function canReuseResult(Detection $candidate): bool
+    private function canReuseResult(Detection $candidate, array $reviewedSnapshot): bool
     {
         $result = $candidate->fact_check_result;
         // Recheck the registry on every request so disabled or revised entries
@@ -528,12 +531,27 @@ class DetectionPipeline
             return false;
         }
         $mediaOnly = ($result['primary_task'] ?? '') === 'media' && empty($result['secondary_assessments']);
+        if (! $mediaOnly && data_get($result, 'diagnostics.reviewed_answer_signature') !== $this->reviewedAnswerSignature(
+            $result, $candidate->signals ?? [], $candidate->caption_text, $candidate->notes, $reviewedSnapshot)) {
+            return false;
+        }
         $seconds = (int) config('fact_check.result_reuse.'.($mediaOnly ? 'media_seconds' : 'claim_seconds'), $mediaOnly ? 604800 : 86400);
         if (in_array($result['verdict'] ?? '', ['UNVERIFIED', 'CONFLICTING_EVIDENCE', 'MISSING_CONTEXT'], true)) {
             $seconds = min($seconds, (int) config('fact_check.result_reuse.unresolved_seconds', 300));
         }
 
         return $seconds > 0 && $candidate->analyzed_at->gte(now()->subSeconds($seconds));
+    }
+
+    private function reviewedAnswerSignature(array $result, array $signals, ?string $caption, ?string $notes, array $snapshot): string
+    {
+        $texts = [$caption, $notes, $result['claim'] ?? null, ...array_column($result['claims'] ?? [], 'text')];
+        foreach (['analysis_text', 'visible_text', 'reconstructed_text', 'original_text'] as $key) {
+            $texts[] = data_get($result, 'extraction.'.$key);
+            $texts[] = data_get($signals, 'submission_extraction.0.'.$key);
+        }
+
+        return ReviewedClaimLookup::dependencySignature($texts, $snapshot);
     }
 
     private function modelArtifactIdentity(): array

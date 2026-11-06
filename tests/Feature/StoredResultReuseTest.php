@@ -2,20 +2,27 @@
 
 namespace Tests\Feature;
 
+use App\Models\ClaimVariation;
 use App\Models\Detection;
+use App\Models\ReviewedClaim;
 use App\Models\User;
 use App\Services\Detections\AiOriginClassifier;
 use App\Services\Detections\DeepfakeCnnClassifier;
 use App\Services\Detections\DetectionPipeline;
+use App\Services\Detections\Evidence\ArticleSearch;
+use App\Services\Detections\Evidence\SubmissionExtractor;
 use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\ReviewedClaimLookup;
+use Database\Seeders\ReviewedClaimSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class StoredResultReuseTest extends TestCase
@@ -57,6 +64,173 @@ class StoredResultReuseTest extends TestCase
     private function submitFixture(User $user, array $extra = [], ?Detection $pending = null, string $bytes = 'identical image bytes'): Detection
     {
         return app(DetectionPipeline::class)->run($user, $extra + ['analysis_task' => 'media', 'caption_text' => 'Check image origin.'], $this->upload($bytes), $pending);
+    }
+
+    private const POSTER_HEADLINE = 'SHOOT-TO-KILL KAY SEN, BATO, IHAHAIN?!';
+
+    /** Exercise the real registry and cache; external evidence gathering is fixed. */
+    private function mockReviewedAnalysis(int $calls): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 6)->startOfDay());
+        $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
+        $this->mock(AiOriginClassifier::class)->shouldNotReceive('classify');
+        $this->mock(EvidenceVerificationService::class)->shouldReceive('apply')->times($calls)
+            ->andReturnUsing(function ($analysis) {
+                $result = ReviewedClaimLookup::lookup(self::POSTER_HEADLINE, now()->toIso8601String())
+                    ?? ReportAnswer::complete(['schema_version' => 4, 'primary_task' => 'claim',
+                        'claim' => self::POSTER_HEADLINE, 'verdict' => 'UNVERIFIED',
+                        'summary' => 'No directly resolving passage was retrieved.']);
+                $result['extraction']['analysis_text'] = self::POSTER_HEADLINE;
+                $result['assessed_at'] = $result['evidence_cutoff'] = now()->toIso8601String();
+
+                return array_replace($analysis, ['fact_check_result' => $result,
+                    'analysis_summary' => $result['summary'], 'explanation_summary' => $result['summary'],
+                    'signals' => ['openai_usage' => ['input_tokens' => 100, 'output_tokens' => 20, 'total_tokens' => 120]]]);
+            });
+    }
+
+    public static function newlyApprovedAnswers(): array
+    {
+        return ['new reviewed answer' => [false], 'new approved variation' => [true]];
+    }
+
+    #[DataProvider('newlyApprovedAnswers')]
+    public function test_an_approved_answer_invalidates_a_cached_unverified_poster(bool $existingReview): void
+    {
+        $this->mockReviewedAnalysis(2);
+        if ($existingReview) {
+            $this->seed(ReviewedClaimSeeder::class);
+            ClaimVariation::where('text_hash', hash('sha256', ReviewedClaimLookup::normalize(self::POSTER_HEADLINE)))->delete();
+        }
+        $user = User::factory()->create();
+        $input = ['analysis_task' => 'claim', 'caption_text' => null];
+        $first = $this->submitFixture($user, $input);
+        $before = $first->fresh()->getRawOriginal();
+        $this->assertSame('UNVERIFIED', $first->fact_check_result['verdict']);
+        $this->assertSame($first->id, $this->submitFixture($user, $input)->reused_from_detection_id);
+
+        if ($existingReview) {
+            ReviewedClaim::where('slug', 'suan-fabricated-bato-shoot-to-kill-quote')->firstOrFail()
+                ->variations()->create(['text' => self::POSTER_HEADLINE]);
+        } else {
+            $this->seed(ReviewedClaimSeeder::class);
+        }
+        $this->travel(1)->minutes();
+        $fresh = $this->submitFixture($user, $input);
+        $this->assertNull($fresh->reused_from_detection_id);
+        $this->assertSame('FALSE', $fresh->fact_check_result['verdict']);
+        $this->assertNotEmpty($fresh->fact_check_result['sources']);
+        $this->assertSame('exact_normalized_variation', $fresh->fact_check_result['diagnostics']['match_method']);
+        $this->assertSame($fresh->id, ($repeat = $this->submitFixture($user, $input))->reused_from_detection_id);
+        $this->assertSame(0, $repeat->signals['openai_usage']['total_tokens']);
+        $this->assertSame($before, $first->fresh()->getRawOriginal());
+        Http::assertNothingSent();
+    }
+
+    public static function reviewChanges(): array
+    {
+        return ['disabled' => ['disable'], 'expired without a write' => ['expire'],
+            'changed explanation' => ['revise'], 'removed variation' => ['remove']];
+    }
+
+    #[DataProvider('reviewChanges')]
+    public function test_a_changed_or_withdrawn_review_cannot_survive_in_the_result_cache(string $change): void
+    {
+        $this->mockReviewedAnalysis(2);
+        $this->seed(ReviewedClaimSeeder::class);
+        $review = ReviewedClaim::where('slug', 'suan-fabricated-bato-shoot-to-kill-quote')->firstOrFail();
+        if ($change === 'expire') {
+            $review->update(['expires_at' => now()->addMinute()]);
+        }
+        $user = User::factory()->create();
+        $input = ['analysis_task' => 'claim', 'caption_text' => null];
+        $first = $this->submitFixture($user, $input);
+        $before = $first->fresh()->getRawOriginal();
+        $this->assertSame('FALSE', $first->fact_check_result['verdict']);
+        $this->assertSame($first->id, $this->submitFixture($user, $input)->reused_from_detection_id);
+
+        match ($change) {
+            'disable' => $review->update(['active' => false]),
+            'expire' => $this->travel(2)->minutes(),
+            'revise' => $review->update(['result' => array_replace($review->result, ['summary' => 'Updated reviewed explanation.'])]),
+            'remove' => $review->variations()->where('text_hash', hash('sha256', ReviewedClaimLookup::normalize(self::POSTER_HEADLINE)))->delete(),
+        };
+        $fresh = $this->submitFixture($user, $input);
+        $this->assertNull($fresh->reused_from_detection_id);
+        $this->assertSame($change === 'revise' ? 'FALSE' : 'UNVERIFIED', $fresh->fact_check_result['verdict']);
+        if ($change === 'revise') {
+            $this->assertSame('Updated reviewed explanation.', $fresh->fact_check_result['summary']);
+        }
+        $this->assertSame($fresh->id, $this->submitFixture($user, $input)->reused_from_detection_id);
+        $this->assertSame($before, $first->fresh()->getRawOriginal());
+        Http::assertNothingSent();
+    }
+
+    public function test_unrelated_review_changes_do_not_repeat_paid_analysis(): void
+    {
+        $this->mockReviewedAnalysis(1);
+        $this->seed(ReviewedClaimSeeder::class);
+        $user = User::factory()->create();
+        $input = ['analysis_task' => 'claim', 'caption_text' => null];
+        $first = $this->submitFixture($user, $input);
+        $other = ReviewedClaim::where('slug', 'hev-abi-fake-bucket-quote')->firstOrFail();
+        $other->update(['active' => false]);
+        $other->variations()->create(['text' => 'An unrelated new approved headline.']);
+        $repeat = $this->submitFixture($user, $input);
+        $this->assertSame($first->id, $repeat->reused_from_detection_id);
+        $this->assertSame(0, $repeat->signals['openai_usage']['total_tokens']);
+        Http::assertNothingSent();
+    }
+
+    public function test_installing_missing_variations_reaches_the_real_pipeline_after_a_cached_unresolved_image(): void
+    {
+        $this->travelTo(now()->setDate(2026, 11, 6)->startOfDay());
+        config()->set(['services.openai.analysis_enabled' => true, 'services.openai.key' => 'fixture',
+            'services.live_verification.enabled' => true, 'fact_check.web_search.enabled' => false,
+            'fact_check.retrieval.max_rounds' => 1]);
+        $this->mock(DeepfakeCnnClassifier::class)->shouldNotReceive('classify');
+        $this->mock(AiOriginClassifier::class)->shouldNotReceive('classify');
+        $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->twice()->andReturn([
+            'status' => 'completed', 'analysis_text' => self::POSTER_HEADLINE, 'visible_text' => self::POSTER_HEADLINE,
+            'original_text' => self::POSTER_HEADLINE, 'reconstructed_text' => self::POSTER_HEADLINE,
+            'input_scope' => 'visible image text', 'limitations' => [], 'source_record' => null,
+            'usage' => ['input_tokens' => 90, 'output_tokens' => 10, 'total_tokens' => 100],
+        ]);
+        $search = $this->mock(ArticleSearch::class);
+        $search->shouldReceive('prefetchExactReviews')->once()->andReturn([]);
+        $search->shouldReceive('retrieve')->once()->andReturn([]);
+        Http::fake(['api.openai.com/*' => function ($request) {
+            $this->assertSame('claim_decomposition', $request['text']['format']['name']);
+
+            return Http::response(['status' => 'completed',
+                'usage' => ['input_tokens' => 180, 'output_tokens' => 20, 'total_tokens' => 200],
+                'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => json_encode([
+                    'claims' => [['quote' => self::POSTER_HEADLINE, 'kind' => 'factual', 'requires_context' => false,
+                        'context_reason' => '', 'entities' => [], 'dates' => [], 'locations' => [],
+                        'quantities' => [], 'qualifiers' => [], 'searches' => ['exact poster headline'], 'references' => []]],
+                    'date_quote' => '', 'original_claim_date' => null,
+                ])]]]]]);
+        }]);
+        $this->seed(ReviewedClaimSeeder::class);
+        ClaimVariation::where('text_hash', hash('sha256', ReviewedClaimLookup::normalize(self::POSTER_HEADLINE)))->delete();
+        $user = User::factory()->create();
+        $input = ['analysis_task' => 'claim', 'caption_text' => null];
+        $first = $this->submitFixture($user, $input);
+        $this->assertContains($first->fact_check_result['verdict'], ['UNVERIFIED', 'MISSING_CONTEXT']);
+        $this->assertSame($first->id, $this->submitFixture($user, $input)->reused_from_detection_id);
+        $this->artisan('truthguard:install-reviewed-variations', [
+            'slug' => 'suan-fabricated-bato-shoot-to-kill-quote', '--apply' => true,
+        ])->assertSuccessful();
+        $this->travel(1)->minutes();
+        $fresh = $this->submitFixture($user, $input);
+        $this->assertNull($fresh->reused_from_detection_id);
+        $this->assertSame('FALSE', $fresh->fact_check_result['verdict']);
+        $this->assertSame('suan-fabricated-bato-shoot-to-kill-quote', $fresh->fact_check_result['diagnostics']['reviewed_claim_slug']);
+        $this->assertSame(100, $fresh->signals['openai_usage']['total_tokens']);
+        $repeat = $this->submitFixture($user, $input);
+        $this->assertSame($fresh->id, $repeat->reused_from_detection_id);
+        $this->assertSame(0, $repeat->signals['openai_usage']['total_tokens']);
+        Http::assertSentCount(1); // Only the initial, mocked claim planner; no repeated research.
     }
 
     public function test_duplicate_upload_reuses_before_any_analysis_without_double_counting_tokens(): void

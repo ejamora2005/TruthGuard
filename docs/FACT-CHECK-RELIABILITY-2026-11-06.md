@@ -151,3 +151,69 @@ returns `release_ready=false` and does not enable a Confidence percentage.
 Fresh deployment checks, the HTTP/worker/browser path and continuing source
 availability must also be verified on Dokploy. The local software tests and
 service-level captures are evidence for their recorded scope only.
+
+## Report 108 cache investigation
+
+Read-only diagnostics supplied from production establish that report 108 used
+`evidence-v22`, read the exact poster headline correctly, selected the claim task,
+and was neither a reused report nor a retry. Both the OCR and literal-headline
+review lookups returned null. The canonical Suan assertion returned False.
+Production's Suan review is active, reviewed November 4, expires December 1,
+and contains five sources and five variations. Its variations omit the exact
+poster headline and two subsequently approved publisher-title variants. The
+current source-controlled definition contains eight variations. The deployment
+seeder intentionally skips existing reviews, so updating its definitions did not
+install these new variations on the existing production record. This is the
+confirmed database lookup cause for report 108; the cache defect below is separate.
+
+`truthguard:install-reviewed-variations <slug>` now previews missing bundled
+variations for one existing review. Its explicit `--apply` mode installs them
+without replacing sources, summaries, verdicts, lifecycle settings or reports.
+It requires a current active review with the same canonical claim and verdict,
+requires saved sources, rejects variation ownership conflicts transactionally,
+and is idempotent. Ordinary deployment seeding still preserves reviewer edits
+and deletions. This operational command explicitly restores the listed approved
+variations; it is not run automatically on every deployment.
+
+A separate reproducible defect was found in the submission cache: a completed
+Unverified report could be returned before the reviewed-answer database was
+consulted, even after the matching answer or variation was approved. Conversely,
+a cached reviewed finding could survive withdrawal, revision or expiry. With the
+new dependency check removed, both approval regression cases fail by reusing the
+original unresolved report.
+
+Fresh reports now record a signature of relevant approved-answer dependencies.
+Cache admission checks the current registry, including expiry transitions without
+a database write. Dependencies include submitted/extracted text, complete OCR
+regions, planned claims and the existing approved catalog alias. Unrelated review
+changes do not invalidate the submission; pure media cache behavior is preserved.
+The signature is captured before analysis, so a review change during analysis
+also prevents subsequent reuse. This check invalidates a stale candidate; the
+normal evidence pipeline still decides the new result. It does not introduce
+fuzzy verdict matching, bypass explicit fresh-research requests or rewrite saved
+reports on page load.
+
+Targeted verification passed **74 tests / 550 assertions**, covering the installer,
+stored-result reuse, reviewed lookup and integration, queued evidence and detection
+pipeline suites. The integration regression uses the real evidence service and registry, with
+external OCR/planning responses fixed: the approved headline variation is missing,
+an unresolved image is cached, the installer restores the variation, the next
+submission obtains its reviewed False finding, and a further repeat records zero
+new tokens. Other cases cover adding
+a variation, disabling, editing, removing and expiring a review, unrelated edits,
+and preserving historical records. No paid model calls were made for these tests.
+These tests verify software behavior, not a production deployment or measured
+fact-check accuracy.
+
+After deploying the command and cache fix, run inside the application container:
+
+```sh
+cd /var/www/html
+php artisan truthguard:install-reviewed-variations suan-fabricated-bato-shoot-to-kill-quote
+php artisan truthguard:install-reviewed-variations suan-fabricated-bato-shoot-to-kill-quote --apply
+```
+
+Then submit the original image as a new normal fact check. Historical report 108
+is retained; loading its page does not manufacture a new assessment. An explicit
+fresh-research request intentionally tests research rather than reviewed-answer
+reuse. This repair adds no environment settings and makes no model calls itself.

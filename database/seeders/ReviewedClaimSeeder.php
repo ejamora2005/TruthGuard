@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class ReviewedClaimSeeder extends Seeder
 {
-    public function run(): void
+    /** Source-controlled defaults, also used by the explicit variation installer. */
+    public function definitions(): array
     {
         $philstar = 'https://www.philstar.com/headlines/2026/';
         $entries = [
@@ -88,31 +89,44 @@ class ReviewedClaimSeeder extends Seeder
                 ]],
         ];
 
-        DB::transaction(function () use ($entries): void {
-            foreach ($entries as [$slug, $verdict, $claim, $explanation, $summary, $variations, $documents]) {
-                $sources = [];
-                foreach ($documents as $index => [$name, $title, $url, $purpose]) {
-                    $sources[] = ['id' => $slug.'-'.($index + 1), 'name' => $name, 'title' => $title,
-                        'url' => $url, 'type' => 'reviewed_document', 'used_for' => $purpose];
-                }
-                $result = ReportAnswer::complete([
-                    'schema_version' => 4, 'primary_task' => 'claim', 'claim' => $claim,
-                    'verdict' => $verdict, 'summary' => $explanation, 'sources' => $sources,
-                    'answer_segments' => [['text' => $explanation, 'source_ids' => array_column($sources, 'id')]],
-                    'generated_wording' => ['version' => ResultWording::VERSION, 'verdict' => $verdict,
-                        'explanation' => $explanation, 'result_summary' => $summary,
-                        'recommended_action' => 'Read the linked original material before sharing this claim.',
-                        'source_ids' => array_column($sources, 'id')],
-                ]);
-                $this->store($slug, $claim, $result, $variations, $slug === 'trump-visit-sara-presidency-november-2026' ? '2026-11-05 00:00:00' : '2026-12-01 00:00:00');
+        $definitions = [];
+        foreach ($entries as [$slug, $verdict, $claim, $explanation, $summary, $variations, $documents]) {
+            $sources = [];
+            foreach ($documents as $index => [$name, $title, $url, $purpose]) {
+                $sources[] = ['id' => $slug.'-'.($index + 1), 'name' => $name, 'title' => $title,
+                    'url' => $url, 'type' => 'reviewed_document', 'used_for' => $purpose];
             }
-            $claim = 'The world will end on Friday, November 13, 2026, according to a scientist mathematical prediction.';
-            $this->store('november-13-2026-doomsday', $claim, KnownFactCheckCatalog::match($claim), [
-                $claim, 'The world will end on November 13, 2026.',
-                'Matatapos ang mundo sa November 13, 2026.',
-                'Scientist predicts doomsday on November 13, 2026.',
-                'BIG BREAKING: World will end in Two weeks. World will end on Friday 13 November 2026: According to an old study published in journal Science.',
-            ], null);
+            $result = ReportAnswer::complete([
+                'schema_version' => 4, 'primary_task' => 'claim', 'claim' => $claim,
+                'verdict' => $verdict, 'summary' => $explanation, 'sources' => $sources,
+                'answer_segments' => [['text' => $explanation, 'source_ids' => array_column($sources, 'id')]],
+                'generated_wording' => ['version' => ResultWording::VERSION, 'verdict' => $verdict,
+                    'explanation' => $explanation, 'result_summary' => $summary,
+                    'recommended_action' => 'Read the linked original material before sharing this claim.',
+                    'source_ids' => array_column($sources, 'id')],
+            ]);
+            $expiry = $slug === 'trump-visit-sara-presidency-november-2026' ? '2026-11-05 00:00:00' : '2026-12-01 00:00:00';
+            $definitions[$slug] = compact('claim', 'result', 'variations', 'expiry');
+        }
+        $claim = 'The world will end on Friday, November 13, 2026, according to a scientist mathematical prediction.';
+        $variations = [
+            $claim, 'The world will end on November 13, 2026.',
+            'Matatapos ang mundo sa November 13, 2026.',
+            'Scientist predicts doomsday on November 13, 2026.',
+            'BIG BREAKING: World will end in Two weeks. World will end on Friday 13 November 2026: According to an old study published in journal Science.',
+        ];
+        $definitions['november-13-2026-doomsday'] = ['claim' => $claim,
+            'result' => KnownFactCheckCatalog::match($claim), 'variations' => $variations, 'expiry' => null];
+
+        return $definitions;
+    }
+
+    public function run(): void
+    {
+        DB::transaction(function (): void {
+            foreach ($this->definitions() as $slug => $definition) {
+                $this->store($slug, $definition['claim'], $definition['result'], $definition['variations'], $definition['expiry']);
+            }
         });
     }
 
