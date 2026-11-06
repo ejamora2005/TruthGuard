@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v15';
+    public const VERSION = 'evidence-v16';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -28,6 +28,7 @@ class EvidenceVerificationService
         private readonly StructuredAnalysis $model,
         private readonly FilipinoNewsClassifier $classifier,
         private readonly FactCheckEvidencePolicy $policy,
+        private readonly ExactFactCheckReconciler $exactFactCheckReconciler,
     ) {}
 
     public function apply(array $analysis, array $context, ?UploadedFile $file = null, ?callable $progress = null): array
@@ -127,7 +128,9 @@ class EvidenceVerificationService
             $media ??= ['status' => 'unavailable', 'media_type' => $context['media_type'], 'task' => 'AI-generation screening',
                 'failure_reason' => 'No media detector output was recorded. Retry the analysis.'];
             $result = MediaAnalysisReport::result($media, $claim);
-            if ($detectorOnly) $result['media_claim_notice'] = MediaClaimNotice::fromExtraction($extraction ?? null);
+            if ($detectorOnly) {
+                $result['media_claim_notice'] = MediaClaimNotice::fromExtraction($extraction ?? null);
+            }
             if ($primary === 'manipulation' || $primary === 'clarification') {
                 $result = MediaAnalysisReport::unsupportedTask($primary, $result);
             }
@@ -405,6 +408,9 @@ class EvidenceVerificationService
                 && ReportAnswer::safeUrl($record['url'] ?? null) !== null)
         ));
         $result = $this->explainOutcome($result, $plan, $budget);
+        // A short headline is not "missing context" when a publisher has
+        // already reviewed the same claim and supplied a decisive rating.
+        $result = $this->exactFactCheckReconciler->apply($result, array_values($records));
         if ($result['verdict'] === 'MISLEADING') {
             $finding = collect($result['context_assessments'])->firstWhere('label', 'MISLEADING');
             if ($finding) {

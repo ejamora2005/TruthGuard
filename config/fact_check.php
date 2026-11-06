@@ -13,7 +13,7 @@ return [
     'pending_stale_minutes' => (int) env('FACT_CHECK_PENDING_STALE_MINUTES', 10),
     'result_reuse' => [
         'enabled' => env('FACT_CHECK_RESULT_REUSE_ENABLED', true),
-        'generation' => env('FACT_CHECK_RESULT_REUSE_GENERATION', 'structured-match-2026-11-06-v4'),
+        'generation' => env('FACT_CHECK_RESULT_REUSE_GENERATION', 'exact-review-2026-11-06-v5'),
         'media_seconds' => (int) env('FACT_CHECK_RESULT_REUSE_MEDIA_SECONDS', 604800),
         'claim_seconds' => (int) env('FACT_CHECK_RESULT_REUSE_CLAIM_SECONDS', 86400),
         // Unresolved does not mean unusable. Reuse an identical, time-insensitive
