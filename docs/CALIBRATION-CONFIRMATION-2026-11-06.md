@@ -20,3 +20,15 @@ Sources: `automation/models/ai-origin-broad/calibration.json`, `calibration-revi
 Unauthenticated access to production report 105 redirects to `/login`. Production calibration environment settings, active artifact/model hashes, worker configuration, current deployed commit, and the private saved report were not accessible in this check. Local success is not production confirmation.
 
 The existing reliability audit explicitly states that independent deployment accuracy is not measured. Neither calibration, passing software tests, nor agreement on selected examples establishes 100% accuracy across images, videos, links, and factual claims. Defense statements must retain the evaluated population, metrics, runtime, and limitations.
+
+## Read-only production diagnostic
+
+After deploying the diagnostic command, run this inside both the Dokploy `app` container and the `evidence-worker` container:
+
+```sh
+php artisan truthguard:calibration:check --detection=105
+```
+
+The command checks the active Laravel configuration, actual model hashes, pinned artifact, application calibration mapping, and optional saved report. It loads no model, calls no paid API, writes no report/database settings, and prints no credentials or submitted content. Run it in each container: a successful app check does not prove that the worker uses the same settings. `configuration_passed: true` verifies the calibration configuration, not overall classification accuracy.
+
+Local execution passed on November 6 with every identity match true and `application_probe_validation: calibrated_benchmark`. Server access was unavailable from this workspace; the archived deployment environment template is older and is not evidence of active settings.
