@@ -159,9 +159,7 @@
         <span class="sr-only" x-text="complete ? 'Fact check ready. View result.' : (failed ? 'Analysis needs attention. View report.' : 'Fact check analyzing. View progress.')"></span>
     </button>
 
-    <button type="button" class="truthguard-analysis-stop" x-show="!complete && !failed" x-cloak
-        @click="requestStopAnalysis()" :disabled="stopping" :aria-busy="stopping"
-        x-text="stopping ? 'Stopping…' : 'Stop'"></button>
+
 
     <div
         x-show="showPrompt"
@@ -203,7 +201,12 @@
             </div>
             <p x-text="complete ? 'Open the report to review the verdict and evidence.' : message"></p>
             <a x-show="complete || failed" :href="@js($resultUrl)" @click="visible = false" x-text="complete ? 'Open result' : 'Open report'"></a>
-            <button x-show="!complete && !failed" type="button" class="truthguard-progress-refresh" @click="refresh()" :disabled="checking" x-text="checking ? 'Checking…' : 'Check status'"></button>
+            <div class="truthguard-background-analysis-actions mt-3 flex flex-wrap items-center gap-2">
+                <button x-show="!complete && !failed" type="button" class="truthguard-progress-refresh !mt-0 min-h-11" @click="refresh()" :disabled="checking" x-text="checking ? 'Checking…' : 'Check status'"></button>
+                <button type="button" class="truthguard-analysis-stop" x-show="!complete && !failed" x-cloak
+                    @click="requestStopAnalysis()" :disabled="stopping" :aria-busy="stopping"
+                    x-text="stopping ? 'Stopping…' : 'Stop'"></button>
+            </div>
         </div>
     </div>
 </aside>
