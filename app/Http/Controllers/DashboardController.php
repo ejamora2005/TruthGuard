@@ -78,24 +78,52 @@ class DashboardController extends Controller
             $this->applyHistorySearch($filteredHistoryQuery, $historySearch);
         }
 
-        // Unfinished and failed checks have no analysis date. Keep their saved
-        // submissions reachable using the same fallback as the retention window.
+        // Unfinished and failed checks have no analysis date. Express the
+        // fallback as indexed branches instead of COALESCE so MySQL can use the
+        // history indexes for both analyzed and pending submissions.
         if ($dateFrom) {
-            $filteredHistoryQuery->whereRaw('COALESCE(analyzed_at, created_at) >= ?', [$dateFrom->copy()->utc()]);
+            $from = $dateFrom->copy()->utc();
+            $filteredHistoryQuery->where(function ($query) use ($from): void {
+                $query->where('analyzed_at', '>=', $from)
+                    ->orWhere(function ($query) use ($from): void {
+                        $query->whereNull('analyzed_at')->where('created_at', '>=', $from);
+                    });
+            });
         }
         if ($dateTo) {
-            $filteredHistoryQuery->whereRaw('COALESCE(analyzed_at, created_at) < ?', [$dateTo->copy()->addDay()->startOfDay()->utc()]);
+            $before = $dateTo->copy()->addDay()->startOfDay()->utc();
+            $filteredHistoryQuery->where(function ($query) use ($before): void {
+                $query->where('analyzed_at', '<', $before)
+                    ->orWhere(function ($query) use ($before): void {
+                        $query->whereNull('analyzed_at')->where('created_at', '<', $before);
+                    });
+            });
         }
 
         $this->applyHistorySort($filteredHistoryQuery, $historySort);
 
         $historyDetections = $filteredHistoryQuery
             ->select('detections.*')
-            ->selectSub(Detection::query()->from('detections as owner_reports')->selectRaw('COUNT(*)')
-                ->whereColumn('owner_reports.user_id', 'detections.user_id')
-                ->whereColumn('owner_reports.id', '<=', 'detections.id'), 'owner_report_number')
             ->paginate(DetectionRetentionService::PAGE_SIZE)
             ->withQueryString();
+
+        // Number only the records on the selected page. Running this correlated
+        // count before pagination forced MySQL to evaluate and sort it across the
+        // full history result, which can exhaust the server sort buffer.
+        $pageIds = $historyDetections->getCollection()->pluck('id')->all();
+        $reportNumbers = $pageIds === []
+            ? collect()
+            : Detection::query()
+                ->whereIn('detections.id', $pageIds)
+                ->select('detections.id')
+                ->selectSub(Detection::query()->from('detections as owner_reports')->selectRaw('COUNT(*)')
+                    ->whereColumn('owner_reports.user_id', 'detections.user_id')
+                    ->whereColumn('owner_reports.id', '<=', 'detections.id'), 'owner_report_number')
+                ->pluck('owner_report_number', 'id');
+
+        $historyDetections->getCollection()->each(function (Detection $detection) use ($reportNumbers): void {
+            $detection->setAttribute('owner_report_number', (int) ($reportNumbers[$detection->id] ?? 0));
+        });
 
         $latestDetection = (clone $historyQuery)
             ->latest('analyzed_at')
