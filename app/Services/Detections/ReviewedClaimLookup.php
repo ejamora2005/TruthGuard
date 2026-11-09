@@ -96,7 +96,7 @@ class ReviewedClaimLookup
         }
         ksort($dependencies);
 
-        return hash('sha256', json_encode(['version' => 'reviewed-answer-dependencies-v1',
+        return hash('sha256', json_encode(['version' => 'reviewed-answer-dependencies-v2',
             'available' => $snapshot['available'], 'catalog_version' => KnownFactCheckCatalog::VERSION,
             'dependencies' => $dependencies], JSON_THROW_ON_ERROR));
     }
@@ -138,7 +138,11 @@ class ReviewedClaimLookup
 
     public static function normalize(string $text): string
     {
-        // Keep dates, numbers and negation; never reuse on a single-word hit.
+        // Currency and percentage symbols are material scope, not decoration.
+        // A peso price must never inherit a dollar or unqualified price review.
+        $text = strtr($text, ['₱' => ' currency_php ', '$' => ' currency_dollar ',
+            '€' => ' currency_eur ', '£' => ' currency_gbp ', '¥' => ' currency_yen ', '%' => ' percent ']);
+
         return Str::of($text)->lower()->ascii()->replaceMatches('/[^a-z0-9]+/', ' ')->squish()->toString();
     }
 
@@ -152,7 +156,8 @@ class ReviewedClaimLookup
             ->with('reviewedClaim')->first();
         $claim = $variation?->reviewedClaim;
         if (! $claim || ! $claim->active || ($claim->expires_at && $claim->expires_at->lte(now()))
-            || $variation->normalized_text !== $normalized || empty($claim->result['sources'])) {
+            || $variation->normalized_text !== $normalized || self::normalize($variation->text) !== $normalized
+            || empty($claim->result['sources'])) {
             return null;
         }
         $result = $claim->result;

@@ -26,9 +26,10 @@ class BinaryMediaVerdictTest extends TestCase
             'caption_text' => 'Is this image AI-generated?', 'processing_status' => 'completed',
             'verdict' => 'review', 'fake_score' => 0, 'fact_check_result' => $saved]);
         $this->actingAs($user)->get(route('detections.result', $record))->assertOk()
-            ->assertSee('Likely AI-Generated')->assertSee('The two detectors gave different results')
+            ->assertSee('Likely AI-Generated')->assertSee('Check the original file or creation history')
             ->assertDontSee('AI origin inconclusive');
         $this->getJson(route('detections.result', $record))->assertOk()->assertJsonPath('verdict', 'LIKELY_AI_GENERATED');
+        $this->getJson(route('detections.result', $record))->assertJsonPath('media_assessment.detector_disagreement', true);
         $this->assertSame('INCONCLUSIVE', $record->fresh()->fact_check_result['verdict']);
         Http::assertNothingSent();
     }

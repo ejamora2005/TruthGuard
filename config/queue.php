@@ -35,7 +35,8 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => 'evidence',
-            'retry_after' => 360,
+            // This is the broker's redelivery lease, not an analysis timeout.
+            'retry_after' => env('FACT_CHECK_UNRESTRICTED_RESEARCH', false) ? 86400 : 360,
             'after_commit' => true,
         ],
 

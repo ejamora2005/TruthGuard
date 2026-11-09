@@ -263,7 +263,7 @@ class StoredResultReuseTest extends TestCase
         $this->assertSame(120, $second->signals['result_reuse']['original_openai_usage']['total_tokens']);
         $this->assertSame($snapshot, $first->fresh()->getRawOriginal());
         Storage::disk('public')->assertExists($second->media_path);
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->with(6)->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $this->actingAs($other)->get(route('detections.result', $second))->assertOk()->assertSee('Saved result reused.')
             ->assertSee('This saved assessment was reused without a new analysis.')->assertSee('Reused saved assistance');
         $this->get(route('detections.result', $first))->assertNotFound();

@@ -530,9 +530,11 @@ class DetectionPipelineTest extends TestCase
         $this->assertSame($firstDetection->request_fingerprint, $secondDetection->request_fingerprint);
         $this->assertSame($firstDetection->fake_score, $secondDetection->fake_score);
         $this->assertSame($firstDetection->verdict, $secondDetection->verdict);
-        foreach (['verdict', 'claim', 'claims', 'sources', 'primary_task', 'request'] as $field) {
+        foreach (['verdict', 'claim', 'claims', 'sources', 'primary_task'] as $field) {
             $this->assertSame($firstDetection->fact_check_result[$field] ?? null, $secondDetection->fact_check_result[$field] ?? null);
         }
+        $this->assertSame($firstDetection->fact_check_result['request']['tasks'], $secondDetection->fact_check_result['request']['tasks']);
+        $this->assertSame($secondDetection->caption_text, $secondDetection->fact_check_result['request']['question']);
         $this->assertSame(0, data_get($secondDetection->fact_check_result, 'diagnostics.api_usage.total_tokens'));
         $this->assertSame($firstDetection->id, $secondDetection->reused_from_detection_id);
         $this->assertStringContainsString('reused the stored result', (string) $secondDetection->preprocessing_summary);

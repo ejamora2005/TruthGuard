@@ -161,30 +161,30 @@ new class extends Component
     $shortcutPrompts = [
         [
             'id' => 'media',
-            'label' => 'Check for AI-made media',
+            'label' => 'Check AI origin',
             'task' => 'media',
-            'hint' => 'For images or videos: explain the AI detector finding, not the scenery.',
+            'hint' => 'Check an image or video for AI generation and explain relevant visible details.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['media'],
         ],
         [
             'id' => 'claim',
-            'label' => 'Fact-check this claim',
+            'label' => 'Check facts',
             'task' => 'claim',
-            'hint' => 'Verify claims from text, images, videos or accessible links.',
+            'hint' => 'Check any topic: events, quotes, statistics, research or announcements in your supplied content.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['claim'],
         ],
         [
             'id' => 'sources',
-            'label' => 'Find matching fact-checks',
+            'label' => 'Find evidence',
             'task' => 'claim',
-            'hint' => 'Find references that address the exact claim, not just the topic.',
+            'hint' => 'Find original records and relevant fact-checks, including evidence for and against each claim.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['sources'],
         ],
         [
             'id' => 'context',
             'label' => 'Check date and context',
             'task' => 'claim',
-            'hint' => 'Check the date, place and original context across supported content.',
+            'hint' => 'Check dates, places and captions for old, reused or misleading content.',
             'prompt' => \App\Services\Detections\SubmissionInput::GUIDE_PROMPTS['context'],
         ],
     ];
@@ -3397,6 +3397,34 @@ new class extends Component
             background: linear-gradient(135deg, #2563eb, #4338ca) !important;
             color: #fff !important;
         }
+        .truthguard-detection-composer .truthguard-analyze-button.truthguard-composer-stop {
+            background: #fff1f2 !important;
+            color: #be123c !important;
+            border: 1px solid #fecdd3;
+            box-shadow: none;
+            border-radius: 14px;
+            min-height: 44px;
+            min-width: 0;
+            padding: 10px 16px;
+            font-size: 13px;
+            line-height: 20px;
+            gap: 8px;
+        }
+        .truthguard-detection-composer .truthguard-composer-stop:not(:disabled):hover {
+            background: #ffe4e6 !important;
+            border-color: #fda4af;
+        }
+        .truthguard-detection-composer .truthguard-composer-stop::before {
+            display: none;
+        }
+        .truthguard-detection-composer .truthguard-composer-stop:focus-visible {
+            outline: 3px solid #fda4af;
+            outline-offset: 3px;
+        }
+        .truthguard-composer-stop .truthguard-analyze-spinner {
+            border-color: #fecdd3;
+            border-top-color: #be123c;
+        }
         .truthguard-detection-composer .truthguard-analyze-symbol { z-index: 1; }
         .truthguard-detection-composer .truthguard-analyze-symbol::before { display: none; }
         .truthguard-detection-composer .truthguard-analyze-symbol svg {
@@ -3504,6 +3532,7 @@ new class extends Component
             menuOpen: false,
             dragActive: false,
             submitting: false,
+            submissionAccepted: false,
             progressHidden: false,
             progressMinimized: false,
             pendingResultUrl: @js($pendingResultUrl),
@@ -3536,6 +3565,7 @@ new class extends Component
             composerError: @js($initialComposerError ?: null),
             analysisTask: @js(old('analysis_task', 'auto')),
             promptGuides: @js($shortcutPrompts),
+            presetInstructions: @js(\App\Services\Detections\SubmissionTask::presetInstructions()),
             selectedGuide: @js(in_array(old('analysis_task'), ['media', 'claim'], true) ? old('analysis_task') : null),
             selectedInputType: @js($oldSourceUrl !== '' ? 'link' : null),
             linkModeExplicit: false,
@@ -3649,7 +3679,7 @@ new class extends Component
                     && ! (this.selectedInputType === 'link' && ! this.composerUrl());
             },
             analyzeButtonLabel() {
-                return this.submitting ? 'Checking...' : 'Check claim';
+                return this.submitting ? (this.stopping ? 'Stopping fact check' : 'Stop fact check') : 'Check claim';
             },
             composerCharacterCount() {
                 return (this.composerValue || '').length;
@@ -3816,6 +3846,9 @@ new class extends Component
                     });
 
                     if (response.redirected) {
+                        if (/\/detections\/\d+\/result\/?$/.test(new URL(response.url, window.location.href).pathname)) {
+                            this.acceptSubmittedComposer();
+                        }
                         window.location.assign(response.url);
                         return;
                     }
@@ -3839,15 +3872,68 @@ new class extends Component
                     if (response.status === 202) {
                         const payload = await response.json();
                         if (!payload.result_url) throw new Error('Missing report URL');
+                        this.pendingMediaType = this.previewKind || this.selectedInputType;
+                        this.acceptSubmittedComposer();
                         this.trackPendingResult(payload.result_url);
                         return;
                     }
 
+                    if ((response.headers.get('content-type') || '').includes('application/json')) {
+                        const payload = await response.json();
+                        if (!payload.result_url) throw new Error('Missing report URL');
+                        this.acceptSubmittedComposer();
+                        window.location.assign(payload.result_url);
+                        return;
+                    }
+
+                    this.acceptSubmittedComposer();
                     window.location.assign(response.url || form.action);
                 } catch (error) {
                     this.composerError = 'The fact check could not be submitted. Try again.';
                     this.submitting = false;
                 }
+            },
+            acceptSubmittedComposer() {
+                this.submissionAccepted = true;
+                this.clearSubmittedComposer();
+            },
+            clearSubmittedComposer() {
+                this.cancelVoiceInput();
+                this.composerValue = '';
+                if (this.$refs.composerInput) {
+                    this.$refs.composerInput.value = '';
+                    this.$refs.composerInput.defaultValue = '';
+                    this.$refs.composerInput.form?.querySelectorAll('[name=notes], [name=source_url]').forEach(input => {
+                        input.value = '';
+                        input.defaultValue = '';
+                    });
+                }
+                this.analysisTask = 'auto';
+                if (this.$refs.analysisTask) {
+                    this.$refs.analysisTask.value = 'auto';
+                    this.$refs.analysisTask.defaultValue = 'auto';
+                }
+                this.selectedGuide = null;
+                this.clearPreview();
+                this.selectedInputType = null;
+                this.linkModeExplicit = false;
+                this.menuOpen = false;
+                this.dragActive = false;
+                this.inputNudge = false;
+                this.pasteStatus = null;
+                this.composerError = null;
+                this.voiceError = null;
+                this.$nextTick(() => this.resizeComposer());
+            },
+            restoreAfterSubmission() {
+                if (!this.submissionAccepted) return;
+                this.clearSubmittedComposer();
+                this.stopPendingResult(null);
+                this.pendingMediaType = null;
+                this.progressHidden = false;
+                this.progressMinimized = false;
+                this.analysisNotice = null;
+                this.submissionAccepted = false;
             },
             trackPendingResult(url) {
                 this.progressGeneration++;
@@ -3864,7 +3950,7 @@ new class extends Component
                 this.submitting = true;
                 this.composerError = null;
                 this.analysisNotice = null;
-                this.progressMessage = 'Your analysis is starting. You can hide this card.';
+                this.progressMessage = 'Your check is saved and waiting to start.';
                 this.refreshPendingResult();
             },
             async refreshPendingResult() {
@@ -3910,15 +3996,16 @@ new class extends Component
                         window.clearInterval(this.progressClock);
                         window.clearTimeout(this.progressTimer);
                         this.pendingResultUrl = null;
-                        window.location.assign(url);
+                        this.acceptSubmittedComposer();
+                        this.$nextTick(() => window.location.assign(url));
                         return;
                     }
                     this.progressMessage = data.processing_status === 'queued'
-                        ? 'Your analysis is starting. You can hide this card.'
-                        : (data.stage || 'Your analysis is running. You can hide this card.');
+                        ? 'Your check is saved and waiting to start.'
+                        : (data.stage || 'Your submitted evidence is being analyzed.');
                 } catch (error) {
                     if (generation !== this.progressGeneration) return;
-                    this.progressMessage = 'Reconnecting to your analysis. You can hide this card and check History later.';
+                    this.progressMessage = 'Progress updates are temporarily unavailable. Your check may still be running.';
                     if (++this.progressFailures >= 3) {
                         this.progressMessage = 'Connection interrupted. Your upload is saved; reconnecting automatically.';
                     }
@@ -3935,6 +4022,7 @@ new class extends Component
                 window.clearInterval(this.progressClock);
                 this.pendingResultUrl = null;
                 this.progressMessage = null;
+                this.progressState = 'queued';
                 this.submitting = false;
                 this.composerError = message;
             },
@@ -4034,15 +4122,19 @@ new class extends Component
                 this.submitAfterLoaderPaint(form);
             },
             analyzeTitle() {
-                if (this.previewKind === 'video') {
+                if (this.progressState === 'completed') {
+                    return 'Opening your report';
+                }
+                const kind = this.previewKind || (this.submitting ? this.pendingMediaType : null);
+                if (kind === 'video') {
                     return 'Video scan in progress';
                 }
 
-                if (this.previewKind === 'pdf') {
+                if (kind === 'pdf') {
                     return 'Document scan in progress';
                 }
 
-                if (this.previewKind === 'image') {
+                if (kind === 'image') {
                     return 'Image scan in progress';
                 }
 
@@ -4050,20 +4142,21 @@ new class extends Component
             },
             analyzeDescription() {
                 const draft = (this.$refs.composerInput?.value || '').trim();
+                const kind = this.previewKind || (this.submitting ? this.pendingMediaType : null);
 
-                if (this.previewKind === 'video') {
+                if (kind === 'video') {
                     return 'TruthGuard is reviewing frames, metadata, and claim context before building your result.';
                 }
 
-                if (this.previewKind === 'pdf') {
+                if (kind === 'pdf') {
                     return 'TruthGuard is extracting document cues, checking context, and preparing the verification summary.';
                 }
 
-                if (this.previewKind === 'image') {
+                if (kind === 'image') {
                     return 'TruthGuard is scanning visual artifacts, source cues, and accompanying claim text.';
                 }
 
-                if (draft.includes('http://') || draft.includes('https://')) {
+                if (kind === 'link' || draft.includes('http://') || draft.includes('https://')) {
                     return 'TruthGuard is checking the submitted source link and matching it with the provided context.';
                 }
 
@@ -4518,9 +4611,11 @@ new class extends Component
             },
             composerEvidenceText() {
                 const value = (this.composerValue || '').replace(/\p{Cf}/gu, '').trim();
-                const guide = this.promptGuides.find(guide => value === guide.prompt
-                    || (value.startsWith(guide.prompt) && /^\s/.test(value.slice(guide.prompt.length))));
-                return guide ? value.slice(guide.prompt.length).trim() : value;
+                const prefixes = [...this.promptGuides.map(guide => guide.prompt), ...this.presetInstructions]
+                    .sort((a, b) => b.length - a.length);
+                const prefix = prefixes.find(prompt => value.toLowerCase().startsWith(prompt.toLowerCase())
+                    && (!value.slice(prompt.length) || /^[\s.!?:]/u.test(value.slice(prompt.length))));
+                return prefix ? value.slice(prefix.length).replace(/^[\s.!?:]+/u, '').trim() : value;
             },
             hasComposerEvidence() {
                 return /[\p{L}\p{N}]/u.test(this.composerEvidenceText());
@@ -5017,7 +5112,8 @@ new class extends Component
         @dragleave.prevent="dragActive = false"
         @drop.prevent="handleDrop($event)"
         @paste="handlePaste($event)"
-        @pagehide.window="cancelVoiceInput()"
+        @pagehide.window="cancelVoiceInput(); if (submissionAccepted) clearSubmittedComposer()"
+        @pageshow.window="restoreAfterSubmission()"
         @keydown.escape.window="menuOpen = false; closePreview()"
     >
         <div
@@ -5226,6 +5322,7 @@ new class extends Component
         </template>
         <template x-teleport="body">
         <div
+            id="truthguard-analysis-progress-panel"
             x-show="submitting && !progressHidden && !progressMinimized"
             x-cloak
             x-transition.opacity.duration.200ms
@@ -5327,13 +5424,14 @@ new class extends Component
                 <div class="mt-5 flex flex-col items-center gap-3">
                     <p class="truthguard-verify-title" x-text="analyzeTitle()"></p>
 
-                    <p class="truthguard-verify-copy" x-show="!pendingResultUrl">Saving your upload before the check starts.</p>
+                    <p class="truthguard-verify-copy" x-show="!pendingResultUrl && progressState !== 'completed'">Saving your upload before the check starts.</p>
+                    <p class="truthguard-verify-copy" x-show="pendingResultUrl && progressMessage" x-text="progressMessage" aria-live="polite"></p>
                     <p class="truthguard-verify-copy" x-show="progressFailures > 0" x-text="'Reconnecting to progress updates…'"></p>
                     <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed'"></p>
                     <div class="truthguard-analysis-progress" :class="{ 'is-running': progressState !== 'completed' }" style="width: min(100%, 20rem)" role="status" aria-label="Fact check progress">
                         <div class="truthguard-analysis-track" aria-hidden="true"><span :style="'width: ' + (progressState === 'completed' ? '100%' : pendingResultUrl ? (progressState === 'processing' ? '66.667%' : '33.333%') : '15%')"></span></div>
                         <div class="truthguard-analysis-labels">
-                            <span class="is-active" x-text="progressState === 'completed' ? 'Done' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Waiting to analyze' : 'Analyzing'"></span>
+                            <span class="is-active" x-text="progressState === 'completed' ? 'Opening report…' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Waiting to analyze' : 'Analyzing'"></span>
                         </div>
                     </div>
                 </div>
@@ -5609,9 +5707,8 @@ new class extends Component
 
                     <div
                         class="truthguard-composer-field flex items-start gap-3 p-2.5 sm:gap-3 sm:p-3"
-                        :inert="submitting"
                     >
-                        <div class="relative shrink-0">
+                        <div class="relative shrink-0" :inert="submitting">
                             <div
                                 x-show="previewUrl"
                                 x-cloak
@@ -5826,14 +5923,14 @@ new class extends Component
                             </template>
                         </div>
 
-                        <div class="min-w-0 flex-1">
+                        <div class="min-w-0 flex-1" :inert="submitting">
                             <label for="truthguard-message" class="sr-only">TruthGuard detection prompt</label>
                             <textarea
                                 id="truthguard-message"
                                 x-ref="composerInput"
                                 name="caption_text"
                                 rows="2"
-                                placeholder="Ask or paste a link"
+                                placeholder="Ask, paste a claim or link"
                                 class="truthguard-detection-textarea w-full px-1 py-2 text-[12px] leading-5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0 sm:text-[14px] sm:leading-5"
                                 aria-describedby="truthguard-composer-feedback truthguard-ai-disclaimer truthguard-ai-disclaimer-mobile"
                                 :aria-invalid="composerError ? 'true' : 'false'"
@@ -5844,6 +5941,7 @@ new class extends Component
                         <button
                             type="button"
                             class="truthguard-voice-button inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 sm:h-12 sm:w-12"
+                            :inert="submitting"
                             :class="voiceListening ? 'border-rose-200 bg-rose-50 text-rose-600 ring-4 ring-rose-100' : 'border-slate-200 bg-white hover:border-blue-200 hover:text-blue-700'"
                             :disabled="!voiceSupported"
                             :aria-disabled="!voiceSupported ? 'true' : 'false'"
@@ -5870,13 +5968,14 @@ new class extends Component
                                 canAnalyze()
                                     ? 'truthguard-analyze-ready'
                                     : 'truthguard-analyze-empty',
-                                submitting ? 'opacity-60' : ''
+                                submitting ? 'truthguard-composer-stop' : ''
                             ]"
-                            x-bind:disabled="submitting || !canAnalyze()"
-                            :aria-disabled="(submitting || !canAnalyze()) ? 'true' : 'false'"
-                            @click="handleAnalyzeClick($event)"
-                            aria-label="Check claim"
-                            title="Check claim"
+                            x-bind:disabled="submitting ? (!pendingResultUrl || stopping || stopPromptOpen) : !canAnalyze()"
+                            :aria-disabled="(submitting ? (!pendingResultUrl || stopping || stopPromptOpen) : !canAnalyze()) ? 'true' : 'false'"
+                            :aria-busy="stopping"
+                            @click="submitting ? requestStopAnalysis() : handleAnalyzeClick($event)"
+                            :aria-label="analyzeButtonLabel()"
+                            :title="analyzeButtonLabel()"
                         >
                             <span class="truthguard-analyze-symbol" x-show="!submitting" aria-hidden="true">
                                 <svg class="truthguard-ai-sparkle-mark h-full w-full" fill="none" viewBox="0 0 24 24">
@@ -5885,7 +5984,8 @@ new class extends Component
                                     <path class="truthguard-ai-sparkle-small truthguard-ai-sparkle-small-c" d="M5.7 15.1c.2 1.28 1.04 2.12 2.32 2.32-1.28.2-2.12 1.04-2.32 2.32-.2-1.28-1.04-2.12-2.32-2.32 1.28-.2 2.12-1.04 2.32-2.32Z" fill="#60a5fa"></path>
                                 </svg>
                             </span>
-                            <span class="truthguard-analyze-spinner" x-show="submitting" x-cloak aria-hidden="true"></span>
+                            <svg x-show="submitting && !stopping" x-cloak class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                            <span class="truthguard-analyze-spinner" x-show="stopping" x-cloak aria-hidden="true"></span>
                             <span class="sr-only" x-text="analyzeButtonLabel()"></span>
                         </button>
                     </div>
@@ -5982,26 +6082,32 @@ new class extends Component
                                 aria-live="polite"
                             ></span>
                         <p x-show="analysisNotice" x-cloak role="status" class="text-sm font-semibold text-slate-600" x-text="analysisNotice"></p>
-                        <button x-show="submitting" x-cloak x-ref="showProgress" type="button" class="truthguard-progress-restore truthguard-analyze-button truthguard-analyze-ready" @click="progressHidden = false; progressMinimized = false"><span class="truthguard-progress-dot" aria-hidden="true"></span><span>View progress</span></button>
-                        <button x-show="submitting && (progressHidden || progressMinimized)" x-cloak type="button"
-                            class="truthguard-analysis-stop truthguard-analysis-stop--icon" @click="requestStopAnalysis()"
-                            :disabled="!pendingResultUrl || stopping" :aria-busy="stopping"
-                            aria-label="Stop fact check" :title="stopping ? 'Stopping fact check' : 'Stop fact check'">
-                            <svg viewBox="0 0 24 24" class="h-5 w-5" :class="{ 'animate-pulse': stopping }" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                        <button
+                            x-show="submitting" x-cloak x-ref="showProgress" type="button"
+                            class="truthguard-progress-restore truthguard-analyze-button truthguard-analyze-ready"
+                            aria-controls="truthguard-analysis-progress-panel"
+                            :aria-expanded="!progressHidden && !progressMinimized"
+                            :title="progressMessage || 'View analysis progress'"
+                            @click="progressHidden = false; progressMinimized = false"
+                        >
+                            <span class="truthguard-progress-ring" aria-hidden="true"></span>
+                            <span>View progress</span>
                         </button>
                         <button
-                            x-show="!submitting"
                             type="button"
-                            class="truthguard-analyze-button relative inline-flex shrink-0 items-center justify-center overflow-hidden text-xs font-bold transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm"
+                            class="truthguard-analyze-button relative hidden shrink-0 items-center justify-center overflow-hidden text-xs font-bold transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 sm:inline-flex sm:text-sm"
                             :class="[
                                 canAnalyze()
                                     ? 'truthguard-analyze-ready'
                                     : 'truthguard-analyze-empty',
-                                submitting ? 'opacity-60' : ''
+                                submitting ? 'truthguard-composer-stop' : ''
                             ]"
-                            x-bind:disabled="submitting || !canAnalyze()"
-                            :aria-disabled="(submitting || !canAnalyze()) ? 'true' : 'false'"
-                            @click="handleAnalyzeClick($event)"
+                            x-bind:disabled="submitting ? (!pendingResultUrl || stopping || stopPromptOpen) : !canAnalyze()"
+                            :aria-disabled="(submitting ? (!pendingResultUrl || stopping || stopPromptOpen) : !canAnalyze()) ? 'true' : 'false'"
+                            :aria-busy="stopping"
+                            @click="submitting ? requestStopAnalysis() : handleAnalyzeClick($event)"
+                            :aria-label="analyzeButtonLabel()"
+                            :title="analyzeButtonLabel()"
                         >
                             <span class="truthguard-analyze-symbol" x-show="!submitting" aria-hidden="true">
                                 <svg class="truthguard-ai-sparkle-mark h-full w-full" fill="none" viewBox="0 0 24 24">
@@ -6017,7 +6123,8 @@ new class extends Component
                                     <path class="truthguard-ai-sparkle-small truthguard-ai-sparkle-small-c" d="M5.7 15.1c.2 1.28 1.04 2.12 2.32 2.32-1.28.2-2.12 1.04-2.32 2.32-.2-1.28-1.04-2.12-2.32-2.32 1.28-.2 2.12-1.04 2.32-2.32Z" fill="#BAE6FD"></path>
                                 </svg>
                             </span>
-                            <span class="truthguard-analyze-spinner" x-show="submitting" x-cloak aria-hidden="true"></span>
+                            <svg x-show="submitting && !stopping" x-cloak class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                            <span class="truthguard-analyze-spinner" x-show="stopping" x-cloak aria-hidden="true"></span>
                             <span class="truthguard-analyze-text" x-text="analyzeButtonLabel()"></span>
                         </button>
                         </div>

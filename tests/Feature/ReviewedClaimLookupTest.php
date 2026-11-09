@@ -11,12 +11,28 @@ use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\ReviewedClaimLookup;
 use Database\Seeders\ReviewedClaimSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ReviewedClaimLookupTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_old_currency_stripping_hashes_cannot_reuse_a_differently_scoped_finding(): void
+    {
+        $this->seed(ReviewedClaimSeeder::class);
+        $claim = ReviewedClaim::firstOrFail();
+        $variation = ClaimVariation::create(['reviewed_claim_id' => $claim->id, 'text' => 'The unit costs ₱10 million.']);
+        // Simulate an old registry key created before currency-aware matching.
+        DB::table('claim_variations')->where('id', $variation->id)->update([
+            'normalized_text' => 'the unit costs 10 million',
+            'text_hash' => hash('sha256', 'the unit costs 10 million'),
+        ]);
+        $this->assertNull(ReviewedClaimLookup::lookup('The unit costs 10 million.'));
+        $this->assertNull(ReviewedClaimLookup::lookup('The unit costs $10 million.'));
+        $this->assertNull(ReviewedClaimLookup::lookup('The unit costs ₱10 million.'));
+    }
 
     public function test_pipeline_uses_reviewed_text_before_extraction_or_research(): void
     {

@@ -32,6 +32,10 @@
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="FACT_CHECK_QUEUE_ENABLED" value="false" force="true"/>
+        <env name="FACT_CHECK_UNRESTRICTED_RESEARCH" value="false" force="true"/>
+        <env name="FACT_CHECK_PROGRESSIVE_RESEARCH" value="false" force="true"/>
+        <!-- Existing fixtures exercise one-source verdicts; coverage tests opt into 10. -->
+        <env name="FACT_CHECK_MIN_RELEVANT_SOURCES" value="0" force="true"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

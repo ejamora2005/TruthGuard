@@ -31,7 +31,7 @@ final class EvidenceSummary
                         || blank($row['explanation'] ?? null)) {
                         continue;
                     }
-                    $explanation = implode(' ', array_slice(SubmittedText::sentences($row['explanation']), 0, 2));
+                    $explanation = implode(' ', array_slice(SubmittedText::sentences($row['explanation']), 0, 6));
                     $explanation = ReportAnswer::attributeSource($explanation, $source['name'] ?? '');
                     if (ResultContract::publicDetail($explanation) === null) {
                         // The relationship is validated independently of its

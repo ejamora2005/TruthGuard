@@ -34,6 +34,9 @@ class AssessmentQualityReview
         if ($requiresEvidence && $sources === []) {
             $reasons[] = 'No decisive reviewed source is attached to the factual conclusion.';
         }
+        if (collect($sources)->contains(fn ($source) => ($source['type'] ?? '') === 'other_web')) {
+            $reasons[] = 'The assessment uses additional web reporting outside the preferred publisher list; confirm its evidence before relying on it.';
+        }
         if ($requiresEvidence && $coverage < 100) {
             $reasons[] = 'At least one factual explanation segment is not linked to a reviewed source.';
         }
@@ -44,7 +47,9 @@ class AssessmentQualityReview
             $reasons[] = 'The independent verdict-consistency audit found a mismatch.';
         }
         foreach ($result['editorial_review']['reasons'] ?? [] as $reason) {
-            if (is_string($reason) && $reason !== '') $reasons[] = $reason;
+            if (is_string($reason) && $reason !== '') {
+                $reasons[] = $reason;
+            }
         }
 
         $subject = Str::lower(Str::squish(implode(' ', array_filter([

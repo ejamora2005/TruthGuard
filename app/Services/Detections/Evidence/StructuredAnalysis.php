@@ -22,7 +22,7 @@ class StructuredAnalysis
 
     public function remainingCalls(): ?int
     {
-        $limit = max(0, (int) config('fact_check.max_model_calls', 0));
+        $limit = ResearchLimits::unrestricted() ? 0 : max(0, (int) config('fact_check.max_model_calls', 0));
 
         return $limit === 0 ? null : max(0, $limit - $this->calls);
     }
@@ -77,7 +77,7 @@ class StructuredAnalysis
                     ['role' => 'user', 'content' => $encodedInput],
                 ],
                 'text' => ['format' => ['type' => 'json_schema', 'name' => $stage, 'strict' => true, 'schema' => $schema]],
-                'max_output_tokens' => max(1, min(12000, (int) ($planning
+                ...ResearchLimits::outputTokens(min(12000, (int) ($planning
                     ? config('fact_check.plan_output_tokens', 1200) : config('fact_check.model_output_tokens', 3000)))),
             ], (int) config('services.openai.timeout', 40));
             $this->requestAttempts[$stage] = $this->transport->attempts;

@@ -19,7 +19,14 @@ class EvidenceCostSchedulingTest extends TestCase
     public static function cases(): array
     {
         return [['resolved', 'TRUE', 1], ['gap', 'TRUE', 3], ['review_failure', 'ANALYSIS_UNAVAILABLE', 1],
-            ['exact_review', 'FALSE', 0], ['budget_stop', 'ANALYSIS_UNAVAILABLE', 1]];
+            ['exact_review', 'FALSE', 0], ['budget_stop', 'ANALYSIS_UNAVAILABLE', 1], ['persistent_gap', 'UNVERIFIED', 3]];
+    }
+
+    #[DataProvider('cases')]
+    public function test_progressive_review_keeps_the_evidence_result_and_avoids_repeated_gap_searches(string $variant, string $verdict, int $apiCalls): void
+    {
+        config()->set(['fact_check.progressive_research' => true, 'fact_check.unrestricted_research' => $variant === 'persistent_gap']);
+        $this->test_paid_search_only_runs_after_an_actual_evidence_gap($variant, $verdict, $apiCalls);
     }
 
     #[DataProvider('cases')]
@@ -39,7 +46,8 @@ class EvidenceCostSchedulingTest extends TestCase
             'id' => 'c1', 'text' => self::CLAIM, 'kind' => 'factual', 'requires_context' => false, 'context_reason' => '',
             'references' => [], 'searches' => ['municipal library opening'],
         ]]]);
-        $planner->shouldReceive('queries')->andReturn(['municipal library opening']);
+        $planner->shouldReceive('queries')->andReturnUsing(fn ($claims, $round) => $variant === 'persistent_gap'
+            ? ($round < 3 ? ['municipal library opening query '.$round] : []) : ['municipal library opening']);
         $firstUrl = $variant === 'exact_review' ? 'https://rappler.com/fact-check/library' : 'https://example.gov.ph/library/announcement';
         $newUrl = 'https://example.gov.ph/library/opening-record';
         $stages = [];
@@ -53,14 +61,14 @@ class EvidenceCostSchedulingTest extends TestCase
                 return Http::response(['claims' => [['text' => self::CLAIM, 'claimReview' => [$review]]]]);
             }
             if ($request->url() === $firstUrl || $request->url() === $newUrl) {
-                $body = $request->url() === $firstUrl && in_array($variant, ['gap', 'budget_stop'], true)
+                $body = $request->url() === $firstUrl && in_array($variant, ['gap', 'budget_stop', 'persistent_gap'], true)
                     ? 'The proposed library opening remains under discussion. No opening date is established in this notice.'
                     : self::CLAIM.' The municipal archive lists the opening date and the original record.';
 
                 return Http::response('<article>'.$body.'</article>', 200, ['Content-Type' => 'text/html']);
             }
             if (($request['tools'][0]['type'] ?? '') === 'web_search') {
-                $this->assertSame('gap', $variant, 'Paid search must not precede or repeat an already resolved review.');
+                $this->assertContains($variant, ['gap', 'persistent_gap'], 'Paid search must not precede or repeat an already resolved review.');
                 $this->assertSame(['evidence_relationships_0'], $stages);
                 $stages[] = 'web_search';
 
@@ -93,8 +101,8 @@ class EvidenceCostSchedulingTest extends TestCase
         ])['fact_check_result'];
         $this->assertSame($verdict, $result['verdict'], json_encode($result['diagnostics']));
         $this->assertSame($apiCalls, $result['diagnostics']['api_budget']['requests']);
-        $this->assertSame($variant === 'gap' ? 1 : 0, count(array_filter($stages, fn ($stage) => $stage === 'web_search')));
-        $this->assertSame($variant === 'gap' ? 2800 : ($variant === 'exact_review' ? 0 : ($variant === 'review_failure' ? 100 : 1000)), $result['diagnostics']['api_usage']['total_tokens']);
+        $this->assertSame(in_array($variant, ['gap', 'persistent_gap'], true) ? 1 : 0, count(array_filter($stages, fn ($stage) => $stage === 'web_search')));
+        $this->assertSame(in_array($variant, ['gap', 'persistent_gap'], true) ? 2800 : ($variant === 'exact_review' ? 0 : ($variant === 'review_failure' ? 100 : 1000)), $result['diagnostics']['api_usage']['total_tokens']);
         if ($variant === 'budget_stop') {
             $this->assertSame('report_budget_exhausted', $result['diagnostics']['outcome_reason']);
             $this->assertStringContainsString('processing budget', $result['summary']);

@@ -4,20 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Jobs\AnalyzeDetectionEvidence;
 use App\Models\Detection;
+use App\Models\PublicClaimReview;
 use App\Services\Automation\RelatedPostScraper;
 use App\Services\Detections\ActiveDetectionManager;
 use App\Services\Detections\DetectionPipeline;
 use App\Services\Detections\DetectionRetentionService;
 use App\Services\Detections\EvidenceVerificationService;
+use App\Services\Detections\FactCheckClaimMatcher;
 use App\Services\Detections\FactCheckResultService;
-use App\Services\Detections\GoogleFactCheckFeedService;
+use App\Services\Detections\ImageUploadIdentity;
 use App\Services\Detections\KnownFactCheckCatalog;
 use App\Services\Detections\LiveVerificationEvidenceService;
 use App\Services\Detections\OpenAiDetectionReportService;
+use App\Services\Detections\PipelineFeedback;
 use App\Services\Detections\ReportAnswer;
 use App\Services\Detections\ReviewedClaimLookup;
 use App\Services\Detections\SubmissionInput;
 use App\Services\Detections\TrustedFactCheckVerdictResolver;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +31,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -35,23 +40,18 @@ class DetectionController extends Controller
     public function feedback(Request $request, Detection $detection): RedirectResponse
     {
         abort_unless((int) $detection->user_id === (int) $request->user()->id, 403);
-        $validated = $request->validate(['category' => ['required', 'in:wrong_interpretation,unsupported_source,verdict_review,unclear_explanation,media_false_positive,media_false_negative']]);
-        $media = is_array($detection->fact_check_result['media_assessment'] ?? null)
-            ? $detection->fact_check_result['media_assessment'] : [];
-        $details = in_array($validated['category'], ['media_false_positive', 'media_false_negative'], true) ? [
-            'review_status' => 'unverified_user_report',
-            'reported_origin' => $validated['category'] === 'media_false_positive' ? 'real' : 'ai_generated',
-            'detector_version' => $media['model_version'] ?? null,
-            'detector_label' => $media['label'] ?? null,
-            'raw_ai_signal' => $media['fake_probability'] ?? null,
-            'decision_threshold' => data_get($media, 'origin_policy.minimum_class_score'),
-            'quality_flags' => data_get($media, 'input_assessment.quality_flags', []),
-            'media_checksum' => $detection->media_checksum,
-        ] : null;
+        $validated = $request->validate([
+            'category' => ['required', Rule::in(array_keys(PipelineFeedback::options(true)))],
+            'note' => ['nullable', 'string', 'max:1000'],
+        ]);
+        $details = PipelineFeedback::details(
+            is_array($detection->fact_check_result) ? $detection->fact_check_result : [],
+            $validated['category'], $validated['note'] ?? null, $detection->media_checksum,
+        );
         DB::table('detection_feedback')->updateOrInsert([
             'detection_id' => $detection->id, 'user_id' => $request->user()->id,
             'category' => $validated['category'],
-        ], ['details' => $details === null ? null : json_encode($details, JSON_UNESCAPED_SLASHES),
+        ], ['details' => json_encode($details, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES),
             'updated_at' => now(), 'created_at' => now()]);
 
         return back()->with('status', 'Thank you. This report was flagged for quality review.');
@@ -143,7 +143,11 @@ class DetectionController extends Controller
             'stage' => $cancelled ? 'Fact check stopped' : (data_get($detection->signals, 'analysis_progress.0.label')
                 ?: match ($status) {
                     'queued' => 'Waiting for an analysis worker',
-                    'processing' => 'Reading submitted content',
+                    'processing' => match ($detection->media_type) {
+                        'image' => 'Checking the submitted image',
+                        'video' => 'Checking the submitted video',
+                        default => 'Reading submitted content',
+                    },
                     'completed' => 'Analysis complete',
                     default => 'Analysis could not finish',
                 }),
@@ -173,7 +177,6 @@ class DetectionController extends Controller
         DetectionRetentionService $retentionService,
         LiveVerificationEvidenceService $liveVerificationEvidenceService,
         OpenAiDetectionReportService $openAiDetectionReportService,
-        GoogleFactCheckFeedService $factCheckFeedService,
         ActiveDetectionManager $activeDetectionManager,
     ): View|JsonResponse|RedirectResponse {
         if (! $request->user()->isAdmin()) {
@@ -264,10 +267,43 @@ class DetectionController extends Controller
             return response()->json($payload);
         }
 
+        // Related cards are context, never additional verdict citations. Match
+        // the assessed claim locally instead of showing arbitrary recent items.
+        $savedResult = is_array($selectedDetection->fact_check_result) ? $selectedDetection->fact_check_result : [];
+        $claimTexts = in_array($savedResult['primary_task'] ?? 'claim', ['claim', 'context'], true)
+            ? collect($savedResult['claims'] ?? [])->filter(fn ($claim) => is_array($claim) && ($claim['kind'] ?? '') === 'factual')
+                ->pluck('text')->push($savedResult['claim'] ?? null)->filter(fn ($text) => is_string($text) && trim($text) !== '')
+                ->unique()->values()->all() : [];
+        $recentReviews = PublicClaimReview::query();
+        $maxAgeDays = max(0, (int) config('services.google_fact_check.feed_max_age_days', 120));
+        if ($maxAgeDays > 0) {
+            $recentReviews->where('published_at', '>=', now()->subDays($maxAgeDays)->startOfDay());
+        }
+
+        $matcher = app(FactCheckClaimMatcher::class);
+        $relatedReviews = $claimTexts === [] ? [] : $recentReviews->latest('published_at')->latest('last_seen_at')->latest('id')
+            ->limit(500)->get()->map(function (PublicClaimReview $review) use ($claimTexts, $matcher): array {
+                $score = 0;
+                if (ReportAnswer::safeUrl($review->url)) {
+                    foreach ($claimTexts as $text) {
+                        $match = $matcher->assess($text, $review->claim ?: $review->headline);
+                        if ($match['level'] === 'exact') {
+                            $score = max($score, 1000 + $match['score']);
+                        } elseif ($match['level'] === 'related' && $match['entity_match'] && $match['action_match']
+                            && $match['date_match'] && $match['roles_match']) {
+                            $score = max($score, $match['score']);
+                        }
+                    }
+                }
+
+                return ['review' => $review, 'score' => $score];
+            })->filter(fn ($row) => $row['score'] > 0)->sortByDesc('score')->take(6)
+            ->map(fn ($row): array => $row['review']->toFeedItem())->values()->all();
+
         return view('detections.result', [
             'selectedDetection' => $selectedDetection,
             'userReportNumber' => $userReportNumber,
-            'latestFactChecks' => $factCheckFeedService->latest(6),
+            'latestFactChecks' => ['items' => $relatedReviews],
         ]);
     }
 
@@ -375,6 +411,7 @@ class DetectionController extends Controller
             'source_platform' => ['nullable', 'string', 'in:auto,facebook,instagram,tiktok,x,youtube,web,other'],
             'caption_text' => ['nullable', 'string', "max:{$claimMaxCharacters}"],
             'analysis_task' => ['nullable', 'in:auto,media,claim,context,manipulation'],
+            'force_refresh' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'return_context' => ['nullable', 'string', 'in:dashboard,detection-center'],
             'weather_consent' => ['nullable', 'boolean'],
@@ -397,6 +434,43 @@ class DetectionController extends Controller
             ]);
         }
 
+        $identity = ImageUploadIdentity::forUpload($validated, $uploadedFile);
+        $submit = fn () => $this->submitPreparedEvidence($request, $pipeline, $relatedPostScraper, $validated, $uploadedFile, $identity);
+        if (! $identity || ! config('fact_check.result_reuse.enabled', true)
+            || ! empty($validated['force_refresh']) || ! empty($validated['weather_consent'])) {
+            return $submit();
+        }
+        try {
+            // Serialize only matching submissions on this account, including the
+            // queue insert, so double taps cannot dispatch duplicate paid jobs.
+            return Cache::lock('image-submit:'.$request->user()->id.':'.$identity['checksum'].':'.$identity['scope_key'], 900)
+                ->block(5, function () use ($request, $pipeline, $validated, $uploadedFile, $identity, $submit) {
+                    $saved = $pipeline->reuseImageUpload($request->user(), $validated, $uploadedFile, $identity);
+                    if (! $saved) {
+                        return $submit();
+                    }
+                    $active = in_array($saved->processing_status, ['queued', 'processing'], true);
+                    if (! $active) {
+                        $request->session()->flash('status', 'Opened the first matching saved report from '
+                            .$saved->analyzed_at?->format('M d, Y h:i A').'. No new analysis or API tokens were used. Use Retry for a fresh assessment.');
+                    }
+                    if ($request->expectsJson()) {
+                        return response()->json(['processing_status' => $saved->processing_status,
+                            'result_url' => route('detections.result', $saved),
+                            'stop_url' => route('detections.stop', $saved), 'reused' => true], $active ? 202 : 200);
+                    }
+
+                    return $active ? redirect()->route('detections.create', ['pending' => $saved->id])
+                        : redirect()->route('detections.result', $saved);
+                });
+        } catch (LockTimeoutException) {
+            throw ValidationException::withMessages(['media_file' => 'This identical upload is already being submitted. Open its progress or try again shortly; no second analysis was started.']);
+        }
+    }
+
+    private function submitPreparedEvidence(Request $request, DetectionPipeline $pipeline, RelatedPostScraper $relatedPostScraper,
+        array $validated, ?UploadedFile $uploadedFile, ?array $identity): RedirectResponse|JsonResponse
+    {
         if (config('fact_check.queue_enabled')) {
             $detection = Detection::create([
                 'user_id' => $request->user()->id, 'source_kind' => $uploadedFile ? 'upload' : 'link',
@@ -404,6 +478,8 @@ class DetectionController extends Controller
                 'notes' => $validated['notes'] ?? null, 'media_path' => $uploadedFile?->store('detections', 'public'),
                 'media_type' => $uploadedFile ? (str_starts_with((string) $uploadedFile->getMimeType(), 'video/') ? 'video' : ($uploadedFile->getMimeType() === 'application/pdf' ? 'document' : 'image')) : 'text',
                 'processing_status' => 'queued', 'verdict' => 'review', 'fake_score' => 0,
+                'media_checksum' => $identity['checksum'] ?? null,
+                'signals' => $identity ? ['upload_reuse' => $identity] : [],
             ]);
             // The worker reopens the persisted original; UploadedFile cannot be serialized.
             unset($validated['media_file']);

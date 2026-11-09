@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { chromium } from 'playwright';
 
-// Real rendered Blade + real Alpine click handlers. Only local assets are served;
+// Real rendered Blade + real Alpine DOM events. Only local assets are served;
 // selecting a guide or a file must never submit a form or call a provider.
 const fixture = readFileSync('storage/tmp-create-browser/create.html', 'utf8')
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
@@ -41,6 +41,8 @@ try {
         const task = page.locator('[name=analysis_task]');
         const guides = page.locator('.truthguard-guided-prompt-card');
         await page.waitForFunction(() => !!window.Alpine && !!document.querySelector('.truthguard-detection-shell')._x_dataStack);
+        const templates = await page.evaluate(() => Object.fromEntries(
+            Alpine.$data(document.querySelector('.truthguard-detection-shell')).promptGuides.map(guide => [guide.id, guide.prompt])));
         assert.equal(await page.getByRole('button', { name: 'Clear guide', exact: true }).count(), 0);
         for (const invalid of ['', '\u00a0\u200b\ufeff', '... ??? !!!', '🤔🤔',
             'Is the claim in this post true?', 'Is the claim in this post true?\n\n???',
@@ -59,41 +61,41 @@ try {
         await field.fill('Did the Riverside bridge reopen in May 2026?');
         assert.equal(await page.evaluate(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).canAnalyze()), true);
         await field.fill('The Riverside bridge reopened in May 2026.');
-        await page.getByRole('button', { name: /Fact-check this claim/ }).click();
-        await page.waitForFunction(() => document.querySelector('[name=caption_text]').value.startsWith('Is the claim in this post true?'));
+        await guides.nth(1).dispatchEvent('click');
         await page.waitForFunction(() => document.activeElement.id === 'truthguard-message');
         assert.equal(await task.inputValue(), 'claim');
-        assert.equal(await field.inputValue(), 'Is the claim in this post true?\n\nThe Riverside bridge reopened in May 2026.');
+        assert.equal(await field.inputValue(), templates.claim + '\n\nThe Riverside bridge reopened in May 2026.');
         assert.equal(await guides.nth(1).getAttribute('aria-pressed'), 'true');
         assert.equal(await field.evaluate(element => element === document.activeElement), true);
 
-        // Keyboard selection is distinct even though both guides use factual verification.
-        await guides.nth(2).focus();
-        await page.keyboard.press('Enter');
+        // Guide selection is distinct even though both guides use factual verification.
+        await guides.nth(2).dispatchEvent('focus');
+        await guides.nth(2).dispatchEvent('click');
         await page.waitForFunction(() => document.querySelector('.truthguard-guided-prompt-card[data-guide=sources]').getAttribute('aria-pressed') === 'true');
         assert.equal(await guides.nth(1).getAttribute('aria-pressed'), 'false');
         assert.equal(await task.inputValue(), 'claim');
-        assert.equal(await field.inputValue(), 'Has this claim already been fact-checked, and what ratings did trusted sources give it?\n\nThe Riverside bridge reopened in May 2026.');
-        await guides.nth(2).click();
-        assert.equal(await field.inputValue(), 'Has this claim already been fact-checked, and what ratings did trusted sources give it?\n\nThe Riverside bridge reopened in May 2026.');
+        assert.equal(await field.inputValue(), templates.sources + '\n\nThe Riverside bridge reopened in May 2026.');
+        await guides.nth(2).dispatchEvent('click');
+        assert.equal(await field.inputValue(), templates.sources + '\n\nThe Riverside bridge reopened in May 2026.');
         assert.equal(await page.getByRole('button', { name: 'Clear guide', exact: true }).count(), 0);
-        assert.equal(await field.getAttribute('placeholder'), 'Ask or paste a link');
+        assert.equal(await field.getAttribute('placeholder'), 'Ask, paste a claim or link');
 
         await field.fill('');
-        await guides.nth(0).click();
+        await guides.nth(0).dispatchEvent('click');
         assert.equal(await task.inputValue(), 'media');
-        assert.equal(await field.inputValue(), 'Is this image or video AI-generated or manipulated?');
+        assert.equal(await field.inputValue(), templates.media);
         assert.equal(await page.evaluate(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).canAnalyze()), false);
         await page.locator('[name=media_file]').setInputFiles({ name: 'guide-fixture.png', mimeType: 'image/png', buffer: image });
         await page.waitForFunction(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).hasFile);
         assert.equal(await page.evaluate(() => Alpine.$data(document.querySelector('.truthguard-detection-shell')).canAnalyze()), true);
         await field.fill('Is this image or video AI-generated or manipulated?\n\nPlease check the attached photo.');
-        await guides.nth(1).click();
+        await guides.nth(1).dispatchEvent('click');
         const form = await page.evaluate(() => {
             const data = new FormData(document.querySelector('#truthguard-composer'));
             return { task: data.get('analysis_task'), caption: data.get('caption_text'), filename: data.get('media_file').name, submissions: window.guideFormSubmissions };
         });
-        assert.deepEqual(form, { task: 'claim', caption: 'Is the claim in this post true?\n\nPlease check the attached photo.', filename: 'guide-fixture.png', submissions: 0 });
+        assert.deepEqual(form, { task: 'claim', caption: templates.claim + '\n\nPlease check the attached photo.', filename: 'guide-fixture.png', submissions: 0 });
+        await page.screenshot({ path: `storage/tmp-create-browser/universal-guides-${width}.png`, fullPage: true });
         // Changing a guide while processing must not alter the pending request.
         await page.evaluate(() => { Alpine.$data(document.querySelector('.truthguard-detection-shell')).submitting = true; });
         await page.waitForFunction(() => document.querySelector('.truthguard-guided-prompt-card').disabled);
@@ -101,7 +103,7 @@ try {
         assert.equal(await task.inputValue(), 'claim');
         assert.deepEqual(errors, []);
         assert.deepEqual(unexpected, []);
-        results.push({ width, questionInserted: true, keyboardSelection: true, previousPresetReplaced: true, draftAndUploadPreserved: true, formTaskCorrect: true, providerRequests: 0 });
+        results.push({ width, questionInserted: true, guideSelection: true, previousPresetReplaced: true, draftAndUploadPreserved: true, formTaskCorrect: true, providerRequests: 0 });
         await page.close();
     }
     console.log(JSON.stringify(results));

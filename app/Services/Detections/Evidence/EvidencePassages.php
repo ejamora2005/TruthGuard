@@ -15,7 +15,9 @@ final class EvidencePassages
         if ($bytes < 1) {
             return [];
         }
-        $terms = array_map(fn ($claim) => self::terms((string) ($claim['text'] ?? '')), $claims);
+        $terms = array_map(fn ($claim) => self::terms(implode(' ', array_filter([
+            (string) ($claim['text'] ?? ''), (string) ($claim['caption_context'] ?? ''),
+        ]))), $claims);
         $windows = [];
         // Overlap keeps a relevant sentence and its neighboring qualifications together.
         $windowSize = max(80, min(1800, intdiv($bytes, 2)));

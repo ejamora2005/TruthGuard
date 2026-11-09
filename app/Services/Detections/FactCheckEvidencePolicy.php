@@ -131,6 +131,19 @@ class FactCheckEvidencePolicy
             && $this->approvedHost(strtolower((string) parse_url($url, PHP_URL_HOST)), 'fact_check');
     }
 
+    /** A discovery link still needs safe retrieval and claim-level evidence review. */
+    public function isPrimarySourceUrl(string $url): bool
+    {
+        if (! filter_var($url, FILTER_VALIDATE_URL) || ! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)
+            || parse_url($url, PHP_URL_USER) !== null) {
+            return false;
+        }
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return collect(['official_government', 'institution', 'research'])
+            ->contains(fn ($type) => $this->approvedHost($host, $type));
+    }
+
     private function matchesHost(string $host, string $domain): bool
     {
         return $host === $domain || str_ends_with($host, '.'.$domain);

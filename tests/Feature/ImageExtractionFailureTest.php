@@ -67,7 +67,7 @@ class ImageExtractionFailureTest extends TestCase
 
     public function test_legacy_403_report_explains_access_failure_and_offers_manual_retry_without_mutating_or_calling_openai(): void
     {
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->twice()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $extraction = ['status' => 'unavailable', 'http_status' => 403, 'failure_reason' => 'authentication_failed'];
         $result = ReportAnswer::complete(['schema_version' => 4, 'verdict' => 'ANALYSIS_UNAVAILABLE', 'primary_task' => 'claim',

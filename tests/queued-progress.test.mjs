@@ -10,7 +10,7 @@ const template = source.slice(start, source.indexOf('\n        <div', start));
 const modalStart = source.indexOf('<template x-teleport="body">', source.indexOf('@submit="handleSubmit($event)"'));
 const modal = source.slice(modalStart, source.indexOf('<input type="hidden" name="weather_consent"', modalStart))
     .replaceAll('{{ $truthguardLogoUrl }}', 'data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27/%3E');
-const restore = source.match(/<button x-show="submitting"[^>]*x-ref="showProgress"[^>]*>[\s\S]*?<\/button>/)[0];
+const restore = source.match(/<button\s+x-show(?:\.important)?="submitting"[^>]*x-ref="showProgress"[^>]*>[\s\S]*?<\/button>/)[0];
 const composerContainer = source.match(/<div\s+class="truthguard-detection-composer[^]*?>/)[0];
 const alpine = readFileSync('node_modules/alpinejs/dist/cdn.min.js', 'utf8');
 const origin = 'http://localhost:9876';
@@ -20,12 +20,13 @@ let browser;
 before(async () => { browser = await chromium.launch({ channel: 'chrome', headless: true }); });
 after(async () => { await browser?.close(); });
 
-async function setup({ resume = false, mobile = false } = {}) {
+async function setup({ resume = false, mobile = false, resultDelay = 0 } = {}) {
     const values = new Map([
         ['$mediaUploadMaxMb', '20'], ['$mediaUploadMaxBytes', '20971520'],
         ['$initialUploadError ?: null', 'null'], ['$composerDraft', "'The city cancelled classes today.'"],
         ['$claimMaxCharacters', '4000'], ['$initialComposerError ?: null', 'null'],
         ["old('analysis_task', 'auto')", "'auto'"], ['$shortcutPrompts', '[]'],
+        ['\\App\\Services\\Detections\\SubmissionTask::presetInstructions()', '[]'],
         ["in_array(old('analysis_task'), ['media', 'claim'], true) ? old('analysis_task') : null", 'null'],
         ["$oldSourceUrl !== '' ? 'link' : null", 'null'],
         ['$googleDrivePicker', '{ enabled: false }'], ['(bool) $activeDetection', 'false'],
@@ -47,6 +48,7 @@ async function setup({ resume = false, mobile = false } = {}) {
         if (request.url() === resultUrl || request.url() === progressUrl) {
             if (request.isNavigationRequest()) {
                 state.navigations++;
+                if (resultDelay) await new Promise(resolve => setTimeout(resolve, resultDelay));
                 return route.fulfill({ contentType: 'text/html', body: '<h1>Completed result</h1>' });
             }
             state.polls++;
@@ -55,12 +57,13 @@ async function setup({ resume = false, mobile = false } = {}) {
                 ? { processing_status: 'completed', result_url: resultUrl }
                 : { processing_status: state.status, stage: 'Analyzing image' } });
         }
-        return route.fulfill({ contentType: 'text/html', body: `<html><head><style>
+        return route.fulfill({ contentType: 'text/html', body: `<html><head><meta charset="utf-8"><style>
             [x-cloak]{display:none!important}.truthguard-inline-progress{position:fixed;inset:10%;background:white;border:1px solid #999}
             .truthguard-verify-loader{display:none}.truthguard-progress-control{min-width:44px;min-height:44px}
             </style></head><body>${opening}
             <form action="${origin}/detections" @submit="handleSubmit($event)">
-            <input name="caption_text" value="The city cancelled classes today.">
+            <textarea x-ref="composerInput" name="caption_text">The city cancelled classes today.</textarea>
+            <input x-ref="fileInput" name="media_file" type="file" hidden>
             <button type="submit" :disabled="submitting">Check claim</button>
             ${modal}${composerContainer}<div :inert="submitting"><input aria-label="Locked evidence"></div>${restore}</div><p role="alert" x-text="composerError"></p>
             </form></section><script>${alpine}</script></body></html>` });
@@ -88,7 +91,7 @@ for (const mobile of [false, true]) {
             assert.equal(state.posts, 1);
             assert.equal(state.navigations, 0);
             assert.equal(page.url(), `${origin}/detections/create`);
-            await page.getByRole('button', { name: 'Hide progress', exact: true }).click();
+            await page.getByRole('button', { name: 'Minimize progress', exact: true }).click();
             await page.locator('.truthguard-inline-progress').waitFor({ state: 'hidden' });
             assert.equal(await page.locator('.truthguard-progress-restore').evaluate(el => !!el.closest('[inert]')), false);
             assert.equal(await page.getByRole('textbox', { name: 'Locked evidence', includeHidden: true }).evaluate(el => !!el.closest('[inert]')), true);
@@ -142,4 +145,38 @@ test('temporary status failures reconnect; a failed analysis opens its saved fin
         assert.equal(state.navigations, 1);
         assert.deepEqual(state.errors, []);
     } finally { await page.close(); }
+});
+
+test('completion starts navigation immediately and describes the report opening while it loads', async () => {
+    const { page, state } = await setup({ resume: true, resultDelay: 500 });
+    try {
+        await page.locator('.truthguard-progress-restore').click();
+        await page.locator('.truthguard-analysis-labels').filter({ hasText: 'Waiting to analyze' }).waitFor();
+        const snapshots = [];
+        page.on('console', message => {
+            if (message.text().startsWith('completion-ui:')) snapshots.push(JSON.parse(message.text().slice('completion-ui:'.length)));
+        });
+        await page.evaluate(() => {
+            new MutationObserver(() => {
+                const label = document.querySelector('.truthguard-analysis-labels');
+                const saving = [...document.querySelectorAll('.truthguard-verify-copy')]
+                    .find(node => node.textContent === 'Saving your upload before the check starts.');
+                console.log('completion-ui:' + JSON.stringify({ title: document.querySelector('.truthguard-verify-title')?.textContent,
+                    label: label?.textContent.trim(), savingVisible: saving ? getComputedStyle(saving).display !== 'none' : null }));
+            }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+        });
+        state.status = 'completed';
+        const navigation = page.waitForRequest(request => request.isNavigationRequest() && request.url() === resultUrl);
+        await refresh(page, state);
+        await navigation;
+        await page.waitForURL(resultUrl);
+        assert.ok(snapshots.some(snapshot => snapshot.title === 'Opening your report'
+            && snapshot.label === 'Opening report…' && snapshot.savingVisible === false),
+            'Completed loader state: '+JSON.stringify({snapshots,errors:state.errors}));
+        assert.equal(state.navigations, 1);
+        assert.equal(state.posts, 0);
+        assert.deepEqual(state.errors, []);
+    } finally {
+        await page.close();
+    }
 });

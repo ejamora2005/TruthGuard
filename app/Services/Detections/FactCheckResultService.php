@@ -5,6 +5,7 @@ namespace App\Services\Detections;
 use App\Models\CanonicalFactCheckResult;
 use App\Services\Detections\Evidence\ReportApiBudget;
 use App\Services\Detections\Evidence\ReportBudgetExceeded;
+use App\Services\Detections\Evidence\ResearchLimits;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -88,7 +89,7 @@ class FactCheckResultService
                         ['role' => 'user', 'content' => json_encode(['claim' => $claim] + $identity + ['source_records' => $sources], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)],
                     ],
                     'text' => ['format' => ['type' => 'json_schema', 'name' => 'truthguard_fact_check_result', 'strict' => true, 'schema' => FactCheckResultSchema::definition()]],
-                    'max_output_tokens' => max(3000, (int) config('services.openai.max_completion_tokens', 1400)),
+                    ...ResearchLimits::outputTokens(max(3000, (int) config('services.openai.max_completion_tokens', 1400))),
                 ]);
             $this->usage = [
                 'total_tokens' => max(0, (int) $response->json('usage.total_tokens', 0)),

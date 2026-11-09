@@ -10,6 +10,18 @@ use Tests\TestCase;
 
 class SafeArticleFetcherRetryTest extends TestCase
 {
+    public function test_adjacent_table_cells_and_paragraphs_remain_separate_in_evidence_text(): void
+    {
+        $page = app(SafeArticleFetcher::class)->html('<article><p>Official volcano list.</p><table>'
+            .'<tr><th>No.</th><th>Name</th><th>Province</th></tr>'
+            .'<tr><td>18</td><td>Mayon</td><td>Albay, Bicol Region in Luzon</td></tr>'
+            .'</table><p>Read the record.</p><p>Check its date.</p></article>', 'https://example.gov.ph/volcanoes');
+        $this->assertStringContainsString('No. Name Province', $page['text']);
+        $this->assertStringContainsString('18 Mayon Albay, Bicol Region in Luzon', $page['text']);
+        $this->assertStringContainsString('Read the record. Check its date.', $page['text']);
+        $this->assertStringNotContainsString('18Mayon', $page['text']);
+    }
+
     public function test_transient_server_failure_is_retried_once(): void
     {
         config()->set('fact_check.retrieval.respect_robots', false);

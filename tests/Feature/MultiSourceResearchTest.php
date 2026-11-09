@@ -80,8 +80,8 @@ class MultiSourceResearchTest extends TestCase
                     $later = $source['url'] === $documents[1]['url'];
 
                     return ['claim_id' => 'c1', 'source_id' => $source['id'], 'stance' => $later ? 'supporting' : 'contradicting',
-                        'excerpt' => $later ? $documents[1]['excerpts'][0] : $documents[0]['excerpts'][0],
-                        'explanation' => $later ? 'The 2026 BSKE was postponed under Republic Act 12326. The next schedule is November 13, 2028.'
+                        'excerpt' => $later ? implode("\n\n", $documents[1]['excerpts']) : $documents[0]['excerpts'][0],
+                        'explanation' => $later ? 'The BSKE was postponed under Republic Act 12326. The next schedule is November 13, 2028.'
                             : 'The proposed postponement had not become law at the September 22 cutoff. The scheduled 2026 election was still set to proceed then.',
                         'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true),
                         'basis' => 'fact_check', 'supersedes_source_ids' => $later ? [$oldId] : [],

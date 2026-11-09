@@ -5,10 +5,12 @@ namespace App\Services\Detections\Evidence;
 use App\Models\PublicClaimReview;
 use App\Services\Detections\FactCheckClaimMatcher;
 use App\Services\Detections\FactCheckEvidencePolicy;
+use App\Services\Detections\ReportAnswer;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -20,24 +22,36 @@ class ArticleSearch
         private readonly OpenAiWebSearch $webSearch,
     ) {}
 
-    public function retrieve(array $queries, RetrievalBudget $budget, string $cutoff, array $records = [], bool $reserveNextRound = false, ?int $candidateCeiling = null, string $discovery = 'all'): array
+    public function retrieve(array $queries, RetrievalBudget $budget, string $cutoff, array $records = [], bool $reserveNextRound = false, ?int $candidateCeiling = null, string $discovery = 'all', ?callable $onBatch = null): array
     {
+        $budget->discoveryStop = null;
+        $initialEvidence = $budget->evidenceSignature;
+        $includeReferences = ! $onBatch || ! in_array($discovery, ['providers', 'web'], true);
         $budget->historicalCutoff ??= Carbon::parse($cutoff)->lt(now()->subMinute());
         if (! config('services.live_verification.enabled', true)) {
             $budget->providers['discovery'] = 'disabled';
 
             return $records;
         }
-        foreach ($this->collectedReviews($budget->researchContext['claims'] ?? [], $cutoff) as $item) {
+        $discoveryClaims = $budget->researchContext['claims'] ?? [];
+        foreach ($budget->researchContext['caption_contexts'] ?? [] as $caption) {
+            foreach (SubmittedText::sentences($caption) as $sentence) {
+                $discoveryClaims[] = ['text' => $sentence,
+                    'discovery_context' => implode(' ', $budget->researchContext['visual_contexts'] ?? [])];
+            }
+        }
+        // Related caption reviews are discovery candidates, never automatic
+        // verdicts for the user's different requested value or identity.
+        foreach ($this->collectedReviews($discoveryClaims, $cutoff) as $item) {
             $key = $this->canonicalUrl($item['url']);
             if ($key !== null) {
                 $records[$key] = isset($records[$key]) ? array_replace($records[$key], array_intersect_key($item,
                     array_flip(['reviewed_claim', 'review_rating', 'name']))) : $item;
             }
         }
-        $limit = max(0, (int) config('fact_check.retrieval.max_candidates', 40));
+        $limit = ResearchLimits::ceiling('fact_check.retrieval.max_candidates', 40);
         $limit = $candidateCeiling === null ? $limit : min($limit, max(0, $candidateCeiling));
-        $searchCeiling = max(0, (int) config('fact_check.retrieval.max_search_requests', 12));
+        $searchCeiling = ResearchLimits::ceiling('fact_check.retrieval.max_search_requests', 12);
         $overallSearchCeiling = $searchCeiling;
         if ($discovery === 'providers' && $searchCeiling > 1 && config('fact_check.web_search.enabled', true) && filled(config('services.openai.key'))) {
             // Leave one discovery slot for a paid fallback, only if review of
@@ -45,7 +59,7 @@ class ArticleSearch
             $searchCeiling--;
             $overallSearchCeiling = $searchCeiling;
         }
-        $pageCeiling = max(0, (int) config('fact_check.retrieval.max_pages', 12));
+        $pageCeiling = ResearchLimits::ceiling('fact_check.retrieval.max_pages', 12);
         if ($reserveNextRound) {
             $searchCeiling = $budget->searches + (int) ceil(max(0, $searchCeiling - $budget->searches) / 2);
             $pageCeiling = $budget->pages + (int) ceil(max(0, $pageCeiling - $budget->pages) / 2);
@@ -55,6 +69,11 @@ class ArticleSearch
                 && collect(['google_fact_check', 'gnews', 'newsapi'])->contains(fn ($provider) => filled(config('services.'.$provider.'.key')))) {
                 $searchCeiling = min($overallSearchCeiling, max($searchCeiling, $budget->searches + 2));
             }
+        }
+        // Read matching collected publications before spending on another search.
+        if ($onBatch && $discovery !== 'web'
+            && $this->reviewBatch($records, $queries, $budget, $cutoff, $pageCeiling, $limit, $onBatch, $includeReferences)) {
+            return $this->deduplicate($records);
         }
         if ($discovery !== 'providers' && $queries !== [] && count($records) < $limit && $budget->searches < $searchCeiling) {
             $web = $this->webSearch->discover($queries, $budget, $cutoff);
@@ -110,85 +129,206 @@ class ArticleSearch
         // still has time. A long sequence of API discovery calls must not leave
         // all returned URLs unfetched.
         if ($records !== []) {
-            $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, 2, $limit);
+            if ($onBatch) {
+                if ($this->reviewBatch($records, $queries, $budget, $cutoff, $pageCeiling, $limit, $onBatch, $includeReferences)) {
+                    return $this->deduplicate($records);
+                }
+            } else {
+                $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, 2, $limit);
+            }
         }
+        $requests = [];
         foreach ($discovery === 'web' ? [] : $queries as $index => $query) {
             foreach (['google_fact_check', 'gnews', 'newsapi'] as $provider) {
-                if (count($records) >= $limit || $budget->remaining() < 8 || $budget->searches >= $searchCeiling) {
-                    break 2;
-                }
                 if (blank(config('services.'.$provider.'.key'))) {
                     $budget->providers[$provider] = 'not_configured';
+                } else {
+                    $requests[] = compact('index', 'query', 'provider') + ['page' => 1, 'token' => null];
+                }
+            }
+        }
+        $streams = [];
+        while ($requests !== []) {
+            if (count($records) >= $limit || $budget->remaining() < 8 || $budget->searches >= $searchCeiling) {
+                break;
+            }
+            ['index' => $index, 'query' => $query, 'provider' => $provider, 'page' => $page, 'token' => $token] = array_shift($requests);
+            $stream = $provider.'|'.$query;
+            if ($onBatch && $page > 1 && $budget->evidenceSignature !== null
+                && ! ($streams[$stream]['made_progress'] ?? false)) {
+                // New URLs alone are not evidence progress. Return to targeted
+                // discovery instead of exhausting a broad provider index.
+                $budget->lowYieldPagesSkipped++;
+
+                continue;
+            }
+            $beforeEvidence = $budget->evidenceSignature;
+            $seenTokens = $streams[$stream]['tokens'] ?? [];
+            $seenPages = $streams[$stream]['pages'] ?? [];
+            $receivedResults = $streams[$stream]['received'] ?? 0;
+            $requestStarted = microtime(true);
+            $data = $this->search($provider, $query, $index, $page, $token, $cutoff, $budget);
+            $items = $this->candidates($provider, $data ?? []);
+            $pageSignature = hash('sha256', json_encode(array_column($items, 'url'), JSON_THROW_ON_ERROR));
+            $repeatedPage = isset($seenPages[$pageSignature]);
+            $seenPages[$pageSignature] = true;
+            $receivedResults += count($data['articles'] ?? []);
+            $budget->found += count($items);
+            $rejected = ['invalid_url' => 0, 'duplicate_url' => 0, 'candidate_limit' => 0];
+            $added = 0;
+            foreach ($items as $item) {
+                $key = $this->canonicalUrl($item['url']);
+                if ($key === null) {
+                    $rejected['invalid_url']++;
 
                     continue;
                 }
-                $page = 1;
-                $token = null;
-                do {
-                    $data = $this->search($provider, $query, $index, $page, $token, $cutoff, $budget);
-                    $items = $this->candidates($provider, $data ?? []);
-                    $budget->found += count($items);
-                    $rejected = ['invalid_url' => 0, 'duplicate_url' => 0, 'candidate_limit' => 0];
-                    $added = 0;
-                    foreach ($items as $item) {
-                        $key = $this->canonicalUrl($item['url']);
-                        if ($key === null) {
-                            $rejected['invalid_url']++;
-
-                            continue;
+                if (isset($records[$key])) {
+                    $rejected['duplicate_url']++;
+                    $records[$key]['discovered_by'] = array_values(array_unique([...($records[$key]['discovered_by'] ?? [$records[$key]['provider']]), $provider]));
+                    // Discovery order must not discard an exact review's
+                    // published rating when web search found its URL first.
+                    if ($provider === 'google_fact_check') {
+                        $records[$key] = array_replace($records[$key], array_intersect_key($item,
+                            array_flip(['reviewed_claim', 'review_rating', 'claim_date', 'name'])));
+                        if ($this->policy->isFactCheckUrl($item['url'])) {
+                            $records[$key]['source_type'] = 'fact_check';
                         }
-                        if (isset($records[$key])) {
-                            $rejected['duplicate_url']++;
-                            $records[$key]['discovered_by'] = array_values(array_unique([...($records[$key]['discovered_by'] ?? [$records[$key]['provider']]), $provider]));
-                            // Discovery order must not discard an exact review's
-                            // published rating when web search found its URL first.
-                            if ($provider === 'google_fact_check') {
-                                $records[$key] = array_replace($records[$key], array_intersect_key($item,
-                                    array_flip(['reviewed_claim', 'review_rating', 'claim_date', 'name'])));
-                                if ($this->policy->isFactCheckUrl($item['url'])) {
-                                    $records[$key]['source_type'] = 'fact_check';
-                                }
-                            }
-
-                            continue;
-                        }
-                        if (count($records) >= $limit) {
-                            $rejected['candidate_limit']++;
-
-                            continue;
-                        }
-                        $records[$key] = $item + ['id' => 's'.substr(hash('sha256', $key), 0, 16), 'retrieval_status' => 'discovered', 'provider' => $provider, 'discovered_by' => [$provider]];
-                        $added++;
                     }
-                    $budget->attempts[] = ['provider' => $provider, 'query' => $query, 'page' => $page,
-                        'status' => $budget->providers[$provider] ?? 'budget_exhausted',
-                        'http_status' => $budget->lastSearch['http_status'] ?? null,
-                        'content_type' => $budget->lastSearch['content_type'] ?? null,
-                        'cache_hit' => $budget->lastSearch['cache_hit'] ?? false,
-                        'raw_results' => $budget->lastSearch['raw_results'] ?? 0,
-                        'provider_total' => $budget->lastSearch['provider_total'] ?? null,
-                        'response_fields' => $budget->lastSearch['response_fields'] ?? null,
-                        'sanitized_error' => $budget->lastSearch['sanitized_error'] ?? null,
-                        'availability' => $budget->lastSearch['availability'] ?? null,
-                        'results' => count($items), 'unique_added' => $added, 'rejected' => $rejected];
-                    $token = $data['nextPageToken'] ?? null;
-                    $page++;
-                    // Only Google pagination is used; news subscription limits stay unchanged.
-                } while ($provider === 'google_fact_check' && $token && $page <= min(3, max(1, (int) config('fact_check.retrieval.google_pages', 2))) && count($records) < $limit && $budget->searches < $searchCeiling);
+
+                    continue;
+                }
+                if (count($records) >= $limit) {
+                    $rejected['candidate_limit']++;
+
+                    continue;
+                }
+                $records[$key] = $item + ['id' => 's'.substr(hash('sha256', $key), 0, 16), 'retrieval_status' => 'discovered', 'provider' => $provider, 'discovered_by' => [$provider]];
+                $added++;
             }
+            $budget->attempts[] = ['provider' => $provider, 'query' => $query, 'page' => $page,
+                'status' => $budget->providers[$provider] ?? 'budget_exhausted',
+                'http_status' => $budget->lastSearch['http_status'] ?? null,
+                'content_type' => $budget->lastSearch['content_type'] ?? null,
+                'cache_hit' => $budget->lastSearch['cache_hit'] ?? false,
+                'raw_results' => $budget->lastSearch['raw_results'] ?? 0,
+                'provider_total' => $budget->lastSearch['provider_total'] ?? null,
+                'response_fields' => $budget->lastSearch['response_fields'] ?? null,
+                'sanitized_error' => $budget->lastSearch['sanitized_error'] ?? null,
+                'availability' => $budget->lastSearch['availability'] ?? null,
+                'results' => count($items), 'unique_added' => $added, 'rejected' => $rejected];
+            Log::info('Evidence search page processed.', ['analysis_id' => $budget->analysisId, 'provider' => $provider,
+                'page' => $page, 'status' => $budget->providers[$provider] ?? 'unknown', 'unique_added' => $added,
+                'elapsed_ms' => (int) round((microtime(true) - $requestStarted) * 1000)]);
+            $next = $data['nextPageToken'] ?? null;
+            $token = is_string($next) && ! isset($seenTokens[$next]) ? $next : null;
+            if ($token !== null) {
+                $seenTokens[$token] = true;
+            }
+            $page++;
+            $moreGoogle = $provider === 'google_fact_check' && $token
+                && $page <= (ResearchLimits::unrestricted() ? PHP_INT_MAX : min(3, max(1, (int) config('fact_check.retrieval.google_pages', 2))));
+            $moreNews = ResearchLimits::unrestricted() && $provider !== 'google_fact_check'
+                && $items !== [] && ! $repeatedPage
+                && in_array($budget->providers[$provider] ?? '', ['ok', 'cached'], true)
+                && $receivedResults < (int) ($budget->lastSearch['provider_total'] ?? 0);
+            $streams[$stream] = ['tokens' => $seenTokens, 'pages' => $seenPages, 'received' => $receivedResults];
+            if (($moreGoogle || $moreNews) && count($records) < $limit && $budget->searches < $searchCeiling) {
+                $nextRequest = compact('index', 'query', 'provider', 'page', 'token');
+                if ($onBatch) {
+                    // Try other providers before draining hundreds of pages from one.
+                    $requests[] = $nextRequest;
+                } else {
+                    array_unshift($requests, $nextRequest);
+                }
+            }
+            if ($onBatch && $this->reviewBatch($records, $queries, $budget, $cutoff, $pageCeiling, $limit, $onBatch, $includeReferences)) {
+                return $this->deduplicate($records);
+            }
+            $streams[$stream]['made_progress'] = $beforeEvidence !== $budget->evidenceSignature;
         }
-        uasort($records, function ($a, $b) use ($queries) {
-            $rank = function ($r) use ($queries) {
-                $overlap = count(array_intersect($this->tokens(implode(' ', $queries)), $this->tokens($r['title'])));
+        if ($onBatch) {
+            if ($discovery === 'references' && $initialEvidence !== null && $initialEvidence === $budget->evidenceSignature
+                && ! $this->hasPendingDownload($records)) {
+                $budget->discoveryStop = 'no_new_evidence';
 
-                return $overlap * 20 + ($overlap > 0 && $r['source_type'] === 'official_government' ? 10 : 0);
-            };
-
-            return $rank($b) <=> $rank($a);
-        });
-        $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, null, $limit);
+                return $this->deduplicate($records);
+            }
+            do {
+                $before = $budget->pages;
+                $beforeEvidence = $budget->evidenceSignature;
+                if ($this->reviewBatch($records, $queries, $budget, $cutoff, $pageCeiling, $limit, $onBatch, $includeReferences)) {
+                    break;
+                }
+                if ($discovery === 'references' && $beforeEvidence !== null && $beforeEvidence === $budget->evidenceSignature
+                    && ! $this->hasPendingDownload($records)) {
+                    $budget->discoveryStop = 'no_new_evidence';
+                    break;
+                }
+            } while ($budget->pages > $before && collect($records)->contains(fn ($record) => ($record['retrieval_status'] ?? '') === 'discovered'
+                && ($includeReferences || ! in_array($record['provider'] ?? '', ['linked_primary_record', 'linked_reference'], true))));
+        } else {
+            $this->rankCandidates($records, $queries);
+            $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, null, $limit);
+        }
 
         return $this->deduplicate($records);
+    }
+
+    /** Review small batches before discovering or fetching more pages. */
+    private function reviewBatch(array &$records, array $queries, RetrievalBudget $budget, string $cutoff, int $pageCeiling, int $limit, callable $onBatch, bool $includeReferences = true): bool
+    {
+        $batchStarted = microtime(true);
+        $this->rankCandidates($records, $queries);
+        $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, $budget->reviewBatchSize, $limit, true, $includeReferences);
+        $records = $this->deduplicate($records);
+        $readable = array_filter($records, fn ($record) => ($record['retrieval_status'] ?? '') === 'retrieved');
+        if ($readable === []) {
+            return false;
+        }
+        ksort($readable);
+        $snapshot = hash('sha256', json_encode(array_map(fn ($record) => [
+            $record['id'], hash('sha256', (string) ($record['text'] ?? '')), $record['source_type'] ?? '',
+            $record['published_at'] ?? null, $record['updated_at'] ?? null,
+        ], $readable), JSON_THROW_ON_ERROR));
+        if ($snapshot === $budget->reviewSnapshot) {
+            return false;
+        }
+        $budget->reviewSnapshot = $snapshot;
+        $budget->reviewCheckpoints++;
+        $decision = $onBatch($records);
+        Log::info('Evidence batch reviewed.', ['analysis_id' => $budget->analysisId,
+            'checkpoint' => $budget->reviewCheckpoints, 'readable_documents' => count($readable),
+            'decision' => $decision, 'elapsed_ms' => (int) round((microtime(true) - $batchStarted) * 1000)]);
+        if ($decision === true || in_array($decision, ['resolved', 'review_unavailable'], true)) {
+            $budget->discoveryStop = $decision === 'review_unavailable' ? $decision : 'evidence_resolved';
+
+            return true;
+        }
+        // Larger later batches amortize instructions without capping total coverage.
+        $budget->reviewBatchSize = min(12, $budget->reviewBatchSize * 2);
+
+        return false;
+    }
+
+    private function hasPendingDownload(array $records): bool
+    {
+        return collect($records)->contains(fn ($record) => ($record['retrieval_status'] ?? '') === 'discovered'
+            && in_array($record['provider'] ?? '', ['linked_primary_record', 'linked_reference'], true)
+            && preg_match('~\.pdf(?:[?#]|$)|/(?:pdf|download)(?:/|[?#]|$)~i', $record['url'] ?? ''));
+    }
+
+    private function rankCandidates(array &$records, array $queries): void
+    {
+        $terms = $this->tokens(implode(' ', $queries));
+        $rank = function ($record) use ($terms) {
+            $overlap = count(array_intersect($terms, $this->tokens(($record['title'] ?? '').' '.($record['reviewed_claim'] ?? ''))));
+
+            return $overlap * 20 + ($overlap > 0 ? match ($record['source_type'] ?? '') {
+                'fact_check' => 1000, 'official_government' => 100, 'research', 'institution' => 50, default => 0,
+            } : 0);
+        };
+        uasort($records, fn ($a, $b) => $rank($b) <=> $rank($a));
     }
 
     /** Search every saved review locally; do not trigger feed refresh or preview inference. */
@@ -198,24 +338,46 @@ class ArticleSearch
             return [];
         }
         $records = [];
-        $matcher = app(FactCheckClaimMatcher::class);
         foreach (PublicClaimReview::query()->where(fn ($query) => $query->whereNull('published_at')->orWhere('published_at', '<=', $cutoff))->cursor() as $review) {
-            if (! $this->policy->isFactCheckUrl((string) $review->url)) {
+            if (ReportAnswer::safeUrl($review->url) === null) {
                 continue;
             }
             $reviewed = (string) data_get($review->source_payload, 'full_claim', $review->claim);
-            if (! collect($claims)->contains(fn ($claim) => $matcher->assess((string) ($claim['text'] ?? ''), $reviewed)['level'] !== 'unrelated')) {
+            if (! collect($claims)->contains(fn ($claim) => $this->matchesDiscoveryClaim($claim, $reviewed))) {
                 continue;
             }
             $key = $this->canonicalUrl($review->url);
             $records[$key] = ['id' => 's'.substr(hash('sha256', $key), 0, 16), 'url' => $review->url,
                 'title' => (string) $review->headline, 'name' => (string) $review->publisher,
-                'source_type' => 'fact_check', 'published_at' => $review->published_at?->utc()->toIso8601String(),
+                'source_type' => $this->policy->isFactCheckUrl((string) $review->url) ? 'fact_check' : $this->sourceType($review->url),
+                'published_at' => $review->published_at?->utc()->toIso8601String(),
                 'reviewed_claim' => $reviewed, 'review_rating' => data_get($review->source_payload, 'source_rating') ?: $review->rating,
                 'provider' => 'collected_review', 'discovered_by' => ['collected_review'], 'retrieval_status' => 'discovered'];
         }
 
         return $records;
+    }
+
+    /** Relevance for discovery only; this never approves a publisher verdict. */
+    public function matchesDiscoveryClaim(array $claim, string $reviewed): bool
+    {
+        $match = app(FactCheckClaimMatcher::class)->assess((string) ($claim['text'] ?? ''), $reviewed);
+        if (empty($claim['discovery_context'])) {
+            return $match['level'] !== 'unrelated';
+        }
+        if (! $match['date_match']) {
+            return false;
+        }
+        $objects = array_diff($this->discoveryTokens($claim['discovery_context']), ['small', 'large', 'red', 'blue', 'image', 'photo',
+            'shows', 'visible', 'pictured', 'caption', 'text', 'views', 'vehicles', 'vehicle', 'objects', 'object', 'overlaid',
+            'outdoors', 'front', 'building', 'parked', 'roof', 'lights', 'collage', 'four', 'filipino', 'english',
+            'asks', 'cost', 'price', 'supposed', 'suggests', 'lower', 'estimated', 'estimate', 'refers',
+            'one', 'two', 'three', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'response', 'style',
+            'photograph', 'picture', 'images', 'photos', 'equipment', 'item', 'items']);
+        $reviewTerms = $this->discoveryTokens($reviewed);
+
+        return array_intersect($objects, $reviewTerms) !== []
+            && array_intersect($this->discoveryTokens($claim['text']), $reviewTerms) !== [];
     }
 
     /** Retrieve exact saved publisher reviews without a paid search or model call. */
@@ -226,14 +388,14 @@ class ArticleSearch
         }
         $records = array_filter($this->collectedReviews([['text' => $claim]], $cutoff),
             fn ($record) => app(FactCheckClaimMatcher::class)->assess($claim, $record['reviewed_claim'])['level'] === 'exact');
-        $this->fetchCandidates($records, $budget, $cutoff, (int) config('fact_check.retrieval.max_pages', 50));
+        $this->fetchCandidates($records, $budget, $cutoff, ResearchLimits::ceiling('fact_check.retrieval.max_pages', 50));
 
         return $records;
     }
 
-    private function fetchCandidates(array &$records, RetrievalBudget $budget, string $cutoff, int $pageCeiling, ?int $maxDocuments = null, ?int $candidateCeiling = null): void
+    private function fetchCandidates(array &$records, RetrievalBudget $budget, string $cutoff, int $pageCeiling, ?int $maxDocuments = null, ?int $candidateCeiling = null, bool $deferLinks = false, bool $includeReferences = true): void
     {
-        $limit = max(0, (int) config('fact_check.retrieval.max_candidates', 40));
+        $limit = ResearchLimits::ceiling('fact_check.retrieval.max_candidates', 40);
         $limit = $candidateCeiling === null ? $limit : min($limit, max(0, $candidateCeiling));
         $pending = array_keys($records);
         $attempted = 0;
@@ -242,6 +404,9 @@ class ArticleSearch
                 break;
             }
             if ($records[$key]['retrieval_status'] !== 'discovered') {
+                continue;
+            }
+            if (! $includeReferences && in_array($records[$key]['provider'] ?? '', ['linked_primary_record', 'linked_reference'], true)) {
                 continue;
             }
             if ($this->isGenericLandingPage($records[$key]['url'])) {
@@ -259,9 +424,17 @@ class ArticleSearch
             // Follow original public records linked by reviewed reporting, within the SAME budget.
             $followed = 0;
             foreach ($page['links'] ?? [] as $link) {
+                if ($deferLinks && in_array($records[$key]['provider'] ?? '', ['linked_primary_record', 'linked_reference'], true)
+                    && ! preg_match('~\.pdf(?:[?#]|$)|/(?:pdf|download)(?:/|[?#]|$)~i', $link)) {
+                    // A cited record is evidence, not a new site-crawling seed.
+                    // Keep direct full-text/PDF downloads available for that record.
+                    $budget->recursiveReferencesSkipped++;
+
+                    continue;
+                }
                 // Leave room to read independent reporting instead of exhausting
-                // the page budget on every government link in the first article.
-                if ($followed >= 1) {
+                // the page budget on every primary-source link in the first article.
+                if (! ResearchLimits::unrestricted() && $followed >= 1) {
                     break;
                 }
                 $linkedKey = $this->canonicalUrl($link);
@@ -269,7 +442,14 @@ class ArticleSearch
                     continue;
                 }
                 $primary = ['id' => 's'.substr(hash('sha256', $linkedKey), 0, 16), 'url' => $link, 'title' => $link,
-                    'name' => (string) parse_url($link, PHP_URL_HOST), 'source_type' => 'official_government', 'provider' => 'linked_primary_record', 'retrieval_status' => 'discovered', 'published_at' => null];
+                    'name' => (string) parse_url($link, PHP_URL_HOST), 'source_type' => $this->sourceType($link),
+                    'provider' => $this->policy->isPrimarySourceUrl($link) ? 'linked_primary_record' : 'linked_reference',
+                    'retrieval_status' => 'discovered', 'published_at' => null];
+                if ($deferLinks) {
+                    $records[$linkedKey] = $primary;
+
+                    continue;
+                }
                 $linkedPage = $this->fetcher->fetch($link, $budget);
                 $records[$linkedKey] = $this->mergePage($primary, $linkedPage, $cutoff, $budget->historicalCutoff);
                 $followed++;
@@ -321,6 +501,11 @@ class ArticleSearch
                 $params['domains'] = $officialDomain;
             }
             $url = 'https://newsapi.org/v2/everything';
+        }
+        if (ResearchLimits::unrestricted() && $provider !== 'google_fact_check') {
+            // Keep the account-compatible page size, but consume subsequent
+            // pages rather than treating the first few results as the whole search.
+            $params['page'] = $page;
         }
         // Provider-account identity is hashed; credentials never enter cache values or diagnostics.
         $cacheKey = 'evidence-search:v2:'.hash('sha256', $provider.$key.json_encode(array_diff_key($params, ['key' => 1, 'apikey' => 1])));
@@ -611,8 +796,43 @@ class ArticleSearch
         } elseif ($historical && ! $record['published_at']) {
             $record['retrieval_status'] = 'undated_historical';
         }
+        $this->rememberPublishedReview($record, $page);
 
         return $record;
+    }
+
+    /** Collect publisher metadata, never approve a reusable TruthGuard verdict. */
+    private function rememberPublishedReview(array $record, array $page): void
+    {
+        if (($record['retrieval_status'] ?? '') !== 'retrieved' || count($page['claim_reviews'] ?? []) !== 1
+            || ! Schema::hasTable('public_claim_reviews')) {
+            return;
+        }
+        $review = $page['claim_reviews'][0];
+        if (! is_string($review['reviewed_claim'] ?? null) || trim($review['reviewed_claim']) === ''
+            || ! is_string($review['review_rating'] ?? null) || trim($review['review_rating']) === '') {
+            return;
+        }
+        try {
+            $existing = PublicClaimReview::where('url', $record['url'])->first();
+            $host = preg_replace('/^www\./iu', '', (string) parse_url($record['url'], PHP_URL_HOST));
+            $payload = array_replace($existing?->source_payload ?? [], [
+                'full_claim' => $review['reviewed_claim'], 'full_headline' => $record['title'],
+                'source_rating' => $review['review_rating'], 'label_status' => 'publisher_claim_review',
+                'collection_method' => 'retrieved_article_metadata', 'content_hash' => $record['content_hash'] ?? null,
+            ]);
+            PublicClaimReview::updateOrCreate(['feed_item_id' => $existing?->feed_item_id
+                ?? 'research-'.substr(hash('sha256', $this->canonicalUrl($record['url']) ?? $record['url']), 0, 64)], [
+                    'url' => $record['url'], 'publisher' => Str::limit($record['name'] ?? $host, 120, ''),
+                    'source_domain' => $host, 'headline' => Str::limit($record['title'], 180, ''),
+                    'claim' => Str::limit($review['reviewed_claim'], 1000, ''), 'rating' => Str::limit($review['review_rating'], 80, ''),
+                    'feed_source_type' => $existing?->feed_source_type ?: 'research_discovery',
+                    'source_payload' => $payload, 'published_at' => $record['published_at'],
+                    'first_seen_at' => $existing?->first_seen_at ?? now(), 'last_seen_at' => now(),
+                ]);
+        } catch (\Throwable $error) {
+            Log::notice('Published fact-check metadata could not be collected.', ['error_type' => $error::class]);
+        }
     }
 
     public function deduplicate(array $records): array
@@ -671,6 +891,15 @@ class ArticleSearch
         $path = strtolower(trim((string) parse_url($url, PHP_URL_PATH), '/'));
 
         return in_array($path, ['', 'index', 'index.html', 'index.php', 'home', 'home.php', 'about', 'about-us', 'news'], true);
+    }
+
+    private function discoveryTokens(string $text): array
+    {
+        return array_values(array_filter(array_diff($this->tokens($text), ['the', 'and', 'for', 'from', 'with', 'into',
+            'about', 'that', 'this', 'these', 'those', 'each', 'per', 'was', 'were', 'are', 'has', 'have', 'had',
+            'does', 'did', 'how', 'much', 'what', 'which', 'when', 'where', 'who', 'actual', 'actually', 'their',
+            'ang', 'mga', 'bawat', 'isa', 'ito', 'nito', 'ninyo', 'lang', 'the', 'its', 'they', 'them']),
+            fn ($term) => mb_strlen($term) >= 3 || is_numeric($term)));
     }
 
     private function tokens(string $text): array

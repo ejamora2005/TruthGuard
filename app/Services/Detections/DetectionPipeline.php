@@ -35,6 +35,72 @@ class DetectionPipeline
         private readonly OpenAiMediaExplanation $mediaExplanation,
     ) {}
 
+    /** Return an owned historical report, join an owned job, or copy eligible shared analysis. */
+    public function reuseImageUpload(User $user, array $input, UploadedFile $file, array $identity): ?Detection
+    {
+        if (! config('fact_check.result_reuse.enabled', true) || ! empty($input['force_refresh'])
+            || ! empty($input['weather_consent'])) {
+            return null;
+        }
+        $matches = fn (Detection $candidate): bool => data_get(ImageUploadIdentity::forDetection($candidate), 'scope_key') === $identity['scope_key']
+            && ($candidate->processing_status !== 'completed' || $identity['resolved_task'] === null
+                || data_get($candidate->fact_check_result, 'primary_task') === $identity['resolved_task']);
+        $base = $this->retentionService->retainedQuery()->where('media_type', 'image')
+            ->where('media_checksum', $identity['checksum']);
+        // Opening the account's original dated report is not a fresh verification.
+        // Keep the first answer even when prompt guides or model settings change.
+        $owned = (clone $base)->where('user_id', $user->id)->where('processing_status', 'completed')
+            ->whereNotNull('analyzed_at')->oldest('id')->cursor()
+            ->first(fn (Detection $candidate) => $matches($candidate) && $this->hasCompletedReusableAnswer($candidate));
+        if ($owned) {
+            return $owned;
+        }
+        app(ActiveDetectionManager::class)->expireStaleForUser($user->id);
+        $active = (clone $base)->where('user_id', $user->id)->whereIn('processing_status', ['queued', 'processing'])
+            ->oldest('id')->cursor()->first($matches);
+        if ($active) {
+            return $active;
+        }
+        // Shared results must still pass freshness, registry and policy checks.
+        // No other account's report URL, upload path or private input is returned.
+        $snapshot = null;
+        $shared = (clone $base)->where('user_id', '!=', $user->id)->where('processing_status', 'completed')
+            ->whereNull('reused_from_detection_id')->whereNotNull('analyzed_at')->oldest('id')->cursor()
+            ->first(function (Detection $candidate) use ($matches, $identity, &$snapshot): bool {
+                if (! $matches($candidate) || ! is_array(data_get($candidate->signals, 'upload_reuse'))
+                    || data_get(ImageUploadIdentity::forDetection($candidate), 'private_context_key') !== $identity['private_context_key']) {
+                    return false;
+                }
+
+                return $this->canReuseResult($candidate, $snapshot ??= ReviewedClaimLookup::dependencySnapshot());
+            });
+        if (! $shared) {
+            return null;
+        }
+        $safe = clone $shared;
+        $safeSignals = Arr::only($shared->signals ?? [], ['verification_policy', 'result_cache']);
+        $safeSignals['openai_usage'] = Arr::only(data_get($shared->signals, 'openai_usage', []),
+            ['input_tokens', 'output_tokens', 'total_tokens']);
+        $safe->signals = $safeSignals;
+        $safe->preprocessing_summary = '';
+        $result = $shared->fact_check_result;
+        $request = SubmissionTask::resolve($input + ['media_type' => 'image']);
+        $request['tasks'] = $result['request']['tasks'] ?? [$result['primary_task']];
+        $request['resolved_task'] = $result['primary_task'];
+        $result['request'] = $request;
+        $result['diagnostics'] = Arr::only($result['diagnostics'] ?? [], ['reviewed_answer_signature']);
+        $safe->fact_check_result = $result;
+        app(ReportApiBudget::class)->reset();
+        $copy = $this->createReusedDetection($user, $safe, $input['source_url'] ?? null,
+            $input['caption_text'] ?? null, $input['notes'] ?? null, $file->store('detections', 'public'),
+            $identity['checksum'], $shared->media_perceptual_hash, $shared->request_fingerprint, preserveWording: true);
+        $signals = $copy->signals;
+        $signals['upload_reuse'] = $identity;
+        $copy->forceFill(['signals' => $signals])->saveQuietly();
+
+        return $copy;
+    }
+
     /**
      * @param  array<string, mixed>  $validated
      */
@@ -193,6 +259,9 @@ class DetectionPipeline
             $analysis['analysis_summary'] = $analysis['explanation_summary'] = $analysis['fact_check_result']['summary'];
             // Older saved reports have not been admitted to this fresh cache.
             $analysis['signals']['result_cache'] = ['generation' => (string) config('fact_check.result_reuse.generation'), 'hit' => false];
+            if ($identity = ImageUploadIdentity::forUpload($validated, $uploadedFile)) {
+                $analysis['signals']['upload_reuse'] = $identity;
+            }
             $analysis['fact_check_result']['diagnostics']['result_cache_hit'] = false;
             $analysis['fact_check_result']['diagnostics']['reviewed_answer_signature'] = $this->reviewedAnswerSignature(
                 $analysis['fact_check_result'], $analysis['signals'] ?? [], $captionText, $notes, $reviewedSnapshot);
@@ -455,6 +524,7 @@ class DetectionPipeline
             'routing_version' => 'question-routing-v4',
             'pipeline_version' => AssessmentVerdict::VERSION.'|'.AssessmentScore::RUBRIC.'|'.SubmissionTask::VERSION
                 .'|'.EvidenceVerificationService::VERSION.'|'.EvidenceVerdictCalibration::identity()
+                .'|source-target:'.(int) config('fact_check.min_relevant_sources', 10)
                 .'|'.(config('services.ai_origin.enabled', false) ? AiOriginClassifier::VERSION : 'origin-disabled')
                 .'|'.(config('fact_check.verdict_calibration.enabled', false)
                     ? EvidenceVerdictCalibration::METHOD.':'.config('fact_check.verdict_calibration.sha256', '') : 'evidence-calibration-disabled')
@@ -531,13 +601,9 @@ class DetectionPipeline
         if (isset($candidate->signals['reviewed_media'])) {
             return false;
         }
-        if (! $this->hasCurrentVerificationPolicyVersion($candidate) || ! is_array($result)
+        if (! $this->hasCurrentVerificationPolicyVersion($candidate) || ! $this->hasCompletedReusableAnswer($candidate)
             || data_get($candidate->signals, 'result_cache.generation') !== (string) config('fact_check.result_reuse.generation')
-            || ($result['schema_version'] ?? null) !== 4 || ($result['processing_status'] ?? null) !== 'completed'
-            || in_array($result['verdict'] ?? '', ['ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS', 'CLARIFICATION_NEEDED'], true)
-            || filled(data_get($candidate->signals, 'submission_extraction.0.failure_reason'))
-            || collect(data_get($result, 'diagnostics.model_stages', []))->contains(fn ($status) => $status !== 'completed')
-            || in_array(data_get($result, 'claim_assessment.status'), ['partial', 'unavailable', 'failed'], true)) {
+        ) {
             return false;
         }
         $question = implode(' ', array_filter([$candidate->caption_text, $candidate->notes,
@@ -556,6 +622,18 @@ class DetectionPipeline
         }
 
         return $seconds > 0 && $candidate->analyzed_at->gte(now()->subSeconds($seconds));
+    }
+
+    private function hasCompletedReusableAnswer(Detection $candidate): bool
+    {
+        $result = $candidate->fact_check_result;
+
+        return is_array($result) && ($result['schema_version'] ?? null) === 4
+            && ($result['processing_status'] ?? null) === 'completed'
+            && ! in_array($result['verdict'] ?? '', ['ANALYSIS_UNAVAILABLE', 'UNSUPPORTED_ANALYSIS', 'UNREADABLE_CONTENT', 'CLARIFICATION_NEEDED'], true)
+            && ! filled(data_get($candidate->signals, 'submission_extraction.0.failure_reason'))
+            && ! collect(data_get($result, 'diagnostics.model_stages', []))->contains(fn ($status) => $status !== 'completed')
+            && ! in_array(data_get($result, 'claim_assessment.status'), ['partial', 'unavailable', 'failed'], true);
     }
 
     private function reviewedAnswerSignature(array $result, array $signals, ?string $caption, ?string $notes, array $snapshot): string
@@ -604,6 +682,7 @@ class DetectionPipeline
         ?string $mediaPerceptualHash,
         ?string $requestFingerprint,
         ?Detection $pending = null,
+        bool $preserveWording = false,
     ): Detection {
         $sourceDetection = $reusableDetection->reused_from_detection_id
             ? Detection::query()->find($reusableDetection->reused_from_detection_id) ?? $reusableDetection
@@ -631,10 +710,12 @@ class DetectionPipeline
 
         // Keep the saved facts, verdict, citations, and assessment date, while
         // presenting the cached answer with fresh wording at zero token cost.
-        $analysis['fact_check_result'] = ResultWording::varyForReuse(
-            $analysis['fact_check_result'],
-            implode('|', [$requestFingerprint, $user->id, now()->timestamp]),
-        );
+        if (! $preserveWording) {
+            $analysis['fact_check_result'] = ResultWording::varyForReuse(
+                $analysis['fact_check_result'],
+                implode('|', [$requestFingerprint, $user->id, now()->timestamp]),
+            );
+        }
         $analysis['analysis_summary'] = $analysis['explanation_summary']
             = $analysis['fact_check_result']['summary'];
 
@@ -642,7 +723,7 @@ class DetectionPipeline
             'original_assessed_at' => $reusableDetection->analyzed_at?->toIso8601String(),
             'original_openai_usage' => $analysis['signals']['openai_usage'] ?? [],
             'original_usage_aliases' => Arr::only($analysis['signals'], ['ai_usage', 'token_usage', 'usage']),
-            'wording_refreshed_locally' => true, 'new_api_tokens' => 0];
+            'wording_refreshed_locally' => ! $preserveWording, 'new_api_tokens' => 0];
         // Preserve historical usage above, but never bill/count it again on a cache hit.
         $analysis['signals']['openai_usage'] = ['input_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
         $analysis['signals']['result_cache']['hit'] = true;

@@ -235,7 +235,7 @@ class OpenAiMediaExplanationTest extends TestCase
         $snapshot = $first->fresh()->getRawOriginal();
         foreach (range(1, 2) as $refresh) {
             $html = $this->actingAs($user)->get(route('detections.result', $first))->assertOk()
-                ->assertSee('The detector did not record feature-level evidence explaining its prediction.')->assertDontSee('View full explanation')->getContent();
+                ->assertSee('The image&#039;s appearance alone does not establish how it was created.', false)->assertDontSee('View full explanation')->getContent();
             $document = new \DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $main = (new \DOMXPath($document))->query('//div[contains(@class,"tg-verdict-explanation")]')->item(0)->textContent;

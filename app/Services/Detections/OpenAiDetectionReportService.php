@@ -5,6 +5,7 @@ namespace App\Services\Detections;
 use App\Services\Detections\Evidence\MediaEvidencePreparer;
 use App\Services\Detections\Evidence\ReportApiBudget;
 use App\Services\Detections\Evidence\ReportBudgetExceeded;
+use App\Services\Detections\Evidence\ResearchLimits;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -80,7 +81,7 @@ class OpenAiDetectionReportService
     {
         $this->extractionRecord = ['status' => 'unavailable', 'failure_reason' => null, 'http_status' => null,
             'configured_model' => (string) config('services.openai.extraction_model', config('services.openai.model', 'gpt-5.4')),
-            'visible_text' => '', 'inferred_claim' => '', 'media_note' => ''];
+            'visible_text' => '', 'visual_context' => '', 'inferred_claim' => '', 'media_note' => ''];
         $this->mediaPreparation = [];
         if (! $this->isEnabled() || ! (bool) config('services.openai.claim_extraction_enabled', true)) {
             $this->extractionRecord['failure_reason'] = 'not_configured';
@@ -154,6 +155,7 @@ class OpenAiDetectionReportService
                 'configured_model' => (string) config('services.openai.extraction_model', config('services.openai.model', 'gpt-5.4')),
                 'response_model' => is_string($data['model'] ?? null) ? $data['model'] : null,
                 'visible_text' => $visibleText, 'inferred_claim' => $claimText,
+                'visual_context' => is_string($report['visual_context'] ?? null) ? trim($report['visual_context']) : '',
                 'media_note' => (string) ($report['synthetic_media_note'] ?? ''),
                 'ocr_confidence_raw' => $report['confidence'] ?? null,
                 'sampled_frames' => count($mediaInputs),
@@ -235,7 +237,7 @@ class OpenAiDetectionReportService
                     'schema' => $this->responseSchema(),
                 ],
             ],
-            'max_output_tokens' => max(400, (int) config('services.openai.max_completion_tokens', 1400)),
+            ...ResearchLimits::outputTokens(max(400, (int) config('services.openai.max_completion_tokens', 1400))),
         ];
 
         return $payload;
@@ -263,6 +265,7 @@ class OpenAiDetectionReportService
                                 'You extract claim text from uploaded evidence for a fact-checking workflow.',
                                 'Transcribe all readable visible text verbatim in its original language into visible_text. Keep uncertain characters as [unclear]. Never silently correct dates, quantities or names.',
                                 'Preserve visual text regions with blank lines. Keep isolated logos, publisher marks and watermarks separate from headline or body text while still transcribing them.',
+                                'In visual_context briefly describe only clearly visible objects and how the overlaid text refers to them. Use generic object descriptions, such as three-wheeled fire-response vehicles, when identifiable from appearance. Do not infer exact identity, model, ownership, location, event, price, date or authenticity from appearance. Include names or identifiers only if actually readable in the image. Keep this description separate from the verbatim transcription and from the inferred claim; it is research context, not proof that a caption is true.',
                                 'Keep any inferred interpretation in claim_text separately. A rhetorical headline or question does not assert that an event occurred: do not convert it into a factual assertion.',
                                 'Do not decide whether the claim is true. Do not invent missing text.',
                                 'If the image appears synthetic, AI-generated, or edited, record that only as a short note.',
@@ -291,7 +294,7 @@ class OpenAiDetectionReportService
                 ],
             ],
             'store' => false,
-            'max_output_tokens' => max(1, min(2000, (int) config('services.openai.max_completion_tokens', 1400))),
+            ...ResearchLimits::outputTokens(min(2000, (int) config('services.openai.max_completion_tokens', 1400))),
         ];
     }
 
@@ -366,6 +369,10 @@ class OpenAiDetectionReportService
                     'type' => 'string',
                     'description' => 'Important visible text read from the image. Empty string if none is readable.',
                 ],
+                'visual_context' => [
+                    'type' => 'string',
+                    'description' => 'A brief description of clearly visible objects relevant to the text, without inferred identities, prices, dates, ownership or authenticity. Empty string if nothing relevant is clear.',
+                ],
                 'synthetic_media_note' => [
                     'type' => 'string',
                     'description' => 'Short note if the image appears AI-generated, edited, or synthetic. Empty string if not apparent.',
@@ -380,6 +387,7 @@ class OpenAiDetectionReportService
             'required' => [
                 'claim_text',
                 'visible_text',
+                'visual_context',
                 'synthetic_media_note',
                 'confidence',
             ],

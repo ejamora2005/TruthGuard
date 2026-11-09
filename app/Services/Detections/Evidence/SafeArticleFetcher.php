@@ -3,6 +3,7 @@
 namespace App\Services\Detections\Evidence;
 
 use App\Services\Detections\FactCheckEvidencePolicy;
+use App\Services\Detections\ReportAnswer;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use Illuminate\Http\Client\ConnectionException;
@@ -31,7 +32,7 @@ class SafeArticleFetcher
             return $base + ['status' => 'budget_exhausted'];
         }
         try {
-            $cacheKey = 'evidence-page:v3:'.hash('sha256', $url);
+            $cacheKey = 'evidence-page:v5:'.hash('sha256', $url);
             if (! $budget->freshSources && ($cached = Cache::get($cacheKey))) {
                 return $cached + ['cached' => true];
             }
@@ -308,9 +309,17 @@ class SafeArticleFetcher
             } catch (\Throwable) {
                 continue;
             }
-            if (preg_match('/\.(?:gov\.ph|gov|gov\.uk)$/i', (string) parse_url($link, PHP_URL_HOST))) {
-                $links[] = $link;
+            if (ReportAnswer::safeUrl($link) !== null && $link !== $url
+                && ($policy->isPrimarySourceUrl($link) || parse_url($link, PHP_URL_HOST) !== parse_url($url, PHP_URL_HOST))) {
+                $links[$link] = $policy->isPrimarySourceUrl($link) ? 0 : 1;
             }
+        }
+        asort($links, SORT_NUMERIC);
+        // DOM textContent does not insert spaces between adjacent table cells
+        // or block elements. Preserve boundaries for readable, citable evidence.
+        foreach ($xpath->query('.//th|.//td|.//tr|.//p|.//li|.//h1|.//h2|.//h3|.//br', $root) as $node) {
+            $node->parentNode?->insertBefore($doc->createTextNode(' '), $node);
+            $node->appendChild($doc->createTextNode(' '));
         }
         $text = trim(preg_replace('/\s+/u', ' ', $root?->textContent ?? '') ?? '');
         if (preg_match('/(?:verify you are human|checking your browser|enable javascript and cookies|subscribe to (?:continue|read))/i', $text)) {
@@ -319,7 +328,7 @@ class SafeArticleFetcher
 
         return ['text' => $text, 'title' => $title, 'published_at' => $published, 'updated_at' => $updated,
             'claim_reviews' => array_values(array_unique($claimReviews, SORT_REGULAR)),
-            'links' => array_slice(array_values(array_unique($links)), 0, 6)];
+            'links' => array_slice(array_keys($links), 0, 6)];
     }
 
     private function jsonClaimReviews(array $data): array

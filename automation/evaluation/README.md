@@ -1,5 +1,16 @@
 # Held-out fact-check evaluation
 
+## Stage evaluation and user feedback
+
+Use [the stage-review workflow](../../docs/PIPELINE-EVALUATION.md) to identify
+extraction, claim-planning, retrieval, evidence, verdict and explanation/citation
+failures. `truthguard:export-pipeline-review` exports selected saved reports and
+unverified feedback without API calls. `evaluate_pipeline.py --prepare` creates
+an unreviewed sheet bound to each frozen report; completed human judgments produce
+JSON/HTML diagnostics with explicit denominators and separate review origins.
+It also accepts existing capture command report archives. No unreviewed stage is
+counted as a pass, and no user report is promoted to a gold label.
+
 ## Development diagnostics and review preparation
 
 The November 6 fact-check investigation, real pilot outcomes, full token accounting

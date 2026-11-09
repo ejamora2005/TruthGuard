@@ -7,7 +7,9 @@ use App\Services\Detections\Evidence\ArticleSearch;
 use App\Services\Detections\Evidence\ClaimPlanner;
 use App\Services\Detections\Evidence\EvidenceJudge;
 use App\Services\Detections\Evidence\ReportApiBudget;
+use App\Services\Detections\Evidence\ResearchLimits;
 use App\Services\Detections\Evidence\RetrievalBudget;
+use App\Services\Detections\Evidence\SourceCoverage;
 use App\Services\Detections\Evidence\StructuredAnalysis;
 use App\Services\Detections\Evidence\SubmissionExtractor;
 use App\Services\Detections\Evidence\SubmittedText;
@@ -20,7 +22,7 @@ use Illuminate\Support\Str;
 
 class EvidenceVerificationService
 {
-    public const VERSION = 'evidence-v22';
+    public const VERSION = 'evidence-v32';
 
     public function __construct(
         private readonly SubmissionExtractor $extractor,
@@ -103,7 +105,7 @@ class EvidenceVerificationService
                     || ClaimPlanner::requiresFreshEvidence((string) ($extraction['analysis_text'] ?? ''))
                     ? null : ($submittedKnownResult
                     ?? ReviewedClaimLookup::lookup((string) ($extraction['analysis_text'] ?? ''), $knownCutoff));
-                $analysis = $knownResult
+                $analysis = $knownResult && SourceCoverage::target() === 0
                     ? $this->applyKnownResult($analysis, $knownResult, $context, $extraction)
                     : $this->applyClaims($analysis, $context, $file, $progress, $extraction, $extractionBudget->pages);
             }
@@ -125,12 +127,15 @@ class EvidenceVerificationService
             $analysis = $original;
             $claim = ['status' => 'unavailable', 'task' => 'Factual claim verification', 'model' => config('services.openai.model'),
                 'version' => self::VERSION, 'result' => null, 'failure_reason' => 'Optional text analysis could not finish. The media result is independent.'];
-            if (in_array($primary, ['claim', 'context'], true)) {
-                $analysis['fact_check_result'] = ReportAnswer::complete([
-                    'schema_version' => 4, 'primary_task' => $primary, 'verdict' => 'ANALYSIS_UNAVAILABLE',
+            if (in_array($primary, ['claim', 'context'], true) || array_intersect($tasks, ['claim', 'context']) !== []) {
+                $claim['result'] = ReportAnswer::complete([
+                    'schema_version' => 4, 'primary_task' => in_array($primary, ['claim', 'context'], true) ? $primary : 'claim', 'verdict' => 'ANALYSIS_UNAVAILABLE',
                     'summary' => 'Factual verification could not be completed. The media finding is shown separately; recheck the submission to retry the factual assessment.',
                     'score' => AssessmentScore::unavailable('No percentage is available for an incomplete assessment.'),
                 ]);
+                if (in_array($primary, ['claim', 'context'], true)) {
+                    $analysis['fact_check_result'] = $claim['result'];
+                }
             }
         }
         $claim['elapsed_ms'] = (int) round((microtime(true) - $started) * 1000);
@@ -280,6 +285,7 @@ class EvidenceVerificationService
         $cutoff = ClaimPlanner::cutoff($context['question'] ?? '', $cutoff);
         $historicalCutoff = Carbon::parse($cutoff)->lt(now()->subMinute());
         $budget = new RetrievalBudget;
+        $budget->analysisId = $context['analysis_id'] ?? null;
         if (($context['primary_task'] ?? '') === 'media' && trim($extraction['analysis_text']) === '') {
             $analysis['claim_assessment'] = [
                 'status' => $extraction['status'] === 'completed' ? 'not_applicable' : 'unavailable',
@@ -324,6 +330,8 @@ class EvidenceVerificationService
         $plan = $exactPlan ?? $this->planner->plan($extraction['analysis_text'], [
             'media_attached' => $file !== null && $file->isValid(), 'media_type' => $context['media_type'] ?? null,
             'input_scope' => $extraction['input_scope'],
+            'visual_context' => $extraction['visual_context'] ?? '',
+            'visible_text' => $extraction['visible_text'] ?? '',
             'question' => $context['question'] ?? '', 'requested_task' => $context['primary_task'] ?? 'claim',
             'context_requested' => in_array('context', $context['resolved_request']['tasks'] ?? [], true)
                 || ($context['primary_task'] ?? '') === 'context',
@@ -379,31 +387,84 @@ class EvidenceVerificationService
                 'supersedes_source_ids' => [], 'supersession_excerpt' => '', 'superseded' => false,
             ];
         }
-        $researchClaims = array_values(array_filter($plan['claims'], fn ($claim) => ! isset($reviewedAnswers[$claim['id']])));
+        $researchClaims = SourceCoverage::target() > 0 ? $plan['claims']
+            : array_values(array_filter($plan['claims'], fn ($claim) => ! isset($reviewedAnswers[$claim['id']])));
+        $progressive = (bool) config('fact_check.progressive_research', true);
+        if ($progressive) {
+            $budget->noteEvidence($this->judge->outcomes($plan['claims'], $relationships));
+        }
         $paidDiscoveryTried = false;
+        $paidGaps = [];
+        $referenceGaps = [];
         $reviewPass = 0;
-        $review = function (array $records) use ($plan, $researchClaims, $budget, $cutoff, $context, &$relationships, &$reviewPass): array {
+        $review = function (array $records) use ($plan, $researchClaims, $budget, $cutoff, $context, $progressive, &$relationships, &$reviewPass): array {
+            if ($progressive && collect($this->model->stages)->contains(fn ($status, $stage) =>
+                str_starts_with($stage, 'evidence_relationships_') && $status !== 'completed')) {
+                return $this->judge->outcomes($plan['claims'], $relationships);
+            }
             $hasDocuments = collect($records)->contains(fn ($record) => ($record['retrieval_status'] ?? '') === 'retrieved'
                 && ($record['source_type'] ?? '') !== 'unapproved');
             if ($hasDocuments && $researchClaims !== []) {
                 $reviewStarted = microtime(true);
-                $judged = $this->judge->assess($researchClaims, $records, $cutoff, $reviewPass++, Arr::only($context, ['question', 'primary_task', 'media_attached']));
+                $stagesBefore = count($this->model->stages);
+                $judged = $this->judge->assess($researchClaims, $records, $cutoff, $reviewPass, Arr::only($context, ['question', 'primary_task', 'media_attached']));
+                if (! $progressive || count($this->model->stages) > $stagesBefore) {
+                    $reviewPass++;
+                }
                 $budget->excludeAnalysisTime(microtime(true) - $reviewStarted);
                 $relationships = $this->judge->mergeReviews($relationships, $judged);
             }
 
             return $this->judge->outcomes($plan['claims'], $relationships);
         };
-        for ($round = 0; $round < min(2, max(1, (int) config('fact_check.retrieval.max_rounds', 2))); $round++) {
-            $queries = $exactPlan || $researchClaims === [] ? [] : $this->planner->queries($researchClaims, $round);
+        $checkpoint = ! $progressive ? null : function (array $candidates) use ($review, $budget, $context, $extraction, $plan, $progress): ?string {
+            if (! $budget->freshSources && ($context['primary_task'] ?? 'claim') === 'claim'
+                && SubmissionTask::questionClaim($context['question'] ?? '') === ''
+                && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)
+                && isset($this->exactFactCheckReconciler->apply(['claim' => $extraction['analysis_text'], 'claims' => $plan['claims']],
+                    array_values($candidates))['exact_fact_check'])) {
+                $progress && $progress('Using matching published fact check');
+
+                return 'resolved';
+            }
+            $progress && $progress('Reviewing matching evidence');
+            $outcomes = $review($candidates);
+            $budget->noteEvidence($outcomes, $this->judge->contextFindings, $this->judge->scopeResolutions);
+            if (collect($this->model->stages)->contains(fn ($status, $stage) =>
+                str_starts_with($stage, 'evidence_relationships_') && $status !== 'completed')) {
+                return 'review_unavailable';
+            }
+            $remaining = array_filter($outcomes, fn ($claim) => ($claim['kind'] === 'factual'
+                || ($claim['context_review_requested'] ?? false)
+                || (in_array($claim['kind'], ['rhetorical', 'unclear'], true) && ($claim['searches'] ?? []) !== []))
+                && in_array($claim['outcome'], ['insufficient', 'conflicting', 'needs_context'], true));
+
+            if ($remaining !== []) {
+                $progress && $progress('Searching for missing evidence');
+            }
+
+            return $remaining === [] ? 'resolved' : null;
+        };
+        $unrestricted = ResearchLimits::unrestricted();
+        $seenQueries = [];
+        $queryClaims = $researchClaims;
+        $roundCeiling = $unrestricted ? PHP_INT_MAX : min(2, max(1, (int) config('fact_check.retrieval.max_rounds', 2)));
+        for ($round = 0; $round < $roundCeiling; $round++) {
+            $queries = $exactPlan || $queryClaims === [] ? [] : $this->planner->queries($queryClaims, $round);
+            if ($unrestricted) {
+                $queries = array_values(array_filter($queries, fn ($query) => ! isset($seenQueries[$query])));
+                foreach ($queries as $query) {
+                    $seenQueries[$query] = true;
+                }
+            }
             if ($queries === []) {
                 break;
             }
             $progress && $progress('Searching relevant sources');
-            $reserveNextRound = $round === 0 && (int) config('fact_check.retrieval.max_rounds', 2) > 1;
+            $reserveNextRound = ! $unrestricted && $round === 0 && (int) config('fact_check.retrieval.max_rounds', 2) > 1;
             $candidateCeiling = $reserveNextRound && $currentStatusQuestion
                 ? max(count($records), (int) ceil(config('fact_check.retrieval.max_candidates', 40) / 2)) : null;
-            $records = $this->search->retrieve($queries, $budget, $cutoff, $records, $reserveNextRound, $candidateCeiling, 'providers');
+            $records = $this->search->retrieve($queries, $budget, $cutoff, $records, $reserveNextRound, $candidateCeiling, 'providers', $checkpoint);
             if (! $budget->freshSources && ($context['primary_task'] ?? 'claim') === 'claim'
                 && SubmissionTask::questionClaim($context['question'] ?? '') === '' && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)
                 && isset($this->exactFactCheckReconciler->apply(['claim' => $extraction['analysis_text'], 'claims' => $plan['claims']], array_values($records))['exact_fact_check'])) {
@@ -430,16 +491,22 @@ class EvidenceVerificationService
                 || (in_array($c['kind'], ['rhetorical', 'unclear'], true) && ($c['searches'] ?? []) !== []))
                 && in_array($c['outcome'], ['insufficient', 'conflicting', 'needs_context'], true));
             $checkLaterStatus = $round === 0 && $currentStatusQuestion;
+            $gapIds = array_column($unresolved ?: ($checkLaterStatus ? $researchClaims : []), 'id');
+            sort($gapIds);
+            $gapSignature = hash('sha256', json_encode($gapIds, JSON_THROW_ON_ERROR));
             $reviewFailed = collect($this->model->stages)->contains(fn ($status, $stage) => str_starts_with($stage, 'evidence_relationships_') && $status !== 'completed');
-            if (! $paidDiscoveryTried && ($unresolved !== [] || $checkLaterStatus)
-                && ! collect($budget->attempts)->contains(fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search')
+            if (($unrestricted || ! $paidDiscoveryTried) && ($unresolved !== [] || $checkLaterStatus)
+                && ($unrestricted || ! collect($budget->attempts)->contains(fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search'))
                 && config('fact_check.web_search.enabled', true) && filled(config('services.openai.key'))
                 && config('services.openai.analysis_enabled') && $this->model->canAsk()
+                && (! $progressive || ! isset($paidGaps[$gapSignature]))
                 && ($plan['status'] ?? '') === 'completed' && ! $reviewFailed) {
                 $paidDiscoveryTried = true;
+                $paidGaps[$gapSignature] = true;
                 $progress && $progress('Searching for missing evidence');
                 $before = $records;
-                $records = $this->search->retrieve($queries, $budget, $cutoff, $records, false, $candidateCeiling, 'web');
+                $webQueries = $progressive ? ClaimPlanner::targetedQueries(array_values($unresolved) ?: $researchClaims) : $queries;
+                $records = $this->search->retrieve($webQueries, $budget, $cutoff, $records, false, $candidateCeiling, 'web', $checkpoint);
                 if ($records !== $before) {
                     $outcomes = $review($records);
                     $unresolved = array_filter($outcomes, fn ($claim) => ($claim['kind'] === 'factual'
@@ -450,8 +517,81 @@ class EvidenceVerificationService
             if (($unresolved === [] && ! $checkLaterStatus) || $budget->remaining() < 1) {
                 break;
             }
+            if ($progressive) {
+                $referenceSignature = $gapSignature.'|'.$budget->evidenceSignature;
+                if ($unresolved !== [] && ! isset($referenceGaps[$referenceSignature]) && ! $reviewFailed
+                    && collect($records)->contains(fn ($record) => ($record['retrieval_status'] ?? '') === 'discovered'
+                        && in_array($record['provider'] ?? '', ['linked_primary_record', 'linked_reference'], true))) {
+                    $referenceGaps[$referenceSignature] = true;
+                    $progress && $progress('Checking cited original records');
+                    $records = $this->search->retrieve([], $budget, $cutoff, $records, false, null, 'references', $checkpoint);
+                    $outcomes = $review($records);
+                    $unresolved = array_filter($outcomes, fn ($claim) => ($claim['kind'] === 'factual'
+                        || ($claim['context_review_requested'] ?? false))
+                        && in_array($claim['outcome'], ['insufficient', 'conflicting', 'needs_context'], true));
+                    if ($unresolved === [] && ! $checkLaterStatus) {
+                        break;
+                    }
+                }
+                $queryClaims = $unresolved !== [] ? array_values($unresolved) : $researchClaims;
+                if ($reviewFailed || $budget->discoveryStop === 'review_unavailable') {
+                    break;
+                }
+            }
+        }
+        // A resolved verdict can still need broader source coverage. Reuse the
+        // admitted findings and review only new documents; never pad the report
+        // with search snippets or unrelated articles to satisfy the target.
+        $coverageCount = function (array $rows) use (&$relationships): int {
+            return SourceCoverage::count($rows, SourceCoverage::relevantIds($relationships, $this->judge->contextFindings));
+        };
+        $coverageClaims = array_values(array_filter($researchClaims, fn ($claim) => ($claim['kind'] ?? '') === 'factual'
+            || ($claim['context_review_requested'] ?? false)));
+        if (SourceCoverage::target() > 0 && $coverageClaims !== [] && $budget->remaining() >= 1
+            && $coverageCount($records) < SourceCoverage::target() && $this->model->canAsk()) {
+            $coverageCheckpoint = function (array $rows) use ($review, $coverageCount, $budget, $progress): ?string {
+                $outcomes = $review($rows);
+                $budget->coverageSources = $coverageCount($rows);
+                $budget->noteEvidence($outcomes, $this->judge->contextFindings, $this->judge->scopeResolutions);
+                if (collect($this->model->stages)->contains(fn ($status, $stage) =>
+                    str_starts_with($stage, 'evidence_relationships_') && $status !== 'completed')) {
+                    return 'review_unavailable';
+                }
+                $progress && $progress('Comparing additional relevant sources ('.$budget->coverageSources.'/'.SourceCoverage::target().')');
+                $unresolved = collect($outcomes)->contains(fn ($row) => in_array($row['outcome'], ['insufficient', 'conflicting', 'needs_context'], true));
+
+                return $budget->coverageSources >= SourceCoverage::target() && ! $unresolved ? 'resolved' : null;
+            };
+            $coverageQueries = ClaimPlanner::targetedQueries($coverageClaims);
+            foreach (['providers', 'web', 'references'] as $discovery) {
+                if ($coverageCount($records) >= SourceCoverage::target() || $budget->remaining() < 1
+                    || ! $this->model->canAsk() || $budget->discoveryStop === 'review_unavailable') break;
+                if ($discovery === 'web' && collect($budget->attempts)->contains(fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search')) continue;
+                $progress && $progress('Finding additional relevant sources');
+                $records = $this->search->retrieve($discovery === 'references' ? [] : $coverageQueries,
+                    $budget, $cutoff, $records, false, null, $discovery, $coverageCheckpoint);
+            }
         }
         $claims = $this->judge->outcomes($plan['claims'], $relationships);
+        $fallbackReviewed = false;
+        $needsMoreEvidence = collect($claims)->contains(fn ($claim) => ($claim['kind'] === 'factual'
+            || ($claim['context_review_requested'] ?? false))
+            && in_array($claim['outcome'], ['insufficient', 'needs_context', 'conflicting'], true));
+        if ($needsMoreEvidence && $this->model->canAsk()
+            && collect($records)->contains(fn ($record) => ($record['retrieval_status'] ?? '') === 'retrieved'
+                && ($record['source_type'] ?? '') === 'unapproved')) {
+            // Prefer established sources first; unknown publishers become
+            // reviewable fallback evidence, never automatically trusted sources.
+            foreach ($records as &$record) {
+                if (($record['source_type'] ?? '') === 'unapproved') {
+                    $record['source_type'] = 'other_web';
+                }
+            }
+            unset($record);
+            $progress && $progress('Reviewing additional web sources');
+            $claims = $review($records);
+            $fallbackReviewed = true;
+        }
         $photoQuestion = ($context['media_type'] ?? '') === 'image'
             && SubmissionTask::questionClaim($context['question'] ?? '') !== ''
             && (trim($extraction['visible_text'] ?? '') === ''
@@ -474,7 +614,9 @@ class EvidenceVerificationService
         }
         foreach ($budget->providers as $provider => $status) {
             if (! in_array($status, ['ok', 'cached', 'not_configured'], true)) {
-                $extraction['limitations'][] = 'Discovery coverage was limited because '.str_replace('_', ' ', $provider).' reported '.str_replace('_', ' ', $status).'.';
+                $extraction['limitations'][] = $status === 'partial_results'
+                    ? 'Source links from a completed search were retained, although the accompanying search response text was incomplete.'
+                    : 'Discovery coverage was limited because '.str_replace('_', ' ', $provider).' reported '.str_replace('_', ' ', $status).'.';
             }
         }
         foreach ($records as &$record) {
@@ -517,6 +659,7 @@ class EvidenceVerificationService
             'analysis_elapsed_ms' => (int) round((microtime(true) - $started) * 1000), 'pipeline_version' => self::VERSION,
             'unique_candidates' => count($records),
             'articles_retrieved' => count(array_filter($records, fn ($r) => ($r['retrieval_status'] ?? '') === 'retrieved')),
+            'other_web_fallback_reviewed' => $fallbackReviewed,
             'sources_reviewed' => count(array_unique(array_merge(array_column($relationships, 'source_id'),
                 array_column($this->judge->contextualSources, 'source_id')))),
             'sources_used' => count($result['sources']), 'candidate_records' => array_values($records),
@@ -527,10 +670,32 @@ class EvidenceVerificationService
                 && ($record['retrieval_status'] ?? '') === 'reference_only'
                 && ReportAnswer::safeUrl($record['url'] ?? null) !== null)
         ));
+        $result['unavailable_fact_checks'] = array_values(array_map(
+            fn ($record) => Arr::only($record, ['title', 'url', 'name', 'retrieval_status']),
+            array_filter($records, fn ($record) => ! in_array($record['retrieval_status'] ?? '', ['retrieved', 'reviewed_database', 'after_cutoff', 'undated_historical'], true)
+                && ReportAnswer::safeUrl($record['url'] ?? null) !== null)
+        ));
+        $result['unavailable_fact_checks'] = array_values(array_filter($result['unavailable_fact_checks'], function ($reference) use ($context, $records, $plan) {
+            if (($context['source_url'] ?? null) === $reference['url']) {
+                return true;
+            }
+            $record = collect($records)->firstWhere('url', $reference['url']);
+
+            return $this->policy->isFactCheckUrl($reference['url']) && collect($plan['claims'])->contains(fn ($claim) => $this->search->matchesDiscoveryClaim([
+                'text' => $claim['caption_context'] ?? $claim['text'], 'discovery_context' => $claim['visual_context'] ?? '',
+            ], (string) ($record['reviewed_claim'] ?? $record['title'] ?? '')));
+        }));
         $result = $this->explainOutcome($result, $plan, $budget);
         // A short headline is not "missing context" when a publisher has
         // already reviewed the same claim and supplied a decisive rating.
         $result = $this->exactFactCheckReconciler->apply($result, array_values($records));
+        $coverage = SourceCoverage::count($records, array_column($result['sources'], 'id'));
+        $result['diagnostics']['source_coverage'] = ['target' => SourceCoverage::target(), 'cited' => $coverage,
+            'target_met' => $coverage >= SourceCoverage::target(),
+            'status' => $coverage >= SourceCoverage::target() ? 'target_met' : 'fewer_qualifying_sources',
+            'note' => $coverage >= SourceCoverage::target()
+                ? 'The cited relevant sources meet the requested coverage goal.'
+                : 'Fewer distinct relevant sources qualified from the available searches. Unrelated, duplicate and unreadable results were not added to reach a count.'];
         if (isset($result['exact_fact_check'])) {
             $exactIds = $result['exact_fact_check']['source_ids'] ?? [$result['exact_fact_check']['source_id']];
             foreach ($records as &$record) {
@@ -600,6 +765,8 @@ class EvidenceVerificationService
         }
         $result['source_snapshot_id'] = hash('sha256', json_encode($records, JSON_THROW_ON_ERROR));
         $key = hash('sha256', json_encode(['version' => self::VERSION, 'pipeline_identity' => EvidenceVerdictCalibration::identity(),
+            'unrestricted_research' => ResearchLimits::unrestricted(), 'progressive_research' => $progressive,
+            'min_relevant_sources' => SourceCoverage::target(),
             'verdict_calibration' => config('fact_check.verdict_calibration.enabled', false) ? config('fact_check.verdict_calibration.sha256', '') : 'disabled',
             'score_version' => AssessmentScore::RUBRIC,
             'wording_version' => ResultWording::VERSION,
@@ -662,7 +829,7 @@ class EvidenceVerificationService
     private function explainOutcome(array $result, array $plan, RetrievalBudget $budget): array
     {
         $archiveLimited = count(array_filter($budget->attempts, fn ($a) => $a['status'] === 'archive_limited')) > 0;
-        $failures = array_filter($budget->attempts, fn ($a) => ! in_array($a['status'], ['ok', 'cached', 'archive_limited'], true));
+        $failures = $budget->failedSearches();
         $successful = count($budget->attempts) - count($failures);
         $rawFound = array_sum(array_column($budget->attempts, 'raw_results'));
         $notConfigured = $budget->providers !== [] && count(array_filter($budget->providers, fn ($s) => $s === 'not_configured')) === count($budget->providers);
@@ -845,6 +1012,9 @@ class EvidenceVerificationService
             $used[$id] ??= Arr::only($record, ['id', 'name', 'title', 'url', 'published_at', 'updated_at', 'retrieved_at', 'possible_copy_of']) + ['type' => $record['source_type'], 'used_for' => '', 'relationships' => []];
             $used[$id]['relationships'][] = Arr::only($relationship, ['claim_id', 'stance', 'excerpt', 'explanation', 'supersedes_source_ids', 'supersession_excerpt']);
             $used[$id]['used_for'] = implode(' ', array_unique(array_column($used[$id]['relationships'], 'explanation')));
+            if ($record['source_type'] === 'other_web') {
+                $limitations[] = 'A cited fallback web source is outside the preferred publisher list; its reporting was reviewed, but its publisher is not independently verified by TruthGuard.';
+            }
             if (! $record['published_at']) {
                 $limitations[] = 'A cited article has no available publication date; its historical timing cannot be established.';
             }

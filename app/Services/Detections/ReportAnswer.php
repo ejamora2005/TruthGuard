@@ -74,7 +74,7 @@ class ReportAnswer
                 if ($questionFocused) {
                     // A second reviewed sentence can contain the actual outcome
                     // or new date that the first sentence only introduces.
-                    $detail = implode(' ', array_slice($sentences, 0, 2));
+                    $detail = implode(' ', array_slice($sentences, 0, 6));
                 }
                 $key = Str::lower(Str::squish($detail));
                 if (isset($seen[$key])) {
@@ -105,10 +105,28 @@ class ReportAnswer
 
     private static function answerQuestion(array $result): array
     {
+        if (($gap = ResultWording::informationGap($result)) !== null) {
+            // Keep the requested unknown separate from caption allegations.
+            // Retain any independently cited context without inventing a value.
+            $details = array_values(array_filter($result['answer_segments'], fn ($row) => ($row['source_ids'] ?? []) !== []));
+            if ($details === []) {
+                foreach ($result['contextual_sources'] ?? [] as $source) {
+                    if (trim((string) ($source['excerpt'] ?? '')) !== '') {
+                        $details[] = ['text' => self::attributeSource('“'.$source['excerpt'].'”', $source['name'] ?? ''),
+                            'source_ids' => [$source['id']]];
+                    }
+                }
+            }
+            $result['answer_segments'] = [['text' => $gap, 'source_ids' => []], ...array_slice($details, 0, 2)];
+            $result['summary'] = implode(' ', array_column($result['answer_segments'], 'text'));
+
+            return $result;
+        }
         $target = SubmissionTask::questionClaim($result['request']['question'] ?? '');
         $facts = array_values(array_filter($result['claims'] ?? [], fn ($claim) => ($claim['kind'] ?? '') === 'factual'));
         if ($result['primary_task'] !== 'claim' || ! in_array($result['verdict'], ['TRUE', 'FALSE'], true)
-            || $target === '' || count($facts) !== 1 || ($facts[0]['text'] ?? '') !== $target || $result['sources'] === []) {
+            || $target === '' || SubmissionTask::isInformationQuestion($result['request']['question'] ?? '')
+            || count($facts) !== 1 || ($facts[0]['text'] ?? '') !== $target || $result['sources'] === []) {
             return $result;
         }
         $prefix = $result['verdict'] === 'TRUE' ? 'Yes.' : 'No.';

@@ -118,7 +118,7 @@ class AiOriginWorkflowTest extends TestCase
         $this->assertSame($summary, $d->explanation_summary);
         $this->getJson(route('detections.result', $d))->assertJsonPath('media_assessment.origin_inconclusive', true)
             ->assertJsonPath('verdict', 'LIKELY_AI_GENERATED')
-            ->assertSee('detector signal is weak');
+            ->assertJsonPath('score.value', .55);
     }
 
     public function test_borderline_score_cannot_be_reported_as_ai_generated_when_policy_field_is_missing(): void

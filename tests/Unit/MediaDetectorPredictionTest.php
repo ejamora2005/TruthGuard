@@ -23,8 +23,8 @@ class MediaDetectorPredictionTest extends TestCase
                 $public = ReportAnswer::forPresentation($saved);
                 $expected = $label === 'fake' ? 'LIKELY_AI_GENERATED' : 'LIKELY_NOT_AI_GENERATED';
                 $this->assertSame($expected, $public['verdict']);
-                $this->assertStringContainsString('The detector', $public['summary']);
-                $this->assertStringContainsString('The two detectors gave different results', $public['summary']);
+                $this->assertTrue($public['media_assessment']['detector_disagreement']);
+                $this->assertDoesNotMatchRegularExpression('/detector|model|system|classification/i', $public['summary']);
                 $this->assertStringNotContainsString('threshold', $public['summary']);
                 $this->assertSame('INCONCLUSIVE', $saved['verdict']);
                 $again = ReportAnswer::forPresentation($public);

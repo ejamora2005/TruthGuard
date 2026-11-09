@@ -6,6 +6,7 @@ use App\Models\Detection;
 use App\Services\Automation\RelatedPostScraper;
 use App\Services\Detections\DetectionPipeline;
 use App\Services\Detections\ReportAnswer;
+use App\Services\Detections\Evidence\ResearchLimits;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -37,6 +38,9 @@ class AnalyzeDetectionEvidence implements ShouldBeUnique, ShouldQueue
     ) {
         $this->retryId = $retryId;
         $this->previousStatus = $previousStatus;
+        if (ResearchLimits::unrestricted()) {
+            $this->timeout = 0;
+        }
         $this->onConnection('evidence')->onQueue('evidence');
     }
 

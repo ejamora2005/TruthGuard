@@ -130,7 +130,7 @@ class ResearchWorkflowTest extends TestCase
         $url = 'https://example.gov/specific-record';
         $old = str_repeat('A previously retrieved schedule. ', 4);
         $new = str_repeat('The updated official schedule. ', 4);
-        Cache::put('evidence-page:v3:'.hash('sha256', $url), ['text' => $old, 'status' => 'retrieved'], 300);
+        Cache::put('evidence-page:v5:'.hash('sha256', $url), ['text' => $old, 'status' => 'retrieved'], 300);
         Http::preventStrayRequests();
         Http::fake([$url => Http::response($new, 200, ['Content-Type' => 'text/plain'])]);
         $fetcher = $this->partialMock(SafeArticleFetcher::class);

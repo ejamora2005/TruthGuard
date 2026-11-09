@@ -168,7 +168,7 @@ class PendingReportJsonTest extends TestCase
             $detection->forceFill(['processing_status' => $status])->saveQuietly();
             $this->get(route('detections.result', $detection))->assertRedirect($resume);
             $this->get($resume)->assertOk()->assertViewHas('pendingDetection', fn ($pending) => $pending->is($detection))
-                ->assertSee('Hide progress')->assertSee('Minimize progress')
+                ->assertSee('Stop fact check')->assertSee('Minimize progress')
                 ->assertSee('View progress')->assertDontSee('Your assessment is in progress');
         }
         $detection->forceFill(['processing_status' => 'completed'])->saveQuietly();

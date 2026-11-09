@@ -260,12 +260,15 @@
         $recordedSources = array_merge($recordedSources, $secondary['sources'] ?? [], $secondary['contextual_sources'] ?? []);
     }
     $sources = collect($recordedSources)
+        ->filter(fn ($source): bool => is_array($source)
+            && (! isset($source['retrieval_status']) || in_array($source['retrieval_status'], ['retrieved', 'reviewed_database', 'reference_only'], true))
+            && ! in_array($source['assessment_role'] ?? '', ['not_used', 'irrelevant', 'discovered', 'background_or_rejected_match', 'superseded'], true))
         ->map(fn ($source) => is_array($source) ? array_merge($source, [
             'source_type' => match ($source['source_type'] ?? $source['type'] ?? 'reference') {
                 'official_government', 'institution', 'research' => 'official',
                 default => $source['source_type'] ?? $source['type'] ?? 'reference',
             },
-            'summary' => $source['summary'] ?? $source['used_for'] ?? '',
+            'summary' => $source['summary'] ?? $source['used_for'] ?? $source['explanation'] ?? '',
         ]) : $source)
         ->filter(fn ($source): bool => is_array($source) && \App\Services\Detections\ReportAnswer::safeUrl($source['url'] ?? null) !== null)
         ->reject(fn (array $source): bool => ($selectedDetection->fact_check_result['schema_version'] ?? 0) < 4
@@ -279,7 +282,10 @@
             'social_context' => 5,
             default => 6,
         })->values();
-    $primarySources = $sources->reject(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->take(6)->values();
+    $primarySources = $sources->reject(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->values();
+    $additionalReferences = app(\App\Services\Detections\AdditionalSourceReferences::class)->select(
+        is_array($selectedDetection->fact_check_result) ? $selectedDetection->fact_check_result : [],
+        $selectedDetection->verification_sources ?? [], $sources->all());
     $socialSources = $sources->filter(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->take(4)->values();
     [$trustedSources, $otherSources] = $sources->partition(fn (array $source): bool => in_array(($source['source_type'] ?? null), ['fact_check', 'official', 'weather'], true));
     $trustedSourceCount = $trustedSources->count();
@@ -316,11 +322,11 @@
     };
 
     $sourceBadgeClass = function (array $source) use ($ratingNormalizer): string {
+        if (!empty($source['context_only'])) {
+            return 'bg-amber-50 text-amber-800 ring-amber-200';
+        }
         $rating = $ratingNormalizer::normalize(
             (string) ($source['rating'] ?? ''),
-            (string) ($source['summary'] ?? ''),
-            (string) ($source['purpose'] ?? ''),
-            (string) ($source['status'] ?? ''),
         );
 
         return match ($ratingNormalizer::toneFor($rating)) {
@@ -331,11 +337,11 @@
     };
 
     $sourceBadgeText = function (array $source) use ($ratingNormalizer, $sourceTypeLabel): string {
+        if (!empty($source['context_only'])) {
+            return 'Related context';
+        }
         $rating = $ratingNormalizer::normalize(
             (string) ($source['rating'] ?? ''),
-            (string) ($source['summary'] ?? ''),
-            (string) ($source['purpose'] ?? ''),
-            (string) ($source['status'] ?? ''),
         );
 
         return $rating !== '' && $rating !== $ratingNormalizer::REVIEWED ? $rating : $sourceTypeLabel($source);
@@ -1148,7 +1154,7 @@
                             </div>
                         @endif
                         <div class="tg-verdict-actions">
-                            @if (($extractionIssue || $isMediaReport) && in_array($selectedDetection->media_type, ['image', 'video'], true) && $selectedDetection->media_path)
+                            @if (in_array($selectedDetection->media_type, ['image', 'video'], true) && $selectedDetection->media_path)
                                 <form method="POST" action="{{ route('detections.retry-media', $selectedDetection) }}" x-data="{ retrying: false }" @submit="retrying = true" class="mb-4">
                                     @csrf
                                     <input type="hidden" name="analysis_task" value="{{ $isMediaReport ? $recordedTask : ($recordedTask === 'context' ? 'context' : 'claim') }}">
@@ -1604,36 +1610,55 @@
             <span class="hidden shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500 sm:inline-flex">Report an issue</span>
         </div>
         @php
-            $feedbackOptions = [
-                'wrong_interpretation' => ['label' => 'Claim was misunderstood', 'icon' => 'M12 3v18m9-9H3'],
-                'unsupported_source' => ['label' => 'Source does not support it', 'icon' => 'M10.5 13.5 13.5 10.5m-5.25 7.25-1.5 1.5a3.18 3.18 0 0 1-4.5-4.5l3-3a3.18 3.18 0 0 1 4.5 0m6-3.5 1.5-1.5a3.18 3.18 0 0 1 4.5 4.5l-3 3a3.18 3.18 0 0 1-4.5 0'],
-                'verdict_review' => ['label' => 'Verdict needs review', 'icon' => 'M12 3 5 6v5.2c0 4.3 2.8 7.5 7 9.3 4.2-1.8 7-5 7-9.3V6l-7-3Z'],
-                'unclear_explanation' => ['label' => 'Explanation is unclear', 'icon' => 'M9.1 9a3 3 0 1 1 4.5 2.6c-1 .6-1.6 1.1-1.6 2.4m0 3h.01'],
-            ];
-
-            if (($publicResult['primary_task'] ?? '') === 'media') {
-                $feedbackOptions['media_false_positive'] = ['label' => 'This is a real image', 'icon' => 'M5 12.5 9.5 17 19 7.5'];
-                $feedbackOptions['media_false_negative'] = ['label' => 'This is AI-generated', 'icon' => 'M12 3 14 9.5 21 12l-7 2.5L12 21l-2-6.5L3 12l7-2.5L12 3Z'];
-            }
+            $feedbackOptions = \App\Services\Detections\PipelineFeedback::options(($publicResult['primary_task'] ?? '') === 'media');
         @endphp
+        <form method="POST" action="{{ route('detections.feedback', $selectedDetection) }}">
+        @csrf
+        <div class="border-t border-slate-100 px-4 py-3 sm:px-6">
+            <label for="result-feedback-note" class="text-xs font-bold text-slate-700">What should we check? (optional)</label>
+            <textarea id="result-feedback-note" name="note" rows="2" maxlength="1000" class="mt-2 block w-full rounded-xl border-slate-200 text-sm" placeholder="Describe the issue or share a relevant source link.">{{ old('note') }}</textarea>
+            @if (isset($errors))
+                @error('note')<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
+            @endif
+        </div>
         <div class="grid grid-cols-2 gap-1.5 border-t border-slate-100 bg-slate-50/70 p-3 sm:gap-2 sm:p-5 lg:grid-cols-4">
             @foreach ($feedbackOptions as $feedbackValue => $feedbackOption)
-                <form method="POST" action="{{ route('detections.feedback', $selectedDetection) }}" class="min-w-0">
-                    @csrf
-                    <input type="hidden" name="category" value="{{ $feedbackValue }}">
-                    <button type="submit" class="group flex h-full min-h-12 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-left text-[11px] font-bold leading-4 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:min-h-0 sm:gap-2.5 sm:px-3.5 sm:py-3 sm:text-xs sm:leading-5">
+                    <button type="submit" name="category" value="{{ $feedbackValue }}" class="group flex h-full min-h-12 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-left text-[11px] font-bold leading-4 text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:min-h-0 sm:gap-2.5 sm:px-3.5 sm:py-3 sm:text-xs sm:leading-5">
                         <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition group-hover:bg-blue-50 group-hover:text-blue-700 sm:h-8 sm:w-8" aria-hidden="true">
-                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="{{ $feedbackOption['icon'] }}" /></svg>
+                            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.1 9a3 3 0 1 1 4.5 2.6c-1 .6-1.6 1.1-1.6 2.4m0 3h.01" /></svg>
                         </span>
                         <span>{{ $feedbackOption['label'] }}</span>
                     </button>
-                </form>
             @endforeach
         </div>
+        </form>
     </section>
 
     @unless($mediaOnlyReport)
     <article id="source-verification" tabindex="-1" class="tg-ai-surface tg-report-sources p-5 sm:p-7">
+        @if ((int) data_get($publicResult, 'source_coverage.target', 0) > 0)
+            <p class="mb-4 text-sm text-slate-600" role="status">
+                <strong>{{ (int) data_get($publicResult, 'source_coverage.cited', 0) }} distinct relevant sources cited.</strong>
+                @if (data_get($publicResult, 'source_coverage.target_met'))
+                    The coverage goal of {{ (int) data_get($publicResult, 'source_coverage.target') }} sources was met.
+                @else
+                    Fewer than the goal of {{ (int) data_get($publicResult, 'source_coverage.target') }} qualified from the available searches; unrelated, duplicate and unreadable results were excluded.
+                @endif
+            </p>
+        @endif
+        @if(!empty($publicResult['unavailable_fact_checks']))
+            <section class="mb-5 rounded-xl border border-amber-200 bg-amber-50 p-4" aria-label="Reference pages that could not be read">
+                <h3 class="text-sm font-bold text-amber-950">Reference pages that could not be read</h3>
+                <p class="mt-1 text-sm text-amber-900">These pages were located, but their full text was unavailable. Their contents were not used as verified evidence.</p>
+                <ul class="mt-2 space-y-2 text-sm">
+                    @foreach($publicResult['unavailable_fact_checks'] as $unavailableCheck)
+                        @if(\App\Services\Detections\ReportAnswer::safeUrl($unavailableCheck['url'] ?? null))
+                            <li><a class="font-semibold text-blue-700 underline break-words" href="{{ $unavailableCheck['url'] }}" target="_blank" rel="noopener noreferrer">{{ $unavailableCheck['title'] ?? $unavailableCheck['url'] }}</a></li>
+                        @endif
+                    @endforeach
+                </ul>
+            </section>
+        @endif
         <div class="tg-source-section-header">
             <div class="tg-source-section-title">
                 <span class="tg-ai-icon bg-blue-50 text-blue-700">
@@ -1698,7 +1723,9 @@
         </div>
 
         @if (!$isMediaReport && empty($publicResult['sources']))
-            <p class="mb-4 text-sm text-slate-600">No reviewed source established a factual conclusion for this submission. This does not mean the claim is false.</p>
+            <p class="mb-4 text-sm text-slate-600">{{ !empty($publicResult['contextual_sources'])
+                ? 'The exact requested detail remains unresolved. These sources establish related findings about the submitted content.'
+                : 'No reviewed source established a factual conclusion for this submission. This does not mean the claim is false.' }}</p>
         @endif
         <div class="tg-source-list">
             @forelse ($primarySources as $source)
@@ -1743,6 +1770,9 @@
                     @if (filled($source['title'] ?? $source['headline'] ?? null))
                         <span class="tg-source-card-title">{{ $source['title'] ?? $source['headline'] }}</span>
                     @endif
+                    @if(!empty($source['context_only']))
+                        <span class="text-xs font-semibold text-amber-800">Related finding · exact requested detail unresolved</span>
+                    @endif
                     <span class="tg-source-description">{{ \Illuminate\Support\Str::limit($reason, 170) }}</span>
                     <span class="tg-source-card-footer">
                         <span class="tg-source-meta">
@@ -1764,6 +1794,24 @@
                 </div>
             @endforelse
         </div>
+
+        @if ($additionalReferences !== [])
+            <section class="mt-5 border-t border-slate-200 pt-5" aria-labelledby="additional-references-{{ $selectedDetection->id }}">
+                <h4 id="additional-references-{{ $selectedDetection->id }}" class="text-base font-black text-slate-950">Additional relevant sources ({{ count($additionalReferences) }})</h4>
+                <p class="mt-1 text-sm leading-6 text-slate-600">Related pages retrieved during this check, including government records when available. These references were not used to establish the verdict and are excluded from the cited-source count.</p>
+                <div class="tg-source-list mt-4">
+                    @foreach ($additionalReferences as $reference)
+                        <a href="{{ $reference['url'] }}" target="_blank" rel="noopener noreferrer" class="tg-ai-source tg-source-card group">
+                            <span class="tg-source-publisher">{{ $reference['name'] }}</span>
+                            <span class="tg-source-domain">{{ $reference['host'] }}</span>
+                            <span class="tg-source-card-title">{{ $reference['title'] }}</span>
+                            <span class="text-xs font-semibold text-amber-800">{{ $reference['type_label'] }} · Not used for the verdict</span>
+                            <span class="tg-source-card-footer"><span class="tg-source-open">Open reference ↗</span></span>
+                        </a>
+                    @endforeach
+                </div>
+            </section>
+        @endif
 
         @if ($socialSources->isNotEmpty())
             <section class="mt-5 border-t border-slate-200 pt-5" aria-labelledby="social-context-title">
@@ -1811,7 +1859,7 @@
             <div class="tg-related-header">
                 <div>
                     <h3 class="text-lg font-black text-slate-950">Related context</h3>
-                    <p>Additional posts and recent public fact checks.</p>
+                    <p>Related material provides context. Evidence used for the verdict is listed under Source verification.</p>
                 </div>
                 <span class="tg-source-count"><strong>{{ $relatedPosts->count() + $recentFactChecks->count() }}</strong> items</span>
             </div>
@@ -1849,9 +1897,9 @@
                 @endforeach
 
                 @if ($recentFactChecks->isNotEmpty())
-                    <h4 class="tg-related-group">Recent public fact checks</h4>
+                    <h4 class="tg-related-group">Related public fact checks</h4>
                 @endif
-                <div class="tg-related-recent-row" role="region" aria-label="Recent public fact checks" tabindex="0">
+                <div class="tg-related-recent-row" role="region" aria-label="Related public fact checks" tabindex="0">
                 @foreach ($recentFactChecks as $item)
                     @php
                         $publisherName = $item['publisher'] ?? 'Fact-check partner';

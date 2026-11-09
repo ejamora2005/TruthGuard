@@ -9,10 +9,10 @@ class EvidenceVerdictCalibration
 
     public static function identity(): string
     {
-        $files = ['EvidenceVerdictCalibration.php', 'EvidenceVerificationService.php', 'AssessmentVerdict.php', 'ResultContract.php', 'ReportAnswer.php',
+        $files = ['EvidenceVerdictCalibration.php', 'EvidenceVerificationService.php', 'AssessmentVerdict.php', 'ResultContract.php', 'ReportAnswer.php', 'ResultWording.php', 'AnswerEvidenceValidator.php', 'ReviewedClaimLookup.php',
             'SubmissionTask.php', 'EvidenceSummary.php', 'FactCheckEvidencePolicy.php', 'FactCheckClaimMatcher.php', 'ExactFactCheckReconciler.php', 'Evidence/ClaimPlanner.php', 'Evidence/EvidenceJudge.php',
             'Evidence/ArticleSearch.php', 'Evidence/EvidencePassages.php', 'Evidence/ReportApiBudget.php', 'Evidence/OpenAiWebSearch.php', 'Evidence/SafeArticleFetcher.php',
-            'Evidence/SubmissionExtractor.php', 'Evidence/SubmittedText.php', 'Evidence/RetrievalBudget.php', 'Evidence/StructuredAnalysis.php', 'Evidence/ResponsesTransport.php'];
+            'Evidence/SubmissionExtractor.php', 'Evidence/SubmittedText.php', 'Evidence/RetrievalBudget.php', 'Evidence/StructuredAnalysis.php', 'Evidence/ResponsesTransport.php', 'Evidence/ResearchGuidance.php'];
         $hashes = [];
         foreach ($files as $file) {
             $hashes[$file] = hash_file('sha256', __DIR__.'/'.$file);

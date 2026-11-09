@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Detection;
+use App\Models\PublicClaimReview;
 use App\Models\User;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\LiveVerificationEvidenceService;
@@ -17,10 +18,35 @@ class CommittedResultPageTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_completed_report_opens_without_feed_refresh_and_keeps_saved_recent_cards(): void
+    {
+        Http::preventStrayRequests();
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
+        config()->set('services.google_fact_check.feed_max_age_days', 7);
+        $user = User::factory()->create();
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'text', 'media_type' => 'text',
+            'processing_status' => 'completed', 'verdict' => 'review', 'fake_score' => 0,
+            'fact_check_result' => ['schema_version' => 4, 'primary_task' => 'claim',
+                'verdict' => 'UNVERIFIED', 'claim' => 'The fictional library opened in 2024.',
+                'summary' => 'The saved evidence does not resolve this claim.']]);
+        foreach (['Recent saved public review' => now()->subDay(), 'Expired public review' => now()->subDays(8)] as $title => $date) {
+            PublicClaimReview::create(['feed_item_id' => md5($title), 'headline' => $title,
+                'claim' => 'The fictional library opened in 2024.',
+                'publisher' => 'Fixture publisher', 'url' => 'https://example.test/'.md5($title),
+                'published_at' => $date, 'last_seen_at' => now()]);
+        }
+        $before = $detection->fresh()->getRawOriginal();
+        $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
+            ->assertSee('Related public fact checks')->assertSee('Recent saved public review')
+            ->assertDontSee('Expired public review');
+        $this->assertSame($before, $detection->fresh()->getRawOriginal());
+        Http::assertNothingSent();
+    }
+
     public function test_source_header_groups_match_details_counts_and_list_only_their_recorded_sources(): void
     {
         Http::preventStrayRequests();
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->twice()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $sources = array_map(fn ($type, $i) => ['source_type' => $type, 'name' => 'Fixture publisher '.$i,
             'title' => 'Fixture record '.$i, 'url' => 'https://example.com/record/'.$i],
@@ -68,7 +94,7 @@ class CommittedResultPageTest extends TestCase
     public function test_claim_details_do_not_treat_a_saved_article_body_as_a_matched_claim(): void
     {
         Http::preventStrayRequests();
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->twice()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $source = ['name' => 'Example publisher', 'source_type' => 'fact_check',
             'url' => 'https://example.com/fact-check/library', 'title' => 'A saved source article',
@@ -101,7 +127,7 @@ class CommittedResultPageTest extends TestCase
     public function test_long_submitted_text_has_a_short_preview_and_closed_full_text_control(): void
     {
         Http::preventStrayRequests();
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $text = str_repeat('A long recorded statement with material qualifications. ', 30).'Final qualifier preserved.';
         $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'upload', 'media_type' => 'text',
@@ -126,7 +152,7 @@ class CommittedResultPageTest extends TestCase
     {
         Http::preventStrayRequests();
         config()->set('services.media_calibration.enabled', false);
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->times(2)->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         foreach ([[.97, false, 'Model score: 97%'], [.55, true, 'Model score: 55%']] as [$value, $uncertain, $expected]) {
             $result = ReportAnswer::complete(MediaAnalysisReport::result([
@@ -149,7 +175,7 @@ class CommittedResultPageTest extends TestCase
     {
         Http::preventStrayRequests();
         config()->set('services.media_calibration.enabled', false);
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->twice()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $media = ['status' => 'completed', 'media_type' => 'image', 'label' => 'fake', 'fake_probability' => .9920251369476318,
             'model_name' => 'Primary AI-origin detector', 'label_mapping' => ['real', 'fake'],
@@ -179,7 +205,7 @@ class CommittedResultPageTest extends TestCase
     public function test_interpretation_shows_only_a_short_summary_without_a_full_explanation_control(): void
     {
         Http::preventStrayRequests();
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $summary = 'The text is too fragmentary to identify a specific factual assertion. The related material provides background rather than a factual verdict.';
         $original = 'I searched for records about the submitted topic. '.$summary.' A related source dated 2026-10-16 states: “A long background quotation.”';
@@ -214,7 +240,7 @@ class CommittedResultPageTest extends TestCase
     {
         Http::preventStrayRequests();
         $user = User::factory()->create();
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->times(3)->with(6)->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         foreach ([
             [['openai_usage' => ['input_tokens' => 12, 'output_tokens' => 8, 'total_tokens' => 20]], 'Used for this report'],
             [['submission_extraction' => [['status' => 'unavailable', 'failure_reason' => 'quota_exhausted']]], 'API credits exhausted'],
@@ -248,8 +274,7 @@ class CommittedResultPageTest extends TestCase
         $create($other);
         $second = $create($owner);
         $queued = $create($owner, ['processing_status' => 'queued']);
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->with(6)
-            ->times(3)->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
 
         foreach ([[$owner, $first, 1], [$owner, $second, 2], [$owner, $queued, 3], [$other, $otherFirst, 1]] as [$user, $report, $number]) {
             if ($report->processing_status === 'queued') {
@@ -288,7 +313,7 @@ class CommittedResultPageTest extends TestCase
             'fact_check_result' => $saved, 'analyzed_at' => now(),
         ]);
         $before = $detection->fresh()->getRawOriginal();
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->once()->with(6)->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $this->mock(OpenAiDetectionReportService::class)->shouldNotReceive('extractClaimText')->shouldNotReceive('enhance');
         $this->mock(LiveVerificationEvidenceService::class)->shouldNotReceive('verify');
 

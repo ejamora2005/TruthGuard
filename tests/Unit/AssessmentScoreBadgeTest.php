@@ -53,7 +53,7 @@ class AssessmentScoreBadgeTest extends TestCase
         $badge = AssessmentScore::badge($saved);
         $this->assertStringContainsString('>99%', $badge['title']);
         $this->assertSame('', $badge['description']);
-        $this->assertStringContainsString('disagreed', ReportAnswer::forPresentation($saved)['summary']);
+        $this->assertTrue(ReportAnswer::forPresentation($saved)['media_assessment']['detector_disagreement']);
         $this->assertStringNotContainsString('Below', $badge['description']);
         $public = ReportAnswer::forPresentation($saved);
         $this->assertSame('LIKELY_AI_GENERATED', $public['verdict']);
@@ -66,7 +66,8 @@ class AssessmentScoreBadgeTest extends TestCase
         $saved['media_assessment']['origin_policy']['reasons'] = ['input_quality_or_composition_limited'];
         $badge = AssessmentScore::badge($saved);
         $this->assertSame('', $badge['description']);
-        $this->assertStringContainsString('compression', ReportAnswer::forPresentation($saved)['summary']);
+        $this->assertContains('The uploaded file quality or composition limits origin screening.',
+            ReportAnswer::forPresentation($saved)['media_assessment']['decision_reasons']);
         $this->assertStringNotContainsString('Below', $badge['description']);
     }
 

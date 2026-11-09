@@ -7,6 +7,7 @@ use App\Models\Detection;
 use App\Models\User;
 use App\Services\Detections\Evidence\ArticleSearch;
 use App\Services\Detections\Evidence\SubmissionExtractor;
+use App\Services\Detections\Evidence\SubmittedText;
 use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use App\Services\Detections\ResultWording;
@@ -23,13 +24,24 @@ class GeneratedResultWordingTest extends TestCase
 
     private const EXPLANATION = 'The municipal library record gives January 3, 2024 as the opening date and names the same library as the submission. This directly confirms the claimed opening date, but does not establish unrelated claims about the library.';
 
-    private const SHORT = 'The key date and identity are directly supported by the reviewed municipal record.';
+    private const PASSAGE = 'The municipal library record gives January 3, 2024 as the opening date and names the same library as the submission. The record confirms the claimed opening date, but does not establish unrelated claims about the library.';
 
-    private const ACTION = 'Read the municipal library record before quoting its opening date.';
+    private const SHORT = 'The key details are directly supported by the reviewed evidence.';
+
+    private const ACTION = 'Review the cited original record and its date before sharing the claim.';
+
+    private static function statementEvidence(string $claimId = 'c1'): array
+    {
+        $statements = SubmittedText::sentences(self::EXPLANATION);
+        $passages = SubmittedText::sentences(self::PASSAGE);
+
+        return array_map(fn ($index) => ['statement' => $statements[$index], 'claim_id' => $claimId,
+            'source_id' => 's1', 'excerpt' => $passages[$index]], [0, 1]);
+    }
 
     public function test_usage_details_distinguish_stage_tokens_from_zero_cost_saved_result_reuse(): void
     {
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $usage = ['input_tokens' => 100, 'output_tokens' => 20, 'total_tokens' => 120, 'by_stage' => [
             'evidence_relationships_0' => ['input_tokens' => 100, 'output_tokens' => 20, 'total_tokens' => 120,
@@ -83,7 +95,7 @@ class GeneratedResultWordingTest extends TestCase
             'id' => 's1', 'url' => 'https://example.gov.ph/library-record', 'name' => 'Municipal records',
             'title' => 'Library opening record', 'retrieval_status' => 'retrieved', 'source_type' => 'official_government',
             'published_at' => '2024-01-04T00:00:00Z', 'retrieved_at' => now()->utc()->toIso8601String(),
-            'text' => self::CLAIM, 'text_truncated' => false,
+            'text' => self::PASSAGE, 'text_truncated' => false,
         ]]);
         Http::fake(['api.openai.com/*' => function ($request) use ($variant) {
             $input = json_decode($request['input'][1]['content'], true);
@@ -95,16 +107,17 @@ class GeneratedResultWordingTest extends TestCase
                 $this->assertSame((int) config('fact_check.model_output_tokens'), $request['max_output_tokens']);
                 $this->assertArrayNotHasKey('tools', $request->data());
                 $this->assertSame(1, substr_count($request['input'][0]['content'], 'SEPARATION OF FIELDS'));
-                $this->assertStringContainsString(ResultWording::instructions(), $request['input'][0]['content']);
+                $this->assertStringContainsString(ResultWording::evidenceInstructions(), $request['input'][0]['content']);
                 $this->assertCount(1, $input['sources']);
                 $data = ['context_findings' => [], 'relationships' => [[
                     'claim_id' => $input['claims'][0]['id'], 'source_id' => 's1', 'stance' => 'supporting',
-                    'excerpt' => self::CLAIM, 'explanation' => 'The municipal record gives the same opening date.',
+                    'excerpt' => self::PASSAGE, 'explanation' => 'The municipal record gives the same opening date.',
                     'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true),
                     'basis' => 'primary_record', 'supersedes_source_ids' => [], 'supersession_excerpt' => '',
                 ]], 'wording' => [[
                     'verdict' => 'TRUE', 'explanation' => self::EXPLANATION, 'result_summary' => self::SHORT,
                     'recommended_action' => self::ACTION, 'source_ids' => ['s1'],
+                    'statement_evidence' => self::statementEvidence($input['claims'][0]['id']),
                 ]]];
                 if ($variant === 'wrong_verdict') {
                     $data['wording'][0]['verdict'] = 'FALSE';
@@ -148,13 +161,18 @@ class GeneratedResultWordingTest extends TestCase
 
     public function test_saved_copy_renders_as_one_paragraph_and_summary_without_requests_or_record_changes(): void
     {
-        $this->mock(GoogleFactCheckFeedService::class)->shouldReceive('latest')->twice()->andReturn(['items' => []]);
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
         $result = ResultWording::attach(['schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'TRUE',
-            'summary' => 'Internal recorded evidence notes.', 'sources' => [['id' => 's1', 'name' => 'Municipal records',
-                'url' => 'https://example.gov.ph/library-record', 'used_for' => 'Recorded opening date.']]], [[
+            'summary' => 'Internal recorded evidence notes.',
+            'claims' => [['id' => 'c1', 'text' => self::CLAIM, 'kind' => 'factual', 'outcome' => 'supported']],
+            'sources' => [['id' => 's1', 'name' => 'Municipal records',
+                'url' => 'https://example.gov.ph/library-record', 'used_for' => 'Recorded opening date.',
+                'relationships' => [['claim_id' => 'c1', 'stance' => 'supporting', 'excerpt' => self::PASSAGE,
+                    'explanation' => 'The record gives the same opening date.']]]]], [[
                     'verdict' => 'TRUE', 'explanation' => self::EXPLANATION, 'result_summary' => self::SHORT,
                     'recommended_action' => self::ACTION, 'source_ids' => ['s1'],
+                    'statement_evidence' => self::statementEvidence(),
                 ]]);
         $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'upload', 'media_type' => 'image',
             'processing_status' => 'completed', 'verdict' => 'real', 'fake_score' => 0,

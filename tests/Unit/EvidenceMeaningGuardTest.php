@@ -7,6 +7,18 @@ use Tests\TestCase;
 
 class EvidenceMeaningGuardTest extends TestCase
 {
+    public function test_unsupported_figures_are_removed_from_prose_without_erasing_valid_evidence(): void
+    {
+        $excerpt = 'The procurement record lists six rescue vehicles for PHP 4.5 million.';
+        $row = $this->relationship($excerpt);
+        $row['explanation'] = 'Each rescue vehicle cost PHP 500000.';
+        $claim = ['id' => 'c1', 'text' => 'The record lists six rescue vehicles.', 'kind' => 'factual', 'requires_context' => false];
+        $reviewed = app(EvidenceJudge::class)->validate([$row], [$claim], [['id' => 's1', 'text' => $excerpt]]);
+        $this->assertSame('supporting', $reviewed[0]['stance']);
+        $this->assertStringNotContainsString('500000', $reviewed[0]['explanation']);
+        $this->assertStringContainsString($excerpt, $reviewed[0]['explanation']);
+    }
+
     public function test_expired_bulletin_cannot_support_a_current_warning(): void
     {
         $claim = ['id' => 'c1', 'text' => 'The warning is in effect today.', 'kind' => 'factual',

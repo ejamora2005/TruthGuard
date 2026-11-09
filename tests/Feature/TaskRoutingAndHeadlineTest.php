@@ -76,7 +76,7 @@ class TaskRoutingAndHeadlineTest extends TestCase
 
     public function test_related_health_claim_searches_the_responsible_government_domain_early(): void
     {
-        $claim = 'The Department of Health announced a measles vaccination advisory.';
+        $claim = 'The Philippine Department of Health announced a measles vaccination advisory.';
         $planned = $this->claim($claim, 'factual', false);
         $planned['entities'] = ['Department of Health'];
         $planned['searches'] = ['measles vaccination advisory', 'Philippines measles guidance'];

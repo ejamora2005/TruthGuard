@@ -281,7 +281,7 @@ class StopDetectionTest extends TestCase
         $snapshot = $detection->fresh()->getRawOriginal();
         $composerHtml = $this->actingAs($detection->user)->get(route('detections.create'))->assertOk()
             ->assertSee('Stop fact check')->assertSee('@click="requestStopAnalysis()"', false)
-            ->assertSee('Hide progress; analysis continues')->getContent();
+            ->assertSee('Minimize progress')->getContent();
         $backgroundHtml = $this->get(route('history'))->assertOk()->assertSee('truthguard-analysis-stop')
             ->assertSee('@click="requestStopAnalysis()"', false)->getContent();
         if (getenv('TRUTHGUARD_STOP_BROWSER_FIXTURE')) {

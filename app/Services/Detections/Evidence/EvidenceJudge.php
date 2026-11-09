@@ -2,6 +2,7 @@
 
 namespace App\Services\Detections\Evidence;
 
+use App\Services\Detections\AnswerEvidenceValidator;
 use App\Services\Detections\AssessmentVerdict;
 use App\Services\Detections\FactCheckClaimMatcher;
 use App\Services\Detections\FactCheckEvidencePolicy;
@@ -116,7 +117,7 @@ class EvidenceJudge
             'excerpts' => ['type' => 'array', 'items' => $string],
             'matched_submission_quotes' => ['type' => 'array', 'items' => $string],
         ])], 'wording' => ['type' => 'array', 'maxItems' => 1,
-            'items' => ResultWording::schema(array_merge(AssessmentVerdict::FACTUAL, AssessmentVerdict::CONTEXT))]]);
+            'items' => ResultWording::schema(array_merge(AssessmentVerdict::FACTUAL, AssessmentVerdict::CONTEXT), true)]]);
         $instructions = 'Compare each exact claim with retrieved article text. Give relationships for relevant candidates; omit unrelated/background pairs, which remain insufficient. Shared keywords are not a match. All decisive relationships require a verbatim contiguous excerpt from text and matching event, people, location, date, quantities, qualifiers and asserted action. Mark unspecified dimensions true only when they impose no constraint. A fact-check of a different claim is insufficient regardless of its rating. A petition or constitutional challenge is not a final ruling; a bill is not an enacted law. An official statement only establishes what that body can directly establish. News describing a statement does not automatically prove the statement. Do not infer truth from image authenticity or model scores. Distinguish past accuracy from current accuracy at the supplied cutoff. Only mark supersession when newer text explicitly replaces/corrects the older record, and quote that passage. Explain unresolved conflicts; never select a preferred verdict. For rhetorical or unclear headings, or a factual heading marked requires_context, never mark a relationship supporting or contradicting: the missing material detail prevents a specific outcome. A directly relevant, dated passage about the named event or its proposal/enactment/decision status may instead be returned as a RELATED_STATUS context_finding, with a short explanation limited to what the passage establishes at its date. Unrelated claims or merely shared topic words cannot be RELATED_STATUS. Cite ONLY provided claim IDs and source IDs. Summaries and search snippets are not article text.'
             .' Match flags measure correspondence to the exact assertion, not agreement with its asserted values. For a contradicting relationship, a passage explicitly correcting the date, quantity, location or qualifier of the SAME event/media/statement addresses that dimension: mark its flag true. An unrelated event in another year remains a non-match. Do not reject a directly established correction merely because it contradicts the submitted value. No correction may be inferred from shared keywords alone.'
             .' Explain decisive findings in plain language that answers the requested question: state what happened, the applicable dates and the responsible authority when the quoted passage establishes them. Do not fill explanations with internal matching terminology; match flags already record that separately. A candidate event preserved from the user question is the assertion under review. The poster heading need not independently assert that outcome. Resolve its subject from validated references and the whole submission; do not treat a general factual question about poster text as a demand to authenticate a particular photograph.'
@@ -130,28 +131,37 @@ class EvidenceJudge
             $instructions = 'PRIMARY TASK: Research and answer requested_analysis.question using only the supplied source text. The single claim is its candidate proposition; the attached poster and submission_contexts resolve its subject and dates. The poster is context, not an additional claim that must independently state the answer. A factual event question does not become rhetorical because its accompanying headline is rhetorical. Use supporting, contradicting or insufficient relationships to assess that candidate. Do not infer missing scope merely from the question form. An opinion or a genuinely unresolved subject remains non-factual or unresolved.'
                 .' Require a verbatim contiguous excerpt of 20 to 1200 characters for each decisive relationship, copied from the provided source text. Match the same event, entities, action, date, location, quantities and material qualifiers. Match flags mean the passage addresses the dimension, including explicitly correcting a claimed value, not agreement with the claimed value. Unspecified dimensions impose no constraint. Shared keywords and unrelated events are insufficient. Publisher names, agency logos, building labels, watermarks and verification words such as really/actually are not constraints unless the question makes them material. Resolve references using the whole submission and grounded references.'
                 .' Never inherit the published rating of a fact-check about another claim. However, a directly relevant passage inside that article may independently establish the precise event asked about, even if the article headline checks a different assertion. Judge the quoted passage, not the article rating or headline. Search snippets and summaries are not article text. An official statement establishes only what that authority can establish. A petition is not a court ruling; a bill is not an enacted law; reporting that a law was enacted can establish enactment without establishing its constitutionality.'
-                .' Explain decisive findings in two short informative sentences, beginning with the concrete outcome, its applicable date and responsible authority when established by the passage. Then state material qualifications. Avoid openings such as This confirms, This supports, or I searched. Do not fill explanations with internal matching terminology. Do not infer facts from AI-origin scores, assumed faces or image authenticity. Cite only provided claim IDs and source IDs. Preserve genuinely conflicting records. A newer publication alone does not resolve a conflict: quote explicit superseding evidence and identify the older source. RELATED_STATUS is only for material unresolved scope, not a substitute for answering a resolved factual question.';
+                .' Keep individual relationship notes concise, beginning with the concrete outcome, its applicable date and responsible authority when established by the passage. Then state material qualifications. Public-facing wording has a separate, fuller explanation specified below. Avoid openings such as This confirms, This supports, or I searched. Do not fill explanations with internal matching terminology. Do not infer facts from AI-origin scores, assumed faces or image authenticity. Cite only provided claim IDs and source IDs. Preserve genuinely conflicting records. A newer publication alone does not resolve a conflict: quote explicit superseding evidence and identify the older source. RELATED_STATUS is only for material unresolved scope, not a substitute for answering a resolved factual question.';
         }
         $instructions .= ' For current_status_question, an older dated report establishes what was known then, not necessarily the status at the evaluation cutoff. A provisional statement that an event will proceed unless a new law or decision changes it cannot refute a later postponement. Check subsequent enactments, cancellations and corrections. When a later passage explicitly establishes a changed schedule for the SAME event, identify the older source it supersedes and quote the changed schedule. A court challenge alone does not overturn an enacted law.';
         $instructions .= ' Keep evidence notes brief. Name the supplied publisher and distinguish reporting from established facts. Prefer a directly relevant responsible-government record over secondary repetition, but only within that body\'s competence. An official statement establishes what the body stated or controls, not every allegation. No invented reasons, unrelated ratings, or follow-up questions.';
         $instructions .= ' A question_framed_assertion is a literal named-subject status proposition to verify, not an assertion already accepted as true and not a mere topic heading. Evaluate its candidate outcome using the complete submission_contexts, including accompanying court/action wording, people, and dates. The word sarado means a closed/shutdown status; punctuation alone never prevents checking it. A complaint or filing does not establish a shutdown order. A fact-check page can supply direct_reporting evidence through a literal passage that directly resolves this candidate; use basis=fact_check only when inheriting its published rating for the exact reviewed proposition. Never transfer the rating of an older or different event just because the network or people overlap.';
         $instructions .= ' SOURCE-RESOLVED SCOPE: Identity gaps are provisional. Return scope_resolutions only when literal source excerpts identify the resolved_subject and connect two phrases from the SAME submitted post: its whole claim (or a shared contiguous fragment of at least three words when OCR differs) and a separate accompanying phrase of at least two words. Every phrase must occur in both submission and source; never repair quoted words. Separate literal excerpts may identify the subject and quote the post. Only this grounded identity overrides requires_context; an unclear fragment also needs an explicit status/decision term to become factual. Retain the original claim, dates, negation and qualifiers. Never resolve a missing date/outcome, infer a final ruling from a proposal, authenticate a photograph or inherit a broader rating. Assess that candidate in this SAME response using ordinary relationships and all material match checks. Return [] without this proof.';
+        $instructions .= ' '.ResearchGuidance::REVIEW;
         $instructions .= ' Keep output compact: omit claim/source pairs with no relevant passage; missing pairs mean insufficient evidence, never support. Include every relevant contrary finding and explicit supersession. Use the shortest complete verbatim excerpt that establishes the finding, preferably 20 to 400 characters, retaining material qualifiers; the 1200-character validation limit still applies.';
-        $instructions .= ' In wording return at most one presentation candidate for the overall requested task, with its evidence-supported verdict; return [] if unresolved conflicts or scope prevent a consistent explanation. This copy never overrides server validation or decides the verdict. '.ResultWording::instructions();
+        $instructions .= ' In wording return at most one presentation candidate for the overall requested task, with its evidence-supported verdict; return [] if unresolved conflicts or scope prevent a consistent explanation. This copy never overrides server validation or decides the verdict. '.ResultWording::evidenceInstructions();
+        $instructions .= ' For an open information question (how much/how many/who/when/where/what or its Filipino equivalent), explain the requested value or identity only if a passage actually supplies it. Refuting a different number does not establish the requested number. Do not answer a price question with Yes or No. In wording.statement_evidence bind EVERY explanation sentence to its claim_id, source_id and a short exact excerpt from that same validated relationship or context finding. Copy each statement exactly from explanation, in order; concatenate them to reproduce the complete paragraph. Preserve negation, estimates, attribution and units. Do not add unsupported prices, calculations or causal claims. Use up to eight grounded sentences, normally six to eight and 140-220 words when the evidence supports a fuller explanation. Explain the answer, the source findings, the claim comparison and relevant scope; do not stop at a quotation alone. Keep a sparse finding shorter rather than padding it. Omit wording only when it cannot be grounded.';
+        $informationRequest = SubmissionTask::isInformationQuestion($request['question'] ?? '');
+        if ($informationRequest) {
+            $instructions .= ' When an open information question remains unresolved, return RELATED_STATUS for a dated published fact-check or record that directly addresses the upload caption and visible object category. Its excerpt must contain the distinctive caption allegation and relevant object/category details, and submitted_quote must be literal caption text. Explain the source-backed correction separately from the still-unknown requested value. This is related context, never proof of the exact pictured item, its price, or a transferred verdict. Do not omit readable fact-check findings merely because an exact procurement or photograph identity remains unknown.';
+        }
         // The planner stores the whole submission on every claim for validation.
         if (($request['media_attached'] ?? false) && preg_match('/\b(?:this|that|pictured|shown)\s+(?:old\s+|elderly\s+)?(?:woman|man|lady|person|people)\b/iu', $request['question'] ?? '')) {
             $instructions .= ' The user is asking about a particular person or action in an attached photograph. You have article text, not a verified visual match of that photograph. A report of a similar event involving the same public figure cannot establish that this particular image is authentic or shows that event. Do not identify people from assumed resemblance, invent reverse-image searches, or claim a visual comparison occurred. Without source provenance explicitly establishing the submitted photograph, keep its specific identity/event relationship insufficient and explain the distinction from any general event reporting.';
         }
         // Send that context once rather than multiplying it by the claim count.
-        $input = ['claims' => array_map(fn ($c) => Arr::except($c, ['submission_context', 'relationships', 'outcome']), $reviewable),
+        $input = ['claims' => array_map(fn ($c) => Arr::except($c, ['submission_context', 'visual_context', 'relationships', 'outcome']), $reviewable),
             'submission_contexts' => array_values(array_unique(array_filter(array_column($reviewable, 'submission_context')))),
+            'visual_contexts' => array_values(array_unique(array_filter(array_column($reviewable, 'visual_context')))),
             'sources' => $sources, 'evaluation_cutoff' => $cutoff, 'requested_analysis' => $request,
             'previous_findings' => $previousFindings,
-            'context_rules' => ($questionFocused
+            'context_rules' => (SubmissionTask::isInformationQuestion($request['question'] ?? '')
+                ? 'The exact requested value or identity may remain unknown. Return RELATED_STATUS for a dated source that directly corrects or explains the caption allegation and visible object category. It supplies limited related context, not the exact requested value or an authenticated image match. '
+                : ($questionFocused
                 ? 'The target is the factual candidate in the user question, not a poster heading. Only consider RELATED_STATUS if the claim is marked requires_context for a genuinely missing material detail. '
-                : 'For an unclear/rhetorical heading or a factual heading marked requires_context with no specific asserted outcome, RELATED_STATUS needs a passage directly naming the same event and its dated status; it supplies context only and never a verdict. ')
+                : 'For an unclear/rhetorical heading or a factual heading marked requires_context with no specific asserted outcome, RELATED_STATUS needs a passage directly naming the same event and its dated status; it supplies context only and never a verdict. '))
                 .'Return other context_findings only when a specific reviewed passage establishes the exact submitted content is misleading, reused with a wrong caption/location/date, expired while presented as current, or explicitly identified as satire/parody. Do not infer reuse from similar images or keywords. Copy submitted_quote exactly from the submission. OUTDATED needs an explicit expiry/valid-until passage and its literal date text in valid_until, plus present-tense/current framing in submitted_quote. An old publication date alone is insufficient. Satirical factual assertions still need ordinary claim relationships. No media-origin conclusion can be inferred here. Never invent a visual comparison, issuance time or validity period.',
-            'excerpt_rule' => 'Every decisive excerpt must be 20 to 1200 characters. A RELATED_STATUS excerpt must be 20 to 500 characters and explicitly state the named event or proposal status. review_text_truncated means only the selected passages were read; do not claim the rest was reviewed. possible_copy_of flags suspected shared reporting: do not count it as independent confirmation, but check material differences and conflicts.'];
+            'excerpt_rule' => 'Every decisive excerpt must be 20 to 1200 characters. A RELATED_STATUS excerpt must be 20 to 500 characters and explicitly state the named event or proposal status.'.($informationRequest ? ' It may instead directly address the caption allegation and visible object category for this information question.' : '').' review_text_truncated means only the selected passages were read; do not claim the rest was reviewed. possible_copy_of flags suspected shared reporting: do not count it as independent confirmation, but check material differences and conflicts.'];
         $instructions .= ' Sources contain literal passages selected across each document, not necessarily its beginning. Never quote across separate passages. previous_findings are earlier validated passages from this same request, supplied to preserve conflicts and explicit supersession; do not reassess unchanged documents or invent newer status.';
         $sources = $this->fitSources($sources, $input, $instructions);
         $seenText = array_column($sources, 'text', 'id');
@@ -194,6 +204,8 @@ class EvidenceJudge
             array_values(array_filter($findings, fn ($row) => $row['label'] !== 'RELATED_STATUS'))), SORT_REGULAR));
 
         $rows = $this->validate($data['relationships'], $reviewable, $allSources, $cutoff);
+        $this->contextualSources = array_values(array_unique(array_merge($this->contextualSources,
+            $this->relatedContextFromPartialMatches($rows, $reviewable, $allSources, $cutoff)), SORT_REGULAR));
         $rows = array_values(array_filter($rows, fn ($row) => in_array($row['source_id'], $pendingIds, true)));
         foreach ($sources as $source) {
             $this->reviewedSources[$sourceKeys[$source['id']]] = array_values(array_filter($rows, fn ($row) => $row['source_id'] === $source['id']));
@@ -282,11 +294,19 @@ class EvidenceJudge
                     }
                 }
 
+                $informationQuestion = SubmissionTask::isInformationQuestion($claim['text']);
+                $captionContext = $claim['submission_context'] ?? '';
+                $visualContext = $claim['visual_context'] ?? '';
+                $captionRelated = $informationQuestion && $visualContext !== ''
+                    && $this->sameNamedEvent($visualContext, $row['excerpt'])
+                    && $this->sameNamedEvent($captionContext, $row['excerpt']);
+
                 return (in_array($claim['kind'], ['rhetorical', 'unclear'], true)
+                        || $informationQuestion
                         || ($claim['kind'] === 'factual' && ($claim['requires_context'] ?? false)))
                     && ($claim['searches'] ?? []) !== []
                     && mb_strlen($row['excerpt']) <= 500
-                    && $this->sameNamedEvent($claim['text'], $row['excerpt']);
+                    && ($informationQuestion && $visualContext !== '' ? $captionRelated : $this->sameNamedEvent($claim['text'], $row['excerpt']));
             }
             if ($row['label'] === 'OUTDATED') {
                 if (! $row['presented_as_current'] || ! preg_match('/\b(?:today|now|current|ngayon|kasalukuyan|is in effect|remains in effect)\b/iu', $row['submitted_quote'])
@@ -309,6 +329,77 @@ class EvidenceJudge
 
             return in_array($row['label'], ['OUT_OF_CONTEXT', 'MISLEADING', 'SATIRE_PARODY'], true);
         }));
+    }
+
+    /** Retain literal contextual facts from a partial match without transferring its verdict. */
+    public function relatedContextFromPartialMatches(array $relationships, array $claims, array $sources, string $cutoff): array
+    {
+        $claimsById = collect($claims)->keyBy('id');
+        $sourcesById = collect($sources)->keyBy('id');
+        $findings = [];
+        foreach ($relationships as $relationship) {
+            $claim = $claimsById->get($relationship['claim_id'] ?? '');
+            $source = $sourcesById->get($relationship['source_id'] ?? '');
+            if (! $claim || ! $source || ! SubmissionTask::isInformationQuestion($claim['text'])
+                || ($relationship['stance'] ?? '') !== 'insufficient'
+                || ($relationship['matches']['event'] ?? false) !== true
+                || ($relationship['matches']['entities'] ?? false) !== true
+                || empty($claim['caption_context']) || empty($claim['visual_context'])) {
+                continue;
+            }
+            $submittedQuote = collect(preg_split('/\R/u', $claim['caption_context']))->first(fn ($line) => trim($line) !== ''
+                && str_contains($claim['submission_context'] ?? '', trim($line)));
+            if (! is_string($submittedQuote)) {
+                continue;
+            }
+            $candidates = [];
+            $sentences = SubmittedText::sentences($source['reviewed_text'] ?? $source['text'] ?? '');
+            $passages = [$relationship['excerpt'] ?? '', ...$sentences];
+            $amountPattern = null;
+            if (preg_match('/(\d+(?:[.,]\d+)?)\s*(million|billion|thousand|milyon|bilyon|milyong|k|m)\b/iu', $claim['caption_context'], $amount)) {
+                $magnitude = match (mb_strtolower($amount[2])) {
+                    'million', 'milyon', 'milyong', 'm' => '(?:million|milyon|milyong|m)',
+                    'billion', 'bilyon' => '(?:billion|bilyon|b)',
+                    default => '(?:thousand|k)',
+                };
+                $amountPattern = '/(?<!\d)'.preg_quote($amount[1], '/').'\s*'.$magnitude.'\b/iu';
+            }
+            foreach ($sentences as $index => $sentence) {
+                if (isset($sentences[$index + 1]) && ($start = strpos($source['text'], $sentence)) !== false
+                    && ($next = strpos($source['text'], $sentences[$index + 1], $start + strlen($sentence))) !== false) {
+                    $span = substr($source['text'], $start, $next + strlen($sentences[$index + 1]) - $start);
+                    if (mb_strlen($span) <= 500) {
+                        $passages[] = $span;
+                    }
+                }
+            }
+            foreach ($passages as $sentence) {
+                if (mb_strlen($sentence) > 500 || ! str_contains($source['text'] ?? '', $sentence)
+                    || ($amountPattern !== null && ! preg_match($amountPattern, $sentence))
+                    || substr_count($sentence, '“') !== substr_count($sentence, '”')
+                    || substr_count($sentence, '(') !== substr_count($sentence, ')')
+                    || substr_count($sentence, '"') % 2 !== 0) {
+                    continue;
+                }
+                $candidates[] = ['claim_id' => $claim['id'], 'source_id' => $source['id'], 'label' => 'RELATED_STATUS',
+                    'excerpt' => $sentence, 'submitted_quote' => trim($submittedQuote),
+                    'explanation' => 'This source provides related context for the caption; it does not establish the exact requested value or an authenticated image match.',
+                    'exact_subject_match' => true, 'presented_as_current' => false, 'valid_until' => null];
+            }
+            $validated = $this->validateContext($candidates, [$claim], [$source], $cutoff);
+            if ($validated === []) {
+                continue;
+            }
+            preg_match_all('/\d+(?:[.,]\d+)?/u', $claim['caption_context'], $amounts);
+            $rank = fn ($row) => count(array_filter($amounts[0], fn ($number) => str_contains($row['excerpt'], $number))) * 3
+                + (preg_match('/\b(?:false|not|different|incorrect|misleading|debunked|clarified|hindi|mali|magkaiba)\b/iu', $row['excerpt']) ? 2 : 0);
+            $focus = strpos($source['text'], $relationship['excerpt'] ?? '');
+            $distance = fn ($row) => $focus === false ? 0 : abs((int) strpos($source['text'], $row['excerpt']) - $focus);
+            usort($validated, fn ($a, $b) => ($rank($b) <=> $rank($a)) ?: ($distance($a) <=> $distance($b)));
+            $findings[] = $validated[0] + ['context_method' => 'literal_caption_category_match'];
+        }
+
+        return $findings;
     }
 
     private function sameNamedEvent(string $claim, string $excerpt): bool
@@ -432,6 +523,10 @@ class EvidenceJudge
             $excerpt = trim($row['excerpt']);
             $decisive = in_array($row['stance'], ['supporting', 'contradicting'], true);
             $reason = null;
+            if ($decisive && ($source['source_type'] ?? '') === 'other_web'
+                && in_array($row['basis'], ['primary_record', 'fact_check'], true)) {
+                $reason = 'A fallback web source cannot inherit the status of an approved primary record or fact-check rating.';
+            }
             if (mb_strlen($excerpt) < 20 || mb_strlen($excerpt) > 1200 || ! str_contains($source['text'], $excerpt)
                 || (isset($source['reviewed_text']) && ! str_contains($source['reviewed_text'], $excerpt))) {
                 $reason = 'The cited excerpt could not be matched to a sufficiently specific, bounded passage in the retrieved article.';
@@ -487,6 +582,13 @@ class EvidenceJudge
                 }
             }
             $row['supersedes_source_ids'] = $row['stance'] === 'insufficient' ? [] : $superseded;
+            if ($row['stance'] !== 'insufficient'
+                && array_diff(AnswerEvidenceValidator::numbers($row['explanation']), AnswerEvidenceValidator::numbers($row['excerpt']))) {
+                // Preserve the validated relationship; replace only prose that
+                // adds a figure its own quoted passage does not establish.
+                $row['explanation'] = 'The cited record states: “'.$row['excerpt'].'”';
+                $row['explanation_validation'] = 'unsupported_number_replaced_with_passage';
+            }
             $key = $row['claim_id'].'|'.$row['source_id'];
             if (isset($valid[$key]) && $valid[$key]['stance'] !== $row['stance']) {
                 $row['stance'] = 'insufficient';

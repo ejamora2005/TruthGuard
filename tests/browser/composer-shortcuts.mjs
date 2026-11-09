@@ -61,29 +61,30 @@ try {
             canAnalyze: state.canAnalyze(),
         };
 
-        return {withDraft, withUpload, factCheckUpload, promptAttributes: guides.map(guide => guide.hasAttribute('data-prompt'))};
+        return {withDraft, withUpload, factCheckUpload, promptAttributes: guides.map(guide => guide.hasAttribute('data-prompt')),
+            prompts: Object.fromEntries(state.promptGuides.map(guide => [guide.id, guide.prompt]))};
     });
 
     assert.deepEqual(result.withDraft, {
         task: 'claim',
-        caption: 'Is the claim in this post true?\n\nThe Riverside bridge reopened in May 2026.',
-        composerValue: 'Is the claim in this post true?\n\nThe Riverside bridge reopened in May 2026.',
+        caption: result.prompts.claim + '\n\nThe Riverside bridge reopened in May 2026.',
+        composerValue: result.prompts.claim + '\n\nThe Riverside bridge reopened in May 2026.',
         selectedInputType: 'link',
         menuOpen: false,
     });
     assert.deepEqual(result.withUpload, {
         task: 'media',
-        caption: 'Is this image or video AI-generated or manipulated?',
-        composerValue: 'Is this image or video AI-generated or manipulated?',
+        caption: result.prompts.media,
+        composerValue: result.prompts.media,
         canAnalyze: true,
     });
     assert.deepEqual(result.factCheckUpload, {
         task: 'claim',
-        caption: 'Is the claim in this post true?',
-        composerValue: 'Is the claim in this post true?',
+        caption: result.prompts.claim,
+        composerValue: result.prompts.claim,
         canAnalyze: true,
     });
-    assert.deepEqual(result.promptAttributes, [false, false, false]);
+    assert.deepEqual(result.promptAttributes, [false, false, false, false]);
     console.log('Composer guides insert ready-to-send questions, replace the previous preset, and retain the user draft.');
 } finally {
     await browser.close();

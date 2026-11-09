@@ -141,6 +141,7 @@ class ResultContract
         $result['media_claim_notice'] = self::mediaClaimNotice($result['media_claim_notice'] ?? null);
         $mediaOnly = $task === 'media' && array_intersect($result['request']['tasks'], ['claim', 'context']) === [];
         $result['official_references'] = self::references($result['official_references'] ?? null);
+        $result['unavailable_fact_checks'] = self::references($result['unavailable_fact_checks'] ?? null);
         $result['method_references'] = self::references($result['method_references'] ?? null);
         $result['interpretation'] = self::interpretation($result['interpretation'] ?? null, $result['claim']);
         $result['correction'] = self::correction($result['correction'] ?? null);
@@ -247,13 +248,19 @@ class ResultContract
             'context_assessments', 'secondary_assessments', 'ui', 'request', 'assessed_at',
             'evidence_cutoff', 'original_claim_date', 'evidence_strength', 'claim_assessment',
             'media_assessment', 'media_prediction',
-            'quality_review',
+            'quality_review', 'answer_validation', 'unavailable_fact_checks',
             'interpretation',
             'atomic_claims', 'evidence_families', 'evidence_balance', 'claim_origin', 'negative_evidence',
             'freshness', 'source_assessments', 'verdict_audit', 'editorial_review',
             'correction',
             'media_claim_notice',
         ]));
+        $coverage = $result['diagnostics']['source_coverage'] ?? null;
+        if (is_array($coverage) && (int) ($coverage['target'] ?? 0) > 0) {
+            $target = (int) $coverage['target'];
+            $cited = min(count($result['sources']), max(0, (int) ($coverage['cited'] ?? 0)));
+            $public['source_coverage'] = ['target' => $target, 'cited' => $cited, 'target_met' => $cited >= $target];
+        }
         $public['processing_status'] = in_array($public['processing_status'] ?? null, ['queued', 'processing', 'failed', 'completed', 'partial', 'unsupported', 'needs_clarification'], true)
             ? $public['processing_status'] : 'completed';
         $public['request'] = ['question' => $result['request']['question'], 'tasks' => $result['request']['tasks']];
@@ -367,6 +374,7 @@ class ResultContract
                 'explanation' => $explanation ?? $usedFor ?? 'The saved report did not record what this source established.',
                 'excerpt' => self::text($row['excerpt'] ?? null) ?? '',
                 'context_only' => $context || ($row['context_only'] ?? false) === true,
+                ...((self::text($row['claim_id'] ?? null)) !== null ? ['claim_id' => self::text($row['claim_id'])] : []),
                 'relationships' => self::relationships($row['relationships'] ?? null),
                 'possible_copy_of' => self::text($row['possible_copy_of'] ?? null),
                 ...array_filter([
@@ -430,6 +438,7 @@ class ResultContract
                 continue;
             }
             $valid[] = ['stance' => $row['stance'], 'excerpt' => $excerpt,
+                ...((self::text($row['claim_id'] ?? null)) !== null ? ['claim_id' => self::text($row['claim_id'])] : []),
                 'explanation' => $explanation, 'superseded' => ($row['superseded'] ?? false) === true];
         }
 

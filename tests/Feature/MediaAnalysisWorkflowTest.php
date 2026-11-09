@@ -78,7 +78,7 @@ class MediaAnalysisWorkflowTest extends TestCase
             ->assertDontSee('unsuitable short input')->assertSee('Retry media analysis');
         // GET/JSON reads the saved output; the detector mock is called exactly once.
         $this->assertSame(0.8, $result['media_assessment']['fake_probability']);
-        $this->getJson(route('detections.result', $detection))->assertJsonPath('verdict', 'INCONCLUSIVE')
+        $this->getJson(route('detections.result', $detection))->assertJsonPath('verdict', 'LIKELY_AI_GENERATED')
             ->assertJsonPath('media_assessment.label', 'fake')
             ->assertJsonMissingPath('media_assessment.fake_probability');
     }
@@ -181,7 +181,7 @@ class MediaAnalysisWorkflowTest extends TestCase
             ->assertDontSee('Source verification');
     }
 
-    public function test_factual_first_combined_request_retains_media_when_text_extraction_throws(): void
+    public function test_combined_request_prioritizes_media_and_records_failed_factual_extraction_separately(): void
     {
         $this->detector();
         $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->andThrow(new \RuntimeException('internal outage'));
@@ -189,16 +189,16 @@ class MediaAnalysisWorkflowTest extends TestCase
             'media_file' => $this->upload(), 'caption_text' => 'Is this claim true? Is this AI-generated?',
         ])->assertSessionHasNoErrors()->assertRedirect();
         $result = Detection::sole()->fact_check_result;
-        $this->assertSame('claim', $result['primary_task']);
-        $this->assertSame('ANALYSIS_UNAVAILABLE', $result['verdict']);
-        $this->assertSame('INCONCLUSIVE', $result['secondary_assessments'][0]['verdict']);
+        $this->assertSame('media', $result['primary_task']);
+        $this->assertSame('INCONCLUSIVE', $result['verdict']);
+        $this->assertSame('ANALYSIS_UNAVAILABLE', $result['secondary_assessments'][0]['verdict']);
         $this->assertSame('partial', $result['processing_status']);
         $this->assertSame(['media'], $result['completed_tasks']);
         $this->getJson(route('detections.result', Detection::sole()))
-            ->assertJsonPath('secondary_assessments.0.verdict', 'INCONCLUSIVE')
-            ->assertJsonPath('secondary_assessments.0.processing_status', 'completed');
+            ->assertJsonPath('secondary_assessments.0.verdict', 'ANALYSIS_UNAVAILABLE')
+            ->assertJsonPath('secondary_assessments.0.processing_status', 'failed');
         $this->get(route('detections.result', Detection::sole()))->assertOk()
-            ->assertSee('Content verification report')->assertSee('Inconclusive')->assertDontSee('internal outage');
+            ->assertSee('Content verification report')->assertSee('Likely AI-Generated')->assertDontSee('internal outage');
     }
 
     public function test_missing_backend_original_produces_processing_failure_even_with_a_saved_preview_path(): void

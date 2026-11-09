@@ -49,9 +49,13 @@ class ActiveDetectionManager
             $detections = Detection::query()
                 ->where('user_id', $userId)
                 ->whereIn('processing_status', ['queued', 'processing'])
-                ->where(fn ($query) => $query->where('updated_at', '<', $cutoff)
-                    ->orWhere(fn ($initial) => $initial->whereNull('fact_check_result')
-                        ->where('created_at', '<', now()->subMinutes(15))))
+                ->where(function ($query) use ($cutoff) {
+                    $query->where('updated_at', '<', $cutoff);
+                    if (! Evidence\ResearchLimits::unrestricted()) {
+                        $query->orWhere(fn ($initial) => $initial->whereNull('fact_check_result')
+                            ->where('created_at', '<', now()->subMinutes(15)));
+                    }
+                })
                 ->lockForUpdate()
                 ->get();
 

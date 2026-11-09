@@ -56,6 +56,8 @@ class OpenAiWebSearchTest extends TestCase
         $this->assertSame(1, count($budget->attempts[0]['web_search']['citation_annotations']));
         Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/responses')
             && $request['tools'][0]['type'] === 'web_search'
+            && ! isset($request['tools'][0]['filters'])
+            && str_contains($request['input'][0]['content'], 'do not restrict discovery to an allowlist')
             && $request['tool_choice'] === 'required'
             && $request['include'] === ['web_search_call.action.sources']
             && $request['store'] === false
@@ -77,6 +79,89 @@ class OpenAiWebSearchTest extends TestCase
         $this->assertSame([], $records);
         $this->assertSame('tool_not_completed', $budget->providers['openai_web_search']);
         $this->assertSame(0, $budget->attempts[0]['results']);
+    }
+
+    public function test_truncated_narration_keeps_completed_discovery_without_reporting_an_api_outage(): void
+    {
+        Http::fake(['api.openai.com/*' => Http::response([
+            'status' => 'incomplete', 'incomplete_details' => ['reason' => 'max_output_tokens'],
+            'usage' => ['input_tokens' => 9000, 'output_tokens' => 500],
+            'output' => [['type' => 'web_search_call', 'status' => 'completed', 'action' => [
+                'type' => 'search', 'sources' => [['url' => 'https://example.gov/record']],
+            ]]],
+        ])]);
+        $budget = new RetrievalBudget;
+        $records = app(ArticleSearch::class)->retrieve(['fictional record'], $budget, now()->utc()->toIso8601String());
+
+        $this->assertCount(1, $records);
+        $this->assertSame('discovered', array_values($records)[0]['retrieval_status']);
+        $this->assertSame('partial_results', $budget->providers['openai_web_search']);
+        $this->assertSame([], $budget->failedSearches());
+        $this->assertSame([['provider' => 'openai_web_search', 'response_status' => 'incomplete',
+            'incomplete_reason' => 'max_output_tokens']], $budget->diagnostics()['search_completion_limits']);
+        $this->assertSame(9500, $budget->openAiUsage()['total_tokens']);
+        Http::assertSentCount(1);
+    }
+
+    public function test_truncation_without_usable_discovery_gets_one_bounded_recovery_and_counts_all_usage(): void
+    {
+        config()->set(['fact_check.web_search.max_output_tokens' => 500, 'services.openai.max_completion_tokens' => 1000,
+            'fact_check.openai_retry.max_retries' => 1]);
+        Http::fake(['api.openai.com/*' => Http::sequence()
+            ->push(['status' => 'incomplete', 'incomplete_details' => ['reason' => 'max_output_tokens'],
+                'usage' => ['input_tokens' => 100, 'output_tokens' => 500], 'output' => []])
+            ->push(['status' => 'completed', 'usage' => ['input_tokens' => 100, 'output_tokens' => 100],
+                'output' => [['type' => 'web_search_call', 'status' => 'completed', 'action' => [
+                    'type' => 'search', 'sources' => [['url' => 'https://example.gov/record']],
+                ]]]])]);
+        $budget = new RetrievalBudget;
+        $records = app(ArticleSearch::class)->retrieve(['fictional record'], $budget, now()->utc()->toIso8601String());
+
+        $this->assertCount(1, $records);
+        $this->assertSame('ok', $budget->providers['openai_web_search']);
+        $this->assertSame(2, $budget->searches);
+        $this->assertSame(2, $budget->providerRequests);
+        $this->assertSame(800, $budget->openAiUsage()['total_tokens']);
+        $this->assertSame([500, 1000], array_column($budget->attempts[0]['web_search']['completion_attempts'], 'max_output_tokens'));
+        $this->assertSame(1, $budget->attempts[0]['web_search']['usage']['retries']);
+        Http::assertSentCount(2);
+    }
+
+    public function test_repeated_truncation_stops_after_recovery_without_manufacturing_sources(): void
+    {
+        config()->set('fact_check.openai_retry.max_retries', 1);
+        Http::fake(['api.openai.com/*' => Http::response(['status' => 'incomplete',
+            'incomplete_details' => ['reason' => 'max_output_tokens'], 'output' => []])]);
+        $budget = new RetrievalBudget;
+        $records = app(ArticleSearch::class)->retrieve(['fictional record'], $budget, now()->utc()->toIso8601String());
+
+        $this->assertSame([], $records);
+        $this->assertCount(1, $budget->failedSearches());
+        $this->assertSame([], $budget->diagnostics()['search_completion_limits']);
+        Http::assertSentCount(2);
+    }
+
+    public function test_recovery_respects_discovery_request_budget(): void
+    {
+        config()->set(['fact_check.retrieval.max_search_requests' => 1, 'fact_check.openai_retry.max_retries' => 1]);
+        Http::fake(['api.openai.com/*' => Http::response(['status' => 'incomplete',
+            'incomplete_details' => ['reason' => 'max_output_tokens'], 'output' => []])]);
+        $budget = new RetrievalBudget;
+        $this->assertSame([], app(ArticleSearch::class)->retrieve(['fictional record'], $budget, now()->utc()->toIso8601String()));
+        Http::assertSentCount(1);
+        $this->assertSame(1, $budget->searches);
+    }
+
+    public function test_content_filtering_is_not_retried_as_an_output_limit(): void
+    {
+        config()->set('fact_check.openai_retry.max_retries', 1);
+        Http::fake(['api.openai.com/*' => Http::response(['status' => 'incomplete',
+            'incomplete_details' => ['reason' => 'content_filter'], 'output' => []])]);
+        $second = new RetrievalBudget;
+        $this->assertSame([], app(ArticleSearch::class)->retrieve(['another fictional record'], $second, now()->utc()->toIso8601String()));
+        $this->assertSame(1, $second->providerRequests);
+        $this->assertSame('content_filter', $second->attempts[0]['web_search']['incomplete_reason']);
+        Http::assertSentCount(1);
     }
 
     public function test_openai_failure_does_not_prevent_existing_provider_from_contributing(): void

@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'unrestricted_research' => env('FACT_CHECK_UNRESTRICTED_RESEARCH', false),
+    'progressive_research' => env('FACT_CHECK_PROGRESSIVE_RESEARCH', true),
+    // Coverage goal, not permission to pad citations or withhold a usable result.
+    'min_relevant_sources' => (int) env('FACT_CHECK_MIN_RELEVANT_SOURCES', 10),
     'verdict_calibration' => [
         'enabled' => env('EVIDENCE_CALIBRATION_ENABLED', false),
         'path' => env('EVIDENCE_CALIBRATION_PATH', ''),
@@ -42,7 +46,7 @@ return [
         'max_tool_calls' => (int) env('OPENAI_WEB_SEARCH_MAX_TOOL_CALLS', 1),
         'context_size' => env('OPENAI_WEB_SEARCH_CONTEXT_SIZE', 'low'),
         'max_candidates' => (int) env('OPENAI_WEB_SEARCH_MAX_CANDIDATES', 5),
-        'max_output_tokens' => (int) env('OPENAI_WEB_SEARCH_MAX_OUTPUT_TOKENS', 350),
+        'max_output_tokens' => (int) env('OPENAI_WEB_SEARCH_MAX_OUTPUT_TOKENS', 1000),
     ],
     'retrieval' => [
         // High circuit-breaker ceilings. The verification loop exits early

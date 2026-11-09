@@ -5,6 +5,7 @@ namespace App\Services\Detections;
 use App\Services\Detections\Evidence\MediaEvidencePreparer;
 use App\Services\Detections\Evidence\ReportApiBudget;
 use App\Services\Detections\Evidence\ReportBudgetExceeded;
+use App\Services\Detections\Evidence\ResearchLimits;
 use App\Services\Detections\Evidence\ResponsesTransport;
 use App\Services\Detections\Evidence\TokenUsage;
 use Illuminate\Http\UploadedFile;
@@ -16,7 +17,7 @@ use Illuminate\Support\Str;
 /** Describes visible media alongside an existing finding; never assigns a detector verdict. */
 class OpenAiMediaExplanation
 {
-    public const VERSION = 'media-explanation-v6';
+    public const VERSION = 'media-explanation-v7';
 
     public function apply(array $analysis, ?UploadedFile $file = null): array
     {
@@ -72,7 +73,7 @@ class OpenAiMediaExplanation
             'input' => [['role' => 'system', 'content' => $instructions],
                 ['role' => 'user', 'content' => json_encode($basis, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]],
             'text' => ['format' => ['type' => 'json_schema', 'name' => 'media_explanation', 'strict' => true, 'schema' => $schema]],
-            'max_output_tokens' => max(200, min(800, (int) config('services.openai.media_explanation_max_tokens', 400))),
+            ...ResearchLimits::outputTokens(max(200, min(800, (int) config('services.openai.media_explanation_max_tokens', 400)))),
         ];
         if (preg_match('/^gpt-5\.[24](?:-|$)/', (string) $payload['model'])) {
             $payload['reasoning'] = ['effort' => 'none'];
