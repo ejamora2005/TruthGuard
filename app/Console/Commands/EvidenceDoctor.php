@@ -2,17 +2,24 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Detection;
 use App\Services\Detections\AssessmentVerdict;
 use App\Services\Detections\Evidence\ArticleSearch;
 use App\Services\Detections\Evidence\RetrievalBudget;
+use App\Services\Detections\Evidence\SafeArticleFetcher;
 use App\Services\Detections\Evidence\StructuredAnalysis;
 use App\Services\Detections\EvidenceVerdictCalibration;
+use App\Services\Detections\EvidenceVerificationService;
 use App\Services\Detections\FilipinoNewsClassifier;
+use App\Services\Detections\ReportAnswer;
 use Illuminate\Console\Command;
 
 class EvidenceDoctor extends Command
 {
-    protected $signature = 'truthguard:evidence-doctor {--live : Make bounded provider/model smoke requests (may consume API quota)}';
+    protected $signature = 'truthguard:evidence-doctor
+        {--live : Make bounded provider/model smoke requests (may consume API quota)}
+        {--detection= : Inspect one saved report without reanalyzing it}
+        {--url= : Probe one public source page without provider/model calls}';
 
     protected $description = 'Report configured evidence integrations without exposing keys or response bodies';
 
@@ -36,6 +43,65 @@ class EvidenceDoctor extends Command
         }
         $result['providers']['openai_web_search']['model'] = config('fact_check.web_search.model');
         $result['providers']['openai_web_search']['enabled'] = (bool) config('fact_check.web_search.enabled');
+        $result['runtime'] = [
+            'pipeline_version' => EvidenceVerificationService::VERSION,
+            'environment' => app()->environment(), 'configuration_cached' => app()->configurationIsCached(),
+            'enhanced_enabled' => $enhanced, 'queue_enabled' => (bool) config('fact_check.queue_enabled'),
+            'unrestricted_research' => (bool) config('fact_check.unrestricted_research'),
+            'progressive_research' => (bool) config('fact_check.progressive_research'),
+            'source_target' => (int) config('fact_check.min_relevant_sources'),
+            'fetch_timeout_seconds' => (int) config('fact_check.retrieval.timeout'),
+            'result_reuse_generation' => config('fact_check.result_reuse.generation'),
+        ];
+        if (($id = $this->option('detection')) !== null) {
+            if (! ctype_digit((string) $id) || ! ($detection = Detection::find($id))) {
+                $this->error('Choose an existing numeric detection ID.');
+
+                return self::FAILURE;
+            }
+            $saved = is_array($detection->fact_check_result) ? $detection->fact_check_result : [];
+            $result['saved_report'] = [
+                'id' => $detection->id, 'processing_status' => $detection->processing_status,
+                'verdict' => $saved['verdict'] ?? null, 'analyzed_at' => $detection->analyzed_at?->toIso8601String(),
+                'reused_from_detection_id' => $detection->reused_from_detection_id,
+                'pipeline_version' => data_get($saved, 'diagnostics.pipeline_version'),
+                'result_cache_hit' => (bool) data_get($saved, 'diagnostics.result_cache_hit'),
+                'outcome_reason' => data_get($saved, 'diagnostics.outcome_reason'),
+                'sources' => array_values(array_map(fn ($record) => [
+                    'host' => parse_url($record['url'] ?? '', PHP_URL_HOST),
+                    'status' => $record['retrieval_status'] ?? null,
+                    'http_status' => $record['retrieval_http_status'] ?? null,
+                    'robots_detail' => $record['robots_detail'] ?? null,
+                    'assessment_role' => $record['assessment_role'] ?? null,
+                    'text_characters' => mb_strlen((string) ($record['text'] ?? '')),
+                ], array_filter($detection->verification_sources ?? [], 'is_array'))),
+            ];
+        }
+        if (($url = $this->option('url')) !== null) {
+            if (! ReportAnswer::safeUrl($url)) {
+                $this->error('Choose a public HTTP(S) source URL without embedded credentials.');
+
+                return self::FAILURE;
+            }
+            // A source probe uses only the ordinary safe fetcher and its robots
+            // policy. It never invokes discovery, a model or a report retry.
+            config()->set('fact_check.unrestricted_research', false);
+            config()->set('fact_check.retrieval.seconds', 30);
+            config()->set('fact_check.retrieval.max_pages', 5);
+            $budget = new RetrievalBudget;
+            $budget->freshSources = true;
+            $started = microtime(true);
+            $page = app(SafeArticleFetcher::class)->fetch($url, $budget);
+            $result['source_probe'] = [
+                'host' => parse_url($url, PHP_URL_HOST), 'status' => $page['status'],
+                'http_status' => $page['http_status'] ?? null, 'robots_detail' => $page['robots_detail'] ?? null,
+                'text_characters' => mb_strlen((string) ($page['text'] ?? '')),
+                'elapsed_ms' => (int) round((microtime(true) - $started) * 1000), 'model_calls' => 0,
+            ];
+            if (! $this->option('live')) {
+                $result['mode'] = 'source_probe';
+            }
+        }
         foreach (['automation/models/filipino-transformer/best_model/model.safetensors', 'automation/models/truthguard_image_model.keras', 'automation/models/truthguard_video_face_model.keras'] as $path) {
             $size = is_file(base_path($path)) ? filesize(base_path($path)) : 0;
             $result['artifacts'][basename($path)] = ['present' => $size > 0, 'bytes' => $size, 'possible_lfs_pointer' => $size > 0 && $size < 1024];

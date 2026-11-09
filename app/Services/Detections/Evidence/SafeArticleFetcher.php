@@ -90,6 +90,23 @@ class SafeArticleFetcher
                 if (strlen($body) > $maxBytes) {
                     return $base + ['status' => 'too_large'];
                 }
+                // Some origins/CDNs send compression despite Accept-Encoding:
+                // identity. Decode explicitly within the same byte ceiling;
+                // compressed bytes must never reach the HTML/PDF parser.
+                $encoding = strtolower(trim($response->header('Content-Encoding')));
+                if ($encoding !== '' && $encoding !== 'identity') {
+                    if (! in_array($encoding, ['gzip', 'x-gzip', 'deflate'], true)) {
+                        return $base + ['status' => 'unsupported_content_encoding'];
+                    }
+                    $decoded = @zlib_decode($body, $maxBytes + 1);
+                    if ($decoded === false) {
+                        return $base + ['status' => 'invalid_or_oversized_content_encoding'];
+                    }
+                    if (strlen($decoded) > $maxBytes) {
+                        return $base + ['status' => 'too_large'];
+                    }
+                    $body = $decoded;
+                }
                 $type = strtolower(explode(';', $response->header('Content-Type'))[0]);
                 if (Str::contains(strtolower($response->header('X-Robots-Tag')), ['nosnippet', 'noarchive'])) {
                     return $base + ['status' => 'restricted'];
@@ -162,7 +179,7 @@ class SafeArticleFetcher
     {
         $origin = parse_url($url, PHP_URL_SCHEME).'://'.parse_url($url, PHP_URL_HOST);
         $cacheKey = 'evidence-robots:v1:'.hash('sha256', $origin);
-        $robots = Cache::get($cacheKey);
+        $robots = $budget->freshSources ? null : Cache::get($cacheKey);
         if (! is_array($robots)) {
             $robots = $this->fetch($origin.'/robots.txt', $budget, false);
             Cache::put($cacheKey, $robots, 300);

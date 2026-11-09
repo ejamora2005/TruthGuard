@@ -4,12 +4,74 @@ namespace Tests\Unit;
 
 use App\Services\Detections\Evidence\RetrievalBudget;
 use App\Services\Detections\Evidence\SafeArticleFetcher;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class SafeArticleFetcherRetryTest extends TestCase
 {
+    public function test_compressed_html_is_decoded_before_article_extraction(): void
+    {
+        config()->set('fact_check.retrieval.respect_robots', false);
+        $html = '<article>'.str_repeat('A readable published record with relevant details. ', 8).'</article>';
+        Http::fakeSequence()->push(gzencode($html), 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip']);
+        $fetcher = $this->partialMock(SafeArticleFetcher::class);
+        $fetcher->shouldReceive('publicAddress')->andReturn('93.184.216.34');
+
+        $result = $fetcher->fetch('https://example.com/compressed-record', new RetrievalBudget);
+        $this->assertSame('retrieved', $result['status']);
+        $this->assertStringContainsString('A readable published record', $result['text']);
+    }
+
+    public function test_a_fresh_retry_rechecks_a_cached_robots_network_failure(): void
+    {
+        config()->set('fact_check.retrieval.respect_robots', true);
+        Cache::put('evidence-robots:v1:'.hash('sha256', 'https://example.com'), ['status' => 'timeout'], 300);
+        Http::fakeSequence()->push("User-agent: *\nAllow: /", 200, ['Content-Type' => 'text/plain'])
+            ->push('<article>'.str_repeat('Readable published evidence. ', 8).'</article>', 200, ['Content-Type' => 'text/html']);
+        $fetcher = $this->partialMock(SafeArticleFetcher::class);
+        $fetcher->shouldReceive('publicAddress')->andReturn('93.184.216.34');
+        $budget = new RetrievalBudget;
+        $budget->freshSources = true;
+
+        $this->assertSame('retrieved', $fetcher->fetch('https://example.com/record', $budget)['status']);
+        Http::assertSentCount(2);
+    }
+
+    public function test_decompression_rejects_oversized_invalid_and_unsupported_encoded_content(): void
+    {
+        config()->set(['fact_check.retrieval.respect_robots' => false, 'fact_check.retrieval.max_bytes' => 1024]);
+        Http::fakeSequence()
+            ->push(gzencode(str_repeat('Large document. ', 1000)), 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip'])
+            ->push('Invalid gzip bytes', 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'gzip'])
+            ->push('Unsupported encoding bytes', 200, ['Content-Type' => 'text/html', 'Content-Encoding' => 'br'])
+            ->push(gzcompress('<article>'.str_repeat('Valid deflate text. ', 10).'</article>'), 200,
+                ['Content-Type' => 'text/html', 'Content-Encoding' => 'deflate']);
+        $fetcher = $this->partialMock(SafeArticleFetcher::class);
+        $fetcher->shouldReceive('publicAddress')->andReturn('93.184.216.34');
+        foreach (['invalid_or_oversized_content_encoding', 'invalid_or_oversized_content_encoding',
+            'unsupported_content_encoding', 'retrieved'] as $index => $status) {
+            $result = $fetcher->fetch('https://example.com/encoded-'.$index, new RetrievalBudget);
+            $this->assertSame($status, $result['status']);
+            $this->assertLessThanOrEqual(1024, strlen($result['text']));
+        }
+    }
+
+    public function test_fresh_retry_still_obeys_the_current_robots_disallow_rule(): void
+    {
+        config()->set('fact_check.retrieval.respect_robots', true);
+        Http::fakeSequence()->push("User-agent: *\nDisallow: /", 200, ['Content-Type' => 'text/plain']);
+        $fetcher = $this->partialMock(SafeArticleFetcher::class);
+        $fetcher->shouldReceive('publicAddress')->andReturn('93.184.216.34');
+        $budget = new RetrievalBudget;
+        $budget->freshSources = true;
+        $result = $fetcher->fetch('https://example.com/record', $budget);
+        $this->assertSame('robots_restricted_or_unavailable', $result['status']);
+        $this->assertSame('robots_disallow', $result['robots_detail']);
+        Http::assertSentCount(1);
+    }
+
     public function test_adjacent_table_cells_and_paragraphs_remain_separate_in_evidence_text(): void
     {
         $page = app(SafeArticleFetcher::class)->html('<article><p>Official volcano list.</p><table>'
