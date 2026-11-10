@@ -58,7 +58,9 @@ final class FactCheckReportPresenter
                     ?? 'The saved evidence does not establish whether this claim is accurate. Missing evidence does not make it false.',
             };
             $claims[] = ['id' => $id ?? 'claim-'.(count($claims) + 1), 'text' => $text, 'outcome' => $outcome,
-                'label' => match ($outcome) { 'supported' => 'Supported', 'contradicted' => 'Contradicted', 'conflicting' => 'Conflicting evidence', default => 'Unresolved' },
+                'label' => match ($outcome) {
+                    'supported' => 'Supported', 'contradicted' => 'Contradicted', 'conflicting' => 'Conflicting evidence', default => 'Unresolved'
+                },
                 'explanation' => $explanation, 'evidence' => $evidence];
         }
         $counts = ['total' => count($claims), 'supported' => 0, 'contradicted' => 0, 'unresolved' => 0];
@@ -69,11 +71,9 @@ final class FactCheckReportPresenter
         $label = $public['assessment_label'];
         $risk = match (true) {
             $mediaOnly => ['label' => 'Not assessed', 'level' => 'neutral', 'explanation' => 'This media-origin screening does not establish the misinformation risk of an accompanying claim.'],
-            $label === 'Unverified', AssessmentVerdict::technical($verdict), in_array($verdict, ['UNVERIFIED', 'UNVERIFIABLE', 'INCONCLUSIVE', 'CONFLICTING_EVIDENCE'], true)
-                => ['label' => 'Undetermined', 'level' => 'neutral', 'explanation' => 'The available evidence does not support a settled risk assessment. Lack of evidence is not evidence of falsity.'],
+            $label === 'Unverified', AssessmentVerdict::technical($verdict), in_array($verdict, ['UNVERIFIED', 'UNVERIFIABLE', 'INCONCLUSIVE', 'CONFLICTING_EVIDENCE'], true) => ['label' => 'Undetermined', 'level' => 'neutral', 'explanation' => 'The available evidence does not support a settled risk assessment. Lack of evidence is not evidence of falsity.'],
             $verdict === 'TRUE' => ['label' => 'Lower concern', 'level' => 'low', 'explanation' => 'Reviewed evidence supports the assessed claim. Unreviewed details and media authenticity remain outside that finding.'],
-            in_array($verdict, ['FALSE', 'MISLEADING', 'PARTLY_TRUE', 'OUT_OF_CONTEXT', 'OUTDATED'], true)
-                => ['label' => 'Elevated concern', 'level' => 'high', 'explanation' => 'The saved assessment identifies contradictions or a material problem with the way the information is presented.'],
+            in_array($verdict, ['FALSE', 'MISLEADING', 'PARTLY_TRUE', 'OUT_OF_CONTEXT', 'OUTDATED'], true) => ['label' => 'Elevated concern', 'level' => 'high', 'explanation' => 'The saved assessment identifies contradictions or a material problem with the way the information is presented.'],
             default => ['label' => 'Context needed', 'level' => 'caution', 'explanation' => 'Important context is unresolved. Verify the original statement and its scope before relying on it.'],
         };
         $score = $public['score'] ?? [];
@@ -91,10 +91,11 @@ final class FactCheckReportPresenter
         $action = $copy['recommended_action'] ?? ResultContract::publicDetail($detection->recommendation)
             ?? 'Review the cited original records and their dates before sharing this content.';
         $explanation = self::paragraphs($copy['explanation'] ?? $public['summary']);
+
         return ['result' => $public, 'assessment_code' => $verdict,
             'verdict_label' => $label, 'risk' => $risk, 'risk_percentage' => self::riskPercentage($detection), 'confidence' => $confidence, 'model_score' => $model,
             'claims' => $claims, 'counts' => $counts, 'sources' => $sources, 'show_claims' => ! $mediaOnly,
-            'explanation' => $explanation,
+            'explanation' => $explanation, 'reading_links' => self::readingLinks($factual, $copy),
             'limitations' => $factual['limitations'] ?? [], 'recommended_action' => $action];
     }
 
@@ -159,7 +160,9 @@ final class FactCheckReportPresenter
 
     public static function riskColor(?float $value): string
     {
-        if ($value === null || ! is_finite($value) || $value < 0 || $value > 100) return 'neutral';
+        if ($value === null || ! is_finite($value) || $value < 0 || $value > 100) {
+            return 'neutral';
+        }
 
         return match (self::riskLevel((int) round($value))) {
             'Very Low Risk' => 'green', 'Low Risk' => 'teal', 'Moderate Risk' => 'amber',
@@ -170,6 +173,33 @@ final class FactCheckReportPresenter
     public static function paragraphs(string $text): array
     {
         return array_map(fn ($sentences) => implode(' ', $sentences), array_chunk(SubmittedText::sentences($text), 3)) ?: [$text];
+    }
+
+    /** Direct links to sources used in the answer, never search results or invented citations. */
+    public static function readingLinks(array $result, ?array $copy = null): array
+    {
+        $ids = $copy['source_ids'] ?? array_merge(...array_map(
+            fn ($segment) => $segment['source_ids'] ?? [], $result['answer_segments'] ?? []));
+        $links = [];
+        foreach (array_merge($result['sources'] ?? [], $result['contextual_sources'] ?? []) as $source) {
+            if (! in_array($source['id'] ?? null, $ids, true)
+                || ! ($url = ReportAnswer::safeUrl($source['url'] ?? null)) || isset($links[$url])) {
+                continue;
+            }
+            $name = ReportAnswer::publisherName($source['name'] ?? '', $url);
+            $from = $name !== '' && $name !== 'Publisher not recorded' ? ' from '.$name : '';
+            $context = ($source['context_only'] ?? false) === true;
+            $label = $context ? 'Read background information'.$from : match ($source['type'] ?? $source['source_type'] ?? '') {
+                'research' => 'Read the study'.$from,
+                'fact_check' => 'Open the fact-check'.$from,
+                'news', 'reputable_news' => 'Read the report'.$from,
+                'official', 'official_government', 'weather' => 'Read the official record'.$from,
+                default => 'Read the source'.$from,
+            };
+            $links[$url] = ['url' => $url, 'label' => $label, 'title' => $source['title'] ?? $label];
+        }
+
+        return array_values($links);
     }
 
     public static function sourceClass(string $type): string

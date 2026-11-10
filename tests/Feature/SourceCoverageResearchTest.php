@@ -22,11 +22,12 @@ class SourceCoverageResearchTest extends TestCase
     public static function availability(): array
     {
         return ['many sources' => [12, 12, true], 'fewer available' => [3, 3, false], 'one source' => [1, 1, false],
-            'exact published review still expands' => [12, 12, true, true]];
+            'exact published review still expands' => [12, 12, true, true],
+            'deadline retains completed findings' => [12, 1, false, false, true]];
     }
 
     #[DataProvider('availability')]
-    public function test_resolution_does_not_skip_available_source_coverage(int $available, int $expected, bool $met, bool $exact = false): void
+    public function test_resolution_does_not_skip_available_source_coverage(int $available, int $expected, bool $met, bool $exact = false, bool $expireAfterReview = false): void
     {
         config()->set(['fact_check.min_relevant_sources' => 10, 'fact_check.progressive_research' => true,
             'fact_check.unrestricted_research' => true, 'fact_check.web_search.enabled' => false,
@@ -60,7 +61,7 @@ class SourceCoverageResearchTest extends TestCase
             return $rows;
         });
         $reviewed = [];
-        Http::fake(['api.openai.com/*' => function ($request) use (&$reviewed) {
+        Http::fake(['api.openai.com/*' => function ($request) use (&$reviewed, $expireAfterReview) {
             $input = json_decode($request['input'][1]['content'], true);
             $rows = [];
             foreach ($input['sources'] as $source) {
@@ -71,6 +72,10 @@ class SourceCoverageResearchTest extends TestCase
                     'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true),
                     'supersedes_source_ids' => [], 'supersession_excerpt' => ''];
             }
+            if ($expireAfterReview) {
+                $budget = app(\App\Services\Detections\Evidence\ReportApiBudget::class);
+                (new \ReflectionProperty($budget, 'startedAt'))->setValue($budget, microtime(true) - 121);
+            }
             return Http::response(['status' => 'completed',
                 'output' => [['type' => 'message', 'content' => [['type' => 'output_text',
                     'text' => json_encode(['relationships' => $rows, 'context_findings' => [], 'wording' => [], 'scope_resolutions' => []])]]]],
@@ -80,7 +85,13 @@ class SourceCoverageResearchTest extends TestCase
             'analysis_task' => 'claim', 'media_type' => 'text', 'caption_text' => self::CLAIM,
         ])['fact_check_result'];
         $this->assertSame('TRUE', $result['verdict']);
-        $this->assertGreaterThan(1, $calls, 'A resolved first source must not end the coverage search.');
+        if ($expireAfterReview) {
+            $this->assertSame(1, $calls);
+            $this->assertTrue($result['diagnostics']['api_budget']['time_budget_exhausted']);
+            $this->assertStringContainsString('processing time budget', implode(' ', $result['limitations']));
+        } else {
+            $this->assertGreaterThan(1, $calls, 'A resolved first source must not end the coverage search.');
+        }
         $this->assertCount($expected, $result['sources']);
         $this->assertSame($expected, $result['diagnostics']['source_coverage']['cited']);
         $this->assertSame($met, $result['diagnostics']['source_coverage']['target_met']);
@@ -93,6 +104,6 @@ class SourceCoverageResearchTest extends TestCase
         $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
             ->assertSee($expected.' distinct relevant sources cited.')
             ->assertSee($met ? 'The coverage goal of 10 sources was met.' : 'Fewer than the goal of 10 qualified');
-        Http::assertSentCount($available > 1 && ! $exact ? 2 : 1);
+        Http::assertSentCount($available > 1 && ! $exact && ! $expireAfterReview ? 2 : 1);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Detection;
 use App\Models\User;
 use App\Services\Detections\GoogleFactCheckFeedService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class FactCheckArticleTest extends TestCase
@@ -65,6 +66,23 @@ class FactCheckArticleTest extends TestCase
             ->assertSee('Related source')
             ->assertSee('Related source about the same claim wording')
             ->assertSee('https://rappler.com/newsbreak/fact-check/related-claim', false);
+    }
+
+    public function test_recent_review_opens_a_ready_publisher_answer_without_an_ai_request_or_detection_write(): void
+    {
+        Http::preventStrayRequests();
+        $this->feed();
+        $before = Detection::count();
+        $this->actingAs(User::factory()->create())->get('/dashboard/fact-checks/article-one')
+            ->assertOk()->assertSee('What the evidence shows')
+            ->assertSee('data-published-answer="published_rating"', false)
+            ->assertSee('According to Example publisher')
+            ->assertSee('Partly accurate')->assertSee('Read the fact-check from Example publisher')
+            ->assertSee('not a new TruthGuard assessment')
+            ->assertDontSee('data-risk-assessment', false)->assertDontSee('Critical Risk');
+
+        $this->assertSame($before, Detection::count());
+        Http::assertNothingSent();
     }
 
     public function test_article_links_to_original_post_when_explicit_original_url_exists(): void

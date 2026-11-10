@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class ClaimPlanner
 {
-    public const VERSION = 'claim-planning-v2';
+    public const VERSION = 'claim-planning-v3';
 
     public function __construct(private readonly StructuredAnalysis $model, private readonly PoorPromptInterpreter $interpreter) {}
 
@@ -49,6 +49,8 @@ class ClaimPlanner
         }
         $oneRequest = 'Complete the fact-check in one user request. Never ask a follow-up question or pause for clarification. Resolve reasonable ambiguity using the whole submission, aliases, faithful spelling variants, context, and research. Preserve submitted wording as evidence and use interpretations only for discovery. ';
         $oneRequest .= ResearchGuidance::CLAIM_TYPES.' ';
+        $oneRequest .= 'POSTER CLAIMS: group one announcement with its dependent date, issuing authority and audience scope as one assertion, preserving their contiguous original text. Standalone rating stamps, date lines, headings and audience labels are context, not separate claims. A displayed FAKE stamp is not evidence that the announcement is false. Keep genuinely independent assertions separate. ';
+        $oneRequest .= 'If an announcement names its issuing authority, action and event date, research whether that authority made the announcement. A missing geographic scope does not by itself prevent checking that attribution; preserve any unresolved geographic scope as a limitation rather than preventing source review. ';
         $oneRequest .= 'OPEN FACTUAL QUESTIONS: preserve how much/how many/who/when/where/what and Filipino equivalents as the research target. A request for an actual price is not answered merely by refuting a different alleged price. Research the requested value, identity or date; never invent a candidate value. Treat a searchable information question as factual research, not opinion. Keep unknown figures out of quantities. A record giving a value answers that question; report unresolved details if no matching record supplies it. ';
         $oneRequest .= 'VISUAL SUBJECT CONTEXT: submission.visual_context describes visible objects separately from transcribed words. Use it to research references such as these, this, each or bawat isa when the subject is shown rather than written. Keep every claim quote verbatim from original_text; never append this description to a quote or invent an asserted action. A price question over visible vehicles is a candidate price claim to research, not an amount paid to an unidentified person. Use the visible object category in searches without inventing its exact model, owner, location or purchase price. Do not mark the subject missing solely because its visible object category is not printed in the OCR. Actual identity, contract or event gaps still require source research, and appearance cannot establish the claim or a matching photograph. ';
         $oneRequest .= 'A yes/no headline containing a named subject and an explicit status predicate is a checkable candidate, including Filipino wording such as sarado, sinara, naaprubahan, or naaresto. Question marks and sensational typography do not make that status a mere topic. Preserve the literal quote, classify the candidate as factual without assuming it is true, and use every visible text region to resolve its subject, event, date, and scope. Do not set requires_context merely because it is phrased as a question or headline. Keep that flag for an actual unresolved material detail. A filing, complaint, investigation, proposal, and final decision remain different statuses. ';
@@ -156,6 +158,9 @@ class ClaimPlanner
                 'references' => [], 'searches' => array_values(array_unique(array_merge($interpretation['searches'], $this->interpreter->interpret($sentence)['searches']))),
                 'submission_context' => $text, 'question_framed_assertion' => true];
         }
+        if ($target === '' && ($submission['media_attached'] ?? false)) {
+            $claims = $this->groupPosterFragments($claims, $text);
+        }
         $claims = $this->mergeSentences($claims);
 
         // A rhetorical headline is presentation, not a competing assessment
@@ -168,6 +173,18 @@ class ClaimPlanner
             unset($claim);
         }
         foreach ($claims as &$claim) {
+            // A named agency's dated announcement is a checkable attribution,
+            // even when the graphic does not say which locality it covers.
+            // Sources must still establish or refute that attribution; this
+            // only permits review and never supplies an outcome.
+            if ($claim['requires_context'] && ($claim['entities'] ?? []) !== [] && ($claim['dates'] ?? []) !== []
+                && preg_match('/\b(?:according to|alinsunod sa|ayon sa)\b/iu', $claim['quote'])
+                && preg_match('/jurisdiction|geograph|location|\bplace\b|\barea\b/iu', $claim['context_reason'])
+                && ! preg_match('/which (?:agency|authority|office)|unidentified|identity|who issued|issuing authority|exact date|which date|event date/iu', $claim['context_reason'])) {
+                $claim['scope_limitation'] = $claim['context_reason'];
+                $claim['requires_context'] = false;
+                $claim['context_reason'] = '';
+            }
             // Satire provenance may need researching even when the literal
             // wording is an opinion. This never turns an opinion into a fact.
             $claim['context_review_requested'] = ($submission['context_requested'] ?? false) === true;
@@ -236,6 +253,82 @@ class ClaimPlanner
         return ['claims' => $claims, 'interpretation' => $interpretation, 'original_claim_date' => $date, 'status' => $text === '' ? 'no_readable_claim' : ($data === null ? 'unavailable' : 'completed')];
     }
 
+    /** Rejoin dependent poster regions without inventing a proposition or verdict. */
+    private function groupPosterFragments(array $claims, string $text): array
+    {
+        if (count($claims) < 2 || mb_strlen($text) > 1800) {
+            return $claims;
+        }
+        // A date/action quote and an action/audience quote can overlap on the
+        // very same announcement. Join their literal spans, not their prose.
+        $joined = [];
+        foreach ($claims as $claim) {
+            $start = strpos($text, $claim['quote']);
+            $end = $start === false ? 0 : $start + strlen($claim['quote']);
+            $merged = false;
+            foreach ($joined as &$previous) {
+                $previousStart = strpos($text, $previous['quote']);
+                $previousEnd = $previousStart === false ? 0 : $previousStart + strlen($previous['quote']);
+                if ($start === false || $previousStart === false || $claim['kind'] !== 'factual' || $previous['kind'] !== 'factual'
+                    || min($end, $previousEnd) - max($start, $previousStart) < 20) {
+                    continue;
+                }
+                $previous['text'] = $previous['quote'] = substr($text, min($start, $previousStart), max($end, $previousEnd) - min($start, $previousStart));
+                unset($previous['extracted_fragment']);
+                foreach (['entities', 'dates', 'locations', 'quantities', 'qualifiers', 'searches'] as $field) {
+                    $previous[$field] = array_values(array_unique(array_merge($previous[$field], $claim[$field])));
+                }
+                $previous['references'] = array_values(array_unique(array_merge($previous['references'], $claim['references']), SORT_REGULAR));
+                $merged = true;
+                break;
+            }
+            unset($previous);
+            if (! $merged) {
+                $joined[] = $claim;
+            }
+        }
+        $claims = $joined;
+        $substantive = [];
+        foreach ($claims as $index => $claim) {
+            if (($claim['kind'] ?? '') !== 'factual') {
+                return $claims;
+            }
+            $literal = Str::squish($claim['extracted_fragment'] ?? $claim['quote']);
+            $label = preg_match('/^(?:FAKE|FALSE|TRUE|MISLEADING|PARTLY TRUE|OUTDATED|PUBLIC ADVISORY|ADVISORY|ANNOUNCEMENT)[.!]*$/iu', $literal);
+            $date = preg_match('/^(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[, ]+)?(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}[.!]*$/iu', $literal)
+                || preg_match('/^\d{4}-\d{2}-\d{2}$/u', $literal);
+            $attribution = preg_match('/^(?:according to|alinsunod sa|ayon sa)\b/iu', $literal)
+                && Str::wordCount($literal) <= 10
+                && ! preg_match('/\b(?:suspended|cancelled|canceled|closed|approved|ordered|sinuspinde|walang pasok)\b/iu', $literal);
+            $audience = preg_match('/^(?:(?:all|public|private|and|at|class|classes|levels|schools|government|offices|lahat|antas|pampubliko|pribado|paaralan|ng|at|mga|sa)\b[\s,\/&-]*)+$/iu', $literal);
+            if (! $label && ! $date && ! $attribution && ! $audience) {
+                $substantive[] = $index;
+            }
+        }
+        if (count($substantive) !== 1) {
+            return $claims;
+        }
+        $start = strlen($text);
+        $end = 0;
+        $merged = $claims[$substantive[0]];
+        foreach ($claims as $claim) {
+            $position = strpos($text, $claim['quote']);
+            if ($position === false) {
+                return $claims;
+            }
+            $start = min($start, $position);
+            $end = max($end, $position + strlen($claim['quote']));
+            foreach (['entities', 'dates', 'locations', 'quantities', 'qualifiers', 'searches'] as $field) {
+                $merged[$field] = array_values(array_unique(array_merge($merged[$field], $claim[$field])));
+            }
+            $merged['references'] = array_values(array_unique(array_merge($merged['references'], $claim['references']), SORT_REGULAR));
+        }
+        $merged['merged_fragments'] = array_column($claims, 'quote');
+        $merged['text'] = $merged['quote'] = substr($text, $start, $end - $start);
+
+        return [$merged];
+    }
+
     private function hasPredictionAttribution(string $text): bool
     {
         // OCR line breaks and possessives must not hide the source of a
@@ -294,7 +387,7 @@ class ClaimPlanner
             $specific = trim($terms.' '.implode(' ', array_merge($claim['quantities'] ?? [], $claim['dates'] ?? [])));
             $short = $this->shortQuery($claim, $terms);
             $domain = $this->officialDomain($claim);
-            $officialTerms = implode(' ', array_unique(preg_split('/\s+/u', trim($terms.' '.$short), -1, PREG_SPLIT_NO_EMPTY) ?: []));
+            $officialTerms = implode(' ', array_unique(preg_split('/\s+/u', trim($terms.' '.$short.' '.implode(' ', $claim['dates'] ?? [])), -1, PREG_SPLIT_NO_EMPTY) ?: []));
             // A full OCR sentence is often an AND search that matches no article.
             // Search the complete assertion through its grounded, distinctive terms,
             // then broaden the wording and, where possible, ask for an official record.
@@ -302,7 +395,8 @@ class ClaimPlanner
                 ? Str::limit(Str::squish($officialTerms ?: $short), 120, '').' site:'.$domain
                 : null;
             $choices = array_values(array_unique(array_filter([
-                $claim['searches'][0] ?? $specific, $officialQuery, $short, $claim['searches'][1] ?? null,
+                $claim['searches'][0] ?? $specific, $officialQuery,
+                Str::wordCount($short) >= 2 ? $short : null, $claim['searches'][1] ?? null, $short,
                 $claim['searches'][2] ?? null,
                 ...array_slice($claim['searches'] ?? [], 2), $specific, $terms, Str::limit($claim['text'], 180, ''),
             ])));
@@ -395,7 +489,7 @@ class ClaimPlanner
     private function shortQuery(array $claim, string $terms): string
     {
         $text = $claim['text'] ?? '';
-        preg_match_all('/\b(earthquake|lindol|fault(?:line)?|volcano|eruption|tsunami|typhoon|bagyo|storm|flood|rainfall|weather|election|halalan|ballot|vote|postponement|court|law|health|vaccine)\b/iu', $text, $events);
+        preg_match_all('/\b(earthquake|lindol|fault(?:line)?|volcano|eruption|tsunami|typhoon|bagyo|storm|flood|rainfall|weather|election|halalan|ballot|vote|postponement|court|law|health|vaccine|class suspension|work suspension|walang pasok|financial assistance)\b/iu', $text, $events);
         // Drop the attributed agency from the broad query when the location is
         // known: original reporting may name its parent agency instead.
         $locations = implode(' ', array_unique($claim['locations'] ?? []));
@@ -427,6 +521,7 @@ class ClaimPlanner
             (bool) preg_match('/\bcomelec\b/u', $context) => 'comelec.gov.ph',
             (bool) preg_match('/\bndrrmc\b/u', $context) => 'ndrrmc.gov.ph',
             (bool) preg_match('/\bdeped\b/u', $context) => 'deped.gov.ph',
+            (bool) preg_match('/\bdilg\b/u', $context) => 'dilg.gov.ph',
             default => null,
         };
         if ($namedAgency !== null) {

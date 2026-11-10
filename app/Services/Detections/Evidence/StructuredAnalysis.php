@@ -29,7 +29,8 @@ class StructuredAnalysis
 
     public function canAsk(): bool
     {
-        return $this->remainingCalls() === null || $this->remainingCalls() > 0;
+        return app(ReportApiBudget::class)->remainingSeconds() >= 1
+            && ($this->remainingCalls() === null || $this->remainingCalls() > 0);
     }
 
     public function reset(): void

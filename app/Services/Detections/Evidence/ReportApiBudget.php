@@ -21,6 +21,21 @@ final class ReportApiBudget
 
     private float $lastHeartbeat = 0;
 
+    private float $startedAt;
+
+    public function __construct()
+    {
+        $this->startedAt = microtime(true);
+    }
+
+    /** A wall-clock deadline is independent of source counts or research mode. */
+    public function remainingSeconds(): float
+    {
+        $limit = max(0, (int) config('fact_check.report_budget.max_seconds', 120));
+
+        return $limit === 0 ? INF : max(0, $limit - (microtime(true) - $this->startedAt));
+    }
+
     public function trackDetection(?Detection $detection): void
     {
         $this->detectionId = $detection?->id;
@@ -49,6 +64,7 @@ final class ReportApiBudget
 
     public function reset(): void
     {
+        $this->startedAt = microtime(true);
         $this->requests = $this->reportedTokens = 0;
         $this->blocked = null;
     }
@@ -59,6 +75,7 @@ final class ReportApiBudget
         $maxRequests = ResearchLimits::unrestricted() ? 0 : max(0, (int) config('fact_check.report_budget.max_requests', 0));
         $tokenStop = ResearchLimits::unrestricted() ? 0 : max(0, (int) config('fact_check.report_budget.stop_after_tokens', 0));
         $this->blocked = match (true) {
+            $this->remainingSeconds() < 1 => 'elapsed_time_limit',
             $maxRequests > 0 && $this->requests >= $maxRequests => 'request_limit',
             $tokenStop > 0 && $this->reportedTokens >= $tokenStop => 'reported_token_limit',
             default => null,
@@ -82,6 +99,9 @@ final class ReportApiBudget
     public function snapshot(): array
     {
         return ['requests' => $this->requests, 'reported_tokens' => $this->reportedTokens,
+            'max_seconds' => max(0, (int) config('fact_check.report_budget.max_seconds', 120)),
+            'elapsed_ms' => (int) round((microtime(true) - $this->startedAt) * 1000),
+            'time_budget_exhausted' => $this->remainingSeconds() < 1,
             'max_requests' => ResearchLimits::unrestricted() ? 0 : max(0, (int) config('fact_check.report_budget.max_requests', 0)),
             'stop_after_tokens' => ResearchLimits::unrestricted() ? 0 : max(0, (int) config('fact_check.report_budget.stop_after_tokens', 0)),
             'blocked_reason' => $this->blocked, 'in_flight_search_can_exceed_token_threshold' => true];

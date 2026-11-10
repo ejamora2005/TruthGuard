@@ -7,6 +7,7 @@ use App\Services\Detections\AssessmentScore;
 use App\Services\Detections\DetectionRetentionService;
 use App\Services\Detections\DetectionVerdictPresenter;
 use App\Services\Detections\GoogleFactCheckFeedService;
+use App\Services\Detections\PublishedFactCheckAnswer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -200,6 +201,7 @@ class DashboardController extends Controller
 
         return view('user.dashboard.fact-check', [
             'item' => $item,
+            'publishedAnswer' => PublishedFactCheckAnswer::fromFeedItem($item),
             'relatedFactChecks' => $feedService->relatedTo($item, 4, self::FACT_CHECK_FEED_LOOKBACK_DAYS),
             'reportDetection' => $reportDetection,
         ]);

@@ -150,6 +150,9 @@
         $assessment = $reasoning = $publicResult['summary'];
     }
     $evidenceParagraphs = collect([$assessment]);
+    $showRiskAssessment = ($publicResult['verdict'] ?? '') !== 'MISSING_CONTEXT'
+        && ($riskAssessment['value'] ?? null) !== null;
+    $answerReadingLinks = \App\Services\Detections\FactCheckReportPresenter::readingLinks($publicResult, $savedWording);
     $evidenceText = $evidenceParagraphs->implode("\n\n");
     $interpretationSummary = $savedWording['result_summary'] ?? \App\Services\Detections\ReportAnswer::interpretationSummary($publicResult, $reasoning);
     $interpretationAction = $savedWording['recommended_action'] ?? \App\Services\Detections\ReportAnswer::interpretationAction($interpretationSummary, $recommendation);
@@ -285,9 +288,6 @@
             default => 6,
         })->values();
     $primarySources = $sources->reject(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->values();
-    $additionalReferences = app(\App\Services\Detections\AdditionalSourceReferences::class)->select(
-        is_array($selectedDetection->fact_check_result) ? $selectedDetection->fact_check_result : [],
-        $selectedDetection->verification_sources ?? [], $sources->all());
     $socialSources = $sources->filter(fn (array $source): bool => ($source['source_type'] ?? null) === 'social_context')->take(4)->values();
     [$trustedSources, $otherSources] = $sources->partition(fn (array $source): bool => in_array(($source['source_type'] ?? null), ['fact_check', 'official', 'weather'], true));
     $trustedSourceCount = $trustedSources->count();
@@ -478,6 +478,8 @@
         }
 
         .tg-ai-report { position: relative; isolation: isolate; overflow-wrap: anywhere; padding-bottom: .5rem; }
+        .tg-ai-report > :not([hidden]) ~ :not([hidden]) { margin-top: 1.25rem; }
+        @media (min-width: 641px) { .tg-ai-report > :not([hidden]) ~ :not([hidden]) { margin-top: 1.5rem; } }
         .tg-ai-report * { letter-spacing: 0 !important; }
         .tg-ai-report .tg-ai-surface { border: 1px solid rgba(203, 213, 225, .86); border-radius: 18px; background: linear-gradient(180deg, #fff 0%, #fbfdff 100%); box-shadow: 0 20px 55px rgba(15, 23, 42, .08); }
         .tg-report-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.5rem; padding: 1.25rem; border: 1px solid rgba(203, 213, 225, .86); border-radius: 22px; background: linear-gradient(135deg, #fff 0%, #f8fbff 58%, rgb(var(--tg-accent-rgb) / .05) 100%); box-shadow: 0 24px 70px rgba(15, 23, 42, .09); }
@@ -923,12 +925,14 @@
         .tg-submission-details > summary { display: none; }
         @media (max-width: 640px) {
             .tg-ai-report .tg-report-header { flex-wrap: nowrap; align-items: center; gap: .5rem; padding-block: .125rem; }
+            .truthguard-mobile-result { padding-top: .25rem; }
+            .tg-ai-report > .tg-report-overview { margin-top: .75rem !important; }
             .tg-ai-report .tg-report-title { flex: 1 1 auto; flex-basis: auto; min-width: 0; overflow: hidden; }
-            .tg-ai-report .tg-report-header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; }
+            .tg-ai-report .tg-report-header-actions { width: auto; flex: 0 0 auto; justify-content: flex-end; gap: .5rem; }
             .tg-ai-report .tg-report-kicker, .tg-ai-report .tg-report-subtitle, .tg-ai-report .tg-report-reference > span { display: none; }
-            .tg-ai-report .tg-report-page-title { margin: 0; overflow: hidden; font-size: 1.0625rem; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
+            #latest-detection-result .tg-report-page-title { margin: 0; overflow: hidden; font-size: 1rem !important; line-height: 1.25 !important; white-space: nowrap; text-overflow: ellipsis; }
             .tg-ai-report .tg-report-reference { display: none; }
-            .tg-ai-report .tg-report-new-check { min-height: 32px; padding: .35rem .5rem; font-size: .6875rem !important; }
+            .tg-ai-report .tg-report-new-check { min-height: 44px !important; padding: .5rem .625rem; font-size: .6875rem !important; }
             .tg-ai-report .tg-report-evidence { gap: .75rem; }
             .tg-ai-report .tg-report-evidence .tg-ai-media > .tg-image-trigger > img,
             .tg-ai-report .tg-report-evidence .tg-ai-media > video { max-height: min(30svh, 14rem); }
@@ -941,6 +945,7 @@
             .tg-submission-details .tg-evidence-meta { padding-top: 0; padding-bottom: .25rem; border-top: 0; }
         }
         @media (max-width: 380px) {
+            #latest-detection-result .tg-report-page-title { font-size: .875rem !important; white-space: normal; }
             .tg-ai-report .tg-report-new-check > svg { display: none; }
         }
         @media (max-width: 640px) {
@@ -950,15 +955,20 @@
         }
         @media (prefers-reduced-motion: reduce) { .tg-submission-details > summary > svg { transition: none; } }
         @media (max-width: 640px) {
-            .tg-ai-report .tg-verdict-summary { grid-template-columns: minmax(0, 1fr); gap: .625rem; align-items: start; }
+            .tg-ai-report .tg-verdict-summary { grid-template-columns: minmax(0, 1fr); gap: .5rem; align-items: stretch; }
+            .tg-ai-report .tg-verdict-summary-has-risk { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); }
             .tg-verdict-summary > .tg-verdict-help { display: flex; align-items: stretch; padding-block: 0; margin-block: 0; }
             .tg-verdict-summary > .tg-verdict-help > h2 { display: flex; width: 100%; }
-            .tg-ai-report .tg-verdict-help .tg-report-main-verdict { width: fit-content; min-height: 2.75rem; gap: .375rem; padding: .625rem .65rem; font-size: .8rem !important; line-height: 1.5; }
+            .tg-ai-report .tg-verdict-help .tg-report-main-verdict { width: 100%; min-height: 3.5rem; gap: .375rem; padding: .5rem .625rem; font-size: .8125rem !important; line-height: 1.4; }
             .tg-verdict-help .tg-report-main-verdict > svg { width: 18px; height: 18px; flex: 0 0 18px; }
-            .tg-ai-report .tg-verdict-help .tg-report-main-verdict > span { font-size: inherit !important; line-height: inherit; }
-            .tg-ai-report .tg-verdict-score { display: flex; flex-direction: column; justify-content: center; max-width: none; padding: .625rem; }
+            .tg-ai-report .tg-verdict-help .tg-report-main-verdict > span { font-size: inherit !important; line-height: inherit; white-space: normal; overflow-wrap: anywhere; }
+            .tg-verdict-summary:not(.tg-verdict-summary-has-risk) > .tg-verdict-help { justify-self: start; }
+            .tg-ai-report .tg-verdict-summary:not(.tg-verdict-summary-has-risk) .tg-report-main-verdict { width: fit-content; min-height: 2.75rem; }
+            .tg-ai-report .tg-verdict-score { display: flex; flex-direction: column; justify-content: center; max-width: none; padding: .5rem; }
+            .tg-ai-report .tg-risk-value-row { gap: .35rem; }
+            .tg-ai-report .tg-risk-value-row > span { font-size: .6875rem; line-height: 1.4; }
             .tg-ai-report .tg-verdict-score > strong { font-size: .75rem !important; line-height: 1.45; }
-            .tg-ai-report .tg-verdict-score > span { font-size: .625rem !important; line-height: 1.5; }
+            .tg-ai-report .tg-verdict-score > span { margin-top: 0; font-size: .6875rem !important; line-height: 1.5; }
         }
         @media (max-width: 1023px) {
             body.truthguard-result-route .truthguard-user-content-column main { padding-bottom: calc(7.75rem + env(safe-area-inset-bottom, 0px)) !important; }
@@ -980,7 +990,7 @@
             target.focus({ preventScroll: true });
         }
     }"
-    class="tg-ai-report truthguard-scroll-target space-y-5 sm:space-y-6"
+    class="tg-ai-report truthguard-scroll-target"
     data-fact-check-verdict="{{ $publicResult['verdict'] }}"
     style="--tg-accent: {{ $tone['accent'] }}; --tg-accent-rgb: {{ $tone['accentRgb'] }};"
 >
@@ -1118,7 +1128,7 @@
                                 </svg>
                             </a>@endunless
                         </div>
-                        <div class="tg-verdict-summary">
+                        <div @class(['tg-verdict-summary', 'tg-verdict-summary-has-risk' => $showRiskAssessment])>
                             <div class="tg-verdict-help" x-data="{
                                     helpOpen: false, pinned: false, helpAbove: false, hideTimer: null,
                                     positionHelp() {
@@ -1147,6 +1157,7 @@
                                     <p>{{ $presentation['verdict_meaning'] ?? $tone['summary'] }}</p>
                                 </div>
                             </div>
+                            @if ($showRiskAssessment)
                             <aside class="tg-verdict-score" data-risk-assessment data-risk-color="{{ $riskAssessment['color'] ?? 'neutral' }}" aria-label="Risk assessment" title="{{ $riskAssessment['explanation'] }}">
                                 <span>Risk assessment</span>
                                 <div class="tg-risk-value-row">
@@ -1155,6 +1166,7 @@
                                 </div>
                                 @if(isset($riskAssessment['basis']))<span>{{ $riskAssessment['basis'] }}</span>@endif
                             </aside>
+                            @endif
                         </div>
                         <div class="tg-verdict-explanation">
                             <h3>What the evidence shows</h3>
@@ -1164,6 +1176,13 @@
                             @foreach ($evidenceParagraphs as $paragraph)
                                 <p>{{ $paragraph }}</p>
                             @endforeach
+                            @if ($answerReadingLinks !== [])
+                                <ul class="mt-3 space-y-2 text-sm" aria-label="Read the cited sources">
+                                    @foreach ($answerReadingLinks as $link)
+                                        <li><a href="{{ $link['url'] }}" target="_blank" rel="noopener noreferrer" title="{{ $link['title'] }}" class="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-4 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200">{{ $link['label'] }}<span class="sr-only"> (opens in a new tab)</span></a></li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         </div>
                         @if ($mediaOnlyReport && ($mediaClaimNotice['status'] ?? '') === 'claim_detected')
                             <aside class="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950" aria-labelledby="detected-media-claim-title">
@@ -1414,7 +1433,7 @@
             <dl class="tg-report-metrics">
                 @foreach (array_values(array_filter([
                     $showAiScore ? ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : (data_get($publicResult, 'score.validation') === 'uncalibrated' ? 'Uncalibrated model output' : 'AI-signal score'), 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']] : null,
-                    ['label' => 'Risk assessment', 'value' => $riskAssessment['display'], 'help' => $riskAssessment['explanation']],
+                    $showRiskAssessment ? ['label' => 'Risk assessment', 'value' => $riskAssessment['display'], 'help' => $riskAssessment['explanation']] : null,
                     ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
                     ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
                 ])) as $metric)
@@ -1761,7 +1780,7 @@
                         </div>
                     </div>
                 @endforeach
-                <span class="tg-source-count"><strong>{{ $sourceCount }}</strong> total</span>
+                <span class="tg-source-count"><strong>{{ $sourceCount }}</strong> result references</span>
             </div>
         </div>
 
@@ -1832,29 +1851,11 @@
                 </a>
             @empty
                 <div class="tg-source-empty">
-                    <p class="text-sm font-bold text-slate-700">No source links were recorded for this scan.</p>
+                    <p class="text-sm font-bold text-slate-700">No sources were used to establish this verdict.</p>
                     <p class="mt-1 text-xs leading-5 text-slate-500">Treat this verdict as preliminary and verify it independently.</p>
                 </div>
             @endforelse
         </div>
-
-        @if ($additionalReferences !== [])
-            <section class="mt-5 border-t border-slate-200 pt-5" aria-labelledby="additional-references-{{ $selectedDetection->id }}">
-                <h4 id="additional-references-{{ $selectedDetection->id }}" class="text-base font-black text-slate-950">Additional relevant sources ({{ count($additionalReferences) }})</h4>
-                <p class="mt-1 text-sm leading-6 text-slate-600">Related pages retrieved during this check, including government records when available. These references were not used to establish the verdict and are excluded from the cited-source count.</p>
-                <div class="tg-source-list mt-4">
-                    @foreach ($additionalReferences as $reference)
-                        <a href="{{ $reference['url'] }}" target="_blank" rel="noopener noreferrer" class="tg-ai-source tg-source-card group">
-                            <span class="tg-source-publisher">{{ $reference['name'] }}</span>
-                            <span class="tg-source-domain">{{ $reference['host'] }}</span>
-                            <span class="tg-source-card-title">{{ $reference['title'] }}</span>
-                            <span class="text-xs font-semibold text-amber-800">{{ $reference['type_label'] }} · Not used for the verdict</span>
-                            <span class="tg-source-card-footer"><span class="tg-source-open">Open reference ↗</span></span>
-                        </a>
-                    @endforeach
-                </div>
-            </section>
-        @endif
 
         @if ($socialSources->isNotEmpty())
             <section class="mt-5 border-t border-slate-200 pt-5" aria-labelledby="social-context-title">

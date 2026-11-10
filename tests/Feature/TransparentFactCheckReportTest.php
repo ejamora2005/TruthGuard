@@ -61,7 +61,7 @@ class TransparentFactCheckReportTest extends TestCase
         $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $html = $this->actingAs($user)->get(route('detections.result', $record))->assertOk()
             ->assertSee('Missing Context')->assertSee(ReportAnswer::forPresentation($record->fact_check_result)['summary'])
-            ->assertSee('Original vehicle programme')->assertSee('Risk assessment')->assertSee('Download report')->assertSee('Critical Risk')
+            ->assertSee('Original vehicle programme')->assertDontSee('Risk assessment')->assertSee('Download report')->assertDontSee('Critical Risk')
             ->assertDontSee('data-risk-explanation')->assertDontSee('Assessed-statement risk index')
             ->assertDontSee('Extracted factual claims')->assertDontSee('Claim-by-claim assessment')
             ->assertDontSee('id="claim-assessments"', false)->assertDontSee('tg-transparent-indicators')->assertDontSee('Model confidence')
@@ -70,7 +70,7 @@ class TransparentFactCheckReportTest extends TestCase
         $dom = new \DOMDocument;
         @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
         $xpath = new \DOMXPath($dom);
-        $this->assertSame(1, $xpath->query('//div[contains(@class,"tg-verdict-summary")]/*[@data-risk-assessment]')->length);
+        $this->assertSame(0, $xpath->query('//div[contains(@class,"tg-verdict-summary")]/*[@data-risk-assessment]')->length);
         $this->assertSame(0, $xpath->query('//*[@data-claim-outcome]')->length);
         $this->assertSame($before, $record->fresh()->getRawOriginal());
         Http::assertNothingSent();
@@ -84,6 +84,31 @@ class TransparentFactCheckReportTest extends TestCase
         $this->assertNull($report['sources'][1]['published_at']);
         $this->assertSame('News reporting', $report['sources'][1]['credibility']);
         $this->assertSame('Official government record', $report['sources'][0]['credibility']);
+    }
+
+    public function test_result_page_hides_unavailable_risk_but_keeps_valid_zero_and_nonzero_scores(): void
+    {
+        Http::preventStrayRequests();
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
+        $owner = User::factory()->create();
+        $record = $this->record($owner);
+        $saved = $record->fact_check_result;
+        $record->update(['fact_check_result' => ['schema_version' => 4, 'primary_task' => 'claim',
+            'verdict' => 'UNVERIFIED', 'summary' => 'No matching source was available.', 'sources' => []]]);
+        $this->actingAs($owner)->get(route('detections.result', $record))->assertOk()
+            ->assertDontSee('data-risk-assessment', false)->assertDontSee('Risk undetermined')->assertDontSee('Risk assessment');
+
+        foreach ([['FALSE', 'refuted', 'contradicting', '100%'], ['TRUE', 'supported', 'supporting', '0%']] as [$verdict, $outcome, $stance, $percentage]) {
+            $result = $saved;
+            $result['verdict'] = $verdict;
+            $result['claims'] = [$result['claims'][0]];
+            $result['claims'][0]['outcome'] = $outcome;
+            $result['sources'][0]['relationships'][0]['stance'] = $stance;
+            $record->update(['fact_check_result' => $result]);
+            $this->get(route('detections.result', $record))->assertOk()
+                ->assertSee('data-risk-assessment', false)->assertSee('Risk assessment')->assertSee($percentage);
+        }
+        Http::assertNothingSent();
     }
 
     public function test_missing_unsafe_or_superseded_evidence_never_resolves_a_claim(): void

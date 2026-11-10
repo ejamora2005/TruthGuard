@@ -34,6 +34,8 @@ return [
     // The token threshold stops subsequent requests; hosted search can add
     // input tokens inside one request, so this is not a provider billing cap.
     'report_budget' => [
+        // Includes model review time, even when discovery is unrestricted.
+        'max_seconds' => (int) env('FACT_CHECK_REPORT_MAX_SECONDS', 120),
         // Zero disables a fixed spending stop; deduplication and bounded retries remain active.
         'max_requests' => (int) env('FACT_CHECK_REPORT_MAX_API_REQUESTS', 0),
         'stop_after_tokens' => (int) env('FACT_CHECK_REPORT_STOP_AFTER_TOKENS', 0),

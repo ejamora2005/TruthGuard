@@ -10,6 +10,45 @@ use Tests\TestCase;
 
 class ResultWordingTest extends TestCase
 {
+    public function test_developed_evidence_paragraph_preserves_attribution_reasoning_and_source_links_without_requests(): void
+    {
+        Http::preventStrayRequests();
+        $explanation = 'According to PHIVOLCS, Taal Volcano is located in Batangas. Mayon Volcano is located in Albay. These locations contradict the claim placing Taal Volcano in Albay.';
+        $row = ['claim_id' => 'c1', 'source_id' => 's1', 'stance' => 'contradicting', 'basis' => 'primary_record',
+            'excerpt' => 'Taal Volcano is located in Batangas. Mayon Volcano is located in Albay.', 'explanation' => $explanation,
+            'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true)];
+        $result = ['verdict' => 'FALSE', 'primary_task' => 'claim', 'claim' => 'Taal Volcano is located in Albay.',
+            'claims' => [['id' => 'c1', 'kind' => 'factual', 'text' => 'Taal Volcano is located in Albay.',
+                'outcome' => 'refuted', 'relationships' => [$row]]],
+            'sources' => [['id' => 's1', 'name' => 'PHIVOLCS', 'type' => 'official_government',
+                'title' => 'Volcanoes of the Philippines', 'url' => 'https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/',
+                'relationships' => [$row]]]];
+        $snapshot = $result;
+        $copy = ResultWording::saved(ResultWording::ensure($result));
+
+        $this->assertSame($explanation, $copy['explanation']);
+        $this->assertCount(3, SubmittedText::sentences($copy['explanation']));
+        $this->assertSame('FALSE', $copy['verdict']);
+        $this->assertSame(['s1'], $copy['source_ids']);
+        $this->assertStringContainsString('before sharing', $copy['recommended_action']);
+        $links = \App\Services\Detections\FactCheckReportPresenter::readingLinks($result, $copy);
+        $this->assertSame('Read the official record from PHIVOLCS', $links[0]['label']);
+        $this->assertSame($result['sources'][0]['url'], $links[0]['url']);
+        $this->assertSame($snapshot, $result);
+        Http::assertNothingSent();
+    }
+
+    public function test_previous_wording_version_remains_readable_without_rewriting_saved_answers(): void
+    {
+        $result = ['verdict' => 'TRUE', 'primary_task' => 'claim', 'sources' => [['id' => 's1']],
+            'generated_wording' => ['version' => 'result-wording-v13', 'verdict' => 'TRUE',
+                'explanation' => 'According to the municipal record, the library reopened in May 2024.',
+                'result_summary' => 'The dated municipal record confirms the reopening.',
+                'recommended_action' => 'Read the original municipal record before sharing.', 'source_ids' => ['s1']]];
+
+        $this->assertSame($result['generated_wording']['explanation'], ResultWording::saved($result)['explanation']);
+    }
+
     public function test_research_narration_is_rejected_and_legacy_openings_are_removed_without_losing_the_finding(): void
     {
         Http::preventStrayRequests();
@@ -93,7 +132,7 @@ class ResultWordingTest extends TestCase
         $this->assertNull(ResultWording::saved($stored));
     }
 
-    public function test_reused_result_gets_fresh_wording_without_changing_its_facts(): void
+    public function test_reused_result_keeps_concise_wording_without_filler_or_changing_its_facts(): void
     {
         Http::preventStrayRequests();
         $result = ResultWording::ensure([
@@ -105,8 +144,8 @@ class ResultWordingTest extends TestCase
         $varied = ResultWording::varyForReuse($result, 'second-submission');
         $copy = ResultWording::saved($varied);
 
-        $this->assertNotSame($original['explanation'], $copy['explanation']);
-        $this->assertStringContainsString(lcfirst($original['explanation']), $copy['explanation']);
+        $this->assertSame($original, $copy);
+        $this->assertStringStartsWith('The official record', $copy['explanation']);
         $this->assertSame($result['verdict'], $varied['verdict']);
         $this->assertSame($result['summary'], $varied['summary']);
         $this->assertSame($result['sources'], $varied['sources']);

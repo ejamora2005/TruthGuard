@@ -98,7 +98,13 @@ class PromptGuideTest extends TestCase
         $this->assertStringContainsString('Opinion, satire, parody, or non-factual content', $instructions);
         $this->assertStringContainsString('Image, video, document, screenshot, post, or link', $instructions);
         $this->assertStringContainsString('keep media authenticity, content provenance, and factual claim accuracy separate', $instructions);
-        $this->assertStringContainsString('140-220 words and six to eight', $instructions);
+        $this->assertStringContainsString('40-90 words and three or four', $instructions);
         $this->assertStringContainsString('rather than returning a quotation alone', $instructions);
+        foreach ([$instructions, ResultWording::evidenceInstructions()] as $guide) {
+            $this->assertStringContainsString('Start with natural attribution and the concrete finding', $guide);
+            $this->assertStringContainsString('why the evidence supports or contradicts the exact claim', $guide);
+            $this->assertStringContainsString('never invent facts', $guide);
+            $this->assertStringContainsString('source organization to check before sharing', $guide);
+        }
     }
 }

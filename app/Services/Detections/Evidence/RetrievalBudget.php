@@ -36,6 +36,8 @@ final class RetrievalBudget
 
     public int $reviewMinNewDocuments = 1;
 
+    public bool $coalesceReviews = false;
+
     public array $reviewedDocumentSignatures = [];
 
     public bool $reviewDeferred = false;
@@ -76,8 +78,10 @@ final class RetrievalBudget
 
     public function remaining(): float
     {
-        return ResearchLimits::unrestricted() ? INF
+        $discovery = ResearchLimits::unrestricted() ? INF
             : max(0, (int) config('fact_check.retrieval.seconds', 45) - (microtime(true) - $this->started));
+
+        return min($discovery, app(ReportApiBudget::class)->remainingSeconds());
     }
 
     public function excludeAnalysisTime(float $seconds): void

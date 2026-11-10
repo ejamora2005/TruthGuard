@@ -287,6 +287,7 @@ class EvidenceVerificationService
         $cutoff = ClaimPlanner::cutoff($context['question'] ?? '', $cutoff);
         $historicalCutoff = Carbon::parse($cutoff)->lt(now()->subMinute());
         $budget = new RetrievalBudget;
+        $budget->coalesceReviews = true;
         $budget->analysisId = $context['analysis_id'] ?? null;
         if (($context['primary_task'] ?? '') === 'media' && trim($extraction['analysis_text']) === '') {
             $analysis['claim_assessment'] = [
@@ -346,6 +347,11 @@ class EvidenceVerificationService
             $planningLog['claims'] = array_column($plan['claims'], 'text');
         }
         Log::info('Evidence claims planned.', $planningLog);
+        foreach ($plan['claims'] as $plannedClaim) {
+            if (filled($plannedClaim['scope_limitation'] ?? null)) {
+                $extraction['limitations'][] = $plannedClaim['scope_limitation'];
+            }
+        }
         if (in_array($extraction['status'], ['uncertain_ocr', 'incomplete', 'input_too_long'], true)) {
             foreach ($plan['claims'] as &$claim) {
                 if (str_contains($claim['text'], '[unclear]') || $extraction['status'] === 'input_too_long') {
@@ -432,6 +438,8 @@ class EvidenceVerificationService
             }
             $progress && $progress('Reviewing matching evidence');
             $outcomes = $review($candidates);
+            $budget->coverageSources = SourceCoverage::count($candidates,
+                SourceCoverage::relevantIds(array_merge(...array_column($outcomes, 'relationships')), $this->judge->contextFindings));
             $budget->noteEvidence($outcomes, $this->judge->contextFindings, $this->judge->scopeResolutions);
             if (collect($this->model->stages)->contains(fn ($status, $stage) =>
                 str_starts_with($stage, 'evidence_relationships_') && $status !== 'completed')) {
@@ -617,6 +625,9 @@ class EvidenceVerificationService
             unset($claim);
         }
         $relationships = array_merge([], ...array_column($claims, 'relationships'));
+        if (app(ReportApiBudget::class)->remainingSeconds() < 1) {
+            $extraction['limitations'][] = 'The processing time budget was reached. Completed evidence findings are retained; unresolved details and unreviewed sources have not been verified.';
+        }
         foreach ($this->model->stages as $stage => $status) {
             if ($status !== 'completed') {
                 $extraction['limitations'][] = 'Analysis stage '.str_replace('_', ' ', $stage).' was incomplete ('.str_replace('_', ' ', $status).').';
@@ -780,7 +791,7 @@ class EvidenceVerificationService
             'min_relevant_sources' => SourceCoverage::target(),
             'verdict_calibration' => config('fact_check.verdict_calibration.enabled', false) ? config('fact_check.verdict_calibration.sha256', '') : 'disabled',
             'score_version' => AssessmentScore::RUBRIC,
-            'wording_version' => ResultWording::VERSION,
+            'wording_version' => ResultWording::VERSION, 'claim_planning_version' => ClaimPlanner::VERSION,
             'request' => Arr::only($context, ['primary_task', 'question']), 'claim' => $result['claim'], 'claims' => $claims, 'cutoff' => $cutoff, 'snapshot' => $result['source_snapshot_id'],
             'analysis_model' => config('services.openai.model'), 'trained_model' => Arr::except($model, ['elapsed_ms']),
             'media' => $result['media_assessment']], JSON_THROW_ON_ERROR));

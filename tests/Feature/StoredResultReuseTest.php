@@ -248,10 +248,12 @@ class StoredResultReuseTest extends TestCase
         $this->assertSame($other->id, $second->user_id);
         $this->assertSame($first->fact_check_result['verdict'], $second->fact_check_result['verdict']);
         $this->assertSame($first->fact_check_result['summary'], $second->fact_check_result['summary']);
-        $this->assertNotSame(
+        $this->assertSame(
             $first->fact_check_result['generated_wording']['explanation'],
             $second->fact_check_result['generated_wording']['explanation'],
         );
+        $this->assertSame($first->fact_check_result['generated_wording']['source_ids'],
+            $second->fact_check_result['generated_wording']['source_ids']);
         $this->assertTrue($second->analyzed_at->eq($first->analyzed_at));
         $this->assertNotSame($first->media_path, $second->media_path);
         $this->assertSame(0, $second->signals['openai_usage']['total_tokens']);

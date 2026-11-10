@@ -175,6 +175,22 @@
             @endif
             <h1>{{ $headline }}</h1>
             @if (filled($rating))<span class="tg-public-rating tg-public-rating-{{ $tone }}">Source rating: {{ $rating }}</span>@endif
+            @if (isset($publishedAnswer))
+                <section aria-labelledby="published-answer-title" data-published-answer="{{ $publishedAnswer['status'] }}">
+                    <h2 id="published-answer-title">What the evidence shows</h2>
+                    @foreach ($publishedAnswer['paragraphs'] as $paragraph)
+                        <p class="mt-2 text-sm leading-7 text-slate-700">{{ $paragraph }}</p>
+                    @endforeach
+                    @if ($publishedAnswer['limitation'])
+                        <p class="mt-2 text-sm leading-7 text-slate-600">{{ $publishedAnswer['limitation'] }}</p>
+                    @endif
+                    <p class="mt-2 text-sm leading-7 text-slate-600">{{ $publishedAnswer['recommended_action'] }}</p>
+                    @if ($publishedAnswer['source_url'])
+                        <a href="{{ $publishedAnswer['source_url'] }}" target="_blank" rel="noopener noreferrer" class="mt-3 inline-block text-sm font-semibold text-blue-700 underline underline-offset-4">{{ $publishedAnswer['source_label'] }}</a>
+                    @endif
+                    <p class="mt-3 text-xs leading-6 text-slate-500">{{ $publishedAnswer['notice'] }}</p>
+                </section>
+            @endif
             @if ($glanceItems->isNotEmpty())
                 <details class="tg-at-glance" open>
                     <summary>

@@ -53,6 +53,21 @@ class PendingReportJsonTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_retry_elapsed_time_uses_the_current_attempt_instead_of_the_original_upload_age(): void
+    {
+        $this->freezeTime();
+        $user = User::factory()->create();
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'upload',
+            'media_type' => 'image', 'processing_status' => 'processing', 'verdict' => 'review', 'fake_score' => 0,
+            'fact_check_result' => ['verdict' => 'UNVERIFIED'],
+            'signals' => ['analysis_retry' => ['id' => 'current-attempt', 'status' => 'processing',
+                'started_at' => now()->subSeconds(12)->toIso8601String()]]]);
+        $detection->forceFill(['created_at' => now()->subHour()])->saveQuietly();
+        $this->actingAs($user)->getJson(route('detections.progress', $detection))->assertOk()
+            ->assertJsonPath('processing_status', 'processing')->assertJsonPath('elapsed_seconds', 12);
+        Http::assertNothingSent();
+    }
+
     public function test_queued_submission_returns_a_poll_url_without_redirecting_or_repeating_analysis(): void
     {
         Queue::fake();

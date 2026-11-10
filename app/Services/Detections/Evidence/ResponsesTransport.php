@@ -17,7 +17,8 @@ class ResponsesTransport
         $retries = max(0, min(2, (int) config('fact_check.openai_retry.max_retries', 1)));
         for ($attempt = 0; ; $attempt++) {
             app(ReportApiBudget::class)->beforeRequest();
-            $available = min($deadline - microtime(true), $remaining ? $remaining() : $timeout);
+            $available = min($deadline - microtime(true), $remaining ? $remaining() : $timeout,
+                app(ReportApiBudget::class)->remainingSeconds());
             $response = Http::withToken((string) config('services.openai.key'))->acceptJson()
                 ->connectTimeout(min(3, max(1, $available)))->timeout(max(1, $available))
                 ->post('https://api.openai.com/v1/responses', $payload);
@@ -27,7 +28,8 @@ class ResponsesTransport
             }
             $header = $response->header('Retry-After');
             $delay = $header === '' ? .25 : (is_numeric($header) ? max(0, (float) $header) : max(0, (strtotime($header) ?: time()) - time()));
-            $available = min($deadline - microtime(true), $remaining ? $remaining() : $timeout);
+            $available = min($deadline - microtime(true), $remaining ? $remaining() : $timeout,
+                app(ReportApiBudget::class)->remainingSeconds());
             if ($delay > max(0, min(5, (float) config('fact_check.openai_retry.max_delay_seconds', 3))) || $available < $delay + 1) {
                 return $response;
             }

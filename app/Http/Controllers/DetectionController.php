@@ -149,6 +149,14 @@ class DetectionController extends Controller
         $status = $detection->processing_status;
         $cancelled = ! in_array($status, ['queued', 'processing'], true)
             && data_get($detection->signals, 'analysis_cancellation.reason') === 'user_stopped';
+        $startedAt = $detection->created_at;
+        if ($retryStarted = data_get($detection->signals, 'analysis_retry.started_at')) {
+            try {
+                $startedAt = \Illuminate\Support\Carbon::parse($retryStarted);
+            } catch (\Throwable) {
+                // Older reports may not have a valid retry timestamp.
+            }
+        }
 
         return response()->json([
             'processing_status' => $status,
@@ -165,7 +173,7 @@ class DetectionController extends Controller
                     'completed' => 'Analysis complete',
                     default => 'Analysis could not finish',
                 }),
-            'elapsed_seconds' => max(0, (int) $detection->created_at->diffInSeconds(now())),
+            'elapsed_seconds' => max(0, (int) $startedAt->diffInSeconds(now())),
             'message' => $cancelled ? 'You stopped this fact check. You can start a new one whenever you are ready.' : ($status === 'failed'
                 ? 'The analysis could not finish. Open the report to review its status and retry.'
                 : ($status === 'queued' ? 'Your upload is saved and waiting to start. You can continue using TruthGuard.' : 'You can continue using TruthGuard while this check runs.')),
@@ -576,7 +584,7 @@ class DetectionController extends Controller
                 $retryId = (string) Str::uuid();
                 $signals = $previousSignals ?? [];
                 unset($signals['analysis_progress'], $signals['analysis_cancellation']);
-                $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'queued', 'previous_status' => $previousStatus];
+                $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'queued', 'previous_status' => $previousStatus, 'started_at' => now()->toIso8601String()];
                 $detection->forceFill(['processing_status' => 'queued', 'signals' => $signals])->saveQuietly();
                 try {
                     AnalyzeDetectionEvidence::dispatch($detection->id, $context, $retryId, $previousStatus);
@@ -593,7 +601,7 @@ class DetectionController extends Controller
             $retryId = (string) Str::uuid();
             $signals = $detection->signals ?? [];
             unset($signals['analysis_progress'], $signals['analysis_cancellation']);
-            $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'processing', 'previous_status' => $previousStatus];
+            $signals['analysis_retry'] = ['id' => $retryId, 'status' => 'processing', 'previous_status' => $previousStatus, 'started_at' => now()->toIso8601String()];
             $detection->forceFill(['processing_status' => 'processing', 'signals' => $signals])->saveQuietly();
             try {
                 $pipeline->run($detection->user, $context, $file, $detection);

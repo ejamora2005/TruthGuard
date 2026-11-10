@@ -138,6 +138,8 @@ final class AnswerEvidenceValidator
         $sourceIds = [];
         $selected = [];
         $seen = [];
+        $explainedClaims = [];
+        $factualClaims = array_values(array_filter($result['claims'] ?? [], fn ($claim) => ($claim['kind'] ?? '') === 'factual'));
         foreach ($units as $unit) {
             $quote = Str::squish($unit['excerpt']);
             $key = self::normalize($quote);
@@ -146,8 +148,16 @@ final class AnswerEvidenceValidator
             }
             $name = Str::limit(Str::squish(strip_tags($unit['publisher'])), 80, '');
             $name = preg_replace('/^www\./iu', '', $name);
-            $detail = self::reviewedExplanation($result, $unit)
-                ?? 'According to '.($name !== '' ? $name : 'the cited source').', “'.$quote.'”';
+            $reviewed = self::reviewedExplanation($result, $unit);
+            $claimKey = ($unit['claim_id'] ?? '').'|'.$unit['stance'];
+            // Once this finding has a readable explanation, an additional
+            // source's full bulletin is evidence to link, not prose to paste.
+            $machineListing = preg_match('~https?://|www\.|\b[a-z0-9.-]+\.(?:gov\.ph|com|org|net|edu)\b|\[To Parent Directory\]|/(?:[^\s/]+/){2,}~iu', $quote);
+            if ($reviewed === null && (Str::wordCount($quote) > 80 || $machineListing)
+                && ! empty($unit['claim_id']) && isset($explainedClaims[$claimKey])) {
+                continue;
+            }
+            $detail = $reviewed ?? 'According to '.($name !== '' ? $name : 'the cited source').', “'.$quote.'”';
             if (preg_match('~https?://|www\.|<[^>]+>~iu', $detail)
                 || Str::wordCount(implode(' ', [...$details, $detail])) > ResultWording::MAX_EXPLANATION_WORDS - 10
                 || mb_strlen(implode(' ', [...$details, $detail])) > ResultWording::MAX_EXPLANATION_CHARACTERS) {
@@ -156,7 +166,14 @@ final class AnswerEvidenceValidator
             $details[] = $detail;
             $sourceIds[] = $unit['source_id'];
             $selected[] = $unit;
+            $explainedClaims[$claimKey] = true;
             $seen[$key] = true;
+            if ($reviewed !== null && in_array($result['verdict'] ?? '', ['TRUE', 'FALSE'], true)
+                && count($factualClaims) === 1 && ($factualClaims[0]['id'] ?? '') === ($unit['claim_id'] ?? '')
+                && in_array($factualClaims[0]['outcome'] ?? '', ['supported', 'refuted'], true)
+                && ! ($factualClaims[0]['requires_context'] ?? false)) {
+                break; // One complete, grounded answer does not need repeated source summaries.
+            }
             if (count($details) >= (($result['verdict'] ?? '') === 'CONFLICTING_EVIDENCE' ? 2 : 3)) {
                 break;
             }
@@ -207,7 +224,10 @@ final class AnswerEvidenceValidator
             '/\b(?:no (?:official )?(?:record|evidence|confirmation)|(?:record|evidence) (?:was |were )?not found)\b/iu', $unit['excerpt']))) {
             $parts[] = 'The absence of a record does not prove that an event never occurred.';
         }
-        if (collect(data_get($result, 'interpretation.ambiguities', []))->contains(
+        $subject = ($result['claim'] ?? '').' '.implode(' ', array_column($result['claims'] ?? [], 'text'));
+        $timeSensitive = \App\Services\Detections\Evidence\ClaimPlanner::requiresFreshEvidence($subject)
+            || preg_match('/\b(?:occurred|happened|spotted|departed|purchased|paid|announced|issued|signed|cancelled|suspended|arrested|visited|elected|approved)\b/iu', $subject);
+        if ($timeSensitive && collect(data_get($result, 'interpretation.ambiguities', []))->contains(
             fn ($text) => is_string($text) && (bool) preg_match('/does not (?:state|specify).*(?:when|date)/iu', $text))) {
             $parts[] = 'The submission does not give the original post date, which limits comparison with a dated statement.';
         }
@@ -238,7 +258,7 @@ final class AnswerEvidenceValidator
             return null;
         }
         $text = ResultContract::publicDetail($row['explanation'] ?? null);
-        if (! $text || count(SubmittedText::sentences($text)) < 2
+        if (! $text || count(SubmittedText::sentences($text)) < 1
             || Str::wordCount($text) > 190 || mb_strlen($text) > 2800
             || preg_match('~https?://|www\.|<[^>]+>~iu', $text)
             || array_diff(self::numbers($text), self::numbers($unit['excerpt']))) {
@@ -279,7 +299,8 @@ final class AnswerEvidenceValidator
         $host = (string) parse_url((string) ($source['url'] ?? ''), PHP_URL_HOST);
         $label = ReportAnswer::publisherName((string) $unit['publisher'], $source['url']);
         $institution = explode('.', preg_replace('/^www\./i', '', $host))[0];
-        if ($institution !== '' && str_contains(Str::lower($text), Str::lower($institution))) {
+        if (($institution !== '' && str_contains(Str::lower($text), Str::lower($institution)))
+            || ($label !== '' && str_contains(Str::lower($text), Str::lower($label)))) {
             return $text;
         }
 

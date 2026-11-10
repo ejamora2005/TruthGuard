@@ -2,6 +2,8 @@
 
 namespace App\Services\Detections;
 
+use App\Services\Detections\Evidence\ArticleSearch;
+
 /** Present saved, relevant reference pages without promoting them to verdict evidence. */
 final class AdditionalSourceReferences
 {
@@ -114,6 +116,97 @@ final class AdditionalSourceReferences
         }
 
         return $ordered;
+    }
+
+    /** Related discovery links stay separate from evidence and citations. */
+    public function discovered(array $result, array $records, array $displayedSources): array
+    {
+        if (! in_array($result['primary_task'] ?? 'claim', ['claim', 'context'], true)) {
+            return [];
+        }
+        $seen = [];
+        foreach ($displayedSources as $source) {
+            if (is_array($source) && ($url = ReportAnswer::safeUrl($source['url'] ?? null))) {
+                $seen[$this->urlKey($url)] = true;
+            }
+        }
+        $records = array_merge($records, $result['diagnostics']['candidate_records'] ?? []);
+        $claims = collect($result['claims'] ?? [])->filter(fn ($claim) => is_array($claim))
+            ->pluck('text')->push($result['claim'] ?? null)
+            ->push($result['extraction']['analysis_text'] ?? $result['extraction']['visible_text'] ?? null)
+            ->filter(fn ($text) => is_string($text) && trim($text) !== '')->unique()->all();
+        $claimIds = array_column($result['claims'] ?? [], 'id');
+        $references = [];
+        $search = app(ArticleSearch::class);
+        foreach ($records as $record) {
+            if (! is_array($record) || ! ($url = ReportAnswer::safeUrl($record['url'] ?? null))
+                || ! is_string($record['retrieval_status'] ?? null) || $search->isGenericLandingPage($url)
+                || in_array($record['assessment_role'] ?? '', ['irrelevant', 'superseded'], true)
+                || in_array($record['retrieval_status'], ['duplicate', 'after_cutoff'], true)
+                || ! empty($record['duplicate_of']) || ! empty($record['possible_copy_of'])
+                || preg_match('/NoticeNotActiveErrorPage|access denied|page not found|captcha/i', $record['title'] ?? '')
+                || ! $this->relatedDiscovery($record, $claims, $claimIds)) {
+                continue;
+            }
+            $key = $this->urlKey($url);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $host = strtolower(preg_replace('/^www\./i', '', parse_url($url, PHP_URL_HOST)));
+            $status = $record['retrieval_status'];
+            $role = $record['assessment_role'] ?? '';
+            $description = match (true) {
+                $role === 'superseded' => 'Superseded record',
+                $status === 'duplicate' => 'Duplicate page',
+                $status === 'discovered' => 'Found; not reviewed',
+                $status === 'after_cutoff' => 'Published after the assessment cutoff',
+                $status === 'undated_historical' => 'Publication date could not be established',
+                in_array($status, ['reference_only', 'reviewed_database'], true) => 'Reference found during research',
+                $status !== 'retrieved' => 'Page could not be read',
+                in_array($role, ['irrelevant', 'background_or_rejected_match'], true) => 'Did not establish this claim',
+                default => 'Retrieved during research',
+            };
+            $title = is_string($record['title'] ?? null) ? trim(strip_tags($record['title'])) : '';
+            $name = is_string($record['name'] ?? null) ? $record['name'] : $host;
+            $references[] = ['url' => $url, 'host' => $host,
+                'name' => ReportAnswer::publisherName($name, $url), 'title' => $title !== '' ? mb_substr($title, 0, 300) : $host,
+                'status_label' => $description];
+        }
+
+        return $references;
+    }
+
+    private function relatedDiscovery(array $record, array $claims, array $claimIds): bool
+    {
+        if (! empty($record['relevance_assessments'])) {
+            foreach ($record['relevance_assessments'] as $assessment) {
+                if (! is_array($assessment) || ! empty($assessment['superseded']) || ! empty($assessment['validation_limitation'])
+                    || ($claimIds !== [] && ! in_array($assessment['claim_id'] ?? null, $claimIds, true))
+                    || (isset($assessment['source_id'], $record['id']) && $assessment['source_id'] !== $record['id'])) {
+                    continue;
+                }
+                $matches = $assessment['matches'] ?? [];
+                if (($matches['event'] ?? false) === true && ($matches['entities'] ?? false) === true && ($matches['date'] ?? false) === true) {
+                    return true;
+                }
+            }
+
+            return false; // Do not replace a saved rejection with keyword overlap.
+        }
+        $description = implode(' ', array_filter(array_map(fn ($field) => is_string($record[$field] ?? null)
+            ? mb_substr($record[$field], 0, 2400) : '', ['reviewed_claim', 'title', 'snippet', 'description', 'text'])));
+        $matcher = new FactCheckClaimMatcher;
+        foreach ($claims as $claim) {
+            $match = $matcher->assess($claim, $description);
+            $terms = array_filter($match['matched_terms'], fn ($term) => ! is_numeric($term)
+                && ! preg_match('/^(?:january|february|march|april|may|june|july|august|september|october|november|december|official|public|announcement|announced|announces|advisory|news|record|according|reported|report|says|said|denied|denies|statement|issued|issues|update|false|true)$/i', $term));
+            if ($match['date_match'] && $match['level'] !== 'unrelated' && count($terms) >= 2) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function urlKey(string $url): string

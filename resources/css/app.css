@@ -5554,6 +5554,12 @@ body.truthguard-fact-check-route .truthguard-pwa-install-button {
     display: none !important;
 }
 
+@media (max-width: 767px) {
+    body.truthguard-policy-page :is(.truthguard-pwa-install-button, .js-install-app) {
+        display: none !important;
+    }
+}
+
 @media (max-width: 640px) {
     .truthguard-pwa-install-button {
         right: 1rem;

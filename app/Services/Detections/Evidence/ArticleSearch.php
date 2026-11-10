@@ -330,6 +330,12 @@ class ArticleSearch
         }
         // Larger later batches amortize instructions without capping total coverage.
         $budget->reviewBatchSize = min(12, $budget->reviewBatchSize * 2);
+        // After the first finding, amortize subsequent model reviews across
+        // new documents instead of reviewing each provider's small result page.
+        if ($budget->coalesceReviews) {
+            $needed = SourceCoverage::target() - $budget->coverageSources;
+            $budget->reviewMinNewDocuments = max(1, min($budget->reviewBatchSize, $needed > 0 ? $needed : $budget->reviewBatchSize));
+        }
 
         return false;
     }
@@ -951,6 +957,17 @@ class ArticleSearch
     public function isGenericLandingPage(string $url): bool
     {
         $path = strtolower(trim((string) parse_url($url, PHP_URL_PATH), '/'));
+        $host = strtolower(preg_replace('/^www\./i', '', (string) parse_url($url, PHP_URL_HOST)));
+
+        // Share buttons are actions, and month archives list many unrelated
+        // posts. Neither is an original evidence document to crawl or review.
+        if (preg_match('~^(?:19|20)\d{2}/\d{1,2}(?:/page/\d+)?$~', $path)
+            || (in_array($host, ['x.com', 'twitter.com'], true) && str_starts_with($path, 'intent/'))
+            || ($host === 'api.whatsapp.com' && $path === 'send')
+            || ($host === 'linkedin.com' && in_array($path, ['sharearticle', 'sharing/share-offsite'], true))
+            || ($host === 'facebook.com' && str_starts_with($path, 'sharer'))) {
+            return true;
+        }
 
         return in_array($path, ['', 'index', 'index.html', 'index.php', 'home', 'home.php', 'about', 'about-us', 'news'], true);
     }

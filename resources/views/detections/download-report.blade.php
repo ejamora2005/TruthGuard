@@ -38,6 +38,7 @@ blockquote { margin: 8pt 0; padding: 5pt 10pt; border-left: 3pt solid #93c5fd; b
 @if($sourceUrl = \App\Services\Detections\ReportAnswer::safeUrl($selectedDetection->source_url))<p class="url"><a href="{{ $sourceUrl }}" rel="noopener noreferrer">{{ $sourceUrl }}</a></p>@endif
 <h2>What the evidence shows</h2>
 @foreach($transparentReport['explanation'] as $paragraph)<p>{{ $paragraph }}</p>@endforeach
+@foreach($transparentReport['reading_links'] as $link)<p><a href="{{ $link['url'] }}" rel="noopener noreferrer">{{ $link['label'] }}</a></p>@endforeach
 <h2>Sources and evidence</h2>
 @forelse($transparentReport['sources'] as $source)
 <div class="source"><h3>{{ $source['name'] }} - {{ $source['title'] }}</h3>

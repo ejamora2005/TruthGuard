@@ -79,6 +79,35 @@ class ProgressiveArticleSearchTest extends TestCase
         Http::assertNotSent(fn ($request) => str_contains($request->url(), 'gnews.io') || isset($request['pageToken']));
     }
 
+    public function test_paid_reviews_are_batched_while_ten_source_coverage_is_preserved(): void
+    {
+        config()->set('fact_check.min_relevant_sources', 10);
+        Http::fake(['factchecktools.googleapis.com/*' => function ($request) {
+            $page = (int) ($request['pageToken'] ?? 1);
+            return Http::response(['claims' => array_map(fn ($index) => [
+                'text' => 'The fictional library opened in 2024.', 'claimReview' => [[
+                    'url' => 'https://rappler.com/fact-check/fictional-library-'.$index,
+                    'title' => 'Fictional library opening', 'textualRating' => 'True',
+                    'reviewDate' => '2026-10-01T00:00:00Z',
+                ]],
+            ], range(($page - 1) * 3 + 1, $page * 3)), 'nextPageToken' => (string) ($page + 1)]);
+        }]);
+        $budget = new RetrievalBudget;
+        $budget->coalesceReviews = true;
+        $reviewSizes = [];
+        $records = app(ArticleSearch::class)->retrieve(['fictional library opening'], $budget, now()->utc()->toIso8601String(),
+            onBatch: function ($rows) use ($budget, &$reviewSizes) {
+                $budget->coverageSources = count(array_filter($rows, fn ($row) => ($row['retrieval_status'] ?? '') === 'retrieved'));
+                $reviewSizes[] = $budget->coverageSources;
+                $budget->noteEvidence([['id' => 'c1', 'outcome' => 'supported']]);
+                return $budget->coverageSources >= 10 ? 'resolved' : null;
+            });
+        $this->assertCount(12, $records);
+        $this->assertSame([3, 12], $reviewSizes);
+        $this->assertSame(2, $budget->reviewCheckpoints);
+        Http::assertSentCount(4);
+    }
+
     public function test_unresolved_review_tries_another_provider_before_draining_one_provider(): void
     {
         config()->set('services.gnews.key', 'fixture');

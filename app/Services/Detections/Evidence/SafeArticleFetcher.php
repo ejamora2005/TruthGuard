@@ -425,7 +425,12 @@ class SafeArticleFetcher
         }
         // A union is in document order: <main> enclosing <article> wins,
         // leaking navigation and unrelated recommendations into paid reviews.
-        $root = $xpath->query('//article')->item(0) ?? $xpath->query('//main')->item(0) ?? $xpath->query('//body')->item(0);
+        // Page builders can put the main post outside <article>, while related
+        // cards use that tag. Prefer an explicitly marked full article body.
+        $root = $xpath->query('//*[@itemprop="articleBody"]')->item(0)
+            ?? $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " elementor-widget-theme-post-content ")]')->item(0)
+            ?? $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " entry-content ")]')->item(0)
+            ?? $xpath->query('//article')->item(0) ?? $xpath->query('//main')->item(0) ?? $xpath->query('//body')->item(0);
         $links = [];
         foreach ($xpath->query('.//a[@href]', $root) as $node) {
             try {

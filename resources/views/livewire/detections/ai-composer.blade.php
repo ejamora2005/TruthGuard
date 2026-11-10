@@ -4008,7 +4008,10 @@ new class extends Component
                     const data = await response.json();
                     if (generation !== this.progressGeneration) return;
                     this.progressFailures = 0;
-                    this.progressElapsed = Math.max(this.progressElapsed, data.elapsed_seconds || 0);
+                    if (Number.isFinite(data.elapsed_seconds)) {
+                        this.progressElapsed = Math.max(0, data.elapsed_seconds);
+                        this.progressStartedAt = Date.now() - this.progressElapsed * 1000;
+                    }
                     this.progressStartedAt = Date.now() - this.progressElapsed * 1000;
                     this.progressState = data.processing_status;
                     this.updateProgressPercent(data.processing_status, data.stage || '');

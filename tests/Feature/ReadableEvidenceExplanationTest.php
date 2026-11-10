@@ -59,6 +59,7 @@ class ReadableEvidenceExplanationTest extends TestCase
             'claims' => [['id' => 'c1', 'kind' => 'factual', 'outcome' => 'refuted', 'text' => 'Ang Bulkang Mayon ay matatagpuan sa Batangas.',
                 'relationships' => [$row]]],
             'sources' => [['id' => 's1', 'name' => 'www.phivolcs.dost.gov.ph', 'title' => 'Volcanoes of the Philippines | PHIVOLCS',
+                'type' => 'official_government',
                 'url' => 'https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/', 'relationships' => [$row]]]]);
         $result['generated_wording'] = ['version' => 'result-wording-v10', 'verdict' => 'FALSE',
             'explanation' => 'phivolcs.dost.gov.ph states: “18Mayon13.25519123.68615Albay, Bicol Region in Luzon”',
@@ -77,8 +78,55 @@ class ReadableEvidenceExplanationTest extends TestCase
         $this->assertStringStartsWith($explanation, trim($paragraph->textContent));
         $this->assertStringNotContainsString('The specific statement being checked', $paragraph->textContent);
         $this->assertStringNotContainsString('18Mayon13', $paragraph->textContent);
+        $links = $xpath->query('//ul[@aria-label="Read the cited sources"]//a');
+        $this->assertCount(1, $links);
+        $this->assertSame('https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/', $links->item(0)->getAttribute('href'));
+        $this->assertStringContainsString('Read the official record from PHIVOLCS', $links->item(0)->textContent);
+        $this->assertSame('noopener noreferrer', $links->item(0)->getAttribute('rel'));
         $this->assertSame('FALSE', $detection->fresh()->fact_check_result['verdict']);
         $this->assertSame($snapshot, $detection->fresh()->getRawOriginal());
+        Http::assertNothingSent();
+    }
+
+    public function test_single_sentence_correction_replaces_raw_tables_bulletins_and_irrelevant_date_padding(): void
+    {
+        Http::preventStrayRequests();
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
+        $user = User::factory()->create();
+        $claim = 'Taal Volcano is located in Albay province.';
+        $explanation = "According to PHIVOLCS' volcano list, Taal is in Batangas, not Albay province.";
+        $row = ['claim_id' => 'c1', 'source_id' => 's1', 'stance' => 'contradicting', 'basis' => 'primary_record',
+            'excerpt' => '24 Taal 14.01024 120.99812 Batangas in Luzon', 'explanation' => $explanation,
+            'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true)];
+        $bulletin = str_repeat('ALERT LEVEL monitoring data and volcano observations. ', 25);
+        $extra = array_replace($row, ['source_id' => 's2', 'excerpt' => $bulletin, 'explanation' => 'The source discusses monitoring data.']);
+        $result = ['schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'FALSE', 'claim' => $claim,
+            'summary' => $explanation, 'claims' => [['id' => 'c1', 'kind' => 'factual', 'text' => $claim,
+                'outcome' => 'refuted', 'relationships' => [$row, $extra]]],
+            'sources' => [
+                ['id' => 's1', 'name' => 'PHIVOLCS', 'title' => 'Volcanoes of the Philippines', 'type' => 'official_government',
+                    'url' => 'https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/', 'relationships' => [$row]],
+                ['id' => 's2', 'name' => 'PHIVOLCS', 'title' => 'Volcano activity bulletin', 'type' => 'official_government',
+                    'url' => 'https://www.phivolcs.dost.gov.ph/bulletin/example', 'relationships' => [$extra]],
+            ],
+            'answer_validation' => ['status' => 'rebuilt_from_validated_passages'],
+            'interpretation' => ['ambiguities' => ['The submission does not state when the claim or post appeared.']],
+            'generated_wording' => ['version' => \App\Services\Detections\ResultWording::VERSION, 'verdict' => 'FALSE',
+                'source_ids' => ['s1', 's2'], 'explanation' => 'According to PHIVOLCS, “'.$row['excerpt'].'” '.$bulletin,
+                'result_summary' => 'The claim conflicts with the reviewed location record.', 'recommended_action' => 'Read the original record.']];
+        $record = Detection::create(['user_id' => $user->id, 'source_kind' => 'text', 'media_type' => 'text',
+            'processing_status' => 'completed', 'verdict' => 'fake', 'fake_score' => 100, 'fact_check_result' => $result]);
+        $before = $record->fresh()->getRawOriginal();
+        $html = $this->actingAs($user)->get(route('detections.result', $record))->assertOk()->getContent();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $xpath = new \DOMXPath($dom);
+        $paragraph = $xpath->query('//div[contains(@class,"tg-verdict-explanation")]/p')->item(0);
+        $this->assertSame($explanation, trim($paragraph->textContent));
+        $this->assertStringNotContainsString('ALERT LEVEL', $paragraph->textContent);
+        $this->assertStringNotContainsString('original post date', $paragraph->textContent);
+        $this->assertStringContainsString('Read the official record from PHIVOLCS', $html);
+        $this->assertSame($before, $record->fresh()->getRawOriginal());
         Http::assertNothingSent();
     }
 }

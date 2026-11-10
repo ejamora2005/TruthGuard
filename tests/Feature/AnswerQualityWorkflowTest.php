@@ -71,7 +71,7 @@ class AnswerQualityWorkflowTest extends TestCase
         $copy = ResultWording::saved($result);
         $this->assertNotNull($copy);
         $this->assertStringNotContainsString('500000', $copy['explanation']);
-        $this->assertStringContainsString($passage, $copy['explanation']);
+        $this->assertStringContainsString(strtolower($passage), strtolower($copy['explanation']));
         $this->assertSame($inventPrice || $omitBindings ? 'rebuilt_from_validated_passages' : 'passed_bounded_checks', $result['answer_validation']['status']);
         $this->assertSame(['s1'], $copy['source_ids']);
         Http::assertSentCount(2);

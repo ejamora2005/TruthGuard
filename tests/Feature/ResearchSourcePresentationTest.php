@@ -14,7 +14,7 @@ class ResearchSourcePresentationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_all_citations_and_additional_relevant_publishers_are_shown_separately_without_http_or_reanalysis(): void
+    public function test_all_citations_remain_while_unused_article_lists_are_removed_without_reanalysis(): void
     {
         $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create(['privacy_policy_accepted_at' => now()]);
@@ -40,10 +40,10 @@ class ResearchSourcePresentationTest extends TestCase
         $html = $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()->getContent();
         $this->assertStringContainsString('Cited record 11', $html);
         $this->assertStringContainsString('11 distinct relevant sources cited.', $html);
-        $this->assertStringContainsString('Additional relevant sources (2)', $html);
-        $this->assertStringContainsString('Government opening record', $html);
-        $this->assertStringContainsString('Institutional library record', $html);
-        $this->assertStringContainsString('Not used for the verdict', $html);
+        $this->assertStringNotContainsString('Additional relevant sources', $html);
+        $this->assertStringNotContainsString('Other related sources', $html);
+        $this->assertStringNotContainsString('Government opening record', $html);
+        $this->assertStringNotContainsString('Institutional library record', $html);
         $this->assertStringNotContainsString('Unrelated bridge procurement', $html);
         $this->assertSame($before, $detection->fresh()->getRawOriginal());
         Http::assertNothingSent();
@@ -71,6 +71,36 @@ class ResearchSourcePresentationTest extends TestCase
         $detection->update(['fact_check_result' => ['schema_version' => 4, 'primary_task' => 'media',
             'claim' => $claim, 'verdict' => 'INCONCLUSIVE', 'summary' => 'Origin could not be established.']]);
         $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()->assertDontSee('Matching older review');
+        Http::assertNothingSent();
+    }
+
+    public function test_missing_context_does_not_show_unused_article_lists_or_add_them_to_evidence_or_risk(): void
+    {
+        Http::preventStrayRequests();
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
+        $owner = User::factory()->create();
+        $result = ['schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'MISSING_CONTEXT',
+            'claim' => 'The fictional library opened in 2024.',
+            'summary' => 'The announcement could not be established from the reviewed evidence.', 'sources' => [],
+            'diagnostics' => ['candidate_records' => [
+                ['id' => 's1', 'url' => 'https://www.gmanetwork.com/news/record', 'name' => 'gmanetwork.com',
+                    'title' => 'Fictional library opening in 2024', 'retrieval_status' => 'retrieved', 'assessment_role' => 'background_or_rejected_match',
+                    'text' => 'INTERNAL_BODY_SENTINEL', 'relevance_assessments' => [['explanation' => 'INTERNAL_MATCH_SENTINEL',
+                        'matches' => ['event' => true, 'entities' => true, 'date' => true]]]],
+                ['id' => 's2', 'url' => 'https://example.gov.ph/advisory', 'title' => 'Government advisory: fictional library opening in 2024', 'retrieval_status' => 'missing_full_text'],
+                ['id' => 's3', 'url' => 'https://example.gov.ph/unrelated', 'title' => 'Unrelated bridge procurement', 'retrieval_status' => 'retrieved'],
+            ]]];
+        $record = Detection::create(['user_id' => $owner->id, 'source_kind' => 'text', 'processing_status' => 'completed',
+            'verdict' => 'review', 'fake_score' => 0, 'fact_check_result' => $result]);
+        $before = $record->fresh()->getRawOriginal();
+        $this->actingAs($owner)->get(route('detections.result', $record))->assertOk()
+            ->assertDontSee('Other related sources')->assertDontSee('Government advisory')
+            ->assertDontSee('Unrelated bridge procurement')
+            ->assertDontSee('https://www.gmanetwork.com/news/record', false)
+            ->assertDontSee('data-risk-assessment', false)->assertDontSee('INTERNAL_BODY_SENTINEL')->assertDontSee('INTERNAL_MATCH_SENTINEL')
+            ->assertDontSee('No source links were recorded for this scan.');
+        $this->assertSame($before, $record->fresh()->getRawOriginal());
+        $this->assertSame([], $record->fresh()->fact_check_result['sources']);
         Http::assertNothingSent();
     }
 
