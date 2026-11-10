@@ -43,6 +43,34 @@ class CommittedResultPageTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_recent_cards_remain_visible_without_a_claim_match_and_do_not_become_verdict_sources(): void
+    {
+        Http::preventStrayRequests();
+        $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
+        config()->set('services.google_fact_check.feed_max_age_days', 7);
+        $user = User::factory()->create();
+        $detection = Detection::create(['user_id' => $user->id, 'source_kind' => 'text', 'media_type' => 'text',
+            'processing_status' => 'completed', 'verdict' => 'review', 'fake_score' => 0,
+            'fact_check_result' => ['schema_version' => 4, 'primary_task' => 'claim', 'verdict' => 'UNVERIFIED',
+                'claim' => 'The demonstration library opened in 2024.', 'summary' => 'The submitted claim remains unverified.']]);
+        foreach (['A recent weather review' => now()->subDay(), 'An expired weather review' => now()->subDays(8)] as $title => $date) {
+            PublicClaimReview::create(['feed_item_id' => md5($title), 'headline' => $title,
+                'claim' => 'A fictional storm advisory was issued for a different province.', 'publisher' => 'Fixture publisher',
+                'url' => 'https://example.test/'.md5($title), 'published_at' => $date, 'last_seen_at' => now()]);
+        }
+        $before = $detection->fresh()->getRawOriginal();
+        $html = $this->actingAs($user)->get(route('detections.result', $detection))->assertOk()
+            ->assertSee('Recent Fact Checks')->assertSee('A recent weather review')->assertDontSee('An expired weather review')
+            ->assertDontSee('Related public fact checks')->assertSee('These cards are not evidence for this result')->getContent();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML('<?xml encoding="UTF-8">'.$html);
+        $xpath = new \DOMXPath($dom);
+        $this->assertSame(1, $xpath->query('//*[@aria-label="Recent fact checks"]//a')->length);
+        $this->assertSame(0, $xpath->query('//*[@id="source-verification"]//a[contains(@href,"example.test")]')->length);
+        $this->assertSame($before, $detection->fresh()->getRawOriginal());
+        Http::assertNothingSent();
+    }
+
     public function test_source_header_groups_match_details_counts_and_list_only_their_recorded_sources(): void
     {
         Http::preventStrayRequests();

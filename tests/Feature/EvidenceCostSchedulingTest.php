@@ -16,6 +16,62 @@ class EvidenceCostSchedulingTest extends TestCase
 
     private const CLAIM = 'The fictional municipal library opened on May 1, 2024.';
 
+    public function test_gpt_search_can_find_the_original_source_before_other_providers(): void
+    {
+        config()->set(['services.openai.analysis_enabled' => true, 'services.openai.key' => 'fixture',
+            'services.live_verification.enabled' => true, 'services.filipino_news_classifier.enabled' => false,
+            'services.google_fact_check.key' => 'fixture', 'services.gnews.key' => '', 'services.newsapi.key' => '',
+            'fact_check.web_search.enabled' => true, 'fact_check.web_search.first' => true,
+            'fact_check.progressive_research' => true,
+            'fact_check.max_model_calls' => 3, 'fact_check.min_relevant_sources' => 0,
+            'fact_check.retrieval.max_rounds' => 1]);
+        $this->mock(ClaimPlanner::class)->shouldReceive('plan')->once()->andReturn([
+            'status' => 'completed', 'original_claim_date' => null, 'claims' => [[
+                'id' => 'c1', 'text' => self::CLAIM, 'kind' => 'factual', 'requires_context' => false,
+                'context_reason' => '', 'references' => [], 'searches' => ['municipal library original opening record'],
+            ]],
+        ]);
+        app(ClaimPlanner::class)->shouldReceive('queries')->andReturn(['municipal library original opening record']);
+        $url = 'https://example.gov.ph/library/original-record';
+        $this->mock(SafeArticleFetcher::class)->shouldReceive('fetch')->once()->andReturn([
+            'url' => $url, 'status' => 'retrieved', 'http_status' => 200, 'title' => 'Original opening record',
+            'text' => self::CLAIM.' The archive preserves the original programme.', 'published_at' => '2024-05-01T00:00:00Z',
+            'updated_at' => null, 'retrieved_at' => now()->utc()->toIso8601String(), 'text_truncated' => false, 'links' => [],
+        ]);
+        $stages = [];
+        Http::fake(function ($request) use ($url, &$stages) {
+            if (! str_contains($request->url(), 'api.openai.com')) {
+                $stages[] = 'provider_search';
+
+                return Http::response(['claims' => []]);
+            }
+            if (($request['tools'][0]['type'] ?? '') === 'web_search') {
+                $stages[] = 'gpt_search';
+                $this->assertSame('required', $request['tool_choice']);
+                $reply = ['type' => 'web_search_call', 'status' => 'completed',
+                    'action' => ['type' => 'search', 'sources' => [['url' => $url, 'title' => 'Original opening record']]]];
+            } else {
+                $stages[] = 'evidence_review';
+                $input = json_decode($request['input'][1]['content'], true);
+                $data = ['relationships' => [['claim_id' => 'c1', 'source_id' => $input['sources'][0]['id'],
+                    'stance' => 'supporting', 'basis' => 'primary_record', 'excerpt' => self::CLAIM,
+                    'explanation' => self::CLAIM, 'matches' => array_fill_keys(['event', 'entities', 'action', 'date', 'location', 'quantities', 'qualifiers'], true),
+                    'supersedes_source_ids' => [], 'supersession_excerpt' => '']], 'context_findings' => [], 'wording' => []];
+                $reply = ['type' => 'message', 'content' => [['type' => 'output_text', 'text' => json_encode($data)]]];
+            }
+
+            return Http::response(['status' => 'completed', 'output' => [$reply]]);
+        });
+        $result = app(EvidenceVerificationService::class)->apply(['signals' => []], [
+            'analysis_task' => 'claim', 'media_type' => 'text', 'caption_text' => self::CLAIM, 'force_refresh' => true,
+        ])['fact_check_result'];
+
+        $this->assertSame(['gpt_search', 'evidence_review'], $stages);
+        $this->assertSame('TRUE', $result['verdict']);
+        $this->assertSame('ok', $result['diagnostics']['providers']['openai_web_search']);
+        $this->assertSame($url, $result['sources'][0]['url']);
+    }
+
     public static function cases(): array
     {
         return [['resolved', 'TRUE', 1], ['gap', 'TRUE', 3], ['review_failure', 'ANALYSIS_UNAVAILABLE', 1],
@@ -35,7 +91,8 @@ class EvidenceCostSchedulingTest extends TestCase
         config()->set(['services.openai.analysis_enabled' => true, 'services.openai.key' => 'fixture',
             'services.live_verification.enabled' => true, 'services.filipino_news_classifier.enabled' => false,
             'services.google_fact_check.key' => 'fixture', 'services.gnews.key' => '', 'services.newsapi.key' => '',
-            'fact_check.web_search.enabled' => true, 'fact_check.retrieval.max_search_requests' => 4,
+            'fact_check.web_search.enabled' => true, 'fact_check.web_search.first' => false,
+            'fact_check.retrieval.max_search_requests' => 4,
             'fact_check.retrieval.max_rounds' => 1, 'fact_check.retrieval.respect_robots' => false]);
         if ($variant === 'budget_stop') {
             config()->set('fact_check.report_budget.stop_after_tokens', 900);

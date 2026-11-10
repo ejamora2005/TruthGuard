@@ -250,8 +250,9 @@ class FactCheckWorkspaceTest extends TestCase
         $this->assertStringContainsString('A claim submitted for verification.', $html);
         $this->assertStringContainsString('Source result', $html);
         $this->assertStringContainsString('False', $html);
-        $this->assertStringContainsString('Risk score', $html);
-        $this->assertStringContainsString('Estimated misinformation or manipulation risk.', $html);
+        $this->assertStringContainsString('Risk assessment', $html);
+        $this->assertStringContainsString('Saved heuristic screening index on a 0-100 scale.', $html);
+        $this->assertStringContainsString('Critical Risk', $html);
         $this->assertStringContainsString('Recommended action', $html);
         $this->assertStringContainsString('Decision factors', $html);
         $this->assertStringContainsString('Source verification', $html);

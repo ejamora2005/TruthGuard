@@ -50,7 +50,7 @@ class PublishedReviewCollectionTest extends TestCase
     {
         $record = app(ArticleSearch::class)->reviewedSubmission($this->page('https://independent-publisher.example/fact-check/vehicles'), now()->toIso8601String());
         $this->assertSame(1, PublicClaimReview::count());
-        $this->assertSame('unapproved', $record['source_type']);
+        $this->assertSame('other_web', $record['source_type']);
         $this->assertSame(0, ReviewedClaim::count());
     }
 

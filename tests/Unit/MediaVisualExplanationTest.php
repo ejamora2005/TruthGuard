@@ -39,9 +39,9 @@ class MediaVisualExplanationTest extends TestCase
             $before = $saved;
             $public = ReportAnswer::forPresentation($saved);
 
-            $this->assertStringStartsWith($label === 'fake' ? 'This image has been flagged as likely AI-generated.' : 'This image is likely not AI-generated.', $public['summary']);
-            $this->assertStringContainsString($detail, $public['summary']);
-            $this->assertStringContainsString('do not by themselves prove AI generation', $public['summary']);
+            $this->assertStringStartsWith($label === 'fake' ? 'The submitted image has been assessed as likely AI-generated.' : 'The submitted image has been assessed as likely not AI-generated.', $public['summary']);
+            $this->assertStringNotContainsString($detail, $public['summary']);
+            $this->assertStringContainsString('Check the original file, available metadata', $public['summary']);
             $this->assertDoesNotMatchRegularExpression('/detector|model|system|score|threshold|classification|%/i', $public['summary']);
             $this->assertSame($saved['verdict'], $public['verdict']);
             $this->assertSame($saved['score']['value'], $public['score']['value']);
@@ -57,19 +57,19 @@ class MediaVisualExplanationTest extends TestCase
             'kind' => 'image_quality', 'visibility' => 'clear']]);
         $public = MediaVisualExplanation::present($result);
 
-        $this->assertStringStartsWith('This image is likely not AI-generated.', $public['summary']);
-        $this->assertStringContainsString($detail, $public['summary']);
-        $this->assertStringContainsString('limit what can be checked visually', $public['summary']);
+        $this->assertStringStartsWith('The submitted image has been assessed as likely not AI-generated.', $public['summary']);
+        $this->assertStringNotContainsString($detail, $public['summary']);
+        $this->assertStringContainsString('does not confirm that the image is authentic or unedited', $public['summary']);
         $this->assertStringNotContainsString('visible irregularities', $public['summary']);
         $this->assertStringNotContainsString('because', $public['summary']);
     }
 
-    public function test_missing_visual_review_never_claims_that_no_artifacts_were_found(): void
+    public function test_missing_visual_review_uses_the_requested_copy_without_changing_the_finding(): void
     {
         foreach (['real', 'fake'] as $label) {
             $result = $this->assessment($label, null);
             $public = MediaVisualExplanation::present($result);
-            $this->assertStringContainsString('appearance alone does not establish', $public['summary']);
+            $this->assertStringContainsString('Check the original file, available metadata', $public['summary']);
             $this->assertStringNotContainsString('were identified', $public['summary']);
             $this->assertSame($result['verdict'], $public['verdict']);
             $this->assertSame($result['score'], $public['score']);
@@ -81,9 +81,9 @@ class MediaVisualExplanationTest extends TestCase
         $real = MediaVisualExplanation::present($this->assessment('real', []));
         $fake = MediaVisualExplanation::present($this->assessment('fake', []));
 
-        $this->assertStringContainsString('No clear visual signs of AI generation were identified', $real['summary']);
-        $this->assertStringStartsWith('This image has been flagged as likely AI-generated.', $fake['summary']);
-        $this->assertStringContainsString('did not identify a specific irregularity', $fake['summary']);
+        $this->assertStringContainsString('The analysis found no clear visual indicators strongly associated with AI-generated imagery', $real['summary']);
+        $this->assertStringStartsWith('The submitted image has been assessed as likely AI-generated.', $fake['summary']);
+        $this->assertStringContainsString('does not conclusively prove its origin', $fake['summary']);
         $this->assertSame('LIKELY_AI_GENERATED', $fake['verdict']);
         $this->assertStringNotContainsString('hands', $fake['summary']);
     }
@@ -96,7 +96,7 @@ class MediaVisualExplanationTest extends TestCase
 
         $public = MediaVisualExplanation::present($result);
         $this->assertStringNotContainsString('fingertip', $public['summary']);
-        $this->assertStringContainsString('appearance alone does not establish', $public['summary']);
+        $this->assertStringContainsString('Check the original file, available metadata', $public['summary']);
     }
 
     public function test_ready_answers_cover_video_and_inconclusive_findings_without_extra_requests(): void
@@ -109,9 +109,9 @@ class MediaVisualExplanationTest extends TestCase
                 $saved['media_assessment']['media_type'] = $subject;
                 $public = MediaVisualExplanation::present($saved);
                 $opening = match ($verdict) {
-                    'LIKELY_AI_GENERATED', 'AI_GENERATED' => "This {$subject} has been flagged as likely AI-generated.",
-                    'LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL' => "This {$subject} is likely not AI-generated.",
-                    default => "The available evidence does not establish whether this {$subject} was AI-generated.",
+                    'LIKELY_AI_GENERATED', 'AI_GENERATED' => "The submitted {$subject} has been assessed as likely AI-generated.",
+                    'LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL' => "The submitted {$subject} has been assessed as likely not AI-generated.",
+                    default => "The system could not confidently determine whether the submitted {$subject} is AI-generated or not.",
                 };
                 $this->assertStringStartsWith($opening, $public['summary']);
                 $this->assertSame($saved['verdict'], $public['verdict']);

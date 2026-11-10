@@ -37,6 +37,20 @@ use Illuminate\View\View;
 
 class DetectionController extends Controller
 {
+    public function downloadReport(Request $request, Detection $detection): \Symfony\Component\HttpFoundation\Response
+    {
+        abort_if(! $request->user()->isAdmin() && (int) $detection->user_id !== (int) $request->user()->id, 404);
+        abort_if(in_array($detection->processing_status, ['queued', 'processing'], true), 409, 'The report is still being prepared.');
+        $pdf = app(\App\Services\Detections\FactCheckPdfReport::class)->render($detection);
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="truthguard-report-'.$detection->id.'.pdf"',
+            'Cache-Control' => 'no-store, private',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     public function feedback(Request $request, Detection $detection): RedirectResponse
     {
         abort_unless((int) $detection->user_id === (int) $request->user()->id, 403);
@@ -280,6 +294,12 @@ class DetectionController extends Controller
             $recentReviews->where('published_at', '>=', now()->subDays($maxAgeDays)->startOfDay());
         }
 
+        // Browsing recent reviews is independent of whether this submission
+        // has a topic match. Read the saved feed without refreshing providers.
+        $recentPublicFactChecks = (clone $recentReviews)->latest('published_at')->latest('last_seen_at')->latest('id')
+            ->limit(20)->get()->filter(fn (PublicClaimReview $review) => ReportAnswer::safeUrl($review->url) !== null)
+            ->take(3)->map(fn (PublicClaimReview $review): array => $review->toFeedItem())->values()->all();
+
         $matcher = app(FactCheckClaimMatcher::class);
         $relatedReviews = $claimTexts === [] ? [] : $recentReviews->latest('published_at')->latest('last_seen_at')->latest('id')
             ->limit(500)->get()->map(function (PublicClaimReview $review) use ($claimTexts, $matcher): array {
@@ -304,6 +324,7 @@ class DetectionController extends Controller
             'selectedDetection' => $selectedDetection,
             'userReportNumber' => $userReportNumber,
             'latestFactChecks' => ['items' => $relatedReviews],
+            'recentPublicFactChecks' => $recentPublicFactChecks,
         ]);
     }
 

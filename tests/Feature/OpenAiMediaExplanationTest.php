@@ -96,7 +96,7 @@ class OpenAiMediaExplanationTest extends TestCase
             'sources' => [['id' => 's1', 'url' => 'https://rappler.com/example-fixture', 'name' => 'Rappler',
                 'used_for' => 'The election remains scheduled in the reviewed announcement. The cancellation assertion is contradicted by that record.']]]);
         $after = app(OpenAiMediaExplanation::class)->apply(['fact_check_result' => $result]);
-        $this->assertStringContainsString('Rappler reports:', $after['fact_check_result']['summary']);
+        $this->assertStringContainsString('According to Rappler,', $after['fact_check_result']['summary']);
         $this->assertSame(['s1'], $result['answer_segments'][1]['source_ids']);
         $this->assertSame('FALSE', $after['fact_check_result']['verdict']);
         Http::assertNothingSent();
@@ -235,7 +235,7 @@ class OpenAiMediaExplanationTest extends TestCase
         $snapshot = $first->fresh()->getRawOriginal();
         foreach (range(1, 2) as $refresh) {
             $html = $this->actingAs($user)->get(route('detections.result', $first))->assertOk()
-                ->assertSee('The image&#039;s appearance alone does not establish how it was created.', false)->assertDontSee('View full explanation')->getContent();
+                ->assertSee('The submitted image has been assessed as likely AI-generated.', false)->assertDontSee('View full explanation')->getContent();
             $document = new \DOMDocument;
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $main = (new \DOMXPath($document))->query('//div[contains(@class,"tg-verdict-explanation")]')->item(0)->textContent;

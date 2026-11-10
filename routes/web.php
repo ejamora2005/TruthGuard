@@ -120,6 +120,7 @@ Route::middleware(['auth', ExpireIdleSession::class, EnsureWelcomeNotificationSe
         Route::get('detections/{detection}/progress', [DetectionController::class, 'progress'])->name('detections.progress');
         Route::post('detections/{detection}/stop', [DetectionController::class, 'stop'])->middleware('throttle:20,1')->name('detections.stop');
         Route::get('detections/{detection}/result', [DetectionController::class, 'result'])->name('detections.result');
+        Route::get('detections/{detection}/report', [DetectionController::class, 'downloadReport'])->name('detections.download-report');
         Route::post('detections', [DetectionController::class, 'store'])->name('detections.store');
         Route::post('detections/{detection}/retry-media', [DetectionController::class, 'retryMedia'])->middleware('throttle:detection-retry')->name('detections.retry-media');
         Route::post('detections/{detection}/fact-check-media-claim', [DetectionController::class, 'factCheckMediaClaim'])->middleware('throttle:detection-retry')->name('detections.fact-check-media-claim');

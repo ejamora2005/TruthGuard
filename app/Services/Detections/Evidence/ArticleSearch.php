@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
 
 class ArticleSearch
 {
+    public const VERSION = 'public-source-review-v2';
+
     public function __construct(
         private readonly SafeArticleFetcher $fetcher,
         private readonly FactCheckEvidencePolicy $policy,
@@ -245,11 +247,11 @@ class ArticleSearch
             if ($onBatch && $this->reviewBatch($records, $queries, $budget, $cutoff, $pageCeiling, $limit, $onBatch, $includeReferences)) {
                 return $this->deduplicate($records);
             }
-            $streams[$stream]['made_progress'] = $beforeEvidence !== $budget->evidenceSignature;
+            $streams[$stream]['made_progress'] = $beforeEvidence !== $budget->evidenceSignature || $budget->reviewDeferred;
         }
         if ($onBatch) {
             if ($discovery === 'references' && $initialEvidence !== null && $initialEvidence === $budget->evidenceSignature
-                && ! $this->hasPendingDownload($records)) {
+                && ! $budget->reviewDeferred && ! $this->hasPendingDownload($records)) {
                 $budget->discoveryStop = 'no_new_evidence';
 
                 return $this->deduplicate($records);
@@ -261,7 +263,7 @@ class ArticleSearch
                     break;
                 }
                 if ($discovery === 'references' && $beforeEvidence !== null && $beforeEvidence === $budget->evidenceSignature
-                    && ! $this->hasPendingDownload($records)) {
+                    && ! $budget->reviewDeferred && ! $this->hasPendingDownload($records)) {
                     $budget->discoveryStop = 'no_new_evidence';
                     break;
                 }
@@ -272,15 +274,22 @@ class ArticleSearch
             $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, null, $limit);
         }
 
+        if ($onBatch && $budget->reviewDeferred) {
+            // Never leave a smaller final batch unreviewed when discovery ends.
+            $this->reviewBatch($records, $queries, $budget, $cutoff, $pageCeiling, $limit, $onBatch, $includeReferences, true);
+        }
+
         return $this->deduplicate($records);
     }
 
     /** Review small batches before discovering or fetching more pages. */
-    private function reviewBatch(array &$records, array $queries, RetrievalBudget $budget, string $cutoff, int $pageCeiling, int $limit, callable $onBatch, bool $includeReferences = true): bool
+    private function reviewBatch(array &$records, array $queries, RetrievalBudget $budget, string $cutoff, int $pageCeiling, int $limit, callable $onBatch, bool $includeReferences = true, bool $force = false): bool
     {
         $batchStarted = microtime(true);
         $this->rankCandidates($records, $queries);
-        $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, $budget->reviewBatchSize, $limit, true, $includeReferences);
+        if (! $force) {
+            $this->fetchCandidates($records, $budget, $cutoff, $pageCeiling, $budget->reviewBatchSize, $limit, true, $includeReferences);
+        }
         $records = $this->deduplicate($records);
         $readable = array_filter($records, fn ($record) => ($record['retrieval_status'] ?? '') === 'retrieved');
         if ($readable === []) {
@@ -292,8 +301,22 @@ class ArticleSearch
             $record['published_at'] ?? null, $record['updated_at'] ?? null,
         ], $readable), JSON_THROW_ON_ERROR));
         if ($snapshot === $budget->reviewSnapshot) {
+            $budget->reviewDeferred = false;
+
             return false;
         }
+        $signatures = [];
+        foreach ($readable as $record) {
+            $signatures[$record['id']] = hash('sha256', json_encode([$record['text'], $record['source_type'] ?? '',
+                $record['published_at'] ?? null, $record['updated_at'] ?? null], JSON_THROW_ON_ERROR));
+        }
+        if (! $force && count(array_diff_assoc($signatures, $budget->reviewedDocumentSignatures)) < $budget->reviewMinNewDocuments) {
+            $budget->reviewDeferred = true;
+
+            return false;
+        }
+        $budget->reviewDeferred = false;
+        $budget->reviewedDocumentSignatures = $signatures;
         $budget->reviewSnapshot = $snapshot;
         $budget->reviewCheckpoints++;
         $decision = $onBatch($records);
@@ -399,8 +422,16 @@ class ArticleSearch
         $limit = $candidateCeiling === null ? $limit : min($limit, max(0, $candidateCeiling));
         $pending = array_keys($records);
         $attempted = 0;
-        foreach ($pending as $key) {
-            if ($budget->pages >= $pageCeiling || $budget->remaining() < 2 || ($maxDocuments !== null && $attempted >= $maxDocuments)) {
+        $preloaded = [];
+        $concurrency = max(1, min(4, (int) config('fact_check.retrieval.fetch_concurrency', 4)));
+        foreach ($pending as $position => $key) {
+            if ($maxDocuments !== null && $attempted >= $maxDocuments) {
+                break;
+            }
+            if (! array_key_exists($key, $preloaded) && ($budget->pages >= $pageCeiling || $budget->remaining() < 2)) {
+                if ($preloaded !== []) {
+                    continue;
+                }
                 break;
             }
             if ($records[$key]['retrieval_status'] !== 'discovered') {
@@ -415,7 +446,35 @@ class ArticleSearch
 
                 continue;
             }
-            $page = $this->fetcher->fetch($records[$key]['url'], $budget);
+            if ($concurrency > 1 && ! array_key_exists($key, $preloaded)) {
+                $batch = [];
+                $room = max(0, $pageCeiling - $budget->pages);
+                // Leave a robots.txt slot per origin when needed. Cached robots
+                // are reused by the transport; this bound cannot exceed budget.
+                $room = config('fact_check.retrieval.respect_robots', true) ? max(1, intdiv($room, 2)) : $room;
+                $batchSize = min($concurrency, $room, $maxDocuments === null ? $concurrency : $maxDocuments - $attempted);
+                foreach (array_slice($pending, $position) as $candidate) {
+                    if ($records[$candidate]['retrieval_status'] !== 'discovered'
+                        || (! $includeReferences && in_array($records[$candidate]['provider'] ?? '', ['linked_primary_record', 'linked_reference'], true))
+                        || $this->isGenericLandingPage($records[$candidate]['url'])) {
+                        continue;
+                    }
+                    $batch[$candidate] = $records[$candidate]['url'];
+                    if (count($batch) >= $batchSize) {
+                        break;
+                    }
+                }
+                if (count($batch) > 1) {
+                    $pages = $this->fetcher->fetchMany(array_values($batch), $budget, $pageCeiling);
+                    foreach ($batch as $candidate => $url) {
+                        if (isset($pages[$url])) {
+                            $preloaded[$candidate] = $pages[$url];
+                        }
+                    }
+                }
+            }
+            $page = $preloaded[$key] ?? $this->fetcher->fetch($records[$key]['url'], $budget);
+            unset($preloaded[$key]);
             $attempted++;
             $records[$key] = $this->mergePage($records[$key], $page, $cutoff, $budget->historicalCutoff);
             $budget->pageOutcomes[] = ['source_id' => $records[$key]['id'], 'status' => $records[$key]['retrieval_status'],
@@ -755,7 +814,9 @@ class ArticleSearch
             }
         }
 
-        return 'unapproved';
+        // The preferred publisher list ranks sources; it is not an access
+        // allowlist. Unlisted public records still need passage-level review.
+        return 'other_web';
     }
 
     public function reviewedSubmission(array $page, string $cutoff): array
@@ -769,6 +830,7 @@ class ArticleSearch
 
     private function mergePage(array $record, array $page, string $cutoff, ?bool $historical = null): array
     {
+        $record['name'] = ReportAnswer::publisherName((string) ($record['name'] ?? ''), $page['url']);
         $record['retrieval_status'] = $page['status'];
         $record['retrieval_http_status'] = $page['http_status'] ?? null;
         $record['robots_detail'] = $page['robots_detail'] ?? null;
@@ -778,7 +840,7 @@ class ArticleSearch
         $record['final_url'] = $page['url'];
         $resolvedType = $this->sourceType($page['url'], in_array($record['provider'] ?? null, ['gnews', 'newsapi'], true) ? 'reputable_news' : null);
         $record['source_type'] = in_array($resolvedType, ['official_government', 'institution', 'research'], true)
-            ? $resolvedType : ($record['source_type'] === 'fact_check' && $resolvedType !== 'unapproved' ? 'fact_check' : $resolvedType);
+            ? $resolvedType : ($record['source_type'] === 'fact_check' && ! in_array($resolvedType, ['unapproved', 'other_web'], true) ? 'fact_check' : $resolvedType);
         $record['text'] = $page['text'];
         if ($this->policy->isFactCheckUrl($page['url']) && count($page['claim_reviews'] ?? []) === 1) {
             $record = array_replace($record, $page['claim_reviews'][0]);

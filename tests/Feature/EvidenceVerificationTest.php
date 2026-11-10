@@ -657,6 +657,32 @@ class EvidenceVerificationTest extends TestCase
         $this->assertSame([$result['sources'][0]['id']], $result['secondary_assessments'][0]['answer_segments'][0]['source_ids']);
     }
 
+    public static function partialContextCases(): array
+    {
+        return [['supporting'], ['contradicting'], ['insufficient']];
+    }
+
+    #[DataProvider('partialContextCases')]
+    public function test_one_material_gap_does_not_make_the_whole_multiclaim_report_missing_context(string $stance): void
+    {
+        $first = 'The demonstration library opened on March 4, 2024.';
+        $second = 'It will distribute assistance to residents.';
+        $passage = 'The dated demonstration library record lists the opening on March 4, 2024. This is a fictional software fixture, not a public announcement.';
+        $claims = [$this->claim($first), $this->claim($second, 'factual', true)];
+        $claims[1]['context_reason'] = 'The assistance statement does not identify its issuing authority.';
+        $this->fake($first.' '.$second, 'factual', $passage, $stance, claims: $claims);
+        $result = $this->runAnalysis($first.' '.$second);
+        $this->assertSame('UNVERIFIED', $result['verdict']);
+        $this->assertFalse($result['ui']['show_missing_context']);
+        $this->assertSame('needs_context', $result['claims'][1]['outcome']);
+        $this->assertStringContainsString('issuing authority', implode(' ', $result['limitations']));
+        $this->assertNull($result['score']['value']);
+        if ($stance !== 'insufficient') {
+            $this->assertSame($stance === 'supporting' ? 'supported' : 'refuted', $result['claims'][0]['outcome'], json_encode($result['claims'][0]));
+            $this->assertNotEmpty($result['sources']);
+        }
+    }
+
     private function claim(string $text, string $kind = 'factual', bool $needsContext = false): array
     {
         return ['id' => 'c1', 'text' => $text, 'quote' => $text, 'kind' => $kind, 'entities' => ['BSKE'], 'dates' => [], 'locations' => [], 'quantities' => [], 'qualifiers' => [],

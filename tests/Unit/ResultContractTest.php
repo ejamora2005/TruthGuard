@@ -93,7 +93,7 @@ class ResultContractTest extends TestCase
         $this->assertSame('LIKELY_AI_GENERATED', $result['verdict']);
         $this->assertSame('Likely AI-Generated', $result['assessment_label']);
         $this->assertTrue($result['media_assessment']['origin_inconclusive']);
-        $this->assertStringContainsString('Check the original file or creation history', $result['summary']);
+        $this->assertStringContainsString('Check the original file, available metadata, and source history', $result['summary']);
         $this->assertDoesNotMatchRegularExpression('/detector|model|system|classification/i', $result['summary']);
         $this->assertStringNotContainsString('unavailable', strtolower($result['summary']));
     }

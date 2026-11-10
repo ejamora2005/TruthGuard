@@ -99,6 +99,28 @@ class QuestionFocusedPlanningTest extends TestCase
         $this->assertSame([], app(ClaimPlanner::class)->queries($plan['claims'], 0));
     }
 
+    public function test_a_possessive_scientific_attribution_in_image_text_is_researched(): void
+    {
+        $target = 'the world will end on November 13, 2026';
+        foreach (["scientist's", 'scientist’s', "researchers'"] as $attribution) {
+            $text = 'is it true that '.$target."?\n\nBREAKING: American ".$attribution
+                ." mathematical\nprediction claims the End of the World in 2026. Doomsday: Friday, 13 November, A.D. 2026";
+            $this->mock(StructuredAnalysis::class)->shouldReceive('ask')->once()->andReturn([
+                'claims' => [array_replace($this->claim($target), ['kind' => 'prediction'])],
+                'original_claim_date' => null, 'date_quote' => '',
+            ]);
+            $plan = app(ClaimPlanner::class)->plan($text, [
+                'question' => 'is it true that '.$target.'?', 'media_attached' => true,
+            ]);
+
+            $this->assertSame('factual', $plan['claims'][0]['kind']);
+            $this->assertTrue($plan['claims'][0]['prediction_basis_check']);
+            $this->assertSame($target, $plan['claims'][0]['quote']);
+            $this->assertNotEmpty(app(ClaimPlanner::class)->queries($plan['claims'], 0));
+            $this->assertArrayNotHasKey('verdict', $plan['claims'][0]);
+        }
+    }
+
     public function test_a_resolved_yes_no_question_leads_with_its_cited_answer_without_changing_the_verdict(): void
     {
         foreach (['TRUE' => 'Yes.', 'FALSE' => 'No.'] as $verdict => $prefix) {

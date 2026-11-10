@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 
 class ClaimPlanner
 {
+    public const VERSION = 'claim-planning-v2';
+
     public function __construct(private readonly StructuredAnalysis $model, private readonly PoorPromptInterpreter $interpreter) {}
 
     public function plan(string $text, array $submission = []): array
@@ -82,7 +84,7 @@ class ClaimPlanner
             // exists. Do not discard it merely because the forecast itself is
             // about the future.
             $attributedPrediction = preg_match('/\b(?:according to|predicted by|forecast by|study|scientist|researcher)\b/iu', $row['quote'])
-                || ($target !== '' && preg_match('/\b(?:according to|predicted by|forecast by|study (?:published|predicts|says|suggests|reports)|scientists? (?:say|predict|warn|report))\b/iu', $text));
+                || ($target !== '' && $this->hasPredictionAttribution($text));
             if ($row['kind'] === 'prediction' && $attributedPrediction) {
                 $row['kind'] = 'factual';
                 $row['requires_context'] = false;
@@ -232,6 +234,14 @@ class ClaimPlanner
             ? app(FactCheckEvidencePolicy::class)->date($data['original_claim_date']) : null;
 
         return ['claims' => $claims, 'interpretation' => $interpretation, 'original_claim_date' => $date, 'status' => $text === '' ? 'no_readable_claim' : ($data === null ? 'unavailable' : 'completed')];
+    }
+
+    private function hasPredictionAttribution(string $text): bool
+    {
+        // OCR line breaks and possessives must not hide the source of a
+        // forecast beside a separate question. This only enables research;
+        // the evidence judge still checks the source and its actual meaning.
+        return (bool) preg_match('/\b(?:according to|predicted by|forecast by|study (?:published|predicts|says|suggests|reports)|(?:scientists?|researchers?)(?:[\x{0027}\x{2019}]s?)?\s+(?:(?:mathematical|scientific|population|climate)\s+){0,3}(?:predictions?|forecasts?|projections?|claims?|says?|predicts?|warns?|reports?))\b/iu', Str::squish($text));
     }
 
     private function normalizeStatusQuestion(array $row): array

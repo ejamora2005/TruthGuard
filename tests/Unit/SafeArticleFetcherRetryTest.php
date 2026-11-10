@@ -11,6 +11,35 @@ use Tests\TestCase;
 
 class SafeArticleFetcherRetryTest extends TestCase
 {
+    public function test_search_preview_directives_do_not_block_reading_a_public_record(): void
+    {
+        config()->set('fact_check.retrieval.respect_robots', true);
+        $passage = str_repeat('The public agency notice describes the dated official action. ', 3);
+        Http::fakeSequence()->push("User-agent: *\nAllow: /", 200, ['Content-Type' => 'text/plain'])
+            ->push('<html><head><meta name="robots" content="noarchive, nosnippet"></head><body><article>'
+                .'<p data-nosnippet>'.$passage.'</p></article></body></html>', 200,
+                ['Content-Type' => 'text/html', 'X-Robots-Tag' => 'noarchive, nosnippet']);
+        $fetcher = $this->partialMock(SafeArticleFetcher::class);
+        $fetcher->shouldReceive('publicAddress')->andReturn('93.184.216.34');
+
+        $page = $fetcher->fetch('https://example.gov.ph/notice', new RetrievalBudget);
+        $this->assertSame('retrieved', $page['status']);
+        $this->assertStringContainsString(trim($passage), $page['text']);
+        Http::assertSentCount(2);
+    }
+
+    public function test_an_unavailable_robots_file_does_not_make_a_public_article_private(): void
+    {
+        config()->set('fact_check.retrieval.respect_robots', true);
+        Http::fakeSequence()->push('', 403)
+            ->push('<article>'.str_repeat('Readable public evidence. ', 8).'</article>', 200, ['Content-Type' => 'text/html']);
+        $fetcher = $this->partialMock(SafeArticleFetcher::class);
+        $fetcher->shouldReceive('publicAddress')->andReturn('93.184.216.34');
+
+        $this->assertSame('retrieved', $fetcher->fetch('https://example.com/public-record', new RetrievalBudget)['status']);
+        Http::assertSentCount(2);
+    }
+
     public function test_compressed_html_is_decoded_before_article_extraction(): void
     {
         config()->set('fact_check.retrieval.respect_robots', false);

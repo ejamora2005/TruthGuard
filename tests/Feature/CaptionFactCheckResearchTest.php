@@ -35,7 +35,7 @@ class CaptionFactCheckResearchTest extends TestCase
         }
         $rows = app(ArticleSearch::class)->collectedReviews([['text' => $claim]], now()->toIso8601String());
         $this->assertCount(3, $rows);
-        $this->assertSame('unapproved', collect($rows)->firstWhere('url', 'https://independent-review.example/fact-check/synthetic-vehicles')['source_type']);
+        $this->assertSame('other_web', collect($rows)->firstWhere('url', 'https://independent-review.example/fact-check/synthetic-vehicles')['source_type']);
         $this->assertNotContains('reviewed_database', array_column($rows, 'retrieval_status'));
     }
 

@@ -29,7 +29,9 @@ final class AnswerEvidenceValidator
     public static function passages(array $result): array
     {
         $units = [];
-        foreach (array_merge($result['sources'] ?? [], $result['contextual_sources'] ?? []) as $source) {
+        $sources = collect(array_merge($result['sources'] ?? [], $result['contextual_sources'] ?? []))
+            ->sortBy(fn ($source) => in_array($source['type'] ?? $source['source_type'] ?? '', ['official_government', 'official'], true) ? 0 : 1);
+        foreach ($sources as $source) {
             if (! is_array($source) || ! is_string($source['id'] ?? null)
                 || ReportAnswer::safeUrl($source['url'] ?? null) === null) {
                 continue;
@@ -52,7 +54,7 @@ final class AnswerEvidenceValidator
                     continue;
                 }
                 $units[] = ['source_id' => $source['id'], 'claim_id' => (string) ($row['claim_id'] ?? ''),
-                    'excerpt' => $excerpt, 'publisher' => (string) ($source['name'] ?? ''),
+                    'excerpt' => $excerpt, 'publisher' => ReportAnswer::publisherName((string) ($source['name'] ?? ''), $source['url']),
                     'stance' => $row['stance'] ?? 'context'];
             }
         }
@@ -145,7 +147,7 @@ final class AnswerEvidenceValidator
             $name = Str::limit(Str::squish(strip_tags($unit['publisher'])), 80, '');
             $name = preg_replace('/^www\./iu', '', $name);
             $detail = self::reviewedExplanation($result, $unit)
-                ?? ($name !== '' ? $name : 'The cited source').' states: “'.$quote.'”';
+                ?? 'According to '.($name !== '' ? $name : 'the cited source').', “'.$quote.'”';
             if (preg_match('~https?://|www\.|<[^>]+>~iu', $detail)
                 || Str::wordCount(implode(' ', [...$details, $detail])) > ResultWording::MAX_EXPLANATION_WORDS - 10
                 || mb_strlen(implode(' ', [...$details, $detail])) > ResultWording::MAX_EXPLANATION_CHARACTERS) {
@@ -170,50 +172,49 @@ final class AnswerEvidenceValidator
             'source_ids' => array_values(array_unique($sourceIds))];
     }
 
-    /** Explain the scope of literal evidence without inventing additional facts. */
+    /** Lead extractive answers with the finding, followed only by material gaps. */
     private static function withScope(array $result, string $detail, array $units): string
     {
-        if (Str::wordCount($detail) >= 100) {
-            return $detail;
-        }
-        $additions = [];
-        $claim = Str::squish(strip_tags((string) ($result['claim'] ?? '')));
-        if ($claim !== '' && mb_strlen($claim) <= 300 && ! preg_match('~https?://|www\.~iu', $claim)
-            && ! str_contains(self::normalize($detail), self::normalize($claim))) {
-            $additions[] = 'The specific statement being checked is “'.rtrim($claim, ' .!?').'”.';
-        }
-        $absence = collect($units)->contains(fn ($unit) => (bool) preg_match(
-            '/\b(?:no (?:official )?(?:record|evidence|confirmation)|(?:record|evidence) (?:was |were )?not found)\b/iu', $unit['excerpt']));
-        if ($absence) {
-            $additions[] = 'A statement that no record or confirmation was found describes the available documentation; by itself, it does not prove that an event never occurred.';
-            $additions[] = 'The dated statement should be read within the period and subject it covers, without extending it to later events or details it does not establish.';
-        } else {
-            $stances = array_values(array_unique(array_column($units, 'stance')));
-            $additions[] = match (true) {
-                $stances === ['supporting'] => 'The cited evidence supports this specific statement, rather than merely mentioning the same topic.',
-                $stances === ['contradicting'] => 'The material difference between the statement and the cited evidence is the basis for the contradiction described here.',
-                in_array('supporting', $stances, true) && in_array('contradicting', $stances, true) => 'The cited accounts point in different directions, so the disagreement must remain visible rather than treating either account as settled.',
-                default => 'The cited material provides context for this statement, but context alone does not confirm all of its details.',
+        $lead = match ($result['verdict'] ?? '') {
+            'MISSING_CONTEXT' => 'A material detail needed to assess the submitted claim remains unresolved.',
+            'UNVERIFIED', 'UNVERIFIABLE' => collect($result['claims'] ?? [])->contains(fn ($claim) => in_array($claim['outcome'] ?? '', ['supported', 'refuted'], true))
+                ? 'The reviewed sources establish some details, but do not resolve every statement.'
+                : 'The reviewed sources do not establish whether the submitted claim is accurate.',
+            'CONFLICTING_EVIDENCE' => 'The reviewed sources disagree about the submitted claim, so the evidence does not support a firm conclusion.',
+            default => '',
+        };
+        // A reviewed explanation already connects the source with the claim.
+        // A literal quote needs a short statement of the validated outcome.
+        if ($lead === '' && preg_match('/(?: states: |According to [^“]+, )“/u', $detail)) {
+            $lead = match ($result['verdict'] ?? '') {
+                'TRUE' => 'The reviewed evidence supports the submitted claim.',
+                'FALSE' => 'The reviewed evidence contradicts the submitted claim.',
+                default => AssessmentVerdict::meaning((string) ($result['verdict'] ?? '')),
             };
-            $additions[] = 'This finding applies to the subject and details addressed by the cited material; it does not establish other claims, dates, or quantities that the source does not cover.';
+        }
+        $parts = array_values(array_filter([$lead]));
+        foreach ($result['claims'] ?? [] as $claim) {
+            if (($claim['outcome'] ?? '') !== 'needs_context' && ! ($claim['requires_context'] ?? false)) {
+                continue;
+            }
+            $reason = ResultContract::publicDetail($claim['context_reason'] ?? null);
+            if ($reason && Str::wordCount($reason) <= 60 && ! str_contains($detail, $reason)) {
+                $parts[] = rtrim($reason, '.!?').'.';
+            }
+        }
+        $parts[] = $detail;
+        if (collect($units)->contains(fn ($unit) => (bool) preg_match(
+            '/\b(?:no (?:official )?(?:record|evidence|confirmation)|(?:record|evidence) (?:was |were )?not found)\b/iu', $unit['excerpt']))) {
+            $parts[] = 'The absence of a record does not prove that an event never occurred.';
         }
         if (collect(data_get($result, 'interpretation.ambiguities', []))->contains(
             fn ($text) => is_string($text) && (bool) preg_match('/does not (?:state|specify).*(?:when|date)/iu', $text))) {
-            $additions[] = 'The submission does not give the original post date, which limits comparison with a dated statement.';
+            $parts[] = 'The submission does not give the original post date, which limits comparison with a dated statement.';
         }
-        if (preg_match('/\b(?:image|video|frames)\b/iu', (string) data_get($result, 'extraction.input_scope', ''))) {
-            $additions[] = 'This factual assessment concerns the accompanying claim; it does not independently determine whether the media was generated or edited with AI.';
-        }
-        $text = $detail;
-        foreach ($additions as $sentence) {
-            $expanded = $text.' '.$sentence;
-            if (Str::wordCount($expanded) <= ResultWording::MAX_EXPLANATION_WORDS
-                && mb_strlen($expanded) <= ResultWording::MAX_EXPLANATION_CHARACTERS) {
-                $text = $expanded;
-            }
-        }
+        $text = implode(' ', array_unique($parts));
 
-        return $text;
+        return Str::wordCount($text) <= ResultWording::MAX_EXPLANATION_WORDS
+            && mb_strlen($text) <= ResultWording::MAX_EXPLANATION_CHARACTERS ? $text : $detail;
     }
 
     /** Reuse already reviewed reasoning, never a new model rewrite or an unchecked summary. */
@@ -276,7 +277,7 @@ final class AnswerEvidenceValidator
         // Existing wording carries the reasoning and scope. Keep it intact and
         // attach the same authenticated source ID rather than displaying a raw row.
         $host = (string) parse_url((string) ($source['url'] ?? ''), PHP_URL_HOST);
-        $label = preg_replace('/^www\./i', '', trim((string) $unit['publisher']));
+        $label = ReportAnswer::publisherName((string) $unit['publisher'], $source['url']);
         $institution = explode('.', preg_replace('/^www\./i', '', $host))[0];
         if ($institution !== '' && str_contains(Str::lower($text), Str::lower($institution))) {
             return $text;

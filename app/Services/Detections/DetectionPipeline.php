@@ -4,6 +4,7 @@ namespace App\Services\Detections;
 
 use App\Models\Detection;
 use App\Models\User;
+use App\Services\Detections\Evidence\ArticleSearch;
 use App\Services\Detections\Evidence\ClaimPlanner;
 use App\Services\Detections\Evidence\PoorPromptInterpreter;
 use App\Services\Detections\Evidence\ReportApiBudget;
@@ -523,8 +524,11 @@ class DetectionPipeline
             ],
             'routing_version' => 'question-routing-v4',
             'pipeline_version' => AssessmentVerdict::VERSION.'|'.AssessmentScore::RUBRIC.'|'.SubmissionTask::VERSION
-                .'|'.EvidenceVerificationService::VERSION.'|'.EvidenceVerdictCalibration::identity()
+                .'|'.EvidenceVerificationService::VERSION.'|'.EvidenceVerificationService::CONTEXT_POLICY_VERSION
+                .'|'.ClaimPlanner::VERSION.'|'.ArticleSearch::VERSION.'|'.EvidenceVerdictCalibration::identity()
                 .'|source-target:'.(int) config('fact_check.min_relevant_sources', 10)
+                .'|gpt-search:'.(config('fact_check.web_search.first', true) ? 'first' : 'fallback')
+                .':'.(int) config('fact_check.web_search.max_calls', 2).':'.(int) config('fact_check.web_search.max_tool_calls', 3)
                 .'|'.(config('services.ai_origin.enabled', false) ? AiOriginClassifier::VERSION : 'origin-disabled')
                 .'|'.(config('fact_check.verdict_calibration.enabled', false)
                     ? EvidenceVerdictCalibration::METHOD.':'.config('fact_check.verdict_calibration.sha256', '') : 'evidence-calibration-disabled')

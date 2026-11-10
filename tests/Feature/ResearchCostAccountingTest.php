@@ -19,7 +19,8 @@ class ResearchCostAccountingTest extends TestCase
         Http::preventStrayRequests();
         config()->set(['services.openai.analysis_enabled' => true, 'services.openai.key' => 'offline-fixture',
             'services.openai.model' => 'gpt-5.4', 'services.openai.planning_model' => 'gpt-5.4-mini',
-            'services.filipino_news_classifier.enabled' => false, 'fact_check.retrieval.max_rounds' => 2]);
+            'services.filipino_news_classifier.enabled' => false, 'fact_check.retrieval.max_rounds' => 2,
+            'fact_check.web_search.max_calls' => 1]);
         $claim = 'The fictional library opened in 2024.';
         $this->mock(SubmissionExtractor::class)->shouldReceive('extract')->once()->andReturn([
             'submitted_text' => $claim, 'submitted_notes' => '', 'visible_text' => '', 'inferred_claim' => '',

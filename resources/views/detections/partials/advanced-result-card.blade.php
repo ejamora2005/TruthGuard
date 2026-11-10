@@ -8,7 +8,7 @@
     $presentation['verdict_label'] = $publicResult['assessment_label'];
     $categoryKey = (string) ($presentation['category_key'] ?? 'needs_review');
     $verdict = (string) ($selectedDetection->verdict ?: 'review');
-    $riskScore = max(0, min(100, (int) $selectedDetection->fake_score));
+    $riskAssessment = \App\Services\Detections\FactCheckReportPresenter::riskPercentage($selectedDetection);
     $qualityReview = is_array($publicResult['quality_review'] ?? null) ? $publicResult['quality_review'] : [];
     $interpretation = is_array($publicResult['interpretation'] ?? null) ? $publicResult['interpretation'] : [];
 
@@ -264,8 +264,10 @@
             && (! isset($source['retrieval_status']) || in_array($source['retrieval_status'], ['retrieved', 'reviewed_database', 'reference_only'], true))
             && ! in_array($source['assessment_role'] ?? '', ['not_used', 'irrelevant', 'discovered', 'background_or_rejected_match', 'superseded'], true))
         ->map(fn ($source) => is_array($source) ? array_merge($source, [
+            'name' => \App\Services\Detections\ReportAnswer::publisherName((string) ($source['name'] ?? ''), $source['url'] ?? null),
             'source_type' => match ($source['source_type'] ?? $source['type'] ?? 'reference') {
                 'official_government', 'institution', 'research' => 'official',
+                'reputable_news' => 'news',
                 default => $source['source_type'] ?? $source['type'] ?? 'reference',
             },
             'summary' => $source['summary'] ?? $source['used_for'] ?? $source['explanation'] ?? '',
@@ -275,8 +277,8 @@
             && str_contains($source['url'], 'toolbox.google.com/factcheck/explorer'))
         ->unique('url')
         ->sortBy(fn (array $source): int => match ($source['source_type'] ?? 'reference') {
-            'fact_check' => 1,
-            'official', 'weather' => 2,
+            'official', 'weather' => 1,
+            'fact_check' => 2,
             'news' => 3,
             'source_trace' => 4,
             'social_context' => 5,
@@ -350,6 +352,10 @@
     $relatedPosts = collect($selectedDetection->scrapedPosts ?? [])->take(2)->values();
     $latestFactCheckItems = data_get($latestFactChecks ?? [], 'items', $latestFactChecks ?? []);
     $recentFactChecks = collect($latestFactCheckItems)->filter(fn ($item): bool => is_array($item))->take(3)->values();
+    $recentFactChecksAreRelated = $recentFactChecks->isNotEmpty();
+    if (! $recentFactChecksAreRelated) {
+        $recentFactChecks = collect($recentPublicFactChecks ?? [])->filter(fn ($item): bool => is_array($item))->take(3)->values();
+    }
 @endphp
 
 @once
@@ -581,7 +587,16 @@
         .tg-report-verdict-heading > p { min-width: 0; margin: 0; }
         .tg-card-eyebrow { font-size: .6875rem; font-weight: 800; line-height: 1.5; text-transform: uppercase; color: #64748b; }
         .tg-evidence-kind { flex-shrink: 0; padding: .25rem .5rem; border: 1px solid #dbe4ef; border-radius: 6px; font-size: .6875rem; font-weight: 600; color: #64748b; background: #f8fafc; }
-        .tg-evidence-question { padding: 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+        .tg-evidence-question { padding: .5rem 1rem; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+        .tg-evidence-question > summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 44px; cursor: pointer; list-style: none; }
+        .tg-evidence-question > summary::-webkit-details-marker { display: none; }
+        .tg-evidence-question > summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; border-radius: 4px; }
+        .tg-question-toggle { display: inline-flex; align-items: center; gap: .375rem; flex-shrink: 0; color: #2563eb; font-size: .75rem; font-weight: 700; }
+        .tg-question-toggle svg { width: 1rem; height: 1rem; }
+        .tg-question-less, .tg-evidence-question[open] .tg-question-more { display: none; }
+        .tg-evidence-question[open] .tg-question-less { display: inline; }
+        .tg-evidence-question[open] .tg-question-toggle svg { transform: rotate(180deg); }
+        .tg-evidence-question[open] { padding-bottom: 1rem; }
         .tg-submission-question { margin-top: .5rem; font-size: .875rem; line-height: 1.75; color: #334155; white-space: pre-wrap; }
         .tg-evidence-meta > div { display: flex; align-items: baseline; gap: .5rem; margin-top: .5rem; min-width: 0; }
         .tg-evidence-meta dt { flex-shrink: 0; font-weight: 700; }
@@ -608,6 +623,17 @@
         .tg-verdict-score strong, .tg-verdict-score span { display: block; }
         .tg-verdict-score strong { font-size: .875rem; line-height: 1.5; }
         .tg-verdict-score span { margin-top: .25rem; font-size: .75rem; line-height: 1.5; }
+        .tg-risk-value-row { display:flex; align-items:baseline; gap:.5rem; }
+        .tg-risk-value-row > strong,.tg-risk-value-row > span { white-space:nowrap; }
+        .tg-risk-value-row > span { margin-top:0; font-weight:700; }
+        .tg-verdict-score[data-risk-color="green"] { --risk-bg:#f0fdf4; --risk-ink:#166534; --risk-border:#86efac; --risk-dark-bg:#052e16; --risk-dark-ink:#86efac; --risk-dark-border:#166534; }
+        .tg-verdict-score[data-risk-color="teal"] { --risk-bg:#f0fdfa; --risk-ink:#115e59; --risk-border:#5eead4; --risk-dark-bg:#042f2e; --risk-dark-ink:#5eead4; --risk-dark-border:#0f766e; }
+        .tg-verdict-score[data-risk-color="amber"] { --risk-bg:#fffbeb; --risk-ink:#92400e; --risk-border:#fcd34d; --risk-dark-bg:#451a03; --risk-dark-ink:#fcd34d; --risk-dark-border:#92400e; }
+        .tg-verdict-score[data-risk-color="orange"] { --risk-bg:#fff7ed; --risk-ink:#9a3412; --risk-border:#fdba74; --risk-dark-bg:#431407; --risk-dark-ink:#fdba74; --risk-dark-border:#9a3412; }
+        .tg-verdict-score[data-risk-color="red"] { --risk-bg:#fef2f2; --risk-ink:#991b1b; --risk-border:#fca5a5; --risk-dark-bg:#450a0a; --risk-dark-ink:#fca5a5; --risk-dark-border:#991b1b; }
+        .tg-ai-report .tg-verdict-score[data-risk-color] { background:var(--risk-bg,#f1f5f9); border-color:var(--risk-border,#cbd5e1); border-left-width:4px; color:var(--risk-ink,#475569); }
+        .tg-ai-report .tg-verdict-score[data-risk-color] > strong,.tg-ai-report .tg-verdict-score[data-risk-color] > span { color:inherit; }
+        .dark .tg-ai-report .tg-verdict-score[data-risk-color] { background:var(--risk-dark-bg,#0f172a); border-color:var(--risk-dark-border,#475569); color:var(--risk-dark-ink,#cbd5e1); }
         .tg-interpretation-header { display: flex; align-items: flex-start; gap: 1rem; padding: 1.5rem; border-bottom: 1px solid #eef2f7; }
         .tg-interpretation-header .tg-card-eyebrow { color: #1d4ed8; }
         .tg-ai-report .tg-interpretation-header h3 { margin-top: .25rem; font-size: 1.25rem; font-weight: 800; line-height: 1.4; color: #0f172a; }
@@ -917,6 +943,11 @@
         @media (max-width: 380px) {
             .tg-ai-report .tg-report-new-check > svg { display: none; }
         }
+        @media (max-width: 640px) {
+            .tg-ai-report .tg-report-download { width: 44px; height: 44px; min-height: 44px; padding: .65rem; flex-shrink: 0; }
+            .tg-ai-report .tg-report-download > span { display: none; }
+            .tg-ai-report .tg-report-download > svg { display: block; width: 1.125rem; height: 1.125rem; }
+        }
         @media (prefers-reduced-motion: reduce) { .tg-submission-details > summary > svg { transition: none; } }
         @media (max-width: 640px) {
             .tg-ai-report .tg-verdict-summary { grid-template-columns: minmax(0, 1fr); gap: .625rem; align-items: start; }
@@ -962,6 +993,10 @@
             <p class="tg-report-subtitle">{{ $isMediaReport ? 'Submitted media and the requested assessment.' : 'Submitted evidence, assessment, and supporting sources.' }}</p>
         </div>
         <div class="tg-report-header-actions">
+            <a href="{{ route('detections.download-report', $selectedDetection) }}" class="tg-report-new-check tg-report-download" download aria-label="Download report" title="Download report">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m-4-4 4 4 4-4M4 16v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" /></svg>
+                <span>Download report</span>
+            </a>
             <a href="{{ route('detections.create') }}" class="tg-report-new-check">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" d="M12 5v14M5 12h14" /></svg>
                 <span>New fact check</span>
@@ -1032,10 +1067,16 @@
                 </div>
 
                 @if ($submittedQuestion !== '' && $submittedMedia)
-                    <div class="tg-evidence-question">
-                        <p class="tg-card-eyebrow">Your question</p>
+                    <details class="tg-evidence-question">
+                        <summary>
+                            <span class="tg-card-eyebrow">Your question</span>
+                            <span class="tg-question-toggle">
+                                <span class="tg-question-more">See more</span><span class="tg-question-less">See less</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
+                            </span>
+                        </summary>
                         <p class="tg-submission-question">{{ $submittedQuestion }}</p>
-                    </div>
+                    </details>
                 @endif
                 <details class="tg-submission-details" open x-data="{ desktop: window.matchMedia('(min-width: 641px)').matches }" x-init="$el.open = desktop"
                     @resize.window.debounce.150ms="const next = window.matchMedia('(min-width: 641px)').matches; if (next !== desktop) { $el.open = next; desktop = next; }">
@@ -1106,12 +1147,14 @@
                                     <p>{{ $presentation['verdict_meaning'] ?? $tone['summary'] }}</p>
                                 </div>
                             </div>
-                            @if ($showAiScore)
-                                <div class="tg-verdict-score" aria-label="AI media assessment score" title="{{ $scoreBadge['detail'] }}">
-                                    <strong>{{ $scoreBadge['title'] }}</strong>
-                                    <span>{{ $scoreBadge['description'] }}</span>
+                            <aside class="tg-verdict-score" data-risk-assessment data-risk-color="{{ $riskAssessment['color'] ?? 'neutral' }}" aria-label="Risk assessment" title="{{ $riskAssessment['explanation'] }}">
+                                <span>Risk assessment</span>
+                                <div class="tg-risk-value-row">
+                                    <strong>{{ $riskAssessment['display'] }}</strong>
+                                    <span>{{ $riskAssessment['caption'] }}</span>
                                 </div>
-                            @endif
+                                @if(isset($riskAssessment['basis']))<span>{{ $riskAssessment['basis'] }}</span>@endif
+                            </aside>
                         </div>
                         <div class="tg-verdict-explanation">
                             <h3>What the evidence shows</h3>
@@ -1370,8 +1413,8 @@
 
             <dl class="tg-report-metrics">
                 @foreach (array_values(array_filter([
-                    $showAiScore ? ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : 'AI-signal score', 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']] : null,
-                    ['label' => 'Risk score', 'value' => $riskScore.'%', 'help' => 'Estimated misinformation or manipulation risk.'],
+                    $showAiScore ? ['label' => $scoreBadge['type'] === 'confidence' ? 'Calibrated confidence' : (data_get($publicResult, 'score.validation') === 'uncalibrated' ? 'Uncalibrated model output' : 'AI-signal score'), 'value' => $scoreBadge['title'], 'help' => $scoreBadge['detail']] : null,
+                    ['label' => 'Risk assessment', 'value' => $riskAssessment['display'], 'help' => $riskAssessment['explanation']],
                     ['label' => 'Sources reviewed', 'value' => $sourceCount, 'help' => 'All references found or checked for this report.'],
                     ['label' => 'Trusted sources', 'value' => $trustedSourceCount, 'help' => 'Official, fact-checking, or otherwise authoritative references.'],
                 ])) as $metric)
@@ -1858,8 +1901,8 @@
         <article class="tg-ai-surface tg-related-section overflow-hidden">
             <div class="tg-related-header">
                 <div>
-                    <h3 class="text-lg font-black text-slate-950">Related context</h3>
-                    <p>Related material provides context. Evidence used for the verdict is listed under Source verification.</p>
+                    <h3 class="text-lg font-black text-slate-950">{{ $recentFactChecksAreRelated || $relatedPosts->isNotEmpty() ? 'Related context' : 'Recent Fact Checks' }}</h3>
+                    <p>{{ $recentFactChecksAreRelated ? 'Related material provides context. Evidence used for the verdict is listed under Source verification.' : 'Browse recent public reviews. These cards are not evidence for this result; assessed sources are listed under Source verification.' }}</p>
                 </div>
                 <span class="tg-source-count"><strong>{{ $relatedPosts->count() + $recentFactChecks->count() }}</strong> items</span>
             </div>
@@ -1897,9 +1940,9 @@
                 @endforeach
 
                 @if ($recentFactChecks->isNotEmpty())
-                    <h4 class="tg-related-group">Related public fact checks</h4>
+                    <h4 class="tg-related-group">{{ $recentFactChecksAreRelated ? 'Related public fact checks' : ($relatedPosts->isNotEmpty() ? 'Recent Fact Checks' : 'Latest public reviews') }}</h4>
                 @endif
-                <div class="tg-related-recent-row" role="region" aria-label="Related public fact checks" tabindex="0">
+                <div class="tg-related-recent-row" role="region" aria-label="{{ $recentFactChecksAreRelated ? 'Related public fact checks' : 'Recent fact checks' }}" tabindex="0">
                 @foreach ($recentFactChecks as $item)
                     @php
                         $publisherName = $item['publisher'] ?? 'Fact-check partner';

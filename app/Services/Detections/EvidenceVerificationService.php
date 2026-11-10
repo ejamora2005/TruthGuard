@@ -24,6 +24,8 @@ class EvidenceVerificationService
 {
     public const VERSION = 'evidence-v32';
 
+    public const CONTEXT_POLICY_VERSION = 'context-completeness-v2';
+
     public function __construct(
         private readonly SubmissionExtractor $extractor,
         private readonly ClaimPlanner $planner,
@@ -358,7 +360,8 @@ class EvidenceVerificationService
         $model['elapsed_ms'] = (int) round((microtime(true) - $classifierStarted) * 1000);
         $budget->excludeAnalysisTime(microtime(true) - $classifierStarted);
         $relationships = [];
-        // Search budgets exclude extraction/model time. All article requests run sequentially (concurrency 1).
+        // Search budgets exclude model time. Article transport uses bounded
+        // parallel batches; source validation and evidence review are unchanged.
         $budget->researchContext = ClaimPlanner::researchContext($plan['claims'], ($context['question'] ?? '') ?: trim(implode(' ', array_filter([
             $extraction['submitted_text'] ?? '', $extraction['submitted_notes'] ?? '',
         ]))), $extraction['analysis_text'], $cutoff);
@@ -464,7 +467,8 @@ class EvidenceVerificationService
             $reserveNextRound = ! $unrestricted && $round === 0 && (int) config('fact_check.retrieval.max_rounds', 2) > 1;
             $candidateCeiling = $reserveNextRound && $currentStatusQuestion
                 ? max(count($records), (int) ceil(config('fact_check.retrieval.max_candidates', 40) / 2)) : null;
-            $records = $this->search->retrieve($queries, $budget, $cutoff, $records, $reserveNextRound, $candidateCeiling, 'providers', $checkpoint);
+            $discovery = $round === 0 && config('fact_check.web_search.first', true) ? 'all' : 'providers';
+            $records = $this->search->retrieve($queries, $budget, $cutoff, $records, $reserveNextRound, $candidateCeiling, $discovery, $checkpoint);
             if (! $budget->freshSources && ($context['primary_task'] ?? 'claim') === 'claim'
                 && SubmissionTask::questionClaim($context['question'] ?? '') === '' && ! in_array('context', $context['resolved_request']['tasks'] ?? [], true)
                 && isset($this->exactFactCheckReconciler->apply(['claim' => $extraction['analysis_text'], 'claims' => $plan['claims']], array_values($records))['exact_fact_check'])) {
@@ -496,7 +500,8 @@ class EvidenceVerificationService
             $gapSignature = hash('sha256', json_encode($gapIds, JSON_THROW_ON_ERROR));
             $reviewFailed = collect($this->model->stages)->contains(fn ($status, $stage) => str_starts_with($stage, 'evidence_relationships_') && $status !== 'completed');
             if (($unrestricted || ! $paidDiscoveryTried) && ($unresolved !== [] || $checkLaterStatus)
-                && ($unrestricted || ! collect($budget->attempts)->contains(fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search'))
+                && count(array_filter($budget->attempts, fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search'))
+                    < ResearchLimits::ceiling('fact_check.web_search.max_calls', 2)
                 && config('fact_check.web_search.enabled', true) && filled(config('services.openai.key'))
                 && config('services.openai.analysis_enabled') && $this->model->canAsk()
                 && (! $progressive || ! isset($paidGaps[$gapSignature]))
@@ -549,6 +554,9 @@ class EvidenceVerificationService
             || ($claim['context_review_requested'] ?? false)));
         if (SourceCoverage::target() > 0 && $coverageClaims !== [] && $budget->remaining() >= 1
             && $coverageCount($records) < SourceCoverage::target() && $this->model->canAsk()) {
+            // The claim has already had an initial review. Gather the remaining
+            // coverage in batches instead of one paid review per new article.
+            $budget->reviewMinNewDocuments = max(1, min($budget->reviewBatchSize, SourceCoverage::target() - $coverageCount($records)));
             $coverageCheckpoint = function (array $rows) use ($review, $coverageCount, $budget, $progress): ?string {
                 $outcomes = $review($rows);
                 $budget->coverageSources = $coverageCount($rows);
@@ -558,6 +566,7 @@ class EvidenceVerificationService
                     return 'review_unavailable';
                 }
                 $progress && $progress('Comparing additional relevant sources ('.$budget->coverageSources.'/'.SourceCoverage::target().')');
+                $budget->reviewMinNewDocuments = max(1, min($budget->reviewBatchSize, SourceCoverage::target() - $budget->coverageSources));
                 $unresolved = collect($outcomes)->contains(fn ($row) => in_array($row['outcome'], ['insufficient', 'conflicting', 'needs_context'], true));
 
                 return $budget->coverageSources >= SourceCoverage::target() && ! $unresolved ? 'resolved' : null;
@@ -566,7 +575,8 @@ class EvidenceVerificationService
             foreach (['providers', 'web', 'references'] as $discovery) {
                 if ($coverageCount($records) >= SourceCoverage::target() || $budget->remaining() < 1
                     || ! $this->model->canAsk() || $budget->discoveryStop === 'review_unavailable') break;
-                if ($discovery === 'web' && collect($budget->attempts)->contains(fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search')) continue;
+                if ($discovery === 'web' && count(array_filter($budget->attempts, fn ($attempt) => ($attempt['provider'] ?? '') === 'openai_web_search'))
+                    >= ResearchLimits::ceiling('fact_check.web_search.max_calls', 2)) continue;
                 $progress && $progress('Finding additional relevant sources');
                 $records = $this->search->retrieve($discovery === 'references' ? [] : $coverageQueries,
                     $budget, $cutoff, $records, false, null, $discovery, $coverageCheckpoint);
@@ -764,7 +774,8 @@ class EvidenceVerificationService
             $result = ResultWording::attach($result, $this->judge->wordingCandidates);
         }
         $result['source_snapshot_id'] = hash('sha256', json_encode($records, JSON_THROW_ON_ERROR));
-        $key = hash('sha256', json_encode(['version' => self::VERSION, 'pipeline_identity' => EvidenceVerdictCalibration::identity(),
+        $key = hash('sha256', json_encode(['version' => self::VERSION, 'context_policy' => self::CONTEXT_POLICY_VERSION,
+            'pipeline_identity' => EvidenceVerdictCalibration::identity(),
             'unrestricted_research' => ResearchLimits::unrestricted(), 'progressive_research' => $progressive,
             'min_relevant_sources' => SourceCoverage::target(),
             'verdict_calibration' => config('fact_check.verdict_calibration.enabled', false) ? config('fact_check.verdict_calibration.sha256', '') : 'disabled',
@@ -894,7 +905,7 @@ class EvidenceVerificationService
             $unclear = collect($result['claims'] ?? [])->first(fn ($claim) => ($claim['outcome'] ?? null) === 'needs_context');
             $wording = Str::limit(Str::squish((string) ($unclear['text'] ?? $result['claim'] ?? '')), 180, '…');
             $missing = trim((string) ($unclear['context_reason'] ?? ''));
-            $summary = 'The claim “'.$wording.'” does not specify a factual outcome that the available evidence can resolve.'
+            $summary = 'The claim “'.$wording.'” cannot be assessed specifically from the available material.'
                 .($missing !== '' ? ' '.$missing : '');
             $contextual = $result['contextual_sources'][0] ?? null;
             if ($contextual) {
@@ -973,8 +984,8 @@ class EvidenceVerificationService
         $refute = in_array('refuted', $outcomes, true);
         [$verdict, $label, $summary] = match (true) {
             $conflict => ['CONFLICTING_EVIDENCE', 'Conflicting Evidence', 'Relevant sources disagree about the same claim. The retrieved records do not resolve that conflict.'],
-            $context => ['MISSING_CONTEXT', 'Missing Context', 'The submitted wording does not provide enough context for a specific factual assessment.'],
-            $insufficient => ['UNVERIFIED', 'Unverified', 'The reviewed evidence does not establish every factual claim. Missing evidence is not evidence that a claim is false.'],
+            $context && ! $support && ! $refute && ! $insufficient => ['MISSING_CONTEXT', 'Missing Context', 'A material detail needed to identify or assess the assertion remains unresolved.'],
+            $insufficient || $context => ['UNVERIFIED', 'Unverified', 'The reviewed evidence does not establish every factual claim. Missing evidence is not evidence that a claim is false.'],
             $support && $refute => ['PARTLY_TRUE', 'Partly True', 'The evidence supports some specific statements and contradicts others. Review the individual claim findings below.'],
             $support => ['TRUE', 'True', 'The retrieved evidence supports the factual statement'.(count($claims) === 1 ? '' : 's').' assessed below, within the recorded scope and cutoff.'],
             $refute => ['FALSE', 'False', 'The retrieved evidence contradicts the factual statement'.(count($claims) === 1 ? '' : 's').' assessed below, within the recorded scope and cutoff.'],
@@ -1085,7 +1096,7 @@ class EvidenceVerificationService
                 'TRUE' => 'green', 'FALSE' => 'red', 'PARTLY_TRUE' => 'amber', default => 'gray'
             },
                 'show_evidence_warning' => $warning, 'evidence_warning' => $warning ? ($limitations[0] ?? $summary) : null,
-                'show_missing_context' => $context, 'missing_context' => $context ? ($contextReason ?: 'The original statement, source, or date was not available; the report was completed using the most likely searchable interpretation.') : null,
+                'show_missing_context' => $verdict === 'MISSING_CONTEXT', 'missing_context' => $verdict === 'MISSING_CONTEXT' ? ($contextReason ?: 'A material detail needed for this assessment could not be resolved.') : null,
                 'show_source_conflict' => $conflict, 'source_conflict_message' => $conflict ? 'Supporting and contradicting evidence address the same claim; no explicit superseding record resolves the conflict.' : null,
                 'show_official_verification_notice' => $official, 'official_verification_notice' => $official ? 'Consult the relevant original authority for decisions that depend on this claim.' : null,
                 'highlight_evidence_cutoff' => $this->policy->isTimeSensitive($claimText), 'source_display_order' => FactCheckEvidencePolicy::SOURCE_ORDER],

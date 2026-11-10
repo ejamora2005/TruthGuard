@@ -7,7 +7,10 @@ use App\Services\Detections\ReportAnswer;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\Psr7\UriResolver;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -15,6 +18,88 @@ use Symfony\Component\Process\Process;
 
 class SafeArticleFetcher
 {
+    private array $prefetchedResponses = [];
+
+    private array $reservedPages = [];
+
+    /** Concurrent transport, followed by the same validated parsing as fetch(). */
+    public function fetchMany(array $urls, RetrievalBudget $budget, ?int $pageCeiling = null): array
+    {
+        $urls = array_values(array_unique($urls));
+        if (count($urls) < 2 || (int) config('fact_check.retrieval.fetch_concurrency', 4) < 2) {
+            return array_combine($urls, array_map(fn ($url) => $this->fetch($url, $budget), $urls));
+        }
+        $pageCeiling = min($pageCeiling ?? PHP_INT_MAX, ResearchLimits::ceiling('fact_check.retrieval.max_pages', 50));
+        $prepared = $robots = $results = [];
+        try {
+            foreach ($urls as $url) {
+                if (isset($budget->fetchedPages['page:'.$url])
+                    || (! $budget->freshSources && Cache::has('evidence-page:v6:'.hash('sha256', $url)))) {
+                    $results[$url] = $this->fetch($url, $budget);
+
+                    continue;
+                }
+                $ip = $this->publicAddress($url);
+                if ($ip === null) {
+                    $results[$url] = $this->fetch($url, $budget);
+
+                    continue;
+                }
+                $origin = parse_url($url, PHP_URL_SCHEME).'://'.parse_url($url, PHP_URL_HOST);
+                $robotsUrl = $origin.'/robots.txt';
+                $needsRobots = config('fact_check.retrieval.respect_robots', true)
+                    && ! isset($budget->fetchedPages['robots:'.$robotsUrl]) && ! isset($robots[$robotsUrl])
+                    && ($budget->freshSources || ! Cache::has('evidence-robots:v1:'.hash('sha256', $origin)));
+                if ($budget->pages + ($needsRobots ? 2 : 1) > $pageCeiling || $budget->remaining() < 1) {
+                    $results[$url] = ['url' => $url, 'status' => 'budget_exhausted', 'http_status' => null];
+
+                    continue;
+                }
+                if (! $budget->take('pages')) {
+                    continue;
+                }
+                $this->reservedPages[$url] = true;
+                $prepared[$url] = $ip;
+                if ($needsRobots && $budget->take('pages')) {
+                    $this->reservedPages[$robotsUrl] = true;
+                    $robots[$robotsUrl] = $ip;
+                }
+            }
+            $this->prefetch($robots, $budget);
+            $allowed = [];
+            foreach ($prepared as $url => $ip) {
+                $reason = null;
+                if (! config('fact_check.retrieval.respect_robots', true) || $this->robotsAllow($url, $budget, $reason)) {
+                    $allowed[$url] = $ip;
+                }
+            }
+            $this->prefetch($allowed, $budget);
+            foreach ($prepared as $url => $ip) {
+                $results[$url] = $this->fetch($url, $budget);
+            }
+
+            return $results;
+        } finally {
+            $this->prefetchedResponses = $this->reservedPages = [];
+        }
+    }
+
+    private function prefetch(array $addresses, RetrievalBudget $budget): void
+    {
+        if ($addresses === []) {
+            return;
+        }
+        $concurrency = max(1, min(4, (int) config('fact_check.retrieval.fetch_concurrency', 4)));
+        $responses = Http::pool(function (Pool $pool) use ($addresses, $budget) {
+            foreach ($addresses as $url => $ip) {
+                $this->request($url, $ip, $budget, $pool->as($url))->get($url);
+            }
+        }, $concurrency);
+        $this->prefetchedResponses = array_replace($this->prefetchedResponses, $responses);
+        $budget->parallelFetchBatches++;
+        $budget->peakFetchConcurrency = max($budget->peakFetchConcurrency, min($concurrency, count($addresses)));
+    }
+
     public function fetch(string $url, RetrievalBudget $budget, bool $checkRobots = true): array
     {
         $key = ($checkRobots ? 'page:' : 'robots:').$url;
@@ -28,11 +113,14 @@ class SafeArticleFetcher
     private function fetchOnce(string $url, RetrievalBudget $budget, bool $checkRobots): array
     {
         $base = ['url' => $url, 'retrieved_at' => now()->utc()->toIso8601String(), 'text' => '', 'published_at' => null, 'updated_at' => null, 'links' => [], 'http_status' => null];
-        if (! $budget->take('pages')) {
+        app(ReportApiBudget::class)->assertActive();
+        $reserved = isset($this->reservedPages[$url]);
+        unset($this->reservedPages[$url]);
+        if (! $reserved && ! $budget->take('pages')) {
             return $base + ['status' => 'budget_exhausted'];
         }
         try {
-            $cacheKey = 'evidence-page:v5:'.hash('sha256', $url);
+            $cacheKey = 'evidence-page:v6:'.hash('sha256', $url);
             if (! $budget->freshSources && ($cached = Cache::get($cacheKey))) {
                 return $cached + ['cached' => true];
             }
@@ -45,34 +133,8 @@ class SafeArticleFetcher
                 if ($checkRobots && config('fact_check.retrieval.respect_robots', true) && ! $this->robotsAllow($url, $budget, $robotsReason)) {
                     return $base + ['status' => 'robots_restricted_or_unavailable', 'robots_detail' => $robotsReason];
                 }
-                $host = parse_url($url, PHP_URL_HOST);
-                $port = parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80;
                 $maxBytes = max(1024, (int) config('fact_check.retrieval.max_bytes', 2097152));
-                $response = Http::withHeaders(['User-Agent' => 'TruthGuardEvidence/1.0', 'Accept' => 'text/html,text/plain,application/pdf', 'Accept-Encoding' => 'identity'])
-                    ->beforeSending(fn () => app(ReportApiBudget::class)->assertActive())
-                    ->connectTimeout(min(2, max(1, $budget->remaining())))
-                    ->timeout(min(max(1, $budget->remaining()), max(1, (int) config('fact_check.retrieval.timeout', 5))))
-                    ->withOptions([
-                        'allow_redirects' => false, 'proxy' => '', 'decode_content' => false,
-                        // Pin the validated address: redirects are resolved and checked afresh.
-                        'curl' => [CURLOPT_RESOLVE => [$host.':'.$port.':'.(str_contains($ip, ':') ? '['.$ip.']' : $ip)], CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS],
-                        'on_headers' => function ($response) use ($maxBytes) {
-                            if ((int) $response->getHeaderLine('Content-Length') > $maxBytes) {
-                                throw new \RuntimeException('Response too large');
-                            }
-                        },
-                        'progress' => function ($total, $downloaded) use ($maxBytes) {
-                            if ($downloaded > $maxBytes) {
-                                throw new \RuntimeException('Response too large');
-                            }
-                        },
-                    ])
-                    // One bounded retry reduces transient failures without
-                    // repeatedly processing an inaccessible user link.
-                    ->retry(2, 150, fn ($exception): bool => $exception instanceof ConnectionException
-                        || ($exception instanceof RequestException
-                            && (in_array($exception->response->status(), [408, 429], true) || $exception->response->serverError())), false)
-                    ->get($url);
+                $response = $this->response($url, $ip, $budget);
                 $base['http_status'] = $response->status();
                 if (in_array($response->status(), [301, 302, 303, 307, 308], true)) {
                     $location = $response->header('Location');
@@ -108,9 +170,8 @@ class SafeArticleFetcher
                     $body = $decoded;
                 }
                 $type = strtolower(explode(';', $response->header('Content-Type'))[0]);
-                if (Str::contains(strtolower($response->header('X-Robots-Tag')), ['nosnippet', 'noarchive'])) {
-                    return $base + ['status' => 'restricted'];
-                }
+                // Search-preview directives are not access controls. Read the
+                // public response after the separate robots.txt access check.
                 if ($type === 'application/pdf') {
                     $content = ['text' => $this->pdfText($body), 'title' => '', 'published_at' => null, 'updated_at' => null, 'links' => []];
                 } elseif (in_array($type, ['text/html', 'application/xhtml+xml'], true)) {
@@ -143,6 +204,53 @@ class SafeArticleFetcher
 
             return $base + ['status' => $oversized ? 'too_large' : 'fetch_failed'];
         }
+    }
+
+    private function request(string $url, string $ip, RetrievalBudget $budget, ?PendingRequest $pending = null): PendingRequest
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+        $port = parse_url($url, PHP_URL_SCHEME) === 'https' ? 443 : 80;
+        $maxBytes = max(1024, (int) config('fact_check.retrieval.max_bytes', 2097152));
+
+        return ($pending ?? Http::createPendingRequest())->withHeaders(['User-Agent' => 'TruthGuardEvidence/1.0', 'Accept' => 'text/html,text/plain,application/pdf', 'Accept-Encoding' => 'identity'])
+            ->beforeSending(fn () => app(ReportApiBudget::class)->assertActive())
+            ->connectTimeout(min(2, max(1, $budget->remaining())))
+            ->timeout(min(max(1, $budget->remaining()), max(1, (int) config('fact_check.retrieval.timeout', 5))))
+            ->withOptions([
+                'allow_redirects' => false, 'proxy' => '', 'decode_content' => false,
+                // Pin the validated address: redirects are resolved and checked afresh.
+                'curl' => [CURLOPT_RESOLVE => [$host.':'.$port.':'.(str_contains($ip, ':') ? '['.$ip.']' : $ip)], CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS],
+                'on_headers' => function ($response) use ($maxBytes) {
+                    if ((int) $response->getHeaderLine('Content-Length') > $maxBytes) {
+                        throw new \RuntimeException('Response too large');
+                    }
+                },
+                'progress' => function ($total, $downloaded) use ($maxBytes) {
+                    if ($downloaded > $maxBytes) {
+                        throw new \RuntimeException('Response too large');
+                    }
+                },
+            ])
+            // One bounded retry reduces transient failures without
+            // repeatedly processing an inaccessible user link.
+            ->retry(2, 150, fn ($exception): bool => $exception instanceof ConnectionException
+                || ($exception instanceof RequestException
+                    && (in_array($exception->response->status(), [408, 429], true) || $exception->response->serverError())), false);
+    }
+
+    private function response(string $url, string $ip, RetrievalBudget $budget): Response
+    {
+        if (array_key_exists($url, $this->prefetchedResponses)) {
+            $response = $this->prefetchedResponses[$url];
+            unset($this->prefetchedResponses[$url]);
+            if ($response instanceof \Throwable) {
+                throw $response;
+            }
+
+            return $response;
+        }
+
+        return $this->request($url, $ip, $budget)->get($url);
     }
 
     public function publicAddress(string $url): ?string
@@ -184,7 +292,9 @@ class SafeArticleFetcher
             $robots = $this->fetch($origin.'/robots.txt', $budget, false);
             Cache::put($cacheKey, $robots, 300);
         }
-        if (in_array($robots['status'], ['http_404', 'http_410'], true)) {
+        // RFC 9309: a 4xx robots response means the rules are unavailable,
+        // not that the article is forbidden. Preserve rate-limit backoff.
+        if (preg_match('/^http_4\d{2}$/', $robots['status']) && $robots['status'] !== 'http_429') {
             return true;
         }
         if (! in_array($robots['status'], ['retrieved', 'missing_full_text'], true)) {
@@ -310,10 +420,7 @@ class SafeArticleFetcher
         // A document's own <time datetime> is an issuance/publication signal;
         // retrieval time remains a separate field on the fetched record.
         $published ??= $policy->date(trim($xpath->evaluate('string((//article//time[@datetime] | //main//time[@datetime])[1]/@datetime)')));
-        if (Str::contains(strtolower($meta('robots')), ['nosnippet', 'noarchive'])) {
-            return ['text' => '', 'title' => $title, 'published_at' => $published, 'updated_at' => $updated, 'links' => []];
-        }
-        foreach ($xpath->query('//script|//style|//nav|//header[not(ancestor::article) and not(ancestor::main)]|//footer|//aside|//form|//*[@hidden or @data-nosnippet]') as $node) {
+        foreach ($xpath->query('//script|//style|//nav|//header[not(ancestor::article) and not(ancestor::main)]|//footer|//aside|//form|//*[@hidden]') as $node) {
             $node->parentNode?->removeChild($node);
         }
         // A union is in document order: <main> enclosing <article> wins,

@@ -34,6 +34,12 @@ final class RetrievalBudget
 
     public int $reviewBatchSize = 6;
 
+    public int $reviewMinNewDocuments = 1;
+
+    public array $reviewedDocumentSignatures = [];
+
+    public bool $reviewDeferred = false;
+
     public int $reviewCheckpoints = 0;
 
     public ?string $discoveryStop = null;
@@ -45,6 +51,10 @@ final class RetrievalBudget
     public int $recursiveReferencesSkipped = 0;
 
     public int $coverageSources = 0;
+
+    public int $parallelFetchBatches = 0;
+
+    public int $peakFetchConcurrency = 1;
 
     public function noteEvidence(array $outcomes, array $contexts = [], array $resolutions = []): void
     {
@@ -95,13 +105,13 @@ final class RetrievalBudget
         // A completed discovery tool can return usable URLs even when the
         // accompanying response text was truncated. Its URLs still require
         // independent fetching and evidence review.
-        return array_values(array_filter($this->attempts, fn ($attempt) =>
-            ! in_array($attempt['status'] ?? '', ['ok', 'cached', 'archive_limited', 'partial_results'], true)));
+        return array_values(array_filter($this->attempts, fn ($attempt) => ! in_array($attempt['status'] ?? '', ['ok', 'cached', 'archive_limited', 'partial_results'], true)));
     }
 
     public function diagnostics(): array
     {
         return ['search_requests' => $this->searches, 'page_requests' => $this->pages,
+            'parallel_fetch_batches' => $this->parallelFetchBatches, 'peak_fetch_concurrency' => $this->peakFetchConcurrency,
             'unrestricted_research' => ResearchLimits::unrestricted(),
             'review_checkpoints' => $this->reviewCheckpoints, 'discovery_stop' => $this->discoveryStop,
             'low_yield_pages_skipped' => $this->lowYieldPagesSkipped,

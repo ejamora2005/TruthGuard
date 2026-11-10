@@ -157,13 +157,33 @@ class ReportAnswer
     /** Attribute an already reviewed explanation without another model request. */
     public static function attributeSource(string $explanation, string $publisher): string
     {
-        $publisher = Str::limit(Str::squish(strip_tags($publisher)), 80, '');
+        $originalPublisher = $publisher;
+        $publisher = self::publisherName($publisher);
+        if ($publisher !== $originalPublisher) {
+            $explanation = preg_replace('/^'.preg_quote($originalPublisher, '/').'\s+(?:reports?|states?|says?):\s*/iu', '', $explanation);
+        }
         if ($publisher === '' || $publisher === 'Publisher not recorded'
             || Str::contains(Str::lower($explanation), Str::lower($publisher))) {
             return $explanation;
         }
 
-        return $publisher.' reports: '.$explanation;
+        $explanation = preg_replace_callback('/^(?:The|This|A|An)\b/u', fn ($match) => strtolower($match[0]), $explanation);
+
+        return 'According to '.$publisher.', '.$explanation;
+    }
+
+    /** Publisher labels are presentation only; domain trust is checked separately. */
+    public static function publisherName(string $publisher, ?string $url = null): string
+    {
+        $publisher = Str::limit(Str::squish(strip_tags($publisher)), 80, '');
+        $host = strtolower((string) ($url ? parse_url($url, PHP_URL_HOST) : preg_replace('/^www\./i', '', $publisher)));
+        foreach ((array) config('fact_check.publisher_names', []) as $domain => $name) {
+            if ($host === $domain || str_ends_with($host, '.'.$domain)) {
+                return $name;
+            }
+        }
+
+        return $publisher;
     }
 
     /** Short display summary; the complete saved explanation stays available separately. */

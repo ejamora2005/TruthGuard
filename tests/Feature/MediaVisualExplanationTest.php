@@ -157,7 +157,7 @@ class MediaVisualExplanationTest extends TestCase
         $public = ReportAnswer::forPresentation($result);
         $this->assertStringNotContainsString('wooden', $public['summary']);
         $this->assertStringNotContainsString('Blue nets', $public['summary']);
-        $this->assertStringContainsString('No clear visual signs of AI generation were identified', $public['summary']);
+        $this->assertStringContainsString('The analysis found no clear visual indicators strongly associated with AI-generated imagery', $public['summary']);
         $this->assertStringContainsString('does not confirm', $public['summary']);
         $this->assertNotNull(MediaVisualExplanation::accept(['image_description' => '', 'observations' => []], $hash));
         $this->assertStringContainsString('Leave image_description empty', MediaVisualExplanation::instructions());
@@ -215,8 +215,8 @@ class MediaVisualExplanationTest extends TestCase
         $result['visual_observations'] = MediaVisualExplanation::accept($answer, $hash);
         $public = MediaVisualExplanation::present($result);
         $this->assertSame($result['verdict'], $public['verdict']);
-        $this->assertStringStartsWith('This image has been flagged as likely AI-generated.', $public['summary']);
-        $this->assertStringContainsString('did not identify a specific irregularity', $public['summary']);
+        $this->assertStringStartsWith('The submitted image has been assessed as likely AI-generated.', $public['summary']);
+        $this->assertStringContainsString('does not conclusively prove its origin', $public['summary']);
         $answer['observations'][0]['visibility'] = $answer['observations'][1]['visibility'] = 'uncertain';
         $result['visual_observations'] = MediaVisualExplanation::accept($answer, $hash);
         $this->assertStringNotContainsString('clean edges', MediaVisualExplanation::present($result)['summary']);
@@ -246,13 +246,13 @@ class MediaVisualExplanationTest extends TestCase
             @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
             $node = (new \DOMXPath($document))->query('//div[contains(@class,"tg-verdict-explanation")]')->item(0);
             $this->assertStringNotContainsString('The heading: The letters have clean edges.', $node->textContent);
-            $this->assertStringContainsString('No clear visual signs of AI generation were identified', $node->textContent);
+            $this->assertStringContainsString('The analysis found no clear visual indicators strongly associated with AI-generated imagery', $node->textContent);
             $this->assertDoesNotMatchRegularExpression('/detector|model|system|classification/i', $node->textContent);
             $this->assertStringNotContainsString('threshold', $node->textContent);
             $this->assertStringNotContainsString('benchmark', $node->textContent);
         }
         $this->getJson(route('detections.result', $first))->assertOk()
-            ->assertJsonPath('summary', fn ($summary) => str_contains($summary, 'No clear visual signs of AI generation were identified'));
+            ->assertJsonPath('summary', fn ($summary) => str_contains($summary, 'The analysis found no clear visual indicators strongly associated with AI-generated imagery'));
         $this->assertSame($before, $first->fresh()->getRawOriginal());
         Http::assertSentCount(1);
     }

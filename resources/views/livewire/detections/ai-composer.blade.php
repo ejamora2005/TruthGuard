@@ -1843,13 +1843,13 @@ new class extends Component
 
         @keyframes truthguard-verify-source-swap {
             0%,
-            13% {
+            8.5% {
                 opacity: 1;
                 transform: translateY(0) scale(1);
                 filter: blur(0);
             }
 
-            22%,
+            11.1%,
             100% {
                 opacity: 0;
                 transform: translateY(-0.65rem) scale(0.78);
@@ -2480,12 +2480,19 @@ new class extends Component
         }
 
         .truthguard-scan-doc-logo .truthguard-verify-source-logo {
+            inset: 0;
+            margin: auto;
             height: 2.02rem;
             width: 2.02rem;
             border-radius: 9999px;
             font-size: 0.76rem;
             letter-spacing: 0;
             box-shadow: none;
+        }
+
+        .truthguard-scan-doc-logo [data-loading-source-cycle] {
+            position: absolute;
+            inset: 0;
         }
 
         .truthguard-scan-doc-logo .truthguard-verify-source-logo svg,
@@ -2874,7 +2881,7 @@ new class extends Component
             letter-spacing: -0.02em;
             opacity: 0;
             box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
-            animation: truthguard-verify-source-swap 8.4s ease-in-out infinite;
+            animation: truthguard-verify-source-swap 12.6s ease-in-out infinite;
             animation-delay: var(--source-delay, 0s);
         }
 
@@ -3285,6 +3292,12 @@ new class extends Component
                 animation: none !important;
             }
 
+            .truthguard-scan-doc-logo .truthguard-verify-source-logo:first-child {
+                opacity: 1;
+                filter: none;
+                transform: none;
+            }
+
             .truthguard-detection-composer {
                 transition: none !important;
             }
@@ -3540,6 +3553,7 @@ new class extends Component
             progressMessage: null,
             progressElapsed: 0,
             progressState: 'queued',
+            progressPercent: 0,
             progressFailures: 0,
             progressTimer: null,
             progressClock: null,
@@ -3946,12 +3960,31 @@ new class extends Component
                 }, 1000);
                 this.pendingResultUrl = url;
                 this.progressState = 'queued';
+                this.progressPercent = 0;
                 this.progressFailures = 0;
                 this.submitting = true;
                 this.composerError = null;
                 this.analysisNotice = null;
                 this.progressMessage = 'Your check is saved and waiting to start.';
                 this.refreshPendingResult();
+            },
+            updateProgressPercent(status, stage = '') {
+                if (status === 'queued') { this.progressPercent = 0; return; }
+                if (status === 'completed') { this.progressPercent = 100; return; }
+                if (status !== 'processing') return;
+                // Stage estimates advance only when work reaches a milestone.
+                // Repeated research and reconnection never inflate the meter.
+                const milestones = [
+                    [/preparing|using matching|saving.*report/i, 95],
+                    [/additional|comparing/i, 80],
+                    [/missing|cited|dates/i, 70],
+                    [/reviewing/i, 60],
+                    [/searching/i, 40],
+                    [/identifying/i, 25],
+                    [/reading|checking/i, 15],
+                ];
+                const estimate = milestones.find(([pattern]) => pattern.test(stage))?.[1] || 10;
+                this.progressPercent = Math.max(this.progressPercent, estimate);
             },
             async refreshPendingResult() {
                 const url = this.pendingResultUrl;
@@ -3978,6 +4011,7 @@ new class extends Component
                     this.progressElapsed = Math.max(this.progressElapsed, data.elapsed_seconds || 0);
                     this.progressStartedAt = Date.now() - this.progressElapsed * 1000;
                     this.progressState = data.processing_status;
+                    this.updateProgressPercent(data.processing_status, data.stage || '');
                     if (data.cancelled) {
                         this.stopPendingResult(null);
                         this.analysisNotice = 'Fact check stopped. You can start a new check.';
@@ -4023,6 +4057,7 @@ new class extends Component
                 this.pendingResultUrl = null;
                 this.progressMessage = null;
                 this.progressState = 'queued';
+                this.progressPercent = 0;
                 this.submitting = false;
                 this.composerError = message;
             },
@@ -4101,6 +4136,12 @@ new class extends Component
                         }
                     );
                 });
+            },
+            handleComposerKeydown(event) {
+                if (event.key !== 'Enter' || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+                event.preventDefault();
+                if (event.repeat || this.submitting) return;
+                event.currentTarget.form?.requestSubmit();
             },
             async handleSubmit(event) {
                 event.preventDefault();
@@ -5369,30 +5410,44 @@ new class extends Component
                             </svg>
                         </div>
                         <div class="truthguard-scan-doc-logo">
-                            <span class="truthguard-verify-source-logo" style="--source-bg: #1877f2; --source-color: #fff; --source-delay: 0s;">
-                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                    <path d="M13.8 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5H17V4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.3V10H8v3h2.4v8h3.4Z"/>
-                                </svg>
-                            </span>
-                            <span class="truthguard-verify-source-logo" style="--source-bg: linear-gradient(135deg, #f58529, #dd2a7b 48%, #515bd4); --source-color: #fff; --source-delay: 1.4s;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
-                                    <rect x="4.8" y="4.8" width="14.4" height="14.4" rx="4.3"></rect>
-                                    <circle cx="12" cy="12" r="3.15"></circle>
-                                    <circle cx="16.85" cy="7.15" r="0.95" fill="currentColor" stroke="none"></circle>
-                                </svg>
-                            </span>
-                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #0f6674; --source-color: #fff; --source-delay: 2.8s;">
-                                VERA
-                            </span>
-                            <span class="truthguard-verify-source-logo" style="--source-bg: #ff5c1b; --source-color: #fff; --source-delay: 4.2s;">
-                                R
-                            </span>
-                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #111827; --source-color: #fff; --source-delay: 5.6s;">
-                                RTRS
-                            </span>
-                            <span class="truthguard-verify-source-logo truthguard-verify-source-logo-brand" style="--source-bg: #fff; --source-color: #0f172a; --source-delay: 7s;">
-                                <img src="{{ $truthguardLogoUrl }}" alt="">
-                            </span>
+                            <template x-if="progressState !== 'processing'">
+                                <span class="truthguard-verify-source-logo truthguard-verify-source-logo-brand" data-loading-waiting-logo style="--source-bg: #fff; opacity: 1; animation: none;">
+                                    <img src="{{ $truthguardLogoUrl }}" alt="">
+                                </span>
+                            </template>
+                            <template x-if="progressState === 'processing'">
+                                <div data-loading-source-cycle>
+                                    @foreach ([
+                                        ['name' => 'PAGASA', 'file' => 'pagasa.png'],
+                                        ['name' => 'Rappler', 'file' => 'rappler.png'],
+                                        ['name' => 'DILG', 'file' => 'dilg.png'],
+                                        ['name' => 'VERA Files', 'file' => 'vera-files.jpg'],
+                                        ['name' => 'PHIVOLCS', 'file' => 'phivolcs.png'],
+                                    ] as $loadingSource)
+                                        <span class="truthguard-verify-source-logo truthguard-verify-source-logo-brand" data-loading-source="{{ $loadingSource['name'] }}" style="--source-bg: #fff; --source-delay: {{ $loop->index * 1.4 }}s;">
+                                            <img src="{{ asset('images/sources/'.$loadingSource['file']) }}" alt="" decoding="async">
+                                        </span>
+                                    @endforeach
+                                    <span class="truthguard-verify-source-logo" style="--source-bg: #1877f2; --source-color: #fff; --source-delay: 7s;">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                            <path d="M13.8 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5H17V4c-.3 0-1.3-.1-2.5-.1-2.5 0-4.1 1.5-4.1 4.3V10H8v3h2.4v8h3.4Z"/>
+                                        </svg>
+                                    </span>
+                                    <span class="truthguard-verify-source-logo" style="--source-bg: linear-gradient(135deg, #f58529, #dd2a7b 48%, #515bd4); --source-color: #fff; --source-delay: 8.4s;">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+                                            <rect x="4.8" y="4.8" width="14.4" height="14.4" rx="4.3"></rect>
+                                            <circle cx="12" cy="12" r="3.15"></circle>
+                                            <circle cx="16.85" cy="7.15" r="0.95" fill="currentColor" stroke="none"></circle>
+                                        </svg>
+                                    </span>
+                                    <span class="truthguard-verify-source-logo truthguard-verify-source-logo-wide" style="--source-bg: #111827; --source-color: #fff; --source-delay: 9.8s;">
+                                        RTRS
+                                    </span>
+                                    <span class="truthguard-verify-source-logo truthguard-verify-source-logo-brand" style="--source-bg: #fff; --source-color: #0f172a; --source-delay: 11.2s;">
+                                        <img src="{{ $truthguardLogoUrl }}" alt="">
+                                    </span>
+                                </div>
+                            </template>
                         </div>
                         <div class="truthguard-scan-doc-lines">
                             <span></span>
@@ -5402,7 +5457,7 @@ new class extends Component
                         </div>
                         <div class="truthguard-scan-status">
                             <span></span>
-                            <strong>Checking</strong>
+                            <strong x-text="progressState === 'processing' ? 'Checking' : 'Waiting'">Waiting</strong>
                         </div>
                     </div>
                     <div class="truthguard-scan-magnifier" aria-hidden="true">
@@ -5428,10 +5483,11 @@ new class extends Component
                     <p class="truthguard-verify-copy" x-show="pendingResultUrl && progressMessage" x-text="progressMessage" aria-live="polite"></p>
                     <p class="truthguard-verify-copy" x-show="progressFailures > 0" x-text="'Reconnecting to progress updates…'"></p>
                     <p class="truthguard-verify-copy" x-show="pendingResultUrl" x-text="Math.floor(progressElapsed / 60) + 'm ' + (progressElapsed % 60) + 's elapsed'"></p>
-                    <div class="truthguard-analysis-progress" :class="{ 'is-running': progressState !== 'completed' }" style="width: min(100%, 20rem)" role="status" aria-label="Fact check progress">
-                        <div class="truthguard-analysis-track" aria-hidden="true"><span :style="'width: ' + (progressState === 'completed' ? '100%' : pendingResultUrl ? (progressState === 'processing' ? '66.667%' : '33.333%') : '15%')"></span></div>
+                    <div class="truthguard-analysis-progress" :class="{ 'is-running': progressState !== 'completed' }" style="width: min(100%, 20rem)" role="progressbar" aria-label="Estimated fact check progress" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="progressPercent" :aria-valuetext="progressPercent + '% estimated progress'">
+                        <div class="truthguard-analysis-track" aria-hidden="true"><span :style="'width: ' + progressPercent + '%'"></span></div>
                         <div class="truthguard-analysis-labels">
                             <span class="is-active" x-text="progressState === 'completed' ? 'Opening report…' : !pendingResultUrl ? 'Uploading' : progressState === 'queued' ? 'Waiting to analyze' : 'Analyzing'"></span>
+                            <span class="is-active" data-loading-percentage title="Estimated progress based on the current analysis stage" x-text="progressPercent + '%'">0%</span>
                         </div>
                     </div>
                 </div>
@@ -5930,11 +5986,13 @@ new class extends Component
                                 x-ref="composerInput"
                                 name="caption_text"
                                 rows="2"
+                                enterkeyhint="send"
                                 placeholder="Ask, paste a claim or link"
                                 class="truthguard-detection-textarea w-full px-1 py-2 text-[12px] leading-5 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-0 sm:text-[14px] sm:leading-5"
                                 aria-describedby="truthguard-composer-feedback truthguard-ai-disclaimer truthguard-ai-disclaimer-mobile"
                                 :aria-invalid="composerError ? 'true' : 'false'"
                                 @input="handleComposerInput($event)"
+                                @keydown="handleComposerKeydown($event)"
                             >{{ $composerDraft }}</textarea>
                         </div>
 

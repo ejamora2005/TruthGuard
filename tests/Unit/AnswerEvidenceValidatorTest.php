@@ -147,11 +147,12 @@ class AnswerEvidenceValidatorTest extends TestCase
         $result['sources'][0]['name'] = 'www.example.gov.ph';
         $copy = ResultWording::ensure($result)['generated_wording'];
         $this->assertStringContainsString(self::PASSAGE, $copy['explanation']);
-        $this->assertStringStartsWith('example.gov.ph states:', $copy['explanation']);
+        $this->assertStringStartsWith('The reviewed evidence supports the submitted claim.', $copy['explanation']);
+        $this->assertStringContainsString('According to example.gov.ph,', $copy['explanation']);
         $this->assertNotNull(ResultWording::saved(ResultWording::ensure($result)));
     }
 
-    public function test_a_short_saved_fallback_gains_scope_without_new_facts_or_requests(): void
+    public function test_a_padded_saved_fallback_is_rebuilt_without_new_facts_or_requests(): void
     {
         Http::preventStrayRequests();
         $result = $this->reportFixture('The agency said on January 14 that it had no official record of the reported departure.');
@@ -162,15 +163,19 @@ class AnswerEvidenceValidatorTest extends TestCase
         $result['interpretation']['ambiguities'] = ['The submission does not state when the claim or post appeared.'];
         $result['answer_validation'] = ['status' => 'rebuilt_from_validated_passages'];
         $result['generated_wording'] = ['version' => 'result-wording-v11', 'verdict' => 'FALSE',
-            'explanation' => 'Municipal record states: “'.$result['sources'][0]['relationships'][0]['excerpt'].'”',
+            'explanation' => 'Municipal record states: “'.$result['sources'][0]['relationships'][0]['excerpt'].'”'
+                .str_repeat(' This finding applies to the subject and details addressed by the cited material; it does not establish other claims, dates, or quantities that the source does not cover.', 3),
             'source_ids' => ['s1'], 'result_summary' => 'The cited source addresses the claim.',
             'recommended_action' => 'Read the dated source.'];
         $before = $result;
         $copy = ResultWording::saved($result);
-        $this->assertGreaterThanOrEqual(100, Str::wordCount($copy['explanation']));
+        $this->assertGreaterThan(100, Str::wordCount($result['generated_wording']['explanation']));
+        $this->assertLessThan(100, Str::wordCount($copy['explanation']));
+        $this->assertStringStartsWith('The reviewed evidence contradicts the submitted claim.', $copy['explanation']);
         $this->assertStringContainsString('does not prove that an event never occurred', $copy['explanation']);
         $this->assertStringContainsString('does not give the original post date', $copy['explanation']);
-        $this->assertStringContainsString('does not independently determine whether the media was generated', $copy['explanation']);
+        $this->assertStringNotContainsString('This finding applies to the subject and details', $copy['explanation']);
+        $this->assertStringNotContainsString('whether the media was generated', $copy['explanation']);
         $this->assertSame(['s1'], $copy['source_ids']);
         $this->assertSame($before, $result);
         Http::assertNothingSent();
@@ -188,6 +193,42 @@ class AnswerEvidenceValidatorTest extends TestCase
         $this->assertSame(['s1'], $copy['source_ids']);
     }
 
+    public function test_context_only_fallback_leads_with_the_evidence_gap_and_omits_generic_padding(): void
+    {
+        Http::preventStrayRequests();
+        $passage = 'Authorities will verify the allegations before accepting them as fact.';
+        $result = ['primary_task' => 'claim', 'verdict' => 'MISSING_CONTEXT',
+            'claim' => 'A witness denied receiving payment for the allegations.', 'sources' => [],
+            'claims' => [['id' => 'c1', 'kind' => 'factual', 'outcome' => 'needs_context',
+                'context_reason' => 'The original statement and its date are not identified.']],
+            'contextual_sources' => [['id' => 's1', 'name' => 'News report', 'url' => 'https://example.com/report',
+                'context_only' => true, 'excerpt' => $passage]]];
+        $copy = AnswerEvidenceValidator::fallback($result);
+
+        $this->assertStringStartsWith('A material detail needed to assess the submitted claim remains unresolved.', $copy['explanation']);
+        $this->assertStringContainsString('The original statement and its date are not identified.', $copy['explanation']);
+        $this->assertStringContainsString($passage, $copy['explanation']);
+        $this->assertStringNotContainsString('The specific statement being checked is', $copy['explanation']);
+        $this->assertStringNotContainsString('This finding applies to the subject and details', $copy['explanation']);
+        $this->assertSame(['s1'], $copy['source_ids']);
+        $this->assertSame('MISSING_CONTEXT', $result['verdict']);
+        Http::assertNothingSent();
+    }
+
+    public function test_partial_findings_explain_what_is_established_without_calling_all_sources_background(): void
+    {
+        $result = $this->reportFixture();
+        $result['verdict'] = 'UNVERIFIED';
+        $result['claims'][] = ['id' => 'c2', 'kind' => 'factual', 'outcome' => 'needs_context',
+            'context_reason' => 'The notice does not identify the issuing authority.'];
+        $copy = AnswerEvidenceValidator::fallback($result);
+        $this->assertStringStartsWith('The reviewed sources establish some details, but do not resolve every statement.', $copy['explanation']);
+        $this->assertStringContainsString(self::PASSAGE, $copy['explanation']);
+        $this->assertStringContainsString('issuing authority', $copy['explanation']);
+        $this->assertStringNotContainsString('provides background', $copy['explanation']);
+        $this->assertSame('UNVERIFIED', $result['verdict']);
+    }
+
     private function locationFixture(): array
     {
         $row = ['claim_id' => 'c1', 'source_id' => 's1', 'stance' => 'contradicting', 'basis' => 'primary_record',
@@ -202,6 +243,32 @@ class AnswerEvidenceValidatorTest extends TestCase
             'sources' => [['id' => 's1', 'name' => 'www.phivolcs.dost.gov.ph',
                 'title' => 'Volcanoes of the Philippines | PHIVOLCS',
                 'url' => 'https://www.phivolcs.dost.gov.ph/volcanoes-of-the-philippines/', 'relationships' => [$row]]]];
+    }
+
+    public function test_fallback_uses_agency_and_publisher_names_with_the_official_record_first(): void
+    {
+        Http::preventStrayRequests();
+        $result = $this->reportFixture();
+        $result['sources'][0]['name'] = 'www.gmanetwork.com';
+        $result['sources'][0]['url'] = 'https://www.gmanetwork.com/news/report';
+        $result['sources'][0]['type'] = 'reputable_news';
+        $result['sources'][] = ['id' => 's2', 'name' => 'dilg.gov.ph', 'type' => 'official_government',
+            'url' => 'https://dilg.gov.ph/notice', 'relationships' => [['claim_id' => 'c1', 'stance' => 'supporting',
+                'excerpt' => 'The official award notice lists six rescue vehicles for the municipality.']]];
+        $copy = AnswerEvidenceValidator::fallback($result);
+
+        $this->assertSame(['s2', 's1'], $copy['source_ids']);
+        $this->assertStringContainsString('According to DILG,', $copy['explanation']);
+        $this->assertStringContainsString('According to GMA News,', $copy['explanation']);
+        $this->assertStringNotContainsString('gmanetwork.com', $copy['explanation']);
+        $this->assertStringNotContainsString('dilg.gov.ph', $copy['explanation']);
+        $this->assertCount(2, $result['sources']);
+        $this->assertSame('TRUE', $result['verdict']);
+        $this->assertSame('GMA News', ReportAnswer::publisherName('www.gmanetwork.com'));
+        $this->assertSame('Unfamiliar publisher', ReportAnswer::publisherName('Unfamiliar publisher', 'https://gmanetwork.com.example.org/report'));
+        $this->assertSame('According to GMA News, the record confirms the event.',
+            ReportAnswer::attributeSource('The record confirms the event.', 'gmanetwork.com'));
+        Http::assertNothingSent();
     }
 
     public function test_table_evidence_keeps_the_reviewed_correction_and_reason_instead_of_a_raw_row(): void
@@ -252,7 +319,7 @@ class AnswerEvidenceValidatorTest extends TestCase
             $result = $this->locationFixture();
             $result['claims'][0]['relationships'][0] = array_replace($result['claims'][0]['relationships'][0], $change);
             $fallback = AnswerEvidenceValidator::fallback($result);
-            $this->assertStringContainsString('states:', $fallback['explanation']);
+            $this->assertStringContainsString('According to', $fallback['explanation']);
             $this->assertStringNotContainsString('Manila', $fallback['explanation']);
             $this->assertStringNotContainsString('5000', $fallback['explanation']);
         }

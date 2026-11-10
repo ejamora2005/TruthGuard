@@ -361,7 +361,7 @@ class ResultContract
             }
             $id = self::text($row['id'] ?? null) ?? 'saved-'.substr(hash('sha256', $url), 0, 16);
             $title = self::text($row['title'] ?? null) ?? 'Original source';
-            $name = self::text($row['name'] ?? null) ?? 'Publisher not recorded';
+            $name = ReportAnswer::publisherName(self::text($row['name'] ?? null) ?? 'Publisher not recorded', $url);
             $explanation = self::text($row['explanation'] ?? null);
             $usedFor = self::text($row['used_for'] ?? null);
             $valid[] = [

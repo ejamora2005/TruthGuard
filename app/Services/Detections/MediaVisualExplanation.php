@@ -76,44 +76,22 @@ PROMPT;
             || ! in_array($result['verdict'] ?? '', ['LIKELY_AI_GENERATED', 'LIKELY_NOT_AI_GENERATED', 'AI_GENERATED', 'NO_STRONG_AI_SIGNAL', 'INCONCLUSIVE'], true)) {
             return $result;
         }
-        $visual = $result['visual_observations'] ?? [];
-        $hash = $media['input_sha256'] ?? '';
-        $accepted = ($visual['version'] ?? '') === self::VERSION && is_string($hash)
-            && $hash !== '' && $hash === ($visual['input_sha256'] ?? '')
-            ? self::accept(['image_description' => $visual['image_description'] ?? '',
-                'observations' => $visual['observations'] ?? []], $hash) : null;
         $subject = ($media['media_type'] ?? '') === 'video' ? 'video' : 'image';
-        $relevant = array_values(array_filter($accepted['observations'] ?? [],
-            fn ($observation) => in_array($observation['kind'], ['possible_artifact', 'image_quality'], true)));
-        // Ready-written answers cover every completed origin finding, including
-        // reports with no usable visual observations. These describe the saved
-        // finding; they never invent an artifact or change its verdict/score.
-        $parts = [match ($result['verdict']) {
-            'LIKELY_AI_GENERATED', 'AI_GENERATED' => "This {$subject} has been flagged as likely AI-generated. This means the assessment points to possible use of artificial intelligence in creating the content. The word \"likely\" reflects remaining uncertainty about how it was made. This finding does not prove its origin or identify a particular creator or AI tool. It also does not establish whether generated material was combined with other content.",
-            'LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL' => "This {$subject} is likely not AI-generated. This finding does not confirm that it is authentic or unedited. Its original source, capture date, and editing history remain unverified by this AI-origin assessment.",
-            default => "The available evidence does not establish whether this {$subject} was AI-generated. There is not enough reliable information to give a definite answer about its origin. Its creation method remains unresolved until an original source or supporting creation records can be checked.",
-        }];
-        foreach ($relevant as $observation) {
-            $parts[] = rtrim($observation['detail'], '.!?').'.';
-        }
+        // Use the same ready-written copy for saved reports, new results and JSON.
+        // Observations stay in the saved assessment without expanding this answer.
+        $result['assessment_label'] = match ($result['verdict']) {
+            'LIKELY_AI_GENERATED', 'AI_GENERATED' => 'Likely AI-Generated',
+            'LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL' => 'Likely Not AI-Generated',
+            default => 'Inconclusive',
+        };
+        $summary = match ($result['verdict']) {
+            'LIKELY_AI_GENERATED', 'AI_GENERATED' => "The submitted {$subject} has been assessed as likely AI-generated. The analysis identified patterns or visual characteristics that may be associated with AI-generated imagery, suggesting that artificial intelligence may have been involved in creating the content. However, this finding does not conclusively prove its origin or identify the specific AI tool or creator. The {$subject} may also contain edited or combined elements. Check the original file, available metadata, and source history for further verification.",
+            'LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL' => "The submitted {$subject} has been assessed as likely not AI-generated. The analysis found no clear visual indicators strongly associated with AI-generated imagery, and its observed characteristics are more consistent with naturally captured or traditionally created content. However, this finding does not confirm that the {$subject} is authentic or unedited. Its original source, capture date, and editing history remain unverified. Check the original file, available metadata, and earliest known publication to help confirm its origin.",
+            default => "The system could not confidently determine whether the submitted {$subject} is AI-generated or not. The analysis produced mixed, limited, or insufficient indicators to support a reliable classification. This finding does not establish whether the {$subject} is authentic, AI-generated, or manipulated. Its origin remains uncertain based on the available evidence. Consider submitting a higher-quality original file and checking its metadata and source history for further verification.",
+        };
         if ($subject === 'video') {
-            $parts[] = 'Only selected video frames were checked. The full video and audio have not been verified. This finding therefore cannot confirm the consistency of every scene, the authenticity of speech, or whether material was added between the selected frames.';
-        } elseif ($relevant !== []) {
-            $hasArtifact = collect($relevant)->contains(fn ($observation) => $observation['kind'] === 'possible_artifact');
-            $parts[] = $hasArtifact
-                ? 'These visible irregularities do not by themselves prove AI generation. They describe what is visible in the supplied image, without establishing which creation or editing process produced those details.'
-                : 'These details limit what can be checked visually; they do not establish AI generation or prove the image is authentic. Areas that cannot be inspected clearly should not be used to make a stronger conclusion about its origin.';
-        } elseif ($accepted === null) {
-            $parts[] = 'The image\'s appearance alone does not establish how it was created. No reliable visual observations are available to explain this finding in detail, so a specific visual cause cannot be provided.';
-        } else {
-            $parts[] = match ($result['verdict']) {
-                'LIKELY_AI_GENERATED', 'AI_GENERATED' => 'The visual review did not identify a specific irregularity to explain this finding. No particular facial feature, object, texture, or background detail can therefore be presented as the reason for this result.',
-                'LIKELY_NOT_AI_GENERATED', 'NO_STRONG_AI_SIGNAL' => 'No clear visual signs of AI generation were identified. The absence of an obvious irregularity does not establish a verified creation history or rule out every form of editing.',
-                default => 'The available visual observations do not provide enough information to resolve this uncertainty. A more definite origin claim would require additional evidence.',
-            };
+            $summary .= ' Only selected video frames were checked. The full video and audio have not been verified. This finding therefore cannot confirm the consistency of every scene, the authenticity of speech, or whether material was added between the selected frames.';
         }
-        $parts[] = 'Check the original file or creation history to confirm its origin. Where possible, trace the earliest available publication and ask the uploader for an original copy or documented creation details. Any accompanying caption or claim about an event requires a separate fact check.';
-        $summary = implode(' ', $parts);
         $result['summary'] = $summary;
         $result['answer_segments'] = [['text' => $summary, 'source_ids' => []]];
         $result['key_findings'] = [$summary];

@@ -15,7 +15,7 @@ class ReadableEvidenceExplanationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_short_saved_quote_gets_a_fuller_explanation_when_opened_without_reanalysis(): void
+    public function test_short_saved_quote_gets_a_concise_grounded_explanation_without_reanalysis(): void
     {
         $this->mock(GoogleFactCheckFeedService::class)->shouldNotReceive('latest');
         $user = User::factory()->create();
@@ -38,7 +38,8 @@ class ReadableEvidenceExplanationTest extends TestCase
         $document = new \DOMDocument;
         @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
         $paragraph = (new \DOMXPath($document))->query('//div[contains(@class, "tg-verdict-explanation")]/p')->item(0);
-        $this->assertGreaterThanOrEqual(100, Str::wordCount($paragraph->textContent));
+        $this->assertLessThan(100, Str::wordCount($paragraph->textContent));
+        $this->assertStringContainsString($passage, $paragraph->textContent);
         $this->assertStringContainsString('does not prove that an event never occurred', $paragraph->textContent);
         $this->assertSame($before, $detection->fresh()->getRawOriginal());
         Http::assertNothingSent();
@@ -74,7 +75,7 @@ class ReadableEvidenceExplanationTest extends TestCase
         $paragraph = $xpath->query('//div[contains(@class, "tg-verdict-explanation")]/p')->item(0);
         $this->assertNotNull($paragraph);
         $this->assertStringStartsWith($explanation, trim($paragraph->textContent));
-        $this->assertStringContainsString('The specific statement being checked', $paragraph->textContent);
+        $this->assertStringNotContainsString('The specific statement being checked', $paragraph->textContent);
         $this->assertStringNotContainsString('18Mayon13', $paragraph->textContent);
         $this->assertSame('FALSE', $detection->fresh()->fact_check_result['verdict']);
         $this->assertSame($snapshot, $detection->fresh()->getRawOriginal());
